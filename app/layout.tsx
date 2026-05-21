@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next'
+import type { Metadata } from 'next'
 import './globals.css'
 import Header from '@/components/Header'
 import Providers from './providers'
@@ -27,19 +27,20 @@ export default function RootLayout({
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <p className="font-bold text-gray-900 text-sm">
-                    I<span className="text-brand-blue">??/span>SCHOOL
+                    I<span className="text-brand-blue">♥</span>SCHOOL
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    ?꾧뎅 ?숈갹 ?몄뒪?洹몃옩 寃???뚮옯??                  </p>
+                    전국 동창 인스타그램 검색 플랫폼
+                  </p>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-400">
-                  <a href="/privacy" className="hover:text-gray-600">媛쒖씤?뺣낫泥섎━諛⑹묠</a>
-                  <a href="/terms" className="hover:text-gray-600">?댁슜?쎄?</a>
-                  <a href="/about" className="hover:text-gray-600">?댁슜?덈궡</a>
+                  <a href="/privacy" className="hover:text-gray-600">개인정보처리방침</a>
+                  <a href="/terms" className="hover:text-gray-600">이용약관</a>
+                  <a href="/about" className="hover:text-gray-600">이용안내</a>
                 </div>
               </div>
               <p className="text-xs text-gray-300 mt-4">
-                짤 2025 SchoolLoveI. 怨듦컻 ?몄뒪?洹몃옩 怨꾩젙留??깅줉 媛?ν빀?덈떎.
+                © 2025 SchoolLoveI. 공개 인스타그램 계정만 등록 가능합니다.
               </p>
             </div>
           </footer>
