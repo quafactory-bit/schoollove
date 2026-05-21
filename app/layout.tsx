@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import './globals.css'
 import Header from '@/components/Header'
 import Providers from './providers'
@@ -31,16 +31,16 @@ export default function RootLayout({
                     I<span className="text-brand-blue">??/span>SCHOOL
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    ?�국 ?�창 ?�스?�그램 검???�랫??                  </p>
+                    ?�국 ?�창 ?�스?�그램 검???�랫??                  </p>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-400">
-                  <a href="/privacy" className="hover:text-gray-600">개인?�보처리방침</a>
-                  <a href="/terms" className="hover:text-gray-600">?�용?��?</a>
-                  <a href="/about" className="hover:text-gray-600">?�용?�내</a>
+                  <a href="/privacy" className="hover:text-gray-600">개인?�보처리방침</a>
+                  <a href="/terms" className="hover:text-gray-600">?�용?��?</a>
+                  <a href="/about" className="hover:text-gray-600">?�용?�내</a>
                 </div>
               </div>
               <p className="text-xs text-gray-300 mt-4">
-                © 2025 SchoolLoveI. 공개 ?�스?�그램 계정�??�록 가?�합?�다.
+                © 2025 SchoolLoveI. 공개 ?�스?�그램 계정�??�록 가?�합?�다.
               </p>
             </div>
           </footer>
@@ -49,3 +49,4 @@ export default function RootLayout({
     </html>
   )
 }
+
