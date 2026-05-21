@@ -16,7 +16,8 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="google-site-verification" content="rgKVxWEoGFuFJAys2vyK-QFtLbstnsDOGQj0mOkdkIo" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
       <body>
         <Providers>
@@ -27,20 +28,19 @@ export default function RootLayout({
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <p className="font-bold text-gray-900 text-sm">
-                    I<span className="text-brand-blue">♥</span>SCHOOL
+                    I<span className="text-brand-blue">??/span>SCHOOL
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    전국 동창 인스타그램 검색 플랫폼
-                  </p>
+                    ?�국 ?�창 ?�스?�그램 검???�랫??                  </p>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-400">
-                  <a href="/privacy" className="hover:text-gray-600">개인정보처리방침</a>
-                  <a href="/terms" className="hover:text-gray-600">이용약관</a>
-                  <a href="/about" className="hover:text-gray-600">이용안내</a>
+                  <a href="/privacy" className="hover:text-gray-600">개인?�보처리방침</a>
+                  <a href="/terms" className="hover:text-gray-600">?�용?��?</a>
+                  <a href="/about" className="hover:text-gray-600">?�용?�내</a>
                 </div>
               </div>
               <p className="text-xs text-gray-300 mt-4">
-                © 2025 SchoolLoveI. 공개 인스타그램 계정만 등록 가능합니다.
+                © 2025 SchoolLoveI. 공개 ?�스?�그램 계정�??�록 가?�합?�다.
               </p>
             </div>
           </footer>
