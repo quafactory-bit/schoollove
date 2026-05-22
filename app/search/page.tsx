@@ -1,15 +1,16 @@
-import { Suspense } from 'react'
+﻿import { Suspense } from 'react'
 import Link from 'next/link'
 import { searchAll } from '@/lib/api/search'
 import { schoolTypeLabel } from '@/lib/utils'
 import type { Metadata } from 'next'
 
 interface Props {
-  searchParams: { q?: string }
+  searchParams: Promise<{ q?: string }>
+}
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const q = searchParams.q || ''
+  const q = resolvedParams.q?.trim() || ''
   return {
     title: q ? `'${q}' 검색 결과 | 스쿨러브아이` : '검색 | 스쿨러브아이',
     robots: { index: false },
@@ -17,7 +18,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function SearchPage({ searchParams }: Props) {
-  const q = searchParams.q?.trim() || ''
+  const resolvedParams = await searchParams
+  const q = resolvedParams.q?.trim() || ''
   const { schools, profiles } = q.length >= 2
     ? await searchAll(q)
     : { schools: [], profiles: [] }
