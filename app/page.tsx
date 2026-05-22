@@ -3,20 +3,12 @@ import { supabase } from '@/lib/supabase'
 import SearchBar from '@/components/SearchBar'
 import SchoolCard from '@/components/SchoolCard'
 
-const POPULAR_KEYWORDS = [
-  'daechigodeunghaggyo',
-  'seoulhagyo',
-  'hanyangdaehakgyo',
-  'busandaehakgyo',
-  'seochogodeunghaggyo',
-]
-
-const POPULAR_LABELS = [
-  '대치고등학교',
-  '서울대학교',
-  '한양대학교',
-  '부산대학교',
-  '서초고등학교',
+const POPULAR_SLUGS = [
+  'seoul-gangnam-jungdonggodeunghaggyo',
+  'seoul-gwanak-seoulhakgyo',
+  'seoul-seongdong-hanyangdaehakgyo',
+  'busan-geumjeong-busandaehakgyo',
+  'seoul-seocho-seochogodeunghaggyo',
 ]
 
 export default async function Home() {
@@ -25,6 +17,12 @@ export default async function Home() {
     .select('*')
     .order('created_at', { ascending: false })
     .limit(8)
+
+  const { data: popularSchools } = await supabase
+    .from('schools')
+    .select('*')
+    .in('slug', POPULAR_SLUGS)
+    .limit(5)
 
   const { data: stats } = await supabase
     .from('schools')
@@ -38,31 +36,39 @@ export default async function Home() {
     college: stats?.filter(s => s.school_type === 'college').length || 0,
   }
 
+  const statItems = [
+    { label: '\ucd08\ub4f1\ud559\uad50', count: counts.elementary },
+    { label: '\uc911\ud559\uad50', count: counts.middle },
+    { label: '\uace0\ub4f1\ud559\uad50', count: counts.high },
+    { label: '\ub300\ud559\uad50', count: counts.university },
+    { label: '\uc804\ubb38\ub300\ud559', count: counts.college },
+  ]
+
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold mb-2">
-            우리 학교, 우리 사람들<br />
-            <span className="text-blue-600">아이러브스쿨</span>에서 찾아보세요
+            {'\uc6b0\ub9ac \ud559\uad50, \uc6b0\ub9ac \uc0ac\ub78c\ub4e4'}<br />
+            <span className="text-blue-600">{'\uc544\uc774\ub7ec\ube0c\uc2a4\ucfe8'}</span>{'\uc5d0\uc11c \ucc3e\uc544\ubcf4\uc138\uc694'}
           </h1>
-          <p className="text-gray-500 text-sm">전국 초·중·고·대학교 동창들의 인스타그램을 연결해보세요</p>
+          <p className="text-gray-500 text-sm">{'\uc804\uad6d \ucd08\b7\uc911\b7\uace0\b7\ub300\ud559\uad50 \ub3d9\ucc3d\ub4e4\uc758 \uc778\uc2a4\ud0c0\uadf8\ub7a8\uc744 \uc5f0\uacb0\ud574\ubcf4\uc138\uc694'}</p>
         </div>
 
         <SearchBar />
 
         <div className="flex flex-wrap gap-2 justify-center mt-4 mb-10">
-          {POPULAR_LABELS.map((label, i) => (
-            <Link key={i} href={`/school/${POPULAR_KEYWORDS[i]}`}
+          {popularSchools?.map(school => (
+            <Link key={school.id} href={`/school/${school.slug}`}
               className="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm hover:border-blue-400">
-              {label}
+              {school.school_name}
             </Link>
           ))}
         </div>
 
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-gray-700">최근 등록 학교</h2>
-          <Link href="/search" className="text-sm text-blue-500">전체보기</Link>
+          <h2 className="font-semibold text-gray-700">{'\ucd5c\uadfc \ub4f1\ub85d \ud559\uad50'}</h2>
+          <Link href="/search" className="text-sm text-blue-500">{'\uc804\uccb4\ubcf4\uae30'}</Link>
         </div>
 
         <div className="space-y-2 mb-10">
@@ -72,21 +78,15 @@ export default async function Home() {
         </div>
 
         <div className="bg-blue-50 rounded-2xl p-6 text-center mb-8">
-          <h3 className="font-bold mb-1">내 인스타를 등록해 보세요</h3>
-          <p className="text-sm text-gray-500 mb-4">학교 친구들이 나를 찾을 수 있어요</p>
+          <h3 className="font-bold mb-1">{'\ub0b4 \uc778\uc2a4\ud0c0\ub97c \ub4f1\ub85d\ud574 \ubcf4\uc138\uc694'}</h3>
+          <p className="text-sm text-gray-500 mb-4">{'\ud559\uad50 \uce5c\uad6c\ub4e4\uc774 \ub098\ub97c \ucc3e\uc744 \uc218 \uc788\uc5b4\uc694'}</p>
           <Link href="/submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium">
-            지금 등록하기
+            {'\uc9c0\uae08 \ub4f1\ub85d\ud558\uae30'}
           </Link>
         </div>
 
         <div className="grid grid-cols-5 gap-2 text-center">
-          {[
-            { label: '초등학교', count: counts.elementary },
-            { label: '중학교', count: counts.middle },
-            { label: '고등학교', count: counts.high },
-            { label: '대학교', count: counts.university },
-            { label: '전문대학', count: counts.college },
-          ].map(item => (
+          {statItems.map(item => (
             <div key={item.label} className="bg-white rounded-xl p-3 border border-gray-100">
               <div className="text-blue-600 font-bold text-lg">{item.count.toLocaleString()}</div>
               <div className="text-xs text-gray-500">{item.label}</div>
