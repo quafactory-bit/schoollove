@@ -1,38 +1,19 @@
-'use client'
-
 import { useQuery } from '@tanstack/react-query'
-import { searchSchools } from '@/lib/api/schools'
-import { searchProfiles } from '@/lib/api/profiles'
+import { useState, useEffect } from 'react'
+import { searchAll } from '@/lib/api/search'
 
 export function useSchoolSearch(query: string) {
+  const [debouncedQuery, setDebouncedQuery] = useState(query)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
   return useQuery({
-    queryKey: ['school-search', query],
-    queryFn: () => searchSchools(query, 8),
-    enabled: query.trim().length >= 1,
-    staleTime: 30_000,
-    placeholderData: (prev) => prev,
+    queryKey: ['search', debouncedQuery],
+    queryFn: () => searchAll(debouncedQuery),
+    enabled: debouncedQuery.length >= 2,
+    staleTime: 1000 * 30,
   })
-}
-
-export function useProfileSearch(query: string) {
-  return useQuery({
-    queryKey: ['profile-search', query],
-    queryFn: () => searchProfiles(query, 8),
-    enabled: query.trim().length >= 1,
-    staleTime: 30_000,
-    placeholderData: (prev) => prev,
-  })
-}
-
-export function useCombinedSearch(query: string) {
-  const schools = useSchoolSearch(query)
-  const profiles = useProfileSearch(query)
-
-  return {
-    schools: schools.data || [],
-    profiles: profiles.data || [],
-    isLoading: schools.isLoading || profiles.isLoading,
-    hasResults:
-      (schools.data?.length || 0) > 0 || (profiles.data?.length || 0) > 0,
-  }
 }
