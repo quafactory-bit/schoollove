@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback } from 'react'
 import { Plus, Trash2, AlertCircle, Check, Loader2, ChevronDown } from 'lucide-react'
@@ -55,7 +55,7 @@ export default function SubmitForm() {
   const [submitError, setSubmitError] = useState('')
   const [done, setDone] = useState(false)
 
-  const { data: schools, isLoading: schoolSearching } = useSchoolSearch(schoolQuery)
+  const { data, isLoading: schoolSearching } = useSchoolSearch(schoolQuery)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSchoolQuery = useCallback(debounce((v: string) => setSchoolQuery(v), 300), [])
@@ -253,9 +253,9 @@ export default function SubmitForm() {
                 />
                 {schoolSearching && <Loader2 size={14} className="animate-spin text-brand-blue shrink-0" />}
               </div>
-              {schoolDropdown && schools && schools.length > 0 && (
+              {schoolDropdown && data?.schools && data.schools.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-card-hover z-10 overflow-hidden">
-                  {schools.map((school) => (
+                  {data?.schools?.map((school) => (
                     <button
                       key={school.id}
                       onClick={() => {
