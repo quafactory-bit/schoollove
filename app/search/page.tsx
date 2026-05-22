@@ -1,4 +1,3 @@
-﻿import { Suspense } from 'react'
 import Link from 'next/link'
 import { searchAll } from '@/lib/api/search'
 import { schoolTypeLabel } from '@/lib/utils'
@@ -7,10 +6,9 @@ import type { Metadata } from 'next'
 interface Props {
   searchParams: Promise<{ q?: string }>
 }
-}
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const q = resolvedParams.q?.trim() || ''
+  const { q = '' } = await searchParams
   return {
     title: q ? `'${q}' 검색 결과 | 스쿨러브아이` : '검색 | 스쿨러브아이',
     robots: { index: false },
@@ -18,8 +16,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function SearchPage({ searchParams }: Props) {
-  const resolvedParams = await searchParams
-  const q = resolvedParams.q?.trim() || ''
+  const { q: rawQ = '' } = await searchParams
+  const q = rawQ.trim()
+
   const { schools, profiles } = q.length >= 2
     ? await searchAll(q)
     : { schools: [], profiles: [] }
@@ -49,50 +48,36 @@ export default async function SearchPage({ searchParams }: Props) {
           </div>
         </form>
 
-        {/* 검색어 없음 */}
         {!q && (
           <p className="text-center text-gray-400 text-sm mt-16">검색어를 입력해주세요.</p>
         )}
 
-        {/* 검색어 너무 짧음 */}
         {q && q.length < 2 && (
           <p className="text-center text-gray-400 text-sm mt-16">두 글자 이상 입력해주세요.</p>
         )}
 
-        {/* 검색 결과 */}
         {q.length >= 2 && (
           <>
-            {/* 탭 요약 */}
             <div className="flex gap-4 mb-6 border-b border-gray-200 pb-2">
-              <span className="text-sm font-semibold text-blue-600">
-                전체 ({totalCount})
-              </span>
-              <span className="text-sm text-gray-400">
-                학교 ({schools.length})
-              </span>
-              <span className="text-sm text-gray-400">
-                등록된 동문 ({profiles.length})
-              </span>
+              <span className="text-sm font-semibold text-blue-600">전체 ({totalCount})</span>
+              <span className="text-sm text-gray-400">학교 ({schools.length})</span>
+              <span className="text-sm text-gray-400">등록된 동문 ({profiles.length})</span>
             </div>
 
-            {/* 결과 없음 */}
             {totalCount === 0 && (
               <div className="text-center py-16">
                 <p className="text-gray-600 font-medium mb-1">검색 결과가 없습니다.</p>
                 <p className="text-sm text-gray-400 mb-6">
-                  찾는 학교가 없다면 학교 등록을 요청하거나,<br />
-                  내 공개 인스타그램을 먼저 등록해보세요.
+                  찾는 학교가 없다면 내 공개 인스타그램을 먼저 등록해보세요.
                 </p>
                 <div className="flex gap-3 justify-center">
-                  <Link href="/submit"
-                    className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg">
+                  <Link href="/submit" className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg">
                     내 인스타 등록하기
                   </Link>
                 </div>
               </div>
             )}
 
-            {/* 학교 검색 결과 */}
             {schools.length > 0 && (
               <section className="mb-8">
                 <h2 className="text-sm font-semibold text-gray-500 mb-3">학교 검색 결과</h2>
@@ -112,7 +97,7 @@ export default async function SearchPage({ searchParams }: Props) {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 text-right">
+                      <div className="flex items-center gap-2">
                         {school.profile_count > 0 ? (
                           <span className="text-xs text-blue-500 bg-blue-50 px-2 py-1 rounded-full">
                             동문 {school.profile_count}명
@@ -130,7 +115,6 @@ export default async function SearchPage({ searchParams }: Props) {
               </section>
             )}
 
-            {/* 등록된 동문 검색 결과 */}
             {profiles.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
@@ -164,7 +148,6 @@ export default async function SearchPage({ searchParams }: Props) {
                     </Link>
                   ))}
                 </div>
-
                 <p className="text-xs text-gray-300 text-center mt-4">
                   공개 등록된 인스타그램 프로필만 표시됩니다.
                 </p>
