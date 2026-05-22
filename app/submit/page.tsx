@@ -1,4 +1,5 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import SubmitForm from '@/components/SubmitForm'
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export default function SubmitPage() {
         </p>
       </div>
 
-      <SubmitForm />
+      <Suspense fallback={<div className="text-center py-10 text-gray-400">불러오는 중...</div>}><SubmitForm /></Suspense>
     </div>
   )
 }
