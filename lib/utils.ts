@@ -1,3 +1,10 @@
+﻿
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 export function schoolTypeLabel(type: string): string {
   const map: Record<string, string> = {
     elementary: '초등학교',
