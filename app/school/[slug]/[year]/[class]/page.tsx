@@ -67,7 +67,7 @@ export default async function ClassPage({ params, searchParams }: PageProps) {
         <p className="text-sm text-gray-500">
           {SCHOOL_TYPE_LABELS[school.school_type]} · 총 {formatNumber(count)}명
         </p>
-        <Link href="/submit" className="btn-primary inline-block text-sm">
+        <Link href={`/submit?school=${slug}&year=${year}&grade=${grade}&class=${classNumber}`} className="btn-primary inline-block text-sm">
           같은 반 친구 등록하기
         </Link>
       </div>
