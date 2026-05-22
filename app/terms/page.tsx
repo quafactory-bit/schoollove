@@ -1,15 +1,33 @@
 export default function TermsPage() {
   return (
     <main className='max-w-2xl mx-auto px-4 py-12'>
-      <h1 className='text-2xl font-bold mb-8'>\uc774\uc6a9\uc57d\uad00</h1>
+      <h1 className='text-2xl font-bold mb-8'>이용약관</h1>
       <div className='space-y-8 text-sm text-gray-700 leading-relaxed'>
-        <section><h2 className='font-bold text-base mb-2'>1. \uc11c\ube44\uc2a4 \uc18c\uac1c</h2><p>\uc2a4\ucfe8\ub7ec\ube0c\uc544\uc774\ub294 \ud559\uad50 \uae30\ubc18 \uacf5\uac1c \uc778\uc2a4\ud0c0\uadf8\ub7a8 \uac80\uc0c9 \ud50c\ub7ab\ud3fc\uc785\ub2c8\ub2e4. \ub204\uad6c\ub098 \ub85c\uadf8\uc778 \uc5c6\uc774 \ubb34\ub8cc\ub85c \uc774\uc6a9\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.</p></section>
-        <section><h2 className='font-bold text-base mb-2'>2. \uc774\uc6a9 \uaddc\uce59</h2><p>\uacf5\uac1c \uc778\uc2a4\ud0c0\uadf8\ub7a8 \uacc4\uc815\ub9cc \ub4f1\ub85d \uac00\ub2a5\ud569\ub2c8\ub2e4. \ud83d\udeab \ud83d\udc64 \ud83d\udc4e \ud83d\udcb0 \uc0ac\uce6d \ubc0f \uac1c\uc778\uc815\ubcf4 \ubb34\ub2e8 \ub4f1\ub85d \uae08\uc9c0. \uc11c\ube44\uc2a4 \uc774\uc6a9 \uc2dc \ubcf8 \uc57d\uad00\uc5d0 \ub3d9\uc758\ud55c \uac83\uc73c\ub85c \uac04\uc8fc\ud569\ub2c8\ub2e4.</p></section>
-        <section><h2 className='font-bold text-base mb-2'>3. \ub4f1\ub85d \uc815\ubcf4</h2><p>\ub4f1\ub85d\ub41c \uc815\ubcf4\ub294 \ub204\uad6c\ub098 \ubcfc \uc218 \uc788\uc2b5\ub2c8\ub2e4. \ubcf8\uc778 \ub610\ub294 \uc9c0\uc778\uc758 \uc815\ubcf4\ub97c \ub4f1\ub85d\ud560 \uc218 \uc788\uc73c\ub098, \ud0c0\uc778\uc758 \uac1c\uc778\uc815\ubcf4\ub97c \ubb34\ub2e8\uc73c\ub85c \ub4f1\ub85d \uc2dc \ucc45\uc784\uc740 \ub4f1\ub85d\uc790\uc5d0\uac8c \uc788\uc2b5\ub2c8\ub2e4.</p></section>
-        <section><h2 className='font-bold text-base mb-2'>4. \uc0ad\uc81c \uc694\uccad</h2><p>\ubcf8\uc778 \uc815\ubcf4 \uc0ad\uc81c\ub97c \uc6d0\ud558\uc2e4 \uacbd\uc6b0 \uc2e0\uace0/\uc0ad\uc81c \uc694\uccad \uae30\ub2a5\uc744 \uc774\uc6a9\ud558\uac70\ub098 schoollove.help@gmail.com \uc73c\ub85c \uc5f0\ub77d\uc8fc\uc138\uc694. \uad00\ub9ac\uc790 \ud655\uc778 \ud6c4 \uc2e0\uc18d \uc2e4\ud589\ud569\ub2c8\ub2e4.</p></section>
-        <section><h2 className='font-bold text-base mb-2'>5. \uba74\uc81c\uc870\ud56d</h2><p>\uc11c\ube44\uc2a4\ub294 \ub4f1\ub85d\ub41c \uc815\ubcf4\uc758 \uc815\ud655\uc131\uc744 \ubcf4\uc7a5\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4. \ubd80\uc815\ud655\ud55c \uc815\ubcf4 \ub4f1\ub85d \uc2dc \uc2e0\uace0 \uae30\ub2a5\uc744 \uc774\uc6a9\ud574 \uc8fc\uc138\uc694.</p></section>
-        <section><h2 className='font-bold text-base mb-2'>6. \ubb38\uc758</h2><p>schoollove.help@gmail.com</p></section>
-        <p className='text-gray-400 text-xs mt-8'>\uc2dc\ud589\uc77c: 2026\ub144 5\uc6d4 22\uc77c</p>
+        <section>
+          <h2 className='font-bold text-base mb-2'>1. 서비스 소개</h2>
+          <p>스쿨러브아이는 학교 기반 공개 인스타그램 검색 플랫폼입니다. 누구나 로그인 없이 무료로 이용할 수 있습니다.</p>
+        </section>
+        <section>
+          <h2 className='font-bold text-base mb-2'>2. 이용 규칙</h2>
+          <p>공개 인스타그램 계정만 등록 가능합니다. 사칭 및 개인정보 무단 등록 금지. 서비스 이용 시 본 약관에 동의한 것으로 간주합니다.</p>
+        </section>
+        <section>
+          <h2 className='font-bold text-base mb-2'>3. 등록 정보</h2>
+          <p>등록된 정보는 누구나 볼 수 있습니다. 본인 또는 지인의 정보를 등록할 수 있으나, 타인의 개인정보를 무단으로 등록 시 책임은 등록자에게 있습니다.</p>
+        </section>
+        <section>
+          <h2 className='font-bold text-base mb-2'>4. 삭제 요청</h2>
+          <p>본인 정보 삭제를 원하실 경우 신고/삭제 요청 기능을 이용하거나 schoollove.help@gmail.com 으로 연락주세요. 관리자 확인 후 신속 실행합니다.</p>
+        </section>
+        <section>
+          <h2 className='font-bold text-base mb-2'>5. 면책조항</h2>
+          <p>서비스는 등록된 정보의 정확성을 보장하지 않습니다. 부정확한 정보 등록 시 신고 기능을 이용해 주세요.</p>
+        </section>
+        <section>
+          <h2 className='font-bold text-base mb-2'>6. 문의</h2>
+          <p>schoollove.help@gmail.com</p>
+        </section>
+        <p className='text-gray-400 text-xs mt-8'>시행일: 2026년 5월 22일</p>
       </div>
     </main>
   )
