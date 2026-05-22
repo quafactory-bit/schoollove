@@ -1,9 +1,10 @@
 import { supabase } from '@/lib/supabase'
+import type { SchoolType } from '@/types/school'
 
 export interface SchoolSearchResult {
   id: string
   school_name: string
-  school_type: string
+  school_type: SchoolType
   sido: string
   sigungu: string
   slug: string
@@ -54,7 +55,7 @@ export async function searchSchools(query: string): Promise<SchoolSearchResult[]
         .select('id', { count: 'exact', head: true })
         .eq('school_id', school.id)
         .eq('is_hidden', false)
-      return { ...school, profile_count: count || 0 }
+      return { ...school, profile_count: count || 0 } as SchoolSearchResult
     })
   )
 
