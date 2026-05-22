@@ -7,15 +7,15 @@ import ProfileCard from '@/components/ProfileCard'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import type { SchoolType } from '@/types/school'
 
-export const revalidate = 300 // 5분마다 갱신
+export const revalidate = 300 // 5분마??갱신
 
-// 인기 검색어 (정적)
+// ?�기 검?�어 (?�적)
 const POPULAR_KEYWORDS = [
-  '대치고등학교',
-  '서울대학교',
-  '한양대학교',
-  '부산대학교',
-  '서초고등학교',
+  '?�치고?�학�?,
+  '?�울?�?�교',
+  '?�양?�?�교',
+  '부?��??�교',
+  '?�초고등?�교',
 ]
 
 export default async function HomePage() {
@@ -26,29 +26,27 @@ export default async function HomePage() {
 
   return (
     <div className="page-container space-y-8">
-      {/* 히어로 섹션 */}
+      {/* ?�어�??�션 */}
       <section className="pt-6 pb-2 text-center space-y-4">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-black text-gray-900 leading-tight">
-            우리 학교, 우리 사람들
-          </h1>
+            ?�리 ?�교, ?�리 ?�람??          </h1>
           <p className="text-2xl sm:text-3xl font-black leading-tight">
-            <span className="text-brand-blue">아이러브스쿨</span>에서 찾아보세요
-          </p>
+            <span className="text-brand-blue">?�이?�브?�쿨</span>?�서 찾아보세??          </p>
         </div>
         <p className="text-sm text-gray-500">
-          전국 초·중·고·대학교 동창들의 인스타그램을 연결해보세요
+          ?�국 초·중·고·�??�교 ?�창?�의 ?�스?�그램???�결?�보?�요
         </p>
 
-        {/* 검색창 */}
+        {/* 검?�창 */}
         <div className="max-w-md mx-auto pt-2">
           <SearchBar
             size="lg"
-            placeholder="학교 이름을 검색하세요 (예: 대치고등학교)"
+            placeholder="?�교 ?�름??검?�하?�요 (?? ?�치고?�학�?"
           />
         </div>
 
-        {/* 인기 검색어 */}
+        {/* ?�기 검?�어 */}
         <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
           {POPULAR_KEYWORDS.map((kw) => (
             <Link
@@ -62,45 +60,44 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 인기 학교 */}
+      {/* ?�기 ?�교 */}
       {popularSchools.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="section-title">최근 등록 학교</h2>
+            <h2 className="section-title">최근 ?�록 ?�교</h2>
             <Link href="/search" className="text-xs text-brand-blue hover:underline">
-              전체보기
+              ?�체보기
             </Link>
           </div>
 
-          {/* 학교 타입별 탭 */}
+          {/* ?�교 ?�?�별 ??*/}
           <SchoolGrid schools={popularSchools} />
         </section>
       )}
 
-      {/* 최근 등록 */}
+      {/* 최근 ?�록 */}
       {recentProfiles.length > 0 && (
         <section className="space-y-3">
-          <h2 className="section-title">최근 등록</h2>
+          <h2 className="section-title">최근 ?�록</h2>
           <div className="card overflow-hidden divide-y divide-gray-100">
             {recentProfiles.map((profile) => (
-              <ProfileCard key={profile.id} profile={profile} showSchool />
+              <ProfileCard key={profile.id} profile={profile} />
             ))}
           </div>
         </section>
       )}
 
-      {/* 등록 CTA */}
+      {/* ?�록 CTA */}
       <section className="card p-6 text-center space-y-3 bg-gradient-to-br from-brand-blue-light to-white border-brand-blue/20">
-        <p className="font-semibold text-gray-900">내 인스타를 등록해 보세요</p>
+        <p className="font-semibold text-gray-900">???�스?��??�록??보세??/p>
         <p className="text-sm text-gray-500">
-          학교 친구들이 나를 찾을 수 있어요
-        </p>
+          ?�교 친구?�이 ?��? 찾을 ???�어??        </p>
         <Link href="/submit" className="btn-primary inline-block text-sm">
-          지금 등록하기
+          지�??�록?�기
         </Link>
       </section>
 
-      {/* 학교 수 배너 */}
+      {/* ?�교 ??배너 */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {(Object.entries(SCHOOL_TYPE_LABELS) as [SchoolType, string][]).map(([type, label]) => {
           const counts: Record<SchoolType, number> = {
