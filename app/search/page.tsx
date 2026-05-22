@@ -83,7 +83,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               <h2 className="section-title">사람 검색 결과 ({profiles.length})</h2>
               <div className="card overflow-hidden divide-y divide-gray-100">
                 {profiles.map((profile) => (
-                  <ProfileCard key={profile.id} profile={profile} showSchool />
+                  <ProfileCard key={profile.id} profile={profile} />
                 ))}
               </div>
             </section>
