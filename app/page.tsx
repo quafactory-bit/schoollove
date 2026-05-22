@@ -52,7 +52,7 @@ export default async function Home() {
             {'\uc6b0\ub9ac \ud559\uad50, \uc6b0\ub9ac \uc0ac\ub78c\ub4e4'}<br />
             <span className="text-blue-600">{'\uc544\uc774\ub7ec\ube0c\uc2a4\ucfe8'}</span>{'\uc5d0\uc11c \ucc3e\uc544\ubcf4\uc138\uc694'}
           </h1>
-          <p className="text-gray-500 text-sm">{'\uc804\uad6d \ucd08\b7\uc911\b7\uace0\b7\ub300\ud559\uad50 \ub3d9\ucc3d\ub4e4\uc758 \uc778\uc2a4\ud0c0\uadf8\ub7a8\uc744 \uc5f0\uacb0\ud574\ubcf4\uc138\uc694'}</p>
+          <p className="text-gray-500 text-sm">{'\uc804\uad6d \ucd08/\uc911/\uace0/\ub300\ud559\uad50 \ub3d9\ucc3d\ub4e4\uc758 \uc778\uc2a4\ud0c0\uadf8\ub7a8\uc744 \uc5f0\uacb0\ud574\ubcf4\uc138\uc694'}</p>
         </div>
 
         <SearchBar />
