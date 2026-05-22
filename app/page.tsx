@@ -24,16 +24,19 @@ export default async function Home() {
     .in('slug', POPULAR_SLUGS)
     .limit(5)
 
-  const { data: stats } = await supabase
-    .from('schools')
-    .select('school_type')
-
+  const [elem, midd, high_, univ, coll] = await Promise.all([
+    supabase.from('schools').select('id', { count: 'exact', head: true }).eq('school_type', 'elementary'),
+    supabase.from('schools').select('id', { count: 'exact', head: true }).eq('school_type', 'middle'),
+    supabase.from('schools').select('id', { count: 'exact', head: true }).eq('school_type', 'high'),
+    supabase.from('schools').select('id', { count: 'exact', head: true }).eq('school_type', 'university'),
+    supabase.from('schools').select('id', { count: 'exact', head: true }).eq('school_type', 'college'),
+  ])
   const counts = {
-    elementary: stats?.filter(s => s.school_type === 'elementary').length || 0,
-    middle: stats?.filter(s => s.school_type === 'middle').length || 0,
-    high: stats?.filter(s => s.school_type === 'high').length || 0,
-    university: stats?.filter(s => s.school_type === 'university').length || 0,
-    college: stats?.filter(s => s.school_type === 'college').length || 0,
+    elementary: elem.count || 0,
+    middle: midd.count || 0,
+    high: high_.count || 0,
+    university: univ.count || 0,
+    college: coll.count || 0,
   }
 
   const statItems = [
