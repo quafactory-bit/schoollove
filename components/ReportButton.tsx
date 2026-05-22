@@ -1,124 +1,45 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Check, Loader2, AlertCircle } from 'lucide-react'
-import { insertReport } from '@/lib/api/reports'
-import type { Profile } from '@/types/profile'
+import { supabase } from '@/lib/supabase'
 
-const REPORT_REASONS = [
-  '잘못된 정보',
-  '사칭',
-  '부적절한 내용',
-  '기타',
-]
+const REASONS = ['\uc798\ubabb\ub41c \uc815\ubcf4', '\uc0ac\uce6d', '\ubd80\uc801\uc808\ud55c \ub0b4\uc6a9', '\uae30\ud0c0']
 
-interface ReportButtonProps {
-  profile: Profile
-  onClose: () => void
-  onSuccess: () => void
-}
-
-export default function ReportButton({ profile, onClose, onSuccess }: ReportButtonProps) {
+export default function ReportButton({ profileId }: { profileId: string }) {
+  const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [done, setDone] = useState(false)
 
-  const handleSubmit = async () => {
-    if (!reason) {
-      setError('신고 사유를 선택해주세요.')
-      return
-    }
-
+  const submit = async () => {
+    if (!reason) return
     setLoading(true)
-    setError('')
-    const { error: err } = await insertReport({
-      profile_id: profile.id,
-      type: 'report',
-      reason,
-      is_self_claimed: false,
-    })
+    await supabase.from('reports').insert({ profile_id: profileId, type: 'report', reason, is_self_claimed: false, status: 'pending' })
     setLoading(false)
-
-    if (err) {
-      setError(err)
-      return
-    }
-
     setDone(true)
-    setTimeout(onSuccess, 1500)
   }
 
+  if (!open) return <button onClick={() => setOpen(true)} className='text-xs text-gray-400 hover:text-red-400'>{'\uc2e0\uace0'}</button>
+
+  if (done) return (
+    <div className='fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4'>
+      <div className='bg-white rounded-2xl p-6 w-full max-w-sm text-center'>
+        <div className='text-4xl mb-3'>checkmark</div>
+        <p className='font-semibold mb-4'>{'\uc2e0\uace0\uac00 \uc811\uc218\ub410\uc2b5\ub2c8\ub2e4'}</p>
+        <button onClick={() => { setOpen(false); setDone(false) }} className='w-full bg-blue-600 text-white py-2 rounded-lg'>{'\ud655\uc778'}</button>
+      </div>
+    </div>
+  )
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900">신고하기</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50">
-            <X size={18} />
-          </button>
+    <div className='fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4'>
+      <div className='bg-white rounded-2xl p-6 w-full max-w-sm'>
+        <h3 className='font-bold text-lg mb-4'>{'\uc2e0\uace0 \uc0ac\uc720 \uc120\ud0dd'}</h3>
+        <div className='space-y-2 mb-4'>
+          {REASONS.map(r => (<button key={r} onClick={() => setReason(r)} className={\w-full border rounded-xl p-3 text-left text-sm \\}>{r}</button>))}
         </div>
-
-        <div className="px-5 py-4 space-y-4">
-          {done ? (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
-                <Check size={24} className="text-green-600" />
-              </div>
-              <p className="text-sm font-medium text-gray-900">신고가 접수되었습니다</p>
-            </div>
-          ) : (
-            <>
-              <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-sm font-medium text-gray-800">{profile.nickname}</p>
-                {profile.instagram_id && (
-                  <p className="text-xs text-gray-500 mt-0.5">@{profile.instagram_id}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-gray-600">신고 사유</p>
-                {REPORT_REASONS.map((r) => (
-                  <label key={r} className="flex items-center gap-2.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="reason"
-                      value={r}
-                      checked={reason === r}
-                      onChange={() => setReason(r)}
-                      className="w-4 h-4 accent-brand-blue"
-                    />
-                    <span className="text-sm text-gray-700">{r}</span>
-                  </label>
-                ))}
-              </div>
-
-              {error && (
-                <div className="flex items-center gap-2 text-xs text-red-600">
-                  <AlertCircle size={14} />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-70"
-                >
-                  {loading && <Loader2 size={16} className="animate-spin" />}
-                  신고하기
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <button onClick={submit} disabled={loading || !reason} className='w-full bg-red-500 text-white py-2 rounded-lg disabled:opacity-50 mb-2'>{loading ? '\ucc98\ub9ac \uc911...' : '\uc2e0\uace0\ud558\uae30'}</button>
+        <button onClick={() => setOpen(false)} className='w-full text-gray-500 py-2 text-sm'>{'\ucde8\uc18c'}</button>
       </div>
     </div>
   )
