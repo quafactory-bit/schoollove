@@ -8,6 +8,9 @@ export interface SchoolSearchResult {
   sigungu: string
   slug: string
   profile_count: number
+  address: string
+  school_code: string
+  created_at: string
 }
 
 export interface ProfileSearchResult {
@@ -33,7 +36,10 @@ export async function searchSchools(query: string): Promise<SchoolSearchResult[]
       school_type,
       sido,
       sigungu,
-      slug
+      slug,
+      address,
+      school_code,
+      created_at
     `)
     .ilike('school_name', `%${query}%`)
     .order('school_name')
@@ -41,7 +47,6 @@ export async function searchSchools(query: string): Promise<SchoolSearchResult[]
 
   if (error || !data) return []
 
-  // 각 학교의 프로필 수 조회
   const schoolsWithCount = await Promise.all(
     data.map(async (school) => {
       const { count } = await supabase
@@ -59,7 +64,6 @@ export async function searchSchools(query: string): Promise<SchoolSearchResult[]
 export async function searchProfiles(query: string): Promise<ProfileSearchResult[]> {
   if (query.length < 2) return []
 
-  // 닉네임으로 검색
   const { data: byNickname } = await supabase
     .from('profiles')
     .select(`
@@ -76,7 +80,6 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
     .eq('is_hidden', false)
     .limit(5)
 
-  // 인스타그램 ID로 검색
   const { data: byInstagram } = await supabase
     .from('profiles')
     .select(`
