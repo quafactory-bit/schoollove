@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback, useEffect } from 'react'
 import { Plus, Trash2, AlertCircle, Check, Loader2, ChevronDown } from 'lucide-react'
@@ -7,7 +7,8 @@ import { useSchoolSearch } from '@/lib/hooks/useSchoolSearch'
 import { checkDuplicate, insertProfile } from '@/lib/api/profiles'
 import { normalizeInstagramId, validateInstagramId, sanitizeText, getGraduationYears, getGradesForType, debounce, cn } from '@/lib/utils'
 import { SCHOOL_TYPE_LABELS, isUniversity } from '@/types/school'
-import { getSchoolBySlug } from '@/lib/api/schools'
+
+import { supabase } from '@/lib/supabase'
 import type { School } from '@/types/school'
 
 interface PersonRow {
@@ -56,7 +57,7 @@ export default function SubmitForm() {
     const classParam = searchParams.get('class')
 
     if (schoolSlug) {
-      getSchoolBySlug(schoolSlug).then((school) => {
+      supabase.from('schools').select('*').eq('slug', schoolSlug).single().then(({ data: school }) => {
         if (school) {
           setSelectedSchool(school)
           if (year) {
