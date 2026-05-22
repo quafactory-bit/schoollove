@@ -32,13 +32,13 @@ export default async function ClassPage({ params, searchParams }: PageProps) {
   const parsed = parseClassFromUrl(classStr)
   if (!parsed || isNaN(year)) notFound()
 
-  const { grade, classNum } = parsed
+  const { grade, classNumber } = parsed
 
   const school = await getSchoolBySlug(slug)
   if (!school) notFound()
 
   const { data: profiles, count } = await getProfilesByClass(
-    school.id, year, grade, classNum, page
+    school.id, year, grade, classNumber, page
   )
 
   const totalPages = Math.ceil(count / 20)
@@ -53,7 +53,7 @@ export default async function ClassPage({ params, searchParams }: PageProps) {
         <ChevronRight size={12} />
         <Link href={`/school/${slug}/${year}`} className="hover:text-gray-600">{year}년</Link>
         <ChevronRight size={12} />
-        <span className="text-gray-600 font-medium">{grade}학년 {classNum}반</span>
+        <span className="text-gray-600 font-medium">{grade}학년 {classNumber}반</span>
       </nav>
 
       {/* 헤더 */}
@@ -62,7 +62,7 @@ export default async function ClassPage({ params, searchParams }: PageProps) {
           {school.school_name}
         </h1>
         <p className="text-base font-bold text-brand-blue">
-          {year}년 {grade}학년 {classNum}반
+          {year}년 {grade}학년 {classNumber}반
         </p>
         <p className="text-sm text-gray-500">
           {SCHOOL_TYPE_LABELS[school.school_type]} · 총 {formatNumber(count)}명
