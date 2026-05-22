@@ -31,3 +31,13 @@ export function formatInstagramId(id: string): string {
 export function sanitizeInstagramId(id: string): string {
   return id.replace(/^@/, '').trim()
 }
+
+export function parseClassFromUrl(classStr: string): { grade: number; classNumber: number } | null {
+  const match = classStr.match(/^(\d+)-(\d+)$/)
+  if (!match) return null
+  return { grade: parseInt(match[1]), classNumber: parseInt(match[2]) }
+}
+
+export function formatNumber(n: number): string {
+  return n.toLocaleString('ko-KR')
+}
