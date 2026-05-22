@@ -43,6 +43,35 @@ export function sanitizeInstagramId(id: string): string {
   return id.replace(/^@/, '').trim()
 }
 
+export function normalizeInstagramId(id: string): string {
+  return id.replace(/^@/, '').trim().toLowerCase()
+}
+
+export function validateInstagramId(id: string): boolean {
+  const clean = id.replace(/^@/, '')
+  return /^[a-zA-Z0-9._]{1,30}$/.test(clean)
+}
+
+export function sanitizeText(text: string): string {
+  return text.trim().replace(/[<>]/g, '')
+}
+
+export function getGraduationYears(): number[] {
+  const current = new Date().getFullYear()
+  const years: number[] = []
+  for (let y = current + 6; y >= 1970; y--) {
+    years.push(y)
+  }
+  return years
+}
+
+export function getGradesForType(type: string): number[] {
+  if (type === 'elementary') return [1, 2, 3, 4, 5, 6]
+  if (type === 'middle') return [1, 2, 3]
+  if (type === 'high') return [1, 2, 3]
+  return []
+}
+
 export function parseClassFromUrl(classStr: string): { grade: number; classNumber: number } | null {
   const match = classStr.match(/^(\d+)-(\d+)$/)
   if (!match) return null
