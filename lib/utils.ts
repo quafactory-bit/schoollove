@@ -41,3 +41,10 @@ export function parseClassFromUrl(classStr: string): { grade: number; classNumbe
 export function formatNumber(n: number): string {
   return n.toLocaleString('ko-KR')
 }
+export function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+  let timer: ReturnType<typeof setTimeout>
+  return (...args: Parameters<T>) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }
+}
