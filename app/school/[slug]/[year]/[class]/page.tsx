@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+﻿import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!school) return { title: '페이지를 찾을 수 없습니다' }
   const parsed = parseClassFromUrl(classStr)
   if (!parsed) return { title: '페이지를 찾을 수 없습니다' }
-  return getClassPageMetadata(school, parseInt(year), parsed.grade, parsed.classNum)
+  return getClassPageMetadata(school, parseInt(year), parsed.grade, parsed.classNumber)
 }
 
 export default async function ClassPage({ params, searchParams }: PageProps) {
