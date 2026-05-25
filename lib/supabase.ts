@@ -6,32 +6,29 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase 환경변수가 설정되지 않았습니다.');
+  throw new Error('Supabase env vars are missing');
 }
 
-// 브라우저용 클라이언트 (RLS 적용)
+// Browser client (RLS applies)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// 서버 컴포넌트(SSR)용 — 동일한 anon key, RLS 적용
+// SSR client - same anon key, RLS applies
 export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false },
 });
 
-// 관리자 전용 클라이언트 — service_role key로 RLS 우회
-// 절대 클라이언트 컴포넌트에서 import하지 말 것
-// 서버 컴포넌트 / API Route / Server Action에서만 사용
+// Admin client - service_role key, bypasses RLS
+// NEVER import in client components
 let _supabaseAdmin: SupabaseClient | null = null;
 
 export function getSupabaseAdmin(): SupabaseClient {
-  if (_supabaseAdmin) {
+  if (_supabaseAdmin !== null) {
     return _supabaseAdmin;
   }
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey) {
-    throw new Error(
-      'SUPABASE_SERVICE_ROLE_KEY 환경변수가 설정되지 않았습니다.'
-    );
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
   }
 
   _supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
@@ -41,7 +38,7 @@ export function getSupabaseAdmin(): SupabaseClient {
   return _supabaseAdmin;
 }
 
-// ─── Database 타입 ─────
+// Database types
 export type Database = {
   public: {
     Tables: {
@@ -52,16 +49,8 @@ export type Database = {
       };
       profiles: {
         Row: Profile;
-        Insert: Omit
-          Profile,
-          'id' | 'report_count' | 'is_hidden' | 'created_at' | 'school'
-        >;
-        Update: Partial
-          Omit
-            Profile,
-            'id' | 'report_count' | 'is_hidden' | 'created_at' | 'school'
-          >
-        >;
+        Insert: Omit<Profile, 'id' | 'report_count' | 'is_hidden' | 'created_at' | 'school'>;
+        Update: Partial<Omit<Profile, 'id' | 'report_count' | 'is_hidden' | 'created_at' | 'school'>>;
       };
       reports: {
         Row: Report;
