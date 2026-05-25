@@ -1,4 +1,4 @@
-﻿import { supabaseServer } from '@/lib/supabase';
+﻿import { getSupabaseAdmin } from '@/lib/supabase';
 
 export type DashboardStats = {
   totalProfiles: number;
@@ -31,9 +31,11 @@ export type AdminReport = {
 };
 
 /**
- * 관리자 대시보드용 통계 4종 집계.
+ * 관리자 대시보드용 통계 4종 집계. RLS 우회.
  */
 export async function getDashboardStats(): Promise<DashboardStats> {
+  const supabaseAdmin = getSupabaseAdmin();
+
   const now = new Date();
   const kstOffset = 9 * 60 * 60 * 1000;
   const kstNow = new Date(now.getTime() + kstOffset);
@@ -53,21 +55,21 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const [totalResult, todayResult, reportsResult, deleteRequestsResult] =
     await Promise.all([
-      supabaseServer
+      supabaseAdmin
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('is_hidden', false),
-      supabaseServer
+      supabaseAdmin
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('is_hidden', false)
         .gte('created_at', todayStartUtc),
-      supabaseServer
+      supabaseAdmin
         .from('reports')
         .select('*', { count: 'exact', head: true })
         .eq('type', 'report')
         .eq('status', 'pending'),
-      supabaseServer
+      supabaseAdmin
         .from('reports')
         .select('*', { count: 'exact', head: true })
         .eq('type', 'delete')
@@ -83,15 +85,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 }
 
 /**
- * 신고/수정/삭제 요청 목록 조회.
- * @param type - 'report' | 'edit' | 'delete'
- * @param limit - 가져올 최대 개수 (기본 20)
+ * 신고/수정/삭제 요청 목록 조회. RLS 우회.
  */
 export async function getRecentRequests(
   type: 'report' | 'edit' | 'delete',
   limit = 20
 ): Promise<AdminReport[]> {
-  const { data, error } = await supabaseServer
+  const supabaseAdmin = getSupabaseAdmin();
+
+  const { data, error } = await supabaseAdmin
     .from('reports')
     .select(
       `
@@ -118,7 +120,7 @@ export async function getRecentRequests(
     `
     )
     .eq('type', type)
-    .order('status', { ascending: true }) // pending 먼저
+    .order('status', { ascending: true })
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -127,7 +129,6 @@ export async function getRecentRequests(
     return [];
   }
 
-  // Supabase가 join 결과를 배열로 반환할 수 있어서 정규화
   return (data ?? []).map((row: any) => ({
     id: row.id,
     type: row.type,
@@ -157,10 +158,11 @@ export async function getRecentRequests(
 }
 
 /**
- * 신고/요청 상태를 'done'으로 변경.
+ * 신고/요청 상태를 'done'으로 변경. RLS 우회.
  */
 export async function markRequestAsDone(id: string): Promise<boolean> {
-  const { error } = await supabaseServer
+  const supabaseAdmin = getSupabaseAdmin();
+  const { error } = await supabaseAdmin
     .from('reports')
     .update({ status: 'done' })
     .eq('id', id);
@@ -173,10 +175,11 @@ export async function markRequestAsDone(id: string): Promise<boolean> {
 }
 
 /**
- * 신고/요청 상태를 'pending'으로 되돌림 (실수 복구용).
+ * 신고/요청 상태를 'pending'으로 되돌림. RLS 우회.
  */
 export async function markRequestAsPending(id: string): Promise<boolean> {
-  const { error } = await supabaseServer
+  const supabaseAdmin = getSupabaseAdmin();
+  const { error } = await supabaseAdmin
     .from('reports')
     .update({ status: 'pending' })
     .eq('id', id);
