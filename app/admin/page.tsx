@@ -1,21 +1,25 @@
-import { supabase } from '@/lib/supabase'
-import AdminClient from './AdminClient'
+﻿import { LogoutButton } from './_components/logout-button';
 
-export const metadata = { robots: 'noindex' }
+export const metadata = {
+  title: '관리자 - 스쿨러브아이',
+  robots: { index: false, follow: false },
+};
 
-export default async function AdminPage() {
-  const [profiles, reports, todayProfiles] = await Promise.all([
-    supabase.from('profiles').select('*, schools(school_name)').eq('is_hidden', false).order('created_at', { ascending: false }),
-    supabase.from('reports').select('*, profiles(nickname, instagram_id, schools(school_name))').eq('status', 'pending').order('created_at', { ascending: false }),
-    supabase.from('profiles').select('id').gte('created_at', new Date().toISOString().split('T')[0]),
-  ])
+export default function AdminDashboardPage() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <h1 className="text-xl font-bold">관리자 대시보드</h1>
+          <LogoutButton />
+        </div>
+      </header>
 
-  const stats = {
-    total: profiles.count || profiles.data?.length || 0,
-    today: todayProfiles.data?.length || 0,
-    reports: reports.data?.filter(r => r.type === 'report').length || 0,
-    deletes: reports.data?.filter(r => r.type === 'delete').length || 0,
-  }
-
-  return <AdminClient stats={stats} profiles={profiles.data || []} reports={reports.data || []} />
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <p className="text-gray-600">
+          로그인 성공. 대시보드 본 구현은 다음 단계에서 진행합니다.
+        </p>
+      </main>
+    </div>
+  );
 }
