@@ -1,4 +1,4 @@
-﻿import { getSupabaseAdmin } from '@/lib/supabase';
+﻿import { supabaseServer } from '@/lib/supabase';
 
 export type DashboardStats = {
   totalProfiles: number;
@@ -31,11 +31,10 @@ export type AdminReport = {
 };
 
 /**
- * 관리자 대시보드용 통계 4종 집계. RLS 우회.
+ * 관리자 대시보드용 통계 4종 집계.
+ * RLS 정책으로 anon 키도 모든 reports/profiles 조회 가능.
  */
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const supabaseAdmin = getSupabaseAdmin();
-
   const now = new Date();
   const kstOffset = 9 * 60 * 60 * 1000;
   const kstNow = new Date(now.getTime() + kstOffset);
@@ -55,21 +54,21 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const [totalResult, todayResult, reportsResult, deleteRequestsResult] =
     await Promise.all([
-      supabaseAdmin
+      supabaseServer
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('is_hidden', false),
-      supabaseAdmin
+      supabaseServer
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('is_hidden', false)
         .gte('created_at', todayStartUtc),
-      supabaseAdmin
+      supabaseServer
         .from('reports')
         .select('*', { count: 'exact', head: true })
         .eq('type', 'report')
         .eq('status', 'pending'),
-      supabaseAdmin
+      supabaseServer
         .from('reports')
         .select('*', { count: 'exact', head: true })
         .eq('type', 'delete')
@@ -85,15 +84,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 }
 
 /**
- * 신고/수정/삭제 요청 목록 조회. RLS 우회.
+ * 신고/수정/삭제 요청 목록 조회.
  */
 export async function getRecentRequests(
   type: 'report' | 'edit' | 'delete',
   limit = 20
 ): Promise<AdminReport[]> {
-  const supabaseAdmin = getSupabaseAdmin();
-
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseServer
     .from('reports')
     .select(
       `
@@ -158,11 +155,10 @@ export async function getRecentRequests(
 }
 
 /**
- * 신고/요청 상태를 'done'으로 변경. RLS 우회.
+ * 신고/요청 상태를 'done'으로 변경.
  */
 export async function markRequestAsDone(id: string): Promise<boolean> {
-  const supabaseAdmin = getSupabaseAdmin();
-  const { error } = await supabaseAdmin
+  const { error } = await supabaseServer
     .from('reports')
     .update({ status: 'done' })
     .eq('id', id);
@@ -175,11 +171,10 @@ export async function markRequestAsDone(id: string): Promise<boolean> {
 }
 
 /**
- * 신고/요청 상태를 'pending'으로 되돌림. RLS 우회.
+ * 신고/요청 상태를 'pending'으로 되돌림.
  */
 export async function markRequestAsPending(id: string): Promise<boolean> {
-  const supabaseAdmin = getSupabaseAdmin();
-  const { error } = await supabaseAdmin
+  const { error } = await supabaseServer
     .from('reports')
     .update({ status: 'pending' })
     .eq('id', id);
