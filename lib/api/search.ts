@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+﻿import { supabase } from '@/lib/supabase'
 import type { SchoolType } from '@/types/school'
 
 export interface SchoolSearchResult {
@@ -44,7 +44,7 @@ export async function searchSchools(query: string): Promise<SchoolSearchResult[]
     `)
     .ilike('school_name', `%${query}%`)
     .order('school_name')
-    .limit(8)
+    .limit(20)
 
   if (error || !data) return []
 
