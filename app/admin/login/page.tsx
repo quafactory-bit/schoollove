@@ -2,9 +2,6 @@
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -50,8 +47,13 @@ export default function AdminLoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="password">비밀번호</Label>
-            <Input
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              비밀번호
+            </label>
+            <input
               id="password"
               type="password"
               value={password}
@@ -61,7 +63,7 @@ export default function AdminLoginPage() {
               autoFocus
               required
               disabled={isLoading}
-              className="mt-1"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100"
             />
           </div>
 
@@ -71,13 +73,13 @@ export default function AdminLoginPage() {
             </p>
           )}
 
-          <Button
+          <button
             type="submit"
             disabled={isLoading || !password}
-            className="w-full"
+            className="w-full px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? '확인 중...' : '로그인'}
-          </Button>
+          </button>
         </form>
       </div>
     </div>
