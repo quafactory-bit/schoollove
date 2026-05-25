@@ -6,18 +6,21 @@ import {
   AlertIcon,
   TrashIcon,
 } from './_components/stat-icons';
-import { getDashboardStats } from '@/lib/api/admin';
+import { ReportsList } from './_components/reports-list';
+import { getDashboardStats, getRecentRequests } from '@/lib/api/admin';
 
 export const metadata = {
   title: '관리자 - 스쿨러브아이',
   robots: { index: false, follow: false },
 };
 
-// 대시보드는 항상 최신 통계를 보여야 하므로 정적 캐싱 비활성화
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
-  const stats = await getDashboardStats();
+  const [stats, reports] = await Promise.all([
+    getDashboardStats(),
+    getRecentRequests('report', 20),
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -28,7 +31,7 @@ export default async function AdminDashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         <section>
           <h2 className="text-lg font-semibold text-black mb-4">대시보드</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -67,9 +70,14 @@ export default async function AdminDashboardPage() {
           </div>
         </section>
 
-        <section className="mt-8">
+        <section>
+          <h2 className="text-lg font-semibold text-black mb-4">최근 신고 목록</h2>
+          <ReportsList reports={reports} emptyMessage="아직 신고가 없습니다." />
+        </section>
+
+        <section>
           <p className="text-sm text-gray-500">
-            ※ 최근 신고 목록과 삭제 요청 목록은 다음 단계(B·C)에서 추가됩니다.
+            ※ 삭제 요청 목록과 등록 데이터 관리는 다음 단계(C·D)에서 추가됩니다.
           </p>
         </section>
       </main>
