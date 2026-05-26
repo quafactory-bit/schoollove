@@ -1,10 +1,16 @@
-import { MetadataRoute } from 'next'
+import { MetadataRoute } from "next";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://schoollove.kr";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
-      { userAgent: '*', allow: '/', disallow: '/admin' },
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/admin", "/admin/"],
+      },
     ],
-    sitemap: 'https://schoollove.kr/sitemap.xml',
-  }
+    sitemap: SITE_URL + "/sitemap.xml",
+  };
 }
