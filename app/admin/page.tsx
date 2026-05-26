@@ -84,10 +84,11 @@ export default async function AdminDashboardPage() {
 
         <section>
           <p className="text-sm text-gray-500">
-            ※ 등록 데이터 관리는 다음 단계(D)에서 추가됩니다.
+            ※ 등록 데이터 전체 관리는 아래 페이지에서 확인하세요.
           </p>
         </section>
       </main>
     </div>
   );
 }
+

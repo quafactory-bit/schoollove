@@ -217,3 +217,102 @@ export async function unhideProfile(profileId: string): Promise<boolean> {
   }
   return true;
 }
+
+export type AdminProfile = {
+  id: string;
+  nickname: string;
+  instagram_id: string | null;
+  graduation_year: number;
+  grade: number | null;
+  class_number: number | null;
+  department: string | null;
+  report_count: number;
+  is_hidden: boolean;
+  created_at: string;
+  school: {
+    id: string;
+    school_name: string;
+    slug: string;
+    school_type: string;
+  } | null;
+};
+
+export type ProfilesResult = {
+  profiles: AdminProfile[];
+  total: number;
+};
+
+/**
+ * 관리자용 전체 프로필 목록 조회 (검색, 페이지네이션).
+ */
+export async function getAdminProfiles(
+  page = 1,
+  query = '',
+  perPage = 20
+): Promise<ProfilesResult> {
+  const from = (page - 1) * perPage;
+  const to = from + perPage - 1;
+
+  let q = supabaseServer
+    .from('profiles')
+    .select(
+      `
+      id,
+      nickname,
+      instagram_id,
+      graduation_year,
+      grade,
+      class_number,
+      department,
+      report_count,
+      is_hidden,
+      created_at,
+      school:schools (
+        id,
+        school_name,
+        slug,
+        school_type
+      )
+    `,
+      { count: 'exact' }
+    )
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (query.trim()) {
+    q = q.or(
+      `nickname.ilike.%${query}%,schools.school_name.ilike.%${query}%`
+    );
+  }
+
+  const { data, error, count } = await q;
+
+  if (error) {
+    console.error('getAdminProfiles error:', error);
+    return { profiles: [], total: 0 };
+  }
+
+  return {
+    profiles: (data ?? []).map((row: any) => ({
+      id: row.id,
+      nickname: row.nickname,
+      instagram_id: row.instagram_id,
+      graduation_year: row.graduation_year,
+      grade: row.grade,
+      class_number: row.class_number,
+      department: row.department,
+      report_count: row.report_count,
+      is_hidden: row.is_hidden,
+      created_at: row.created_at,
+      school: row.school
+        ? {
+            id: row.school.id,
+            school_name: row.school.school_name,
+            slug: row.school.slug,
+            school_type: row.school.school_type,
+          }
+        : null,
+    })) as AdminProfile[],
+    total: count ?? 0,
+  };
+}
