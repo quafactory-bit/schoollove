@@ -1,16 +1,31 @@
-import type { Metadata } from 'next'
-import { Inter, Geist } from 'next/font/google'
-import './globals.css'
-import { Providers } from './providers'
-import { cn } from "@/lib/utils";
+import type { Metadata, Viewport } from 'next';
+import { Geist } from 'next/font/google';
+import './globals.css';
+import { Providers } from './providers';
+import { cn } from '@/lib/utils';
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
-const inter = Inter({ subsets: ['latin'] })
+export const viewport: Viewport = {
+  themeColor: '#000000',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const metadata: Metadata = {
-  title: '스쿨러브아이 - 학교 동창 인스타 찾기',
-  description: '전국 초/중/고/대학교 동창들의 인스타그램을 연결해보세요',
+  title: {
+    default: '스쿨러브아이 - 학교 인스타 동창 찾기',
+    template: '%s | 스쿨러브아이',
+  },
+  description: '전국 초중고 대학교 동창들의 인스타그램을 한눈에 찾아보세요',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '스쿨러브아이',
+  },
+  formatDetection: { telephone: false },
   verification: {
     other: {
       'naver-site-verification': [
@@ -19,18 +34,18 @@ export const metadata: Metadata = {
       ],
     },
   },
-}
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png',
+  },
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang='ko' className={cn("font-sans", geist.variable)}>
-      <body className={inter.className}>
+    <html lang="ko" className={cn('font-sans', geist.variable)}>
+      <body className={geist.className}>
         <Providers>{children}</Providers>
       </body>
     </html>
-  )
+  );
 }
