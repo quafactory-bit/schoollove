@@ -7,19 +7,21 @@ import {
   TrashIcon,
 } from './_components/stat-icons';
 import { ReportsList } from './_components/reports-list';
+import { DeleteRequestsList } from './_components/delete-requests-list';
 import { getDashboardStats, getRecentRequests } from '@/lib/api/admin';
 
 export const metadata = {
-  title: '관리자 - 스쿨러브아이',
+  title: 'Admin - SchoolLovei',
   robots: { index: false, follow: false },
 };
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
-  const [stats, reports] = await Promise.all([
+  const [stats, reports, deleteRequests] = await Promise.all([
     getDashboardStats(),
     getRecentRequests('report', 20),
+    getRecentRequests('delete', 20),
   ]);
 
   return (
@@ -76,8 +78,13 @@ export default async function AdminDashboardPage() {
         </section>
 
         <section>
+          <h2 className="text-lg font-semibold text-black mb-4">삭제 요청 목록</h2>
+          <DeleteRequestsList requests={deleteRequests} />
+        </section>
+
+        <section>
           <p className="text-sm text-gray-500">
-            ※ 삭제 요청 목록과 등록 데이터 관리는 다음 단계(C·D)에서 추가됩니다.
+            ※ 등록 데이터 관리는 다음 단계(D)에서 추가됩니다.
           </p>
         </section>
       </main>

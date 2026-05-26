@@ -185,3 +185,35 @@ export async function markRequestAsPending(id: string): Promise<boolean> {
   }
   return true;
 }
+
+/**
+ * 프로필 숨김 처리 (삭제 요청 처리 시 호출).
+ */
+export async function hideProfile(profileId: string): Promise<boolean> {
+  const { error } = await supabaseServer
+    .from('profiles')
+    .update({ is_hidden: true })
+    .eq('id', profileId);
+
+  if (error) {
+    console.error('hideProfile error:', error);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 프로필 숨김 해제 (되돌리기).
+ */
+export async function unhideProfile(profileId: string): Promise<boolean> {
+  const { error } = await supabaseServer
+    .from('profiles')
+    .update({ is_hidden: false })
+    .eq('id', profileId);
+
+  if (error) {
+    console.error('unhideProfile error:', error);
+    return false;
+  }
+  return true;
+}
