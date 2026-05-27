@@ -1,98 +1,203 @@
-﻿import { getAdminProfiles } from '@/lib/api/admin';
-import { ProfilesTable } from './_components/profiles-table';
-import Link from 'next/link';
+// app/admin/profiles/page.tsx 전체 교체용
+// 변경사항: 삭제 버튼 추가
 
-export const dynamic = 'force-dynamic';
+'use client'
 
-export const metadata = {
-  title: '등록 데이터 관리 - 스쿨러브아이',
-  robots: { index: false, follow: false },
-};
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 
-type Props = {
-  searchParams: Promise<{ q?: string; page?: string }>;
-};
+interface Profile {
+  id: string
+  nickname: string
+  instagram_id: string | null
+  graduation_year: number
+  grade: number | null
+  class_number: number | null
+  report_count: number
+  is_hidden: boolean
+  created_at: string
+  schools: {
+    school_name: string
+    school_type: string
+  }
+}
 
-export default async function AdminProfilesPage({ searchParams }: Props) {
-  const params = await searchParams;
-  const query = params.q ?? '';
-  const page = parseInt(params.page ?? '1', 10);
+export default function AdminProfilesPage() {
+  const router = useRouter()
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  const { profiles, total } = await getAdminProfiles(page, query, 20);
-  const totalPages = Math.ceil(total / 20);
+  useEffect(() => {
+    const isLoggedIn = sessionStorage.getItem('adminLoggedIn')
+    if (!isLoggedIn) {
+      router.push('/admin')
+      return
+    }
+    fetchProfiles()
+  }, [])
+
+  async function fetchProfiles(query = '') {
+    const supabase = createClient()
+    let q = supabase
+      .from('profiles')
+      .select('*, schools(school_name, school_type)')
+      .order('created_at', { ascending: false })
+
+    if (query) {
+      q = q.or(`nickname.ilike.%${query}%,schools.school_name.ilike.%${query}%`)
+    }
+
+    const { data } = await q
+    setProfiles(data || [])
+    setLoading(false)
+  }
+
+  async function toggleHidden(id: string, current: boolean) {
+    setActionLoading(id + '-hide')
+    const supabase = createClient()
+    await supabase
+      .from('profiles')
+      .update({ is_hidden: !current })
+      .eq('id', id)
+    await fetchProfiles(search)
+    setActionLoading(null)
+  }
+
+  async function deleteProfile(id: string, nickname: string) {
+    if (!confirm(`"${nickname}" 을(를) 완전히 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return
+    setActionLoading(id + '-delete')
+    const supabase = createClient()
+    // reports 먼저 삭제 (FK 제약)
+    await supabase.from('reports').delete().eq('profile_id', id)
+    await supabase.from('profiles').delete().eq('id', id)
+    await fetchProfiles(search)
+    setActionLoading(null)
+  }
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    fetchProfiles(search)
+  }
+
+  const schoolTypeLabel: Record<string, string> = {
+    elementary: '초',
+    middle: '중',
+    high: '고',
+    university: '대',
+    college: '전',
+  }
+
+  if (loading) return <div className="p-8 text-center">로딩 중...</div>
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin"
-              className="text-sm text-gray-500 hover:text-black transition-colors"
-            >
-              ← 대시보드
-            </Link>
-            <span className="text-gray-300">|</span>
-            <h1 className="text-xl font-bold text-black">등록 데이터 관리</h1>
-          </div>
-          <span className="text-sm text-gray-500">총 {total.toLocaleString('ko-KR')}명</span>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => router.push('/admin')}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            ← 대시보드
+          </button>
+          <h1 className="text-xl font-bold text-gray-900">등록 데이터 관리</h1>
+          <span className="ml-auto text-sm text-gray-500">총 {profiles.length}명</span>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
         {/* 검색 */}
-        <form method="GET" className="flex gap-2">
+        <form onSubmit={handleSearch} className="flex gap-2 mb-6">
           <input
             type="text"
-            name="q"
-            defaultValue={query}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="이름 또는 학교명 검색"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-black text-white text-sm rounded-md hover:bg-gray-800 transition-colors"
+            className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium"
           >
             검색
           </button>
-          {query && (
-            <Link
-              href="/admin/profiles"
-              className="px-4 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50 transition-colors"
-            >
-              초기화
-            </Link>
-          )}
         </form>
 
         {/* 테이블 */}
-        <ProfilesTable profiles={profiles} />
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">이름/별명</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">학교</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">정보</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">인스타</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">신고</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">등록일</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">상태</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">액션</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {profiles.map((p) => (
+                <tr key={p.id} className={p.is_hidden ? 'bg-gray-50 opacity-60' : ''}>
+                  <td className="px-4 py-3 font-medium text-gray-900">{p.nickname}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    <span className="text-xs text-gray-400 mr-1">
+                      {schoolTypeLabel[p.schools?.school_type] || ''}
+                    </span>
+                    {p.schools?.school_name}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {p.graduation_year}년
+                    {p.grade && p.class_number ? ` · ${p.grade}-${p.class_number}` : ''}
+                  </td>
+                  <td className="px-4 py-3">
+                    {p.instagram_id ? (
+                      <span className="text-blue-600">@{p.instagram_id}</span>
+                    ) : (
+                      <span className="text-gray-400">미등록</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{p.report_count}</td>
+                  <td className="px-4 py-3 text-gray-500">
+                    {new Date(p.created_at).toLocaleDateString('ko-KR').replace(/\. /g, '.').replace('.', '')}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs font-medium ${p.is_hidden ? 'text-gray-400' : 'text-green-600'}`}>
+                      {p.is_hidden ? '숨김' : '공개'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      {/* 숨김/복원 버튼 */}
+                      <button
+                        onClick={() => toggleHidden(p.id, p.is_hidden)}
+                        disabled={actionLoading === p.id + '-hide'}
+                        className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        {actionLoading === p.id + '-hide' ? '...' : p.is_hidden ? '복원' : '숨김'}
+                      </button>
+                      {/* 삭제 버튼 */}
+                      <button
+                        onClick={() => deleteProfile(p.id, p.nickname)}
+                        disabled={actionLoading === p.id + '-delete'}
+                        className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {actionLoading === p.id + '-delete' ? '...' : '삭제'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-        {/* 페이지네이션 */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
-            {page > 1 && (
-              <Link
-                href={`/admin/profiles?q=${query}&page=${page - 1}`}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-              >
-                이전
-              </Link>
-            )}
-            <span className="text-sm text-gray-600">
-              {page} / {totalPages}
-            </span>
-            {page < totalPages && (
-              <Link
-                href={`/admin/profiles?q=${query}&page=${page + 1}`}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-              >
-                다음
-              </Link>
-            )}
-          </div>
-        )}
-      </main>
+          {profiles.length === 0 && (
+            <div className="text-center py-12 text-gray-400">등록된 데이터가 없습니다.</div>
+          )}
+        </div>
+      </div>
     </div>
-  );
+  )
 }
