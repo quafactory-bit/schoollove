@@ -28,13 +28,8 @@ export default function AdminProfilesPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
-    const isLoggedIn = sessionStorage.getItem('adminLoggedIn')
-    if (!isLoggedIn) {
-      router.push('/admin')
-      return
-    }
-    fetchProfiles()
-  }, [])
+  fetchProfiles()
+}, [])
 
   async function fetchProfiles(query = '') {
     let q = supabase
