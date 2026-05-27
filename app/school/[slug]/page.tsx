@@ -80,9 +80,9 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
           )}
         </div>
 
-        <Link href="/submit" className="btn-primary inline-block text-sm text-center w-full sm:w-auto">
-          등록하기
-        </Link>
+        <Link href={`/submit?school=${slug}`} className="btn-primary inline-block text-sm text-center w-full sm:w-auto">
+  등록하기
+</Link>
       </div>
 
       {/* 졸업년도 필터 */}
@@ -120,9 +120,9 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
           <p className="text-2xl">📭</p>
           <p className="font-semibold text-gray-700">아직 등록된 사람이 없어요</p>
           <p className="text-sm text-gray-500">첫 번째로 등록해보세요!</p>
-          <Link href="/submit" className="btn-primary inline-block text-sm mt-2">
-            지금 등록하기
-          </Link>
+          <Link href={`/submit?school=${slug}`} className="btn-primary inline-block text-sm mt-2">
+  지금 등록하기
+</Link>
         </div>
       )}
 
