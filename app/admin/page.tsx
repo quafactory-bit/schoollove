@@ -84,8 +84,12 @@ export default async function AdminDashboardPage() {
 
         <section>
           <p className="text-sm text-gray-500">
-            ※ 등록 데이터 전체 관리는 아래 페이지에서 확인하세요.
-          </p>
+  ※ 등록 데이터 전체 관리는{' '}
+  <a href="/admin/profiles" className="text-blue-600 underline hover:text-blue-800">
+    등록 데이터 관리 페이지
+  </a>
+  에서 확인하세요.
+</p>
         </section>
       </main>
     </div>
