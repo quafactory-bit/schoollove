@@ -54,7 +54,7 @@ export default function SearchBar() {
             value={query}
             onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
             onFocus={() => setOpen(true)}
-            placeholder="학교 이름을 검색하세요"
+            placeholder="학교 또는 이름을 검색하세요"
             className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
             autoComplete="off"
           />
