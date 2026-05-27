@@ -1,11 +1,8 @@
-// app/admin/profiles/page.tsx 전체 교체용
-// 변경사항: 삭제 버튼 추가
-
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 interface Profile {
   id: string
@@ -40,7 +37,6 @@ export default function AdminProfilesPage() {
   }, [])
 
   async function fetchProfiles(query = '') {
-    const supabase = createClient()
     let q = supabase
       .from('profiles')
       .select('*, schools(school_name, school_type)')
@@ -57,7 +53,6 @@ export default function AdminProfilesPage() {
 
   async function toggleHidden(id: string, current: boolean) {
     setActionLoading(id + '-hide')
-    const supabase = createClient()
     await supabase
       .from('profiles')
       .update({ is_hidden: !current })
@@ -69,8 +64,6 @@ export default function AdminProfilesPage() {
   async function deleteProfile(id: string, nickname: string) {
     if (!confirm(`"${nickname}" 을(를) 완전히 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return
     setActionLoading(id + '-delete')
-    const supabase = createClient()
-    // reports 먼저 삭제 (FK 제약)
     await supabase.from('reports').delete().eq('profile_id', id)
     await supabase.from('profiles').delete().eq('id', id)
     await fetchProfiles(search)
@@ -106,7 +99,6 @@ export default function AdminProfilesPage() {
           <span className="ml-auto text-sm text-gray-500">총 {profiles.length}명</span>
         </div>
 
-        {/* 검색 */}
         <form onSubmit={handleSearch} className="flex gap-2 mb-6">
           <input
             type="text"
@@ -123,7 +115,6 @@ export default function AdminProfilesPage() {
           </button>
         </form>
 
-        {/* 테이블 */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -161,7 +152,7 @@ export default function AdminProfilesPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">{p.report_count}</td>
                   <td className="px-4 py-3 text-gray-500">
-                    {new Date(p.created_at).toLocaleDateString('ko-KR').replace(/\. /g, '.').replace('.', '')}
+                    {new Date(p.created_at).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-medium ${p.is_hidden ? 'text-gray-400' : 'text-green-600'}`}>
@@ -170,7 +161,6 @@ export default function AdminProfilesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      {/* 숨김/복원 버튼 */}
                       <button
                         onClick={() => toggleHidden(p.id, p.is_hidden)}
                         disabled={actionLoading === p.id + '-hide'}
@@ -178,7 +168,6 @@ export default function AdminProfilesPage() {
                       >
                         {actionLoading === p.id + '-hide' ? '...' : p.is_hidden ? '복원' : '숨김'}
                       </button>
-                      {/* 삭제 버튼 */}
                       <button
                         onClick={() => deleteProfile(p.id, p.nickname)}
                         disabled={actionLoading === p.id + '-delete'}
