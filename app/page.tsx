@@ -52,10 +52,9 @@ export default async function Home() {
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold mb-2">
-            {'\uc6b0\ub9ac \ud559\uad50, \uc6b0\ub9ac \uc0ac\ub78c\ub4e4'}<br />
-            <span className="text-blue-600">{'스쿨러브아이'}</span>{'\uc5d0\uc11c \ucc3e\uc544\ubcf4\uc138\uc694'}
+            다시 만나는 학교 사람들, <span className="text-blue-600">스쿨러브</span>
           </h1>
-          <p className="text-gray-500 text-sm">{'\uc804\uad6d \ucd08/\uc911/\uace0/\ub300\ud559\uad50 \ub3d9\ucc3d\ub4e4\uc758 \uc778\uc2a4\ud0c0\uadf8\ub7a8\uc744 \uc5f0\uacb0\ud574\ubcf4\uc138\uc694'}</p>
+          <p className="text-gray-500 text-sm">전국 10,005개 학교 · 동창 인스타 주소록</p>
         </div>
 
         <SearchBar />
