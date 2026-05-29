@@ -1,7 +1,6 @@
-﻿import Link from 'next/link'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import SearchBar from '@/components/SearchBar'
-import SchoolCard from '@/components/SchoolCard'
 
 const POPULAR_SLUGS = [
   'seoul-gangnam-jungdonggodeunghaggyo',
@@ -12,12 +11,6 @@ const POPULAR_SLUGS = [
 ]
 
 export default async function Home() {
-  const { data: recentSchools } = await supabase
-    .from('schools')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(8)
-
   const { data: popularSchools } = await supabase
     .from('schools')
     .select('*')
@@ -40,11 +33,11 @@ export default async function Home() {
   }
 
   const statItems = [
-    { label: '\ucd08\ub4f1\ud559\uad50', count: counts.elementary },
-    { label: '\uc911\ud559\uad50', count: counts.middle },
-    { label: '\uace0\ub4f1\ud559\uad50', count: counts.high },
-    { label: '\ub300\ud559\uad50', count: counts.university },
-    { label: '\uc804\ubb38\ub300\ud559', count: counts.college },
+    { label: '초등학교', count: counts.elementary },
+    { label: '중학교', count: counts.middle },
+    { label: '고등학교', count: counts.high },
+    { label: '대학교', count: counts.university },
+    { label: '전문대학', count: counts.college },
   ]
 
   return (
@@ -68,22 +61,21 @@ export default async function Home() {
           ))}
         </div>
 
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-gray-700">{'\ucd5c\uadfc \ub4f1\ub85d \ud559\uad50'}</h2>
-          <Link href="/search" className="text-sm text-blue-500">{'\uc804\uccb4\ubcf4\uae30'}</Link>
-        </div>
-
-        <div className="space-y-2 mb-10">
-          {recentSchools?.map(school => (
-            <SchoolCard key={school.id} school={school} />
-          ))}
-        </div>
-
-        <div className="bg-blue-50 rounded-2xl p-6 text-center mb-8">
-          <h3 className="font-bold mb-1">{'\ub0b4 \uc778\uc2a4\ud0c0\ub97c \ub4f1\ub85d\ud574 \ubcf4\uc138\uc694'}</h3>
-          <p className="text-sm text-gray-500 mb-4">{'\ud559\uad50 \uce5c\uad6c\ub4e4\uc774 \ub098\ub97c \ucc3e\uc744 \uc218 \uc788\uc5b4\uc694'}</p>
-          <Link href="/submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium">
-            {'\uc9c0\uae08 \ub4f1\ub85d\ud558\uae30'}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 text-center mb-10">
+          <div className="text-3xl mb-3">🌱</div>
+          <h2 className="font-bold text-lg mb-2 text-gray-800">
+            지금은 우리 학교 사람들 모으는 중!
+          </h2>
+          <p className="text-sm text-gray-600 mb-5 leading-relaxed">
+            아직 시작 단계예요.<br />
+            내 인스타를 먼저 등록하고<br />
+            동창들이 찾아오길 기다려보세요.
+          </p>
+          <Link
+            href="/submit"
+            className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+          >
+            내 인스타 등록하기
           </Link>
         </div>
 
