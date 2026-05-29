@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { searchAll } from '@/lib/api/search'
+import { searchAll, logSearch } from '@/lib/api/search'
 import { schoolTypeLabel } from '@/lib/utils'
 import type { Metadata } from 'next'
 
@@ -25,6 +25,9 @@ export default async function SearchPage({ searchParams }: Props) {
 
   const totalCount = schools.length + profiles.length
 
+  if (q.length >= 2) {
+    await logSearch(q, totalCount)
+  }
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 py-8">
