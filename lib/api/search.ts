@@ -1,4 +1,4 @@
-﻿import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import type { SchoolType } from '@/types/school'
 
 export interface SchoolSearchResult {
@@ -28,7 +28,6 @@ export interface ProfileSearchResult {
 
 export async function searchSchools(query: string): Promise<SchoolSearchResult[]> {
   if (query.length < 2) return []
-
   const { data, error } = await supabase
     .from('schools')
     .select(`
@@ -45,9 +44,7 @@ export async function searchSchools(query: string): Promise<SchoolSearchResult[]
     .ilike('school_name', `%${query}%`)
     .order('school_name')
     .limit(20)
-
   if (error || !data) return []
-
   const schoolsWithCount = await Promise.all(
     data.map(async (school) => {
       const { count } = await supabase
@@ -58,13 +55,11 @@ export async function searchSchools(query: string): Promise<SchoolSearchResult[]
       return { ...school, profile_count: count || 0 } as SchoolSearchResult
     })
   )
-
   return schoolsWithCount
 }
 
 export async function searchProfiles(query: string): Promise<ProfileSearchResult[]> {
   if (query.length < 2) return []
-
   const { data: byNickname } = await supabase
     .from('profiles')
     .select(`
@@ -80,7 +75,6 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
     .ilike('nickname', `%${query}%`)
     .eq('is_hidden', false)
     .limit(5)
-
   const { data: byInstagram } = await supabase
     .from('profiles')
     .select(`
@@ -97,12 +91,10 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
     .eq('is_hidden', false)
     .not('instagram_id', 'is', null)
     .limit(5)
-
   const combined = [...(byNickname || []), ...(byInstagram || [])]
   const unique = combined.filter(
     (item, index, self) => index === self.findIndex((t) => t.id === item.id)
   )
-
   return unique.slice(0, 8).map((p: any) => ({
     id: p.id,
     nickname: p.nickname,
@@ -122,4 +114,20 @@ export async function searchAll(query: string) {
     searchProfiles(query),
   ])
   return { schools, profiles }
+}
+
+// 검색 로그 기록 - fire and forget
+// 실패해도 사용자 검색 흐름에 영향 없도록 에러 무시
+export async function logSearch(query: string, resultCount: number): Promise<void> {
+  try {
+    const trimmed = query.trim()
+    if (trimmed.length < 2) return
+    if (trimmed.length > 100) return
+    await supabase.from('search_logs').insert({
+      query: trimmed,
+      result_count: resultCount,
+    })
+  } catch {
+    // 로그 실패는 조용히 무시
+  }
 }
