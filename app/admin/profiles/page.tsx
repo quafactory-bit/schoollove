@@ -28,8 +28,8 @@ export default function AdminProfilesPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
-  fetchProfiles()
-}, [])
+    fetchProfiles()
+  }, [])
 
   async function fetchProfiles(query = '') {
     let q = supabase
@@ -48,10 +48,15 @@ export default function AdminProfilesPage() {
 
   async function toggleHidden(id: string, current: boolean) {
     setActionLoading(id + '-hide')
-    await supabase
+    const { error } = await supabase
       .from('profiles')
       .update({ is_hidden: !current })
       .eq('id', id)
+    if (error) {
+      alert('숨김 처리 실패: ' + error.message)
+      setActionLoading(null)
+      return
+    }
     await fetchProfiles(search)
     setActionLoading(null)
   }
@@ -59,10 +64,25 @@ export default function AdminProfilesPage() {
   async function deleteProfile(id: string, nickname: string) {
     if (!confirm(`"${nickname}" 을(를) 완전히 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return
     setActionLoading(id + '-delete')
-    await supabase.from('reports').delete().eq('profile_id', id)
-    await supabase.from('profiles').delete().eq('id', id)
-    await fetchProfiles(search)
-    setActionLoading(null)
+
+    try {
+      const res = await fetch(`/api/admin/profiles/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        alert('삭제 실패: ' + (body.error || res.statusText))
+        setActionLoading(null)
+        return
+      }
+
+      await fetchProfiles(search)
+    } catch (e) {
+      alert('네트워크 오류: ' + (e instanceof Error ? e.message : 'unknown'))
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   function handleSearch(e: React.FormEvent) {
