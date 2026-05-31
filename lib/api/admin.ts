@@ -1,4 +1,4 @@
-﻿import { supabaseServer } from '@/lib/supabase';
+﻿import { supabaseServer, getSupabaseAdmin } from '@/lib/supabase';
 
 export type DashboardStats = {
   totalProfiles: number;
@@ -315,4 +315,38 @@ export async function getAdminProfiles(
     })) as AdminProfile[],
     total: count ?? 0,
   };
+}
+
+/**
+ * 프로필 영구 삭제 (삭제 요청 처리 시 사용).
+ * 외래키 제약 때문에 reports → profiles 순서로 삭제.
+ * service_role 키를 사용해 RLS를 우회한다.
+ * 절대 클라이언트에서 호출하지 말 것. API route를 통해서만 호출.
+ */
+export async function deleteProfileCompletely(profileId: string): Promise<boolean> {
+  const admin = getSupabaseAdmin();
+
+  // 1. 이 프로필을 참조하는 모든 reports 먼저 삭제 (외래키 제약)
+  const { error: reportsError } = await admin
+    .from('reports')
+    .delete()
+    .eq('profile_id', profileId);
+
+  if (reportsError) {
+    console.error('deleteProfileCompletely (reports) error:', reportsError);
+    return false;
+  }
+
+  // 2. profile 삭제
+  const { error: profileError } = await admin
+    .from('profiles')
+    .delete()
+    .eq('id', profileId);
+
+  if (profileError) {
+    console.error('deleteProfileCompletely (profile) error:', profileError);
+    return false;
+  }
+
+  return true;
 }
