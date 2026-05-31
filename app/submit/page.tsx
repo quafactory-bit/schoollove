@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next'
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import SubmitForm from '@/components/SubmitForm'
 
@@ -14,10 +14,9 @@ export default function SubmitPage() {
       <div>
         <h1 className="text-2xl font-black text-gray-900">등록하기</h1>
         <p className="text-sm text-gray-500 mt-1">
-          공개된 인스타그램 계정만 등록해주세요
+          본인 또는 지인의 공개된 인스타그램을 등록할 수 있어요
         </p>
       </div>
-
       <Suspense fallback={<div className="text-center py-10 text-gray-400">불러오는 중...</div>}><SubmitForm /></Suspense>
     </div>
   )
