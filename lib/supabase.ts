@@ -1,4 +1,4 @@
-﻿import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import type { School } from '@/types/school';
 import type { Profile, Report } from '@/types/profile';
 
@@ -16,6 +16,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false },
 });
+
+// Admin client - service_role key, BYPASSES RLS
+// CRITICAL: Only import from server-side code (API routes, server components).
+// NEVER import from client components ('use client').
+// NEVER expose this key to the browser.
+export function getSupabaseAdmin() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing');
+  }
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+}
 
 // Database types
 export type Database = {
