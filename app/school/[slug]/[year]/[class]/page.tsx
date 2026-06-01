@@ -1,13 +1,16 @@
-﻿import { notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { getSchoolBySlug } from '@/lib/api/schools'
-import { getProfilesByClass } from '@/lib/api/profiles'
+import { getProfilesByClass, getClassProfileCount } from '@/lib/api/profiles'
 import ProfileCard from '@/components/ProfileCard'
 import { getClassPageMetadata } from '@/lib/seo'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { parseClassFromUrl, formatNumber } from '@/lib/utils'
+
+// 프로필 3명 이상인 페이지만 구글에 index. 미만은 noindex (thin content 방지)
+const INDEX_THRESHOLD = 3
 
 interface PageProps {
   params: Promise<{ slug: string; year: string; class: string }>
@@ -17,10 +20,22 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug, year, class: classStr } = await params
   const school = await getSchoolBySlug(slug)
-  if (!school) return { title: '페이지를 찾을 수 없습니다' }
+  if (!school) return { title: '페이지를 찾을 수 없습니다', robots: { index: false, follow: false } }
   const parsed = parseClassFromUrl(classStr)
-  if (!parsed) return { title: '페이지를 찾을 수 없습니다' }
-  return getClassPageMetadata(school, parseInt(year), parsed.grade, parsed.classNumber)
+  if (!parsed) return { title: '페이지를 찾을 수 없습니다', robots: { index: false, follow: false } }
+
+  const meta = getClassPageMetadata(school, parseInt(year), parsed.grade, parsed.classNumber)
+
+  const count = await getClassProfileCount(
+    school.id, parseInt(year), parsed.grade, parsed.classNumber
+  )
+
+  return {
+    ...meta,
+    robots: count >= INDEX_THRESHOLD
+      ? { index: true, follow: true }
+      : { index: false, follow: true },
+  }
 }
 
 export default async function ClassPage({ params, searchParams }: PageProps) {
