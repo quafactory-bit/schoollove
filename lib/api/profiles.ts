@@ -181,4 +181,64 @@ export async function getClassesBySchoolYear(
   return result;
 }
 
+// ──────────────────────────────────────────────
+// SEO 인덱싱용 count 전용 함수
+// head:true 로 데이터는 안 가져오고 숫자만 셈 (가벼움)
+// generateMetadata 에서 noindex 분기에 사용
+// ──────────────────────────────────────────────
+
+export async function getSchoolProfileCount(schoolId: string): Promise<number> {
+  const { count, error } = await supabaseServer
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('school_id', schoolId)
+    .eq('is_hidden', false);
+
+  if (error) {
+    console.error('getSchoolProfileCount error:', error);
+    return 0;
+  }
+  return count || 0;
+}
+
+export async function getYearProfileCount(
+  schoolId: string,
+  year: number
+): Promise<number> {
+  const { count, error } = await supabaseServer
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('school_id', schoolId)
+    .eq('graduation_year', year)
+    .eq('is_hidden', false);
+
+  if (error) {
+    console.error('getYearProfileCount error:', error);
+    return 0;
+  }
+  return count || 0;
+}
+
+export async function getClassProfileCount(
+  schoolId: string,
+  year: number,
+  grade: number,
+  classNum: number
+): Promise<number> {
+  const { count, error } = await supabaseServer
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('school_id', schoolId)
+    .eq('graduation_year', year)
+    .eq('grade', grade)
+    .eq('class_number', classNum)
+    .eq('is_hidden', false);
+
+  if (error) {
+    console.error('getClassProfileCount error:', error);
+    return 0;
+  }
+  return count || 0;
+}
+
 export { PAGE_SIZE };
