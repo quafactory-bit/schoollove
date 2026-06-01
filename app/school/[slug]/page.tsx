@@ -3,11 +3,14 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Users, MapPin, Calendar, ChevronRight } from 'lucide-react'
 import { getSchoolBySlug } from '@/lib/api/schools'
-import { getProfilesBySchool, getGraduationYearsBySchool } from '@/lib/api/profiles'
+import { getProfilesBySchool, getGraduationYearsBySchool, getSchoolProfileCount } from '@/lib/api/profiles'
 import ProfileCard from '@/components/ProfileCard'
 import { getSchoolPageMetadata } from '@/lib/seo'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { formatNumber } from '@/lib/utils'
+
+// 프로필 3명 이상인 학교만 구글에 index. 미만은 noindex (thin content 방지)
+const INDEX_THRESHOLD = 3
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -17,8 +20,18 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const school = await getSchoolBySlug(slug)
-  if (!school) return { title: '학교를 찾을 수 없습니다' }
-  return getSchoolPageMetadata(school)
+  if (!school) return { title: '학교를 찾을 수 없습니다', robots: { index: false, follow: false } }
+
+  const meta = getSchoolPageMetadata(school)
+
+  const count = await getSchoolProfileCount(school.id)
+
+  return {
+    ...meta,
+    robots: count >= INDEX_THRESHOLD
+      ? { index: true, follow: true }
+      : { index: false, follow: true },
+  }
 }
 
 export default async function SchoolPage({ params, searchParams }: PageProps) {
