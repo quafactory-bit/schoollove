@@ -4,17 +4,15 @@ import './globals.css';
 import { Providers } from './providers';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Footer';
-
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
-
 export const viewport: Viewport = {
   themeColor: '#000000',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
 };
-
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.schoollove.kr'),
   title: {
     default: '스쿨러브아이 - 학교 인스타 동창 찾기',
     template: '%s | 스쿨러브아이',
@@ -40,7 +38,6 @@ export const metadata: Metadata = {
     apple: '/icons/icon-192.png',
   },
 };
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" className={cn('font-sans', geist.variable)}>
