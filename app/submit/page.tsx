@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { IMG } from '@/lib/images'
@@ -39,7 +40,9 @@ function normalizeInsta(raw: string): string {
   return s.trim()
 }
 
-export default function SubmitPage() {
+function SubmitInner() {
+  const searchParams = useSearchParams()
+
   // 1단계: 학교
   const [school, setSchool] = useState<SchoolLite | null>(null)
   const [query, setQuery] = useState('')
@@ -63,6 +66,21 @@ export default function SubmitPage() {
 
   const isUni = school?.school_type === 'university' || school?.school_type === 'college'
   const gradeMax = school?.school_type === 'elementary' ? 6 : 3
+
+  // 학교 페이지에서 ?school=슬러그 로 들어오면 그 학교 자동 선택
+  useEffect(() => {
+    const slug = searchParams.get('school')
+    if (!slug) return
+    ;(async () => {
+      const { data } = await supabase
+        .from('schools')
+        .select('id, school_name, school_type, sido, sigungu, slug')
+        .eq('slug', slug)
+        .maybeSingle()
+      if (data) setSchool(data as SchoolLite)
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 학교 부분검색 (debounce 300ms). trigram 인덱스가 받쳐줘서 빠름.
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -392,5 +410,14 @@ export default function SubmitPage() {
         </section>
       )}
     </main>
+  )
+}
+
+// useSearchParams는 Suspense 경계 안에서 써야 빌드가 안전함
+export default function SubmitPage() {
+  return (
+    <Suspense fallback={null}>
+      <SubmitInner />
+    </Suspense>
   )
 }
