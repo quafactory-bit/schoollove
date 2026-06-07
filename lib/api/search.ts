@@ -27,26 +27,20 @@ export interface ProfileSearchResult {
 }
 
 export async function searchSchools(query: string): Promise<SchoolSearchResult[]> {
-  if (query.length < 2) return []
-  const { data, error } = await supabase
-    .from('schools')
-    .select(`
-      id,
-      school_name,
-      school_type,
-      sido,
-      sigungu,
-      slug,
-      address,
-      school_code,
-      created_at
-    `)
-    .ilike('school_name', `%${query}%`)
-    .order('school_name')
-    .limit(20)
+  if (query.trim().length < 2) return []
+
+  // 지역 prefix까지 매칭하는 RPC 사용 (예: "순천이수초" → "이수초등학교")
+  const { data, error } = await supabase.rpc('search_schools_v2', {
+    q: query.trim(),
+    lim: 20,
+  })
+
   if (error || !data) return []
+
+  const schools = data as Array<Omit<SchoolSearchResult, 'profile_count'>>
+
   const schoolsWithCount = await Promise.all(
-    data.map(async (school) => {
+    schools.map(async (school) => {
       const { count } = await supabase
         .from('profiles')
         .select('id', { count: 'exact', head: true })
@@ -55,6 +49,7 @@ export async function searchSchools(query: string): Promise<SchoolSearchResult[]
       return { ...school, profile_count: count || 0 } as SchoolSearchResult
     })
   )
+
   return schoolsWithCount
 }
 
