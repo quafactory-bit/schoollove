@@ -19,6 +19,13 @@ type RecentRow = {
 // 검색창에 영감 주는 인기 검색어 (클릭하면 그 단어로 검색)
 const POPULAR = ['대치고등학교', '서울대학교', '한양대학교', '부산고등학교', '서초고등학교']
 
+// 메인 노출용 이름 마스킹: 첫 글자만 남기고 나머지는 ○ (예: 김지훈 → 김○○)
+function maskName(name: string): string {
+  const t = name.trim()
+  if (t.length <= 1) return t
+  return t[0] + '○'.repeat(t.length - 1)
+}
+
 export default function HomePage() {
   const router = useRouter()
   const [q, setQ] = useState('')
@@ -180,9 +187,11 @@ export default function HomePage() {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-neutral-900">
-                      {p.nickname}
+                      {maskName(p.nickname)}
                       {p.instagram_id && (
-                        <span className="ml-1.5 font-normal text-neutral-400">@{p.instagram_id}</span>
+                        <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 align-middle text-[10px] font-medium text-blue-600">
+                          인스타 연결됨
+                        </span>
                       )}
                     </p>
                     <p className="truncate text-xs text-neutral-500">
