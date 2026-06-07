@@ -20,6 +20,15 @@ type RecentRow = {
 // 검색창에 영감 주는 인기 검색어 (클릭하면 그 단어로 검색)
 const POPULAR = ['대치고등학교', '서울대학교', '한양대학교', '부산고등학교', '서초고등학교']
 
+// 검색창 자동완성에 뜨는 학교 한 줄
+type SchoolHit = {
+  id: string
+  school_name: string
+  slug: string
+  sido: string | null
+  sigungu: string | null
+}
+
 // 메인 노출용 이름 마스킹: 첫 글자만 남기고 나머지는 ○ (예: 김지훈 → 김○○)
 function maskName(name: string): string {
   const t = name.trim()
@@ -32,6 +41,11 @@ export default function HomePage() {
   const [q, setQ] = useState('')
   const [recent, setRecent] = useState<RecentRow[]>([])
   const [loading, setLoading] = useState(true)
+
+  // 검색창 자동완성
+  const [hits, setHits] = useState<SchoolHit[]>([])
+  const [hitOpen, setHitOpen] = useState(false)
+  const [hitLoading, setHitLoading] = useState(false)
 
   // 최근 등록된 프로필 8개 (학교 정보 join). 숨김 처리된 건 제외.
   useEffect(() => {
@@ -60,6 +74,27 @@ export default function HomePage() {
     router.push(`/search?q=${encodeURIComponent(t)}`)
   }
 
+  // 입력 시 학교 자동완성 (300ms debounce, 지역+학교명 매칭 RPC)
+  useEffect(() => {
+    const t = q.trim()
+    if (t.length < 1) {
+      setHits([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      setHitLoading(true)
+      const { data } = await supabase.rpc('search_schools_v2', { q: t, lim: 6 })
+      setHits((data as SchoolHit[]) ?? [])
+      setHitLoading(false)
+      setHitOpen(true)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [q])
+
+  function goSchool(slug: string) {
+    router.push(`/school/${slug}`)
+  }
+
   return (
     <main className="mx-auto w-full max-w-2xl px-5 pb-24">
       {/* ── 히어로 ───────────────────────────────────────────── */}
@@ -86,34 +121,68 @@ export default function HomePage() {
         </p>
 
         {/* 검색창 */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            runSearch(q)
-          }}
-          className="mt-7"
-        >
-          <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
-            <svg className="h-5 w-5 shrink-0 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m21 21-4.3-4.3" strokeLinecap="round" />
-            </svg>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="학교 이름을 검색하세요"
-              className="w-full bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-400"
-              inputMode="search"
-              autoComplete="off"
-            />
-            <button
-              type="submit"
-              className="shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
-            >
-              검색
-            </button>
-          </div>
-        </form>
+        <div className="relative mt-7 text-left">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              runSearch(q)
+            }}
+          >
+            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+              <svg className="h-5 w-5 shrink-0 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onFocus={() => hits.length && setHitOpen(true)}
+                onBlur={() => setTimeout(() => setHitOpen(false), 150)}
+                placeholder="학교 이름을 검색하세요"
+                className="w-full bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-400"
+                inputMode="search"
+                autoComplete="off"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
+              >
+                검색
+              </button>
+            </div>
+          </form>
+
+          {/* 자동완성 드롭다운 */}
+          {hitOpen && q.trim() && (
+            <div className="absolute z-20 mt-1 max-h-80 w-full overflow-auto rounded-2xl border border-neutral-200 bg-white shadow-lg">
+              {hitLoading ? (
+                <p className="px-4 py-3 text-sm text-neutral-400">검색 중…</p>
+              ) : hits.length === 0 ? (
+                <button
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runSearch(q)}
+                  className="block w-full px-4 py-3 text-left text-sm text-neutral-500 hover:bg-neutral-50"
+                >
+                  ‘{q.trim()}’ 전체 검색 결과 보기
+                </button>
+              ) : (
+                hits.map((s) => (
+                  <button
+                    key={s.id}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => goSchool(s.slug)}
+                    className="block w-full px-4 py-2.5 text-left hover:bg-neutral-50"
+                  >
+                    <span className="text-sm font-medium text-neutral-900">{s.school_name}</span>
+                    <span className="ml-2 text-xs text-neutral-400">
+                      {s.sido ?? ''} {s.sigungu ?? ''}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
 
         {/* 인기 검색어 */}
         <div className="mt-4 flex flex-wrap justify-center gap-2">
