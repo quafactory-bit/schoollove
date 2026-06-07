@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { IMG, pickAvatar } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
+import ShareButton from '@/components/ShareButton'
 
 // 메인에서 보여줄 "최근 등록" 한 줄의 모양
 type RecentRow = {
@@ -227,6 +228,16 @@ export default function HomePage() {
             </span>
           </div>
         </Link>
+      </section>
+
+      {/* ── 서비스 공유 ───────────────────────────────────────── */}
+      <section className="mt-6 text-center">
+        <ShareButton
+          text="동창 인스타, 학교 이름만 검색하면 다 나와요 - 스쿨러브아이"
+          url="https://schoollove.kr"
+          label="친구에게 스쿨러브아이 공유하기"
+          className="text-sm font-medium text-neutral-500 underline underline-offset-4 hover:text-blue-600"
+        />
       </section>
     </main>
   )
