@@ -3,13 +3,14 @@ import type { School } from './school'
 export interface Profile {
   id: string
   school_id: string
-  graduation_year: number
+  graduation_year: number | null
   grade: number | null
   class_number: number | null
   department: string | null
   student_year: number | null
   nickname: string
   instagram_id: string | null
+  description: string | null
   report_count: number
   is_hidden: boolean
   created_at: string
@@ -19,13 +20,14 @@ export interface Profile {
 
 export interface ProfileInsert {
   school_id: string
-  graduation_year: number
+  graduation_year?: number | null
   grade?: number | null
   class_number?: number | null
   department?: string | null
   student_year?: number | null
   nickname: string
   instagram_id?: string | null
+  description?: string | null
 }
 
 export interface Report {
