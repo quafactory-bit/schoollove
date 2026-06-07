@@ -5,6 +5,7 @@ import { Users, MapPin, Calendar, ChevronRight } from 'lucide-react'
 import { getSchoolBySlug } from '@/lib/api/schools'
 import { getProfilesBySchool, getGraduationYearsBySchool, getSchoolProfileCount } from '@/lib/api/profiles'
 import ProfileCard from '@/components/ProfileCard'
+import ShareButton from '@/components/ShareButton'
 import { getSchoolPageMetadata } from '@/lib/seo'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { formatNumber } from '@/lib/utils'
@@ -49,6 +50,8 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
   ])
 
   const totalPages = Math.ceil(count / 20)
+  const shareText = `${school.school_name} 동창 인스타, 여기서 찾아봐요`
+  const shareUrl = `https://schoollove.kr/school/${slug}`
 
   return (
     <div className="page-container space-y-5">
@@ -93,9 +96,20 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
           )}
         </div>
 
-        <Link href={`/submit?school=${slug}`} className="btn-primary inline-block text-sm text-center w-full sm:w-auto">
-  등록하기
-</Link>
+        <div className="flex gap-2">
+          <Link
+            href={`/submit?school=${slug}`}
+            className="btn-primary inline-block text-sm text-center flex-1 sm:flex-none"
+          >
+            등록하기
+          </Link>
+          <ShareButton
+            text={shareText}
+            url={shareUrl}
+            label="공유"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
+          />
+        </div>
       </div>
 
       {/* 졸업년도 필터 */}
@@ -130,12 +144,11 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
         </div>
       ) : (
         <div className="card p-10 text-center space-y-2">
-          <p className="text-2xl">📭</p>
-          <p className="font-semibold text-gray-700">아직 등록된 사람이 없어요</p>
-          <p className="text-sm text-gray-500">첫 번째로 등록해보세요!</p>
+          <p className="font-semibold text-gray-700">아직 등록된 동창이 없어요</p>
+          <p className="text-sm text-gray-500">기억나는 친구 이름을 가장 먼저 남겨보세요.</p>
           <Link href={`/submit?school=${slug}`} className="btn-primary inline-block text-sm mt-2">
-  지금 등록하기
-</Link>
+            기억나는 이름 남기기
+          </Link>
         </div>
       )}
 
