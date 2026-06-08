@@ -234,71 +234,113 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 최근 학교에 남겨진 이름 ─────────────────────────── */}
+      {/* ── 방금 학교에 이름이 남겨졌어요 (학교 단위, 최근순 중복 제거) ── */}
       <section className="mt-14">
-        <h2 className="mb-4 text-lg font-bold text-neutral-900">최근 학교에 남겨진 이름</h2>
+        <h2 className="mb-1 text-lg font-bold text-neutral-900">방금 학교에 이름이 남겨졌어요</h2>
+        <p className="mb-4 text-sm text-neutral-500">
+          누군가의 기억 속 이름들이 학교별로 하나씩 모이고 있어요.
+        </p>
 
         {loading ? (
           <ul className="space-y-2">
             {[0, 1, 2].map((i) => (
-              <li key={i} className="h-16 animate-pulse rounded-2xl bg-neutral-100" />
+              <li key={i} className="h-14 animate-pulse rounded-2xl bg-neutral-100" />
             ))}
           </ul>
-        ) : recent.length === 0 ? (
-          // 콜드스타트: 등록이 없으면 첫 이름 남기기를 유도
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-6 py-10 text-center">
-            <p className="text-sm text-neutral-600">
-              아직 남겨진 이름이 없어요.
-              <br />
-              기억나는 이름을 가장 먼저 남겨보세요.
-            </p>
-            <Link
-              href="/submit"
-              className="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition active:scale-95"
-            >
-              떠오르는 이름 남기기
-            </Link>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {recent.map((p) => (
-              <li key={p.id}>
+        ) : (() => {
+          // recent(프로필 최근순)에서 학교 기준으로 중복 제거 → 최근 학교 5개
+          const seen = new Set<string>()
+          const schools: RecentRow[] = []
+          for (const p of recent) {
+            const slug = p.school?.slug
+            if (!slug || seen.has(slug)) continue
+            seen.add(slug)
+            schools.push(p)
+            if (schools.length >= 5) break
+          }
+
+          if (schools.length === 0) {
+            // 콜드스타트: 아직 학교가 없으면 첫 등록 유도
+            return (
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-6 py-10 text-center">
+                <p className="text-sm text-neutral-600">
+                  아직 이름이 남겨진 학교가 없어요.
+                  <br />
+                  기억나는 이름을 가장 먼저 남겨보세요.
+                </p>
                 <Link
-                  href={p.school ? `/school/${p.school.slug}` : '#'}
-                  className="flex items-center gap-3 rounded-2xl border border-neutral-100 bg-white px-3 py-3 transition hover:bg-neutral-50"
+                  href="/submit"
+                  className="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition active:scale-95"
                 >
-                  <Image
-                    src={pickAvatar(p.id)}
-                    alt=""
-                    width={48}
-                    height={48}
-                    className="h-11 w-11 shrink-0 rounded-full bg-neutral-100"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-neutral-900">
-                      {maskName(p.nickname)}
-                      {p.instagram_id ? (
-                        <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 align-middle text-[10px] font-medium text-blue-600">
-                          인스타 연결됨
-                        </span>
-                      ) : (
-                        <span className="ml-1.5 rounded-full bg-neutral-100 px-1.5 py-0.5 align-middle text-[10px] font-medium text-neutral-500">
-                          누군가 기억하고 있어요
-                        </span>
-                      )}
-                    </p>
-                    <p className="truncate text-xs text-neutral-500">
-                      {p.school?.school_name ?? '학교 미상'}
-                      {p.school?.sido ? ` · ${p.school.sido}` : ''}
-                      {p.graduation_year ? ` · ${p.graduation_year}년` : ''}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-neutral-300">›</span>
+                  떠오르는 이름 남기기
                 </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+              </div>
+            )
+          }
+
+          return (
+            <>
+              <ul className="space-y-2">
+                {schools.map((p, idx) => {
+                  // 라벨/문구 규칙: 맨 위=방금 / 인스타 연결됨 / 그 외=이름 남겨짐
+                  const isTop = idx === 0
+                  const connected = !!p.instagram_id
+                  let label: string
+                  let labelClass: string
+                  let line: string
+
+                  if (isTop) {
+                    label = '방금'
+                    labelClass = 'bg-blue-600 text-white'
+                    line = `${p.school?.school_name}에 이름이 남겨졌어요`
+                  } else if (connected) {
+                    label = '인스타 연결됨'
+                    labelClass = 'bg-blue-50 text-blue-600'
+                    line = `${p.school?.school_name}에 남겨진 이름이 연결됐어요`
+                  } else {
+                    label = '이름 남겨짐'
+                    labelClass = 'bg-neutral-100 text-neutral-500'
+                    line = `${p.school?.school_name}에 누군가의 이름이 남겨졌어요`
+                  }
+
+                  return (
+                    <li key={p.id}>
+                      <Link
+                        href={p.school ? `/school/${p.school.slug}` : '#'}
+                        className="flex items-center gap-3 rounded-2xl border border-neutral-100 bg-white px-4 py-3 transition hover:bg-neutral-50"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className={`mr-1.5 rounded-full px-1.5 py-0.5 align-middle text-[10px] font-medium ${labelClass}`}
+                          >
+                            {label}
+                          </span>
+                          <span className="text-sm font-medium text-neutral-800">{line}</span>
+                          {p.graduation_year && (
+                            <span className="ml-1 text-xs text-neutral-400"> · {p.graduation_year}년</span>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-neutral-300">›</span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+
+              {/* 구경 → 남기기로 잇기 */}
+              <div className="mt-5 rounded-2xl border border-dashed border-neutral-200 px-6 py-6 text-center">
+                <p className="text-sm font-medium text-neutral-700">내 학교가 안 보이나요?</p>
+                <p className="mt-1 text-sm text-neutral-500">지금 떠오르는 이름을 먼저 남겨보세요.</p>
+                <Link
+                  href="/submit"
+                  className="mt-4 inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition active:scale-95"
+                >
+                  떠오르는 이름 남기기
+                </Link>
+              </div>
+            </>
+          )
+        })()}
       </section>
 
       {/* ── 하단 감성 배너 + 이름 남기기 CTA ─────────────────── */}
