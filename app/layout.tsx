@@ -4,7 +4,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Footer';
-const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 export const viewport: Viewport = {
   themeColor: '#000000',
   width: 'device-width',
