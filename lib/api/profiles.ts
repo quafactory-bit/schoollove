@@ -240,5 +240,21 @@ export async function getClassProfileCount(
   }
   return count || 0;
 }
+// ──────────────────────────────────────────────
+// 사이트 전체 등록 인원 (사회적 증거용)
+// 빈 학교 페이지에서 "전국 OOO명 등록" 노출 여부 판단에 사용.
+// is_hidden 제외, head:true 로 숫자만 가볍게 셈.
+// ──────────────────────────────────────────────
+export async function getTotalProfileCount(): Promise<number> {
+  const { count, error } = await supabaseServer
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_hidden', false);
 
+  if (error) {
+    console.error('getTotalProfileCount error:', error);
+    return 0;
+  }
+  return count || 0;
+}
 export { PAGE_SIZE };
