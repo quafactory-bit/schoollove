@@ -30,6 +30,13 @@ const TYPE_LABEL: Record<string, string> = {
 // 졸업(예정) 년도 선택지: 2032 → 1970
 const YEARS = Array.from({ length: 2032 - 1970 + 1 }, (_, i) => 2032 - i)
 
+// 처음 보여줄 빈 입력 행 수. 여러 명 등록을 유도하기 위해 3행으로 시작.
+const INITIAL_PEOPLE: Person[] = [
+  { nickname: '', instagram: '' },
+  { nickname: '', instagram: '' },
+  { nickname: '', instagram: '' },
+]
+
 // 인스타 입력 정리: @, 공백, URL 형태 제거하고 아이디만 남김
 function normalizeInsta(raw: string): string {
   let s = raw.trim()
@@ -57,8 +64,8 @@ function SubmitInner() {
   const [department, setDepartment] = useState('')
   const [studentYear, setStudentYear] = useState('')
 
-  // 3단계: 사람들
-  const [people, setPeople] = useState<Person[]>([{ nickname: '', instagram: '' }])
+  // 3단계: 사람들 (여러 명 등록 유도를 위해 빈 행 3개로 시작)
+  const [people, setPeople] = useState<Person[]>(INITIAL_PEOPLE)
 
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState('')
@@ -167,8 +174,8 @@ function SubmitInner() {
 
   function shareSchool() {
     if (!school) return
-    const url = `https://schoollove.kr/school/${school.slug}`
-    const text = `${school.school_name} 동창 인스타, 여기서 찾아봐요`
+    const url = `https://www.schoollove.kr/school/${school.slug}`
+    const text = `${school.school_name} 우리 반 친구들 모아놨어! 너도 네 인스타 연결하러 와`
     if (typeof navigator !== 'undefined' && (navigator as Navigator).share) {
       ;(navigator as Navigator).share({ title: '스쿨러브아이', text, url }).catch(() => {})
     } else {
@@ -179,7 +186,7 @@ function SubmitInner() {
 
   function resetAll() {
     setDone(null)
-    setPeople([{ nickname: '', instagram: '' }])
+    setPeople(INITIAL_PEOPLE)
     setGrade('')
     setClassNumber('')
     setDepartment('')
@@ -202,21 +209,25 @@ function SubmitInner() {
           {done.fail > 0 && <span className="block text-red-400">{done.fail}명은 등록에 실패했어요.</span>}
         </p>
 
-        <div className="mt-8 space-y-2">
+        {/* 공유를 메인 CTA로. 한 명의 등록이 단톡방 → 친구들의 추가 등록으로 번지는 루프 */}
+        <p className="mt-6 text-sm text-neutral-500">
+          단톡방에 공유하면 친구들이 자기 인스타를 직접 연결해요.
+        </p>
+        <div className="mt-3 space-y-2">
+          <button
+            onClick={shareSchool}
+            className="block w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition active:scale-95"
+          >
+            단톡방에 공유하기
+          </button>
           {school && (
             <Link
               href={`/school/${school.slug}`}
-              className="block rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
+              className="block rounded-xl border border-neutral-200 px-5 py-3 text-sm font-semibold text-neutral-700"
             >
               우리 학교 페이지 보기
             </Link>
           )}
-          <button
-            onClick={shareSchool}
-            className="block w-full rounded-xl border border-neutral-200 px-5 py-3 text-sm font-semibold text-neutral-700"
-          >
-            친구에게 공유하기
-          </button>
           <button onClick={resetAll} className="block w-full px-5 py-3 text-sm text-neutral-400">
             계속 등록하기
           </button>
@@ -354,6 +365,7 @@ function SubmitInner() {
       {school && (
         <section className="mt-6">
           <label className="mb-2 block text-sm font-semibold text-neutral-800">누구를 등록할까요?</label>
+          <p className="mb-2 text-xs text-neutral-400">기억나는 친구들을 한 번에 여러 명 남길 수 있어요.</p>
           <div className="space-y-2">
             {people.map((p, i) => (
               <div key={i} className="flex gap-2">
