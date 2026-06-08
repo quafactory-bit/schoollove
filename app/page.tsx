@@ -303,7 +303,7 @@ export default function HomePage() {
       <section className="mt-6 text-center">
         <ShareButton
           text="동창 인스타, 학교 이름만 검색하면 다 나와요 - 스쿨러브아이"
-          url="https://schoollove.kr"
+          url="https://www.schoollove.kr"
           label="친구에게 스쿨러브아이 공유하기"
           className="text-sm font-medium text-neutral-500 underline underline-offset-4 hover:text-blue-600"
         />
