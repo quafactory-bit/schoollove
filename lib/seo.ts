@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { School } from "@/types/school";
 const SITE_NAME = "스쿨러브아이";
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://schoollove.kr";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.schoollove.kr";
 const DESC = "학교 동창들의 인스타그램을 한눈에 찾아보세요. 전국 초중고 대학교 동창 인스타 모음.";
 export function getBaseMetadata(): Metadata {
   return {
