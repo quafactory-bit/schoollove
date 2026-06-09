@@ -1,11 +1,15 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { Users, MapPin, Calendar, ChevronRight } from 'lucide-react'
 import { getSchoolBySlug } from '@/lib/api/schools'
 import { getProfilesBySchool, getGraduationYearsBySchool, getSchoolProfileCount, getTotalProfileCount } from '@/lib/api/profiles'
+import { incrSchoolView, getSchoolView } from '@/lib/api/views'
+import { getTracesBySchool, getTraceCountBySchool } from '@/lib/api/traces'
 import ProfileCard from '@/components/ProfileCard'
 import ShareButton from '@/components/ShareButton'
+import SchoolWarmth from '@/components/SchoolWarmth'
 import { getSchoolPageMetadata } from '@/lib/seo'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { formatNumber } from '@/lib/utils'
@@ -48,10 +52,18 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
   const school = await getSchoolBySlug(slug)
   if (!school) notFound()
 
-  const [{ data: profiles, count }, years, totalProfiles] = await Promise.all([
+  // 방문자 카운트: 사람만 +1, 봇(구글봇 등)은 숫자만 읽어서 안 부풀림
+  const h = await headers()
+  const ua = h.get('user-agent') ?? ''
+  const isBot = /bot|crawl|spider|slurp|facebookexternalhit|bingpreview|embedly|pinterest|whatsapp|telegram/i.test(ua)
+
+  const [{ data: profiles, count }, years, totalProfiles, viewCount, traces, traceCount] = await Promise.all([
     getProfilesBySchool(school.id, page, yearFilter),
     getGraduationYearsBySchool(school.id),
     getTotalProfileCount(),
+    isBot ? getSchoolView(school.id) : incrSchoolView(school.id),
+    getTracesBySchool(school.id),
+    getTraceCountBySchool(school.id),
   ])
 
   const totalPages = Math.ceil(count / 20)
@@ -116,6 +128,16 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
           />
         </div>
       </div>
+
+      {/* 온기 띠 + 한 줄 흔적 (방문자 수 / 흔적 리스트 / 드롭다운 / 인스타 등록) */}
+      <SchoolWarmth
+        schoolId={school.id}
+        schoolName={school.school_name}
+        slug={slug}
+        viewCount={viewCount}
+        initialTraces={traces}
+        hasTraces={traceCount > 0}
+      />
 
       {/* 졸업년도 필터 */}
       {years.length > 0 && (
