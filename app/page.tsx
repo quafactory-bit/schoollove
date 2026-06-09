@@ -111,15 +111,33 @@ export default function HomePage() {
           />
         </div>
 
-        <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-4xl">
-          떠오르는 이름은 있는데,
-          <br />
-          <span className="text-blue-600">아는 인스타는 없었다.</span>
+        <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-3xl">
+          스쿨러브아이에 오신 걸 환영해요
         </h1>
-        <p className="mt-3 text-sm text-neutral-500 sm:text-base">
-          인스타를 몰라도 괜찮아요.
-          <br />
-          기억나는 이름부터 학교에 남겨보세요.
+        <p className="mt-3 text-base font-semibold text-blue-600 sm:text-lg">
+          그 시절 누군가가, 지금 당신을 기억하고 있을지도 몰라요.
+        </p>
+        <p className="mt-2 text-sm text-neutral-500 sm:text-base">
+          학교와 이름으로 그때의 사람들을 다시 만나는 곳이에요.
+        </p>
+
+        {/* 여기서 할 수 있는 것 — 페이스북식 구체적 동사 목록 */}
+        <ul className="mx-auto mt-5 max-w-xs space-y-2 text-left">
+          {[
+            '우리 학교 동창들 찾아보기',
+            '같은 반이었던 사람들 모아보기',
+            '그때 그 친구의 지금 인스타 보기',
+            '“나 여기 있어” 한 줄 남기기',
+          ].map((t) => (
+            <li key={t} className="flex items-start gap-2 text-sm text-neutral-700">
+              <span className="mt-0.5 font-bold text-blue-500">·</span>
+              <span>{t}</span>
+            </li>
+          ))}
+        </ul>
+
+        <p className="mt-5 text-sm font-medium text-neutral-600">
+          우리 학교, 먼저 둘러볼까요?
         </p>
 
         {/* 메인 CTA — 이름 남기기를 1순위로 */}
