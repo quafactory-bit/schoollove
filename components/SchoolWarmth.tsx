@@ -1,0 +1,159 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { Eye, Send } from 'lucide-react';
+import { insertTrace, type Trace } from '@/lib/api/traces';
+import { formatNumber } from '@/lib/utils';
+
+// 방문자 수가 이 값 미만이면 숫자 숨기고 정성 문구로 (작은 숫자 역효과 방지)
+const VIEW_THRESHOLD = 5;
+
+// 드롭다운 고정 문구 (선택 = 바로 등록)
+const PRESET_FIRST = '내가 1등! 😎';
+const PRESETS = [
+  '친구들아, 나 기억해?',
+  '그때 그 사람… 보고싶다',
+  '여기 우리 학교 사람 있어?',
+];
+
+interface Props {
+  schoolId: string;
+  schoolName: string;
+  slug: string;
+  viewCount: number;
+  initialTraces: Trace[];
+  hasTraces: boolean; // 흔적 0개면 "내가 1등!"을 맨 위로
+}
+
+export default function SchoolWarmth({
+  schoolId,
+  schoolName,
+  slug,
+  viewCount,
+  initialTraces,
+  hasTraces,
+}: Props) {
+  const [traces, setTraces] = useState<Trace[]>(initialTraces);
+  const [selected, setSelected] = useState('');
+  const [custom, setCustom] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  // 흔적 유무에 따라 드롭다운 순서 분기
+  const options = hasTraces
+    ? [...PRESETS, PRESET_FIRST]
+    : [PRESET_FIRST, ...PRESETS];
+
+  const isCustom = selected === '__custom__';
+
+  async function submit() {
+    setErr('');
+    const message = (isCustom ? custom : selected).trim();
+    if (!message) {
+      setErr('남길 내용을 골라주세요.');
+      return;
+    }
+    if (message.length > 40) {
+      setErr('40자까지 남길 수 있어요.');
+      return;
+    }
+
+    setBusy(true);
+    const { data, error } = await insertTrace({ school_id: schoolId, message });
+    setBusy(false);
+
+    if (error || !data) {
+      setErr(error ?? '잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    // 새 흔적을 맨 위에 즉시 반영 (낙관적)
+    setTraces((prev) => [data, ...prev]);
+    setSelected('');
+    setCustom('');
+  }
+
+  return (
+    <div className="card p-4 space-y-3">
+      {/* 온기 띠: 누적 방문자 */}
+      {viewCount >= VIEW_THRESHOLD ? (
+        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+          <Eye size={14} className="text-brand-blue" />
+          <span>
+            지금까지 <span className="font-semibold text-gray-900">{formatNumber(viewCount)}명</span>이 이 학교를 둘러봤어요.
+          </span>
+        </div>
+      ) : viewCount > 0 ? (
+        <div className="flex items-center gap-1.5 text-sm text-gray-500">
+          <Eye size={14} className="text-brand-blue" />
+          <span>최근 누군가 이 학교를 둘러봤어요.</span>
+        </div>
+      ) : null}
+
+      <p className="text-xs text-gray-400">
+        그 중 누군가는 당신을 기억하고 있을지도 몰라요.
+      </p>
+
+      {/* 흔적 리스트 */}
+      {traces.length > 0 && (
+        <div className="space-y-1.5 max-h-44 overflow-y-auto">
+          {traces.map((t) => (
+            <div
+              key={t.id}
+              className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2"
+            >
+              {t.message}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 드롭다운 + 등록 */}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <select
+            value={selected}
+            onChange={(e) => { setSelected(e.target.value); setErr(''); }}
+            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 bg-white focus:border-brand-blue focus:outline-none"
+          >
+            <option value="">한 줄 남기기…</option>
+            {options.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+            <option value="__custom__">직접 쓰기</option>
+          </select>
+          <button
+            onClick={submit}
+            disabled={busy || !selected}
+            className="btn-primary px-4 text-sm disabled:opacity-40 flex items-center gap-1"
+          >
+            <Send size={14} />
+            남기기
+          </button>
+        </div>
+
+        {isCustom && (
+          <input
+            type="text"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value.slice(0, 40))}
+            placeholder="40자까지, 개인정보·연락처는 빼고 적어주세요"
+            maxLength={40}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none"
+          />
+        )}
+
+        {err && <p className="text-xs text-red-500">{err}</p>}
+      </div>
+
+      {/* 인스타 등록 (항상 노출) */}
+      <Link
+        href={`/submit?school=${slug}`}
+        className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
+      >
+        📷 내 인스타 등록하기
+      </Link>
+    </div>
+  );
+}
