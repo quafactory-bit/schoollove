@@ -69,7 +69,10 @@ function SubmitInner() {
 
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState('')
-  const [done, setDone] = useState<{ success: number; dup: number; fail: number } | null>(null)
+  // 완료 정보 + 학교 전체 등록 수(이미 함께 있는 사람) — "혼자 아님" 안심용
+  const [done, setDone] = useState<
+    { success: number; dup: number; fail: number; totalAtSchool: number } | null
+  >(null)
 
   const isUni = school?.school_type === 'university' || school?.school_type === 'college'
   const gradeMax = school?.school_type === 'elementary' ? 6 : 3
@@ -170,8 +173,18 @@ function SubmitInner() {
       else if (error.code === '23505') dup++ // 중복 (dedup 인덱스)
       else fail++
     }
+
+    // 등록 직후 그 학교의 전체 등록 수를 읽어와 "혼자 아님"을 보여줌 (삭제 방지)
+    let totalAtSchool = success
+    const { count: schoolTotal } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('school_id', school.id)
+      .eq('is_hidden', false)
+    if (typeof schoolTotal === 'number') totalAtSchool = schoolTotal
+
     setSubmitting(false)
-    setDone({ success, dup, fail })
+    setDone({ success, dup, fail, totalAtSchool })
   }
 
   function shareSchool() {
@@ -199,6 +212,8 @@ function SubmitInner() {
 
   // ── 등록 완료 화면 ──────────────────────────────────────
   if (done) {
+    // 내가 올린 것 외에 이미 학교에 있던 사람 수
+    const othersAtSchool = Math.max(done.totalAtSchool - done.success, 0)
     return (
       <main className="mx-auto w-full max-w-md px-5 pb-24 pt-10 text-center">
         <div className="mx-auto mb-6 w-full max-w-xs">
@@ -211,29 +226,40 @@ function SubmitInner() {
           {done.fail > 0 && <span className="block text-red-400">{done.fail}명은 등록에 실패했어요.</span>}
         </p>
 
-        {/* 공유를 메인 CTA로. 한 명의 등록이 단톡방 → 친구들의 추가 등록으로 번지는 루프 */}
-        <p className="mt-6 text-sm text-neutral-500">
-          단톡방에 공유하면 친구들이 자기 인스타를 직접 연결해요.
-        </p>
-        <div className="mt-3 space-y-2">
-          <button
-            onClick={shareSchool}
-            className="block w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition active:scale-95"
-          >
-            단톡방에 공유하기
-          </button>
+        {/* 혼자 아님 안심: 이미 함께 있는 사람 수를 보여줘 "허공에 던졌다"는 느낌 제거 */}
+        {othersAtSchool > 0 && (
+          <div className="mx-auto mt-5 max-w-xs rounded-xl bg-blue-50 px-4 py-3">
+            <p className="text-sm font-semibold text-blue-700">혼자가 아니에요 👋</p>
+            <p className="mt-1 text-sm text-neutral-600">
+              이 학교엔 이미 <b className="text-blue-600">{done.totalAtSchool}명</b>이 함께 있어요.
+            </p>
+          </div>
+        )}
+
+        {/* 메인 CTA = 학교 페이지 보기. 방금 올린 이름이 살아있는 페이지에 합류했음을 확인시켜 삭제를 막음 */}
+        <div className="mt-6 space-y-2">
           {school && (
             <Link
               href={`/school/${school.slug}`}
-              className="block rounded-xl border border-neutral-200 px-5 py-3 text-sm font-semibold text-neutral-700"
+              className="block w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition active:scale-95"
             >
-              우리 학교 페이지 보기
+              우리 학교 페이지에서 확인하기
             </Link>
           )}
+          <button
+            onClick={shareSchool}
+            className="block w-full rounded-xl border border-neutral-200 px-5 py-3 text-sm font-semibold text-neutral-700"
+          >
+            단톡방에 공유하기
+          </button>
           <button onClick={resetAll} className="block w-full px-5 py-3 text-sm text-neutral-400">
             계속 등록하기
           </button>
         </div>
+
+        <p className="mt-4 text-xs text-neutral-400">
+          단톡방에 공유하면 친구들이 자기 인스타를 직접 연결해요.
+        </p>
       </main>
     )
   }
