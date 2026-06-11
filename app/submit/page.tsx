@@ -17,7 +17,7 @@ type SchoolLite = {
   slug: string
 }
 
-type Person = { nickname: string; instagram: string }
+type Person = { nickname: string; instagram: string; isSelf: boolean }
 
 const TYPE_LABEL: Record<string, string> = {
   elementary: '초등학교',
@@ -32,9 +32,9 @@ const YEARS = Array.from({ length: 2032 - 1970 + 1 }, (_, i) => 2032 - i)
 
 // 처음 보여줄 빈 입력 행 수. 여러 명 등록을 유도하기 위해 3행으로 시작.
 const INITIAL_PEOPLE: Person[] = [
-  { nickname: '', instagram: '' },
-  { nickname: '', instagram: '' },
-  { nickname: '', instagram: '' },
+  { nickname: '', instagram: '', isSelf: false },
+  { nickname: '', instagram: '', isSelf: false },
+  { nickname: '', instagram: '', isSelf: false },
 ]
 
 // 인스타 입력 정리: @, 공백, URL 형태 제거하고 아이디만 남김
@@ -128,12 +128,12 @@ function SubmitInner() {
   }
 
   function addPerson() {
-    setPeople((p) => [...p, { nickname: '', instagram: '' }])
+    setPeople((p) => [...p, { nickname: '', instagram: '', isSelf: false }])
   }
   function removePerson(i: number) {
     setPeople((p) => (p.length === 1 ? p : p.filter((_, idx) => idx !== i)))
   }
-  function updatePerson(i: number, key: keyof Person, val: string) {
+  function updatePerson(i: number, key: keyof Person, val: string | boolean) {
     setPeople((p) => p.map((row, idx) => (idx === i ? { ...row, [key]: val } : row)))
   }
 
@@ -159,10 +159,12 @@ function SubmitInner() {
     let dup = 0
     let fail = 0
     for (const p of valid) {
+      const insta = normalizeInsta(p.instagram) || null
       const { error } = await supabase.from('profiles').insert({
         ...base,
         nickname: p.nickname.trim(),
-        instagram_id: normalizeInsta(p.instagram) || null,
+        instagram_id: insta,
+        is_self: insta ? p.isSelf : false, // 인스타 있고 동의 체크한 경우만 true
       })
       if (!error) success++
       else if (error.code === '23505') dup++ // 중복 (dedup 인덱스)
@@ -366,32 +368,46 @@ function SubmitInner() {
         <section className="mt-6">
           <label className="mb-2 block text-sm font-semibold text-neutral-800">누구를 등록할까요?</label>
           <p className="mb-2 text-xs text-neutral-400">기억나는 친구들을 한 번에 여러 명 남길 수 있어요.</p>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {people.map((p, i) => (
-              <div key={i} className="flex gap-2">
-                <input
-                  value={p.nickname}
-                  onChange={(e) => updatePerson(i, 'nickname', e.target.value)}
-                  placeholder="이름 또는 별명"
-                  className="w-2/5 rounded-xl border border-neutral-200 px-3 py-3 text-sm outline-none focus:border-blue-500"
-                />
-                <div className="flex flex-1 items-center rounded-xl border border-neutral-200 px-3 focus-within:border-blue-500">
-                  <span className="text-sm text-neutral-400">@</span>
+              <div key={i}>
+                <div className="flex gap-2">
                   <input
-                    value={p.instagram}
-                    onChange={(e) => updatePerson(i, 'instagram', e.target.value)}
-                    placeholder="인스타 ID (선택)"
-                    className="w-full bg-transparent px-1 py-3 text-sm outline-none"
+                    value={p.nickname}
+                    onChange={(e) => updatePerson(i, 'nickname', e.target.value)}
+                    placeholder="이름 또는 별명"
+                    className="w-2/5 rounded-xl border border-neutral-200 px-3 py-3 text-sm outline-none focus:border-blue-500"
                   />
+                  <div className="flex flex-1 items-center rounded-xl border border-neutral-200 px-3 focus-within:border-blue-500">
+                    <span className="text-sm text-neutral-400">@</span>
+                    <input
+                      value={p.instagram}
+                      onChange={(e) => updatePerson(i, 'instagram', e.target.value)}
+                      placeholder="인스타 ID (선택)"
+                      className="w-full bg-transparent px-1 py-3 text-sm outline-none"
+                    />
+                  </div>
+                  {people.length > 1 && (
+                    <button
+                      onClick={() => removePerson(i)}
+                      className="shrink-0 rounded-xl px-2 text-neutral-300 hover:text-red-400"
+                      aria-label="삭제"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
-                {people.length > 1 && (
-                  <button
-                    onClick={() => removePerson(i)}
-                    className="shrink-0 rounded-xl px-2 text-neutral-300 hover:text-red-400"
-                    aria-label="삭제"
-                  >
-                    ✕
-                  </button>
+                {/* 인스타를 입력한 행에만 본인 동의 체크 노출 */}
+                {p.instagram.trim() && (
+                  <label className="mt-1.5 flex items-center gap-2 pl-1 text-xs text-neutral-500">
+                    <input
+                      type="checkbox"
+                      checked={p.isSelf}
+                      onChange={(e) => updatePerson(i, 'isSelf', e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    내 인스타예요 (공개 노출에 동의)
+                  </label>
                 )}
               </div>
             ))}
