@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { IMG } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
 import ShareButton from '@/components/ShareButton'
+import { Search, PenLine, Heart } from 'lucide-react'
 
 // 메인에서 보여줄 "최근 등록" 한 줄의 모양
 type RecentRow = {
@@ -248,18 +249,24 @@ export default function HomePage() {
 
       {/* ── 사용법 (학교 선택 → 이름 남기기 → 사람들이 모이기) ── */}
       <section className="mt-14">
-        <Image
-          src={IMG.bannerHowto}
-          alt="학교를 고르고, 떠오른 이름을 남기고, 누군가 다시 떠올리길 기다려요"
-          width={2172}
-          height={724}
-          sizes="(max-width: 640px) 90vw, 42rem"
-          className="h-auto w-full"
-        />
-        <div className="mt-1 grid grid-cols-3 gap-2 text-center text-xs font-medium text-neutral-500">
-          <span>① 학교를 고르고</span>
-          <span>② 떠오른 이름을 남기고</span>
-          <span>③ 학교 사람들이 모이기</span>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { icon: <Search className="h-6 w-6" />, step: '①', text: '학교를 고르고' },
+            { icon: <PenLine className="h-6 w-6" />, step: '②', text: '떠오른 이름을 남기고' },
+            { icon: <Heart className="h-6 w-6" />, step: '③', text: '학교 사람들이 모이기' },
+          ].map((s) => (
+            <div
+              key={s.step}
+              className="flex flex-col items-center gap-2 rounded-2xl border border-neutral-100 bg-white px-2 py-5 text-center"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-500">
+                {s.icon}
+              </span>
+              <span className="text-xs font-medium text-neutral-500">
+                {s.step} {s.text}
+              </span>
+            </div>
+          ))}
         </div>
       </section>
 
