@@ -135,6 +135,7 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
         schoolName={school.school_name}
         slug={slug}
         viewCount={viewCount}
+        profileCount={count}
         initialTraces={traces}
         hasTraces={traceCount > 0}
       />
