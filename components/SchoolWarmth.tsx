@@ -2,12 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Eye, Send } from 'lucide-react';
+import { Eye, Send, Users } from 'lucide-react';
 import { insertTrace, type Trace } from '@/lib/api/traces';
 import { formatNumber } from '@/lib/utils';
 
 // 방문자 수가 이 값 미만이면 숫자 숨기고 정성 문구로 (작은 숫자 역효과 방지)
 const VIEW_THRESHOLD = 5;
+
+// 등록자 수가 이 값 이상일 때만 "N명이 모였어요" 배너 노출 (1~2명이면 초라해서 역효과)
+const PROOF_THRESHOLD = 3;
 
 // 드롭다운 고정 문구 (선택 = 바로 등록)
 const PRESET_FIRST = '내가 1등! 😎';
@@ -22,6 +25,7 @@ interface Props {
   schoolName: string;
   slug: string;
   viewCount: number;
+  profileCount: number; // 이 학교에 이름을 남긴 사람 수 ("N명이 모였어요")
   initialTraces: Trace[];
   hasTraces: boolean; // 흔적 0개면 "내가 1등!"을 맨 위로
 }
@@ -31,6 +35,7 @@ export default function SchoolWarmth({
   schoolName,
   slug,
   viewCount,
+  profileCount,
   initialTraces,
   hasTraces,
 }: Props) {
@@ -147,13 +152,29 @@ export default function SchoolWarmth({
         {err && <p className="text-xs text-red-500">{err}</p>}
       </div>
 
-      {/* 인스타 등록 (항상 노출) */}
-      <Link
-        href={`/submit?school=${slug}`}
-        className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
-      >
-        📷 내 인스타 등록하기
-      </Link>
+      {/* "N명이 모였어요 → 너를 찾는 친구가 있을지도 → 내 인스타 연결" (2번 고리) */}
+      {profileCount >= PROOF_THRESHOLD ? (
+        <Link
+          href={`/submit?school=${slug}&self=1`}
+          className="block rounded-xl bg-blue-50 px-4 py-3.5 text-center transition hover:bg-blue-100"
+        >
+          <span className="flex items-center justify-center gap-1.5 text-sm font-semibold text-blue-700">
+            <Users size={15} />
+            {schoolName}에 이미 {formatNumber(profileCount)}명이 모였어요
+          </span>
+          <span className="mt-0.5 block text-xs text-blue-500">
+            그중 누군가 당신을 기억하고 있을지도 몰라요 · 내 인스타 연결하기
+          </span>
+        </Link>
+      ) : (
+        // 등록자가 적으면 일반 인스타 등록 버튼 (기존 동작 유지)
+        <Link
+          href={`/submit?school=${slug}&self=1`}
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
+        >
+          📷 내 인스타 등록하기
+        </Link>
+      )}
     </div>
   );
 }
