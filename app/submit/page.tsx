@@ -30,12 +30,15 @@ const TYPE_LABEL: Record<string, string> = {
 // 졸업(예정) 년도 선택지: 2032 → 1970
 const YEARS = Array.from({ length: 2032 - 1970 + 1 }, (_, i) => 2032 - i)
 
-// 처음 보여줄 빈 입력 행 수. 여러 명 등록을 유도하기 위해 3행으로 시작.
+// 친구 모드: 빈 행 3개로 시작 (여러 명 등록 유도)
 const INITIAL_PEOPLE: Person[] = [
   { nickname: '', instagram: '', isSelf: false },
   { nickname: '', instagram: '', isSelf: false },
   { nickname: '', instagram: '', isSelf: false },
 ]
+
+// 본인 모드: 1행만, 동의 체크 기본 on
+const INITIAL_SELF: Person[] = [{ nickname: '', instagram: '', isSelf: true }]
 
 // 인스타 입력 정리: @, 공백, URL 형태 제거하고 아이디만 남김
 function normalizeInsta(raw: string): string {
@@ -49,6 +52,8 @@ function normalizeInsta(raw: string): string {
 
 function SubmitInner() {
   const searchParams = useSearchParams()
+  // self=1 이면 본인 등록 모드 (배너/홈 "내 인스타 연결하기"에서 진입)
+  const selfMode = searchParams.get('self') === '1'
 
   // 1단계: 학교
   const [school, setSchool] = useState<SchoolLite | null>(null)
@@ -64,12 +69,11 @@ function SubmitInner() {
   const [department, setDepartment] = useState('')
   const [studentYear, setStudentYear] = useState('')
 
-  // 3단계: 사람들 (여러 명 등록 유도를 위해 빈 행 3개로 시작)
-  const [people, setPeople] = useState<Person[]>(INITIAL_PEOPLE)
+  // 3단계: 사람들 (모드에 따라 초기값 분기)
+  const [people, setPeople] = useState<Person[]>(selfMode ? INITIAL_SELF : INITIAL_PEOPLE)
 
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState('')
-  // 완료 정보 + 학교 전체 등록 수(이미 함께 있는 사람) — "혼자 아님" 안심용
   const [done, setDone] = useState<
     { success: number; dup: number; fail: number; totalAtSchool: number } | null
   >(null)
@@ -123,7 +127,6 @@ function SubmitInner() {
     setOpen(false)
     setResults([])
     setQuery('')
-    // 학교 바뀌면 하위 입력 초기화
     setGrade('')
     setClassNumber('')
     setDepartment('')
@@ -147,6 +150,10 @@ function SubmitInner() {
     if (!isUni && (!grade || !classNumber)) return setErr('학년과 반을 입력해주세요.')
     const valid = people.filter((p) => p.nickname.trim())
     if (valid.length === 0) return setErr('이름을 한 명 이상 입력해주세요.')
+    // 본인 모드인데 인스타가 비어 있으면 안내 (본인 연결이 목적이므로)
+    if (selfMode && !normalizeInsta(valid[0].instagram)) {
+      return setErr('연결할 인스타 ID를 입력해주세요.')
+    }
 
     setSubmitting(true)
     const base = {
@@ -170,11 +177,11 @@ function SubmitInner() {
         is_self: insta ? p.isSelf : false, // 인스타 있고 동의 체크한 경우만 true
       })
       if (!error) success++
-      else if (error.code === '23505') dup++ // 중복 (dedup 인덱스)
+      else if (error.code === '23505') dup++
       else fail++
     }
 
-    // 등록 직후 그 학교의 전체 등록 수를 읽어와 "혼자 아님"을 보여줌 (삭제 방지)
+    // 등록 직후 그 학교의 전체 등록 수를 읽어와 "혼자 아님"을 보여줌
     let totalAtSchool = success
     const { count: schoolTotal } = await supabase
       .from('profiles')
@@ -201,7 +208,7 @@ function SubmitInner() {
 
   function resetAll() {
     setDone(null)
-    setPeople(INITIAL_PEOPLE)
+    setPeople(selfMode ? INITIAL_SELF : INITIAL_PEOPLE)
     setGrade('')
     setClassNumber('')
     setDepartment('')
@@ -212,21 +219,22 @@ function SubmitInner() {
 
   // ── 등록 완료 화면 ──────────────────────────────────────
   if (done) {
-    // 내가 올린 것 외에 이미 학교에 있던 사람 수
     const othersAtSchool = Math.max(done.totalAtSchool - done.success, 0)
     return (
       <main className="mx-auto w-full max-w-md px-5 pb-24 pt-10 text-center">
         <div className="mx-auto mb-6 w-full max-w-xs">
           <Image src={IMG.completeSchool} alt="" width={1536} height={1024} className="h-auto w-full" />
         </div>
-        <h1 className="text-2xl font-extrabold text-neutral-900">등록 완료!</h1>
+        <h1 className="text-2xl font-extrabold text-neutral-900">
+          {selfMode ? '연결 완료!' : '등록 완료!'}
+        </h1>
         <p className="mt-3 text-sm text-neutral-600">
-          {school?.school_name}에 <b className="text-blue-600">{done.success}명</b> 등록됐어요.
+          {school?.school_name}에 <b className="text-blue-600">{done.success}명</b>{' '}
+          {selfMode ? '연결됐어요.' : '등록됐어요.'}
           {done.dup > 0 && <span className="block text-neutral-400">{done.dup}명은 이미 등록되어 있었어요.</span>}
           {done.fail > 0 && <span className="block text-red-400">{done.fail}명은 등록에 실패했어요.</span>}
         </p>
 
-        {/* 혼자 아님 안심: 이미 함께 있는 사람 수를 보여줘 "허공에 던졌다"는 느낌 제거 */}
         {othersAtSchool > 0 && (
           <div className="mx-auto mt-5 max-w-xs rounded-xl bg-blue-50 px-4 py-3">
             <p className="text-sm font-semibold text-blue-700">혼자가 아니에요 👋</p>
@@ -236,7 +244,6 @@ function SubmitInner() {
           </div>
         )}
 
-        {/* 메인 CTA = 학교 페이지 보기. 방금 올린 이름이 살아있는 페이지에 합류했음을 확인시켜 삭제를 막음 */}
         <div className="mt-6 space-y-2">
           {school && (
             <Link
@@ -270,9 +277,13 @@ function SubmitInner() {
       <div className="mx-auto mt-6 mb-2 w-40">
         <Image src={IMG.bannerSubmit} alt="" width={1536} height={1024} className="h-auto w-full" priority />
       </div>
-      <h1 className="text-center text-2xl font-extrabold text-neutral-900">기억나는 친구 이름을 남겨보세요</h1>
+      <h1 className="text-center text-2xl font-extrabold text-neutral-900">
+        {selfMode ? '내 인스타를 연결해요' : '기억나는 친구 이름을 남겨보세요'}
+      </h1>
       <p className="mt-2 text-center text-sm text-neutral-500">
-        이름만 적어도 돼요. 인스타는 알면 같이, 몰라도 괜찮아요.
+        {selfMode
+          ? '당신을 기억하는 친구들이 찾을 수 있게, 인스타를 연결해두세요.'
+          : '이름만 적어도 돼요. 인스타는 알면 같이, 몰라도 괜찮아요.'}
       </p>
 
       {/* 1. 학교 */}
@@ -328,7 +339,7 @@ function SubmitInner() {
         )}
       </section>
 
-      {/* 2. 학년·반 / 학과·학번 (학교 선택 후 노출) */}
+      {/* 2. 학년·반 / 학과·학번 */}
       {school && (
         <section className="mt-6">
           <label className="mb-2 block text-sm font-semibold text-neutral-800">언제 / 어느 반</label>
@@ -392,8 +403,12 @@ function SubmitInner() {
       {/* 3. 사람 추가 */}
       {school && (
         <section className="mt-6">
-          <label className="mb-2 block text-sm font-semibold text-neutral-800">누구를 등록할까요?</label>
-          <p className="mb-2 text-xs text-neutral-400">기억나는 친구들을 한 번에 여러 명 남길 수 있어요.</p>
+          <label className="mb-2 block text-sm font-semibold text-neutral-800">
+            {selfMode ? '내 정보' : '누구를 등록할까요?'}
+          </label>
+          {!selfMode && (
+            <p className="mb-2 text-xs text-neutral-400">기억나는 친구들을 한 번에 여러 명 남길 수 있어요.</p>
+          )}
           <div className="space-y-3">
             {people.map((p, i) => (
               <div key={i}>
@@ -401,7 +416,7 @@ function SubmitInner() {
                   <input
                     value={p.nickname}
                     onChange={(e) => updatePerson(i, 'nickname', e.target.value)}
-                    placeholder="이름 또는 별명"
+                    placeholder={selfMode ? '내 이름 또는 별명' : '이름 또는 별명'}
                     className="w-2/5 rounded-xl border border-neutral-200 px-3 py-3 text-sm outline-none focus:border-blue-500"
                   />
                   <div className="flex flex-1 items-center rounded-xl border border-neutral-200 px-3 focus-within:border-blue-500">
@@ -409,11 +424,11 @@ function SubmitInner() {
                     <input
                       value={p.instagram}
                       onChange={(e) => updatePerson(i, 'instagram', e.target.value)}
-                      placeholder="인스타 ID (선택)"
+                      placeholder={selfMode ? '내 인스타 ID' : '인스타 ID (선택)'}
                       className="w-full bg-transparent px-1 py-3 text-sm outline-none"
                     />
                   </div>
-                  {people.length > 1 && (
+                  {!selfMode && people.length > 1 && (
                     <button
                       onClick={() => removePerson(i)}
                       className="shrink-0 rounded-xl px-2 text-neutral-300 hover:text-red-400"
@@ -438,12 +453,14 @@ function SubmitInner() {
               </div>
             ))}
           </div>
-          <button
-            onClick={addPerson}
-            className="mt-3 w-full rounded-xl border border-dashed border-neutral-300 py-2.5 text-sm font-medium text-neutral-500 hover:bg-neutral-50"
-          >
-            ＋ 친구 추가
-          </button>
+          {!selfMode && (
+            <button
+              onClick={addPerson}
+              className="mt-3 w-full rounded-xl border border-dashed border-neutral-300 py-2.5 text-sm font-medium text-neutral-500 hover:bg-neutral-50"
+            >
+              ＋ 친구 추가
+            </button>
+          )}
         </section>
       )}
 
@@ -456,7 +473,7 @@ function SubmitInner() {
             disabled={submitting}
             className="w-full rounded-xl bg-blue-600 py-3.5 text-base font-semibold text-white transition active:scale-95 disabled:opacity-50"
           >
-            {submitting ? '등록 중…' : '등록하기'}
+            {submitting ? '등록 중…' : selfMode ? '내 인스타 연결하기' : '등록하기'}
           </button>
           <p className="mt-3 text-center text-xs text-neutral-400">
             공개 인스타그램 계정만 등록 가능합니다. 타인의 비공개·민감 정보는 등록 시 신고·삭제될 수 있어요.
