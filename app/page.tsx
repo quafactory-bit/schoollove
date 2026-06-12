@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { IMG, pickAvatar } from '@/lib/images'
+import { IMG } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
 import ShareButton from '@/components/ShareButton'
 
@@ -27,13 +27,6 @@ type SchoolHit = {
   slug: string
   sido: string | null
   sigungu: string | null
-}
-
-// 메인 노출용 이름 마스킹: 첫 글자만 남기고 나머지는 ○ (예: 김지훈 → 김○○)
-function maskName(name: string): string {
-  const t = name.trim()
-  if (t.length <= 1) return t
-  return t[0] + '○'.repeat(t.length - 1)
 }
 
 export default function HomePage() {
@@ -97,32 +90,18 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-5 pb-24">
-      {/* ── 히어로 ───────────────────────────────────────────── */}
-      <section className="pt-8 text-center sm:pt-12">
-        <div className="mx-auto mb-6 w-full max-w-md">
-          <Image
-            src={IMG.heroMain}
-            alt="기억나는 이름을 학교에 남기는 모습"
-            width={1536}
-            height={1024}
-            priority
-            sizes="(max-width: 640px) 90vw, 28rem"
-            className="h-auto w-full"
-          />
-        </div>
-
+      {/* ── 히어로 (텍스트 중심: 환영 → 정체 → 할 수 있는 것 → 감성 → 검색 → CTA) ── */}
+      <section className="pt-10 text-center sm:pt-14">
         <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-3xl">
-          스쿨러브아이에 오신 걸 환영해요
+          Welcome to 스쿨러브
         </h1>
-        <p className="mt-3 text-base font-semibold text-blue-600 sm:text-lg">
-          그 시절 누군가가, 지금 당신을 기억하고 있을지도 몰라요.
-        </p>
-        <p className="mt-2 text-sm text-neutral-500 sm:text-base">
-          학교와 이름으로 그때의 사람들을 다시 만나는 곳이에요.
+        <p className="mt-3 text-sm text-neutral-500 sm:text-base">
+          스쿨러브아이는 학교와 이름으로 동창을 찾는 온라인 디렉토리예요.
         </p>
 
         {/* 여기서 할 수 있는 것 — 페이스북식 구체적 동사 목록 */}
-        <ul className="mx-auto mt-5 max-w-xs space-y-2 text-left">
+        <p className="mt-6 text-xs font-medium text-neutral-400">스쿨러브아이에서 할 수 있는 것</p>
+        <ul className="mx-auto mt-2 max-w-xs space-y-2 text-left">
           {[
             '우리 학교 동창들 찾아보기',
             '같은 반이었던 사람들 모아보기',
@@ -136,29 +115,13 @@ export default function HomePage() {
           ))}
         </ul>
 
-        <p className="mt-5 text-sm font-medium text-neutral-600">
-          우리 학교, 먼저 둘러볼까요?
+        {/* 감성 한 줄 — 행동 직전에 마음 건드리기 */}
+        <p className="mt-7 text-base font-semibold text-blue-600 sm:text-lg">
+          그 시절 누군가가, 지금 당신을 기억하고 있을지도 몰라요.
         </p>
 
-        {/* 메인 CTA — 이름 남기기를 1순위로 */}
-        <div className="mt-7 flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Link
-            href="/submit"
-            className="rounded-xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white transition active:scale-95"
-          >
-            떠오르는 이름 남기기
-          </Link>
-          <Link
-            href="/submit?self=1"
-            className="rounded-xl border border-neutral-200 bg-white px-6 py-3.5 text-base font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
-          >
-            내 인스타 등록하기
-          </Link>
-        </div>
-
-        {/* 검색창 — 보조 위치로 */}
-        <div className="relative mt-8 text-left">
-          <p className="mb-2 text-center text-xs text-neutral-400">또는 학교를 먼저 둘러볼 수도 있어요</p>
+        {/* 검색창 — 첫 화면의 주인공 */}
+        <div className="relative mt-4 text-left">
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -175,7 +138,7 @@ export default function HomePage() {
                 onChange={(e) => setQ(e.target.value)}
                 onFocus={() => hits.length && setHitOpen(true)}
                 onBlur={() => setTimeout(() => setHitOpen(false), 150)}
-                placeholder="학교 이름을 입력하세요"
+                placeholder="학교 이름을 검색하세요"
                 className="w-full bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-400"
                 inputMode="search"
                 autoComplete="off"
@@ -221,8 +184,24 @@ export default function HomePage() {
           )}
         </div>
 
+        {/* 메인 CTA — 검색 다음 행동 */}
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <Link
+            href="/submit"
+            className="rounded-xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white transition active:scale-95"
+          >
+            떠오르는 이름 남기기
+          </Link>
+          <Link
+            href="/submit?self=1"
+            className="rounded-xl border border-neutral-200 bg-white px-6 py-3.5 text-base font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
+          >
+            내 인스타 등록하기
+          </Link>
+        </div>
+
         {/* 인기 학교 */}
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
           {POPULAR.map((name) => (
             <button
               key={name}
@@ -236,7 +215,7 @@ export default function HomePage() {
       </section>
 
       {/* ── 사용법 (학교 선택 → 이름 남기기 → 사람들이 모이기) ── */}
-      <section className="mt-12">
+      <section className="mt-14">
         <Image
           src={IMG.bannerHowto}
           alt="학교를 고르고, 떠오른 이름을 남기고, 누군가 다시 떠올리길 기다려요"
