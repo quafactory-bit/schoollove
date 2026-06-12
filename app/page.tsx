@@ -29,6 +29,48 @@ type SchoolHit = {
   sigungu: string | null
 }
 
+// 히어로 "할 수 있는 것" 리스트 (아이콘 + 문구)
+const FEATURES = [
+  {
+    text: '우리 학교 동창들 찾아보기',
+    icon: (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+    ),
+  },
+  {
+    text: '같은 반이었던 사람들 모아보기',
+    icon: (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    text: '그때 그 친구의 지금 인스타 보기',
+    icon: (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="5" />
+        <circle cx="12" cy="12" r="4" />
+        <path d="M17.5 6.5h.01" />
+      </svg>
+    ),
+  },
+  {
+    text: '“나 여기 있어” 한 줄 남기기',
+    icon: (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      </svg>
+    ),
+  },
+]
+
 export default function HomePage() {
   const router = useRouter()
   const [q, setQ] = useState('')
@@ -90,38 +132,34 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-5 pb-24">
-      {/* ── 히어로 (텍스트 중심: 환영 → 정체 → 할 수 있는 것 → 감성 → 검색 → CTA) ── */}
-      <section className="pt-10 text-center sm:pt-14">
-        <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-3xl">
+      {/* ── 히어로 (왼쪽 정렬: 환영 → 정체 → 할 수 있는 것 → 감성 → 검색 → CTA) ── */}
+      <section className="mx-auto max-w-md pt-10 text-left sm:pt-14">
+        <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-3xl">
           Welcome to 스쿨러브
         </h1>
-        <p className="mt-3 text-sm text-neutral-500 sm:text-base">
-          스쿨러브아이는 학교와 이름으로 동창을 찾는 온라인 디렉토리예요.
+        <p className="mt-2.5 text-[15px] leading-relaxed text-neutral-500">
+          스쿨러브아이는 학교와 이름으로
+          <br className="sm:hidden" /> 동창을 찾는 온라인 디렉토리예요.
         </p>
 
-        {/* 여기서 할 수 있는 것 — 페이스북식 구체적 동사 목록 */}
-        <p className="mt-6 text-xs font-medium text-neutral-400">스쿨러브아이에서 할 수 있는 것</p>
-        <ul className="mx-auto mt-2 max-w-xs space-y-2 text-left">
-          {[
-            '우리 학교 동창들 찾아보기',
-            '같은 반이었던 사람들 모아보기',
-            '그때 그 친구의 지금 인스타 보기',
-            '“나 여기 있어” 한 줄 남기기',
-          ].map((t) => (
-            <li key={t} className="flex items-start gap-2 text-sm text-neutral-700">
-              <span className="mt-0.5 font-bold text-blue-500">·</span>
-              <span>{t}</span>
+        {/* 여기서 할 수 있는 것 — 아이콘으로 줄 시작점 맞추기 */}
+        <p className="mt-8 text-xs font-medium text-neutral-400">스쿨러브아이에서 할 수 있는 것</p>
+        <ul className="mt-3 space-y-2.5">
+          {FEATURES.map((f) => (
+            <li key={f.text} className="flex items-center gap-2.5 text-[15px] text-neutral-800">
+              <span className="shrink-0 text-neutral-400">{f.icon}</span>
+              <span>{f.text}</span>
             </li>
           ))}
         </ul>
 
         {/* 감성 한 줄 — 행동 직전에 마음 건드리기 */}
-        <p className="mt-7 text-base font-semibold text-blue-600 sm:text-lg">
+        <p className="mt-8 text-[15px] font-medium text-rose-500">
           그 시절 누군가가, 지금 당신을 기억하고 있을지도 몰라요.
         </p>
 
         {/* 검색창 — 첫 화면의 주인공 */}
-        <div className="relative mt-4 text-left">
+        <div className="relative mt-3">
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -143,12 +181,6 @@ export default function HomePage() {
                 inputMode="search"
                 autoComplete="off"
               />
-              <button
-                type="submit"
-                className="shrink-0 rounded-xl bg-neutral-100 px-4 py-2 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-200 active:scale-95"
-              >
-                둘러보기
-              </button>
             </div>
           </form>
 
@@ -184,24 +216,24 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 메인 CTA — 검색 다음 행동 */}
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+        {/* 메인 CTA — 같은 크기 2열 */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <Link
             href="/submit"
-            className="rounded-xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white transition active:scale-95"
+            className="rounded-xl bg-blue-600 px-2 py-3.5 text-center text-sm font-semibold text-white transition active:scale-95"
           >
             떠오르는 이름 남기기
           </Link>
           <Link
             href="/submit?self=1"
-            className="rounded-xl border border-neutral-200 bg-white px-6 py-3.5 text-base font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
+            className="rounded-xl border border-neutral-200 bg-white px-2 py-3.5 text-center text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
           >
             내 인스타 등록하기
           </Link>
         </div>
 
         {/* 인기 학교 */}
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <div className="mt-4 flex flex-wrap gap-1.5">
           {POPULAR.map((name) => (
             <button
               key={name}
