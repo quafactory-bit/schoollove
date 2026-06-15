@@ -2,15 +2,18 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Eye, Send, Users } from 'lucide-react';
+import { Eye, Send, Users, Search } from 'lucide-react';
 import { insertTrace, type Trace } from '@/lib/api/traces';
 import { formatNumber } from '@/lib/utils';
 
 // 방문자 수가 이 값 미만이면 숫자 숨기고 정성 문구로 (작은 숫자 역효과 방지)
 const VIEW_THRESHOLD = 5;
 
-// 등록자 수가 이 값 이상일 때만 "N명이 모였어요" 배너 노출 (1~2명이면 초라해서 역효과)
+// 등록자 수가 이 값 이상일 때만 "N명이 모였어요" 배너 노출
 const PROOF_THRESHOLD = 3;
+
+// 검색 수가 이 값 이상일 때만 "N명이 찾고 있어요" 강조 (작은 숫자 역효과 방지)
+const SEARCH_THRESHOLD = 5;
 
 // 드롭다운 고정 문구 (선택 = 바로 등록)
 const PRESET_FIRST = '내가 1등! 😎';
@@ -25,9 +28,10 @@ interface Props {
   schoolName: string;
   slug: string;
   viewCount: number;
-  profileCount: number; // 이 학교에 이름을 남긴 사람 수 ("N명이 모였어요")
+  profileCount: number; // 이 학교에 이름을 남긴 사람 수
+  searchCount: number;  // 이 학교를 검색한 횟수 ("N명이 찾고 있어요")
   initialTraces: Trace[];
-  hasTraces: boolean; // 흔적 0개면 "내가 1등!"을 맨 위로
+  hasTraces: boolean;
 }
 
 export default function SchoolWarmth({
@@ -36,6 +40,7 @@ export default function SchoolWarmth({
   slug,
   viewCount,
   profileCount,
+  searchCount,
   initialTraces,
   hasTraces,
 }: Props) {
@@ -45,12 +50,14 @@ export default function SchoolWarmth({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
-  // 흔적 유무에 따라 드롭다운 순서 분기
   const options = hasTraces
     ? [...PRESETS, PRESET_FIRST]
     : [PRESET_FIRST, ...PRESETS];
 
   const isCustom = selected === '__custom__';
+
+  // 빈 페이지(등록 적음)인데 검색은 많은 경우 = "찾는 사람 많은데 아직 비어있다" → 선점 유도
+  const showSearchDemand = profileCount < PROOF_THRESHOLD && searchCount >= SEARCH_THRESHOLD;
 
   async function submit() {
     setErr('');
@@ -73,7 +80,6 @@ export default function SchoolWarmth({
       return;
     }
 
-    // 새 흔적을 맨 위에 즉시 반영 (낙관적)
     setTraces((prev) => [data, ...prev]);
     setSelected('');
     setCustom('');
@@ -81,6 +87,27 @@ export default function SchoolWarmth({
 
   return (
     <div className="card p-4 space-y-3">
+      {/* 빈 페이지 + 검색 수요 많음: "N명이 찾고 있어요 → 네가 첫 번째가 되면 그들이 본다" */}
+      {showSearchDemand && (
+        <div className="rounded-xl bg-amber-50 px-4 py-3.5 text-center">
+          <p className="flex items-center justify-center gap-1.5 text-sm font-bold text-amber-700">
+            <Search size={15} />
+            이 학교를 {formatNumber(searchCount)}명이 찾고 있어요
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-amber-600">
+            아직 아무도 이름을 안 남겼어요.
+            <br />
+            먼저 남기면, 당신을 찾는 그 {formatNumber(searchCount)}명이 당신을 발견해요.
+          </p>
+          <Link
+            href={`/submit?school=${slug}&self=1`}
+            className="mt-2.5 inline-block rounded-lg bg-amber-500 px-5 py-2 text-sm font-semibold text-white transition active:scale-95"
+          >
+            내가 먼저 이름 남기기
+          </Link>
+        </div>
+      )}
+
       {/* 온기 띠: 누적 방문자 */}
       {viewCount >= VIEW_THRESHOLD ? (
         <div className="flex items-center gap-1.5 text-sm text-gray-600">
@@ -152,7 +179,7 @@ export default function SchoolWarmth({
         {err && <p className="text-xs text-red-500">{err}</p>}
       </div>
 
-      {/* "N명이 모였어요 → 너를 찾는 친구가 있을지도 → 내 인스타 연결" (2번 고리) */}
+      {/* "N명이 모였어요 → 내 인스타 연결" (등록이 충분히 쌓인 학교) */}
       {profileCount >= PROOF_THRESHOLD ? (
         <Link
           href={`/submit?school=${slug}&self=1`}
@@ -167,7 +194,6 @@ export default function SchoolWarmth({
           </span>
         </Link>
       ) : (
-        // 등록자가 적으면 일반 인스타 등록 버튼 (기존 동작 유지)
         <Link
           href={`/submit?school=${slug}&self=1`}
           className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
