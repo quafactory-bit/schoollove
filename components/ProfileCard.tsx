@@ -10,7 +10,7 @@ interface Profile {
   grade: number | null
   class_number: number | null
   department: string | null
-  message: string | null
+  message?: string | null
   created_at: string
 }
 export default function ProfileCard({ profile }: { profile: Profile }) {
