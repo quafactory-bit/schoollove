@@ -7,7 +7,6 @@ import Image from 'next/image'
 import { IMG } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
 
-// 학교 검색/선택에 쓰는 최소 모양 (types/school.ts에 의존 안 하도록 자체 정의)
 type SchoolLite = {
   id: string
   school_name: string
@@ -17,7 +16,8 @@ type SchoolLite = {
   slug: string
 }
 
-type Person = { nickname: string; instagram: string; isSelf: boolean }
+// message: 이 친구에게 한마디 (등록 사유/인사). 본인이 보면 연결 동기가 됨.
+type Person = { nickname: string; instagram: string; isSelf: boolean; message: string }
 
 const TYPE_LABEL: Record<string, string> = {
   elementary: '초등학교',
@@ -27,20 +27,19 @@ const TYPE_LABEL: Record<string, string> = {
   college: '전문대학',
 }
 
-// 졸업(예정) 년도 선택지: 2032 → 1970
 const YEARS = Array.from({ length: 2032 - 1970 + 1 }, (_, i) => 2032 - i)
 
-// 친구 모드: 빈 행 3개로 시작 (여러 명 등록 유도)
 const INITIAL_PEOPLE: Person[] = [
-  { nickname: '', instagram: '', isSelf: false },
-  { nickname: '', instagram: '', isSelf: false },
-  { nickname: '', instagram: '', isSelf: false },
+  { nickname: '', instagram: '', isSelf: false, message: '' },
+  { nickname: '', instagram: '', isSelf: false, message: '' },
+  { nickname: '', instagram: '', isSelf: false, message: '' },
 ]
 
-// 본인 모드: 1행만, 동의 체크 기본 on
-const INITIAL_SELF: Person[] = [{ nickname: '', instagram: '', isSelf: true }]
+const INITIAL_SELF: Person[] = [{ nickname: '', instagram: '', isSelf: true, message: '' }]
 
-// 인스타 입력 정리: @, 공백, URL 형태 제거하고 아이디만 남김
+// 따뜻한 프리셋 (악용 방지: 부정 표현 대신 긍정 프레임 유도)
+const MSG_PRESETS = ['보고싶다', '잘 지내?', '그때 고마웠어', '연락하고 지내자']
+
 function normalizeInsta(raw: string): string {
   let s = raw.trim()
   if (!s) return ''
@@ -52,24 +51,20 @@ function normalizeInsta(raw: string): string {
 
 function SubmitInner() {
   const searchParams = useSearchParams()
-  // self=1 이면 본인 등록 모드 (배너/홈 "내 인스타 연결하기"에서 진입)
   const selfMode = searchParams.get('self') === '1'
 
-  // 1단계: 학교
   const [school, setSchool] = useState<SchoolLite | null>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SchoolLite[]>([])
   const [searching, setSearching] = useState(false)
   const [open, setOpen] = useState(false)
 
-  // 2단계: 학년·반 / 학과·학번
   const [gradYear, setGradYear] = useState('')
   const [grade, setGrade] = useState('')
   const [classNumber, setClassNumber] = useState('')
   const [department, setDepartment] = useState('')
   const [studentYear, setStudentYear] = useState('')
 
-  // 3단계: 사람들 (모드에 따라 초기값 분기)
   const [people, setPeople] = useState<Person[]>(selfMode ? INITIAL_SELF : INITIAL_PEOPLE)
 
   const [submitting, setSubmitting] = useState(false)
@@ -81,7 +76,6 @@ function SubmitInner() {
   const isUni = school?.school_type === 'university' || school?.school_type === 'college'
   const gradeMax = school?.school_type === 'elementary' ? 6 : 3
 
-  // 학교 페이지에서 ?school=슬러그 로 들어오면 그 학교 자동 선택
   useEffect(() => {
     const slug = searchParams.get('school')
     if (!slug) return
@@ -96,10 +90,9 @@ function SubmitInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 학교 부분검색 (debounce 300ms). trigram 인덱스가 받쳐줘서 빠름.
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (school) return // 이미 고른 상태면 검색 안 함
+    if (school) return
     if (debounce.current) clearTimeout(debounce.current)
     const q = query.trim()
     if (q.length < 1) {
@@ -134,7 +127,7 @@ function SubmitInner() {
   }
 
   function addPerson() {
-    setPeople((p) => [...p, { nickname: '', instagram: '', isSelf: false }])
+    setPeople((p) => [...p, { nickname: '', instagram: '', isSelf: false, message: '' }])
   }
   function removePerson(i: number) {
     setPeople((p) => (p.length === 1 ? p : p.filter((_, idx) => idx !== i)))
@@ -150,7 +143,6 @@ function SubmitInner() {
     if (!isUni && (!grade || !classNumber)) return setErr('학년과 반을 입력해주세요.')
     const valid = people.filter((p) => p.nickname.trim())
     if (valid.length === 0) return setErr('이름을 한 명 이상 입력해주세요.')
-    // 본인 모드인데 인스타가 비어 있으면 안내 (본인 연결이 목적이므로)
     if (selfMode && !normalizeInsta(valid[0].instagram)) {
       return setErr('연결할 인스타 ID를 입력해주세요.')
     }
@@ -174,14 +166,14 @@ function SubmitInner() {
         ...base,
         nickname: p.nickname.trim(),
         instagram_id: insta,
-        is_self: insta ? p.isSelf : false, // 인스타 있고 동의 체크한 경우만 true
+        is_self: insta ? p.isSelf : false,
+        message: p.message.trim() || null, // 이 친구에게 한마디
       })
       if (!error) success++
       else if (error.code === '23505') dup++
       else fail++
     }
 
-    // 등록 직후 그 학교의 전체 등록 수를 읽어와 "혼자 아님"을 보여줌
     let totalAtSchool = success
     const { count: schoolTotal } = await supabase
       .from('profiles')
@@ -409,9 +401,9 @@ function SubmitInner() {
           {!selfMode && (
             <p className="mb-2 text-xs text-neutral-400">기억나는 친구들을 한 번에 여러 명 남길 수 있어요.</p>
           )}
-          <div className="space-y-3">
+          <div className="space-y-4">
             {people.map((p, i) => (
-              <div key={i}>
+              <div key={i} className="rounded-xl border border-neutral-100 bg-neutral-50/50 p-2.5">
                 <div className="flex gap-2">
                   <input
                     value={p.nickname}
@@ -419,7 +411,7 @@ function SubmitInner() {
                     placeholder={selfMode ? '내 이름 또는 별명' : '이름 또는 별명'}
                     className="w-2/5 rounded-xl border border-neutral-200 px-3 py-3 text-sm outline-none focus:border-blue-500"
                   />
-                  <div className="flex flex-1 items-center rounded-xl border border-neutral-200 px-3 focus-within:border-blue-500">
+                  <div className="flex flex-1 items-center rounded-xl border border-neutral-200 bg-white px-3 focus-within:border-blue-500">
                     <span className="text-sm text-neutral-400">@</span>
                     <input
                       value={p.instagram}
@@ -438,9 +430,37 @@ function SubmitInner() {
                     </button>
                   )}
                 </div>
+
+                {/* 이름을 입력하면 "이 친구에게 한마디" 노출 (본인모드면 "나를 한마디로") */}
+                {p.nickname.trim() && (
+                  <div className="mt-2">
+                    <input
+                      value={p.message}
+                      onChange={(e) => updatePerson(i, 'message', e.target.value.slice(0, 30))}
+                      placeholder={selfMode ? '나를 한마디로 소개 (선택)' : '이 친구에게 한마디 (선택)'}
+                      maxLength={30}
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"
+                    />
+                    {!selfMode && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {MSG_PRESETS.map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => updatePerson(i, 'message', m)}
+                            className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs text-neutral-500 hover:border-blue-400 hover:text-blue-500"
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* 인스타를 입력한 행에만 본인 동의 체크 노출 */}
                 {p.instagram.trim() && (
-                  <label className="mt-1.5 flex items-center gap-2 pl-1 text-xs text-neutral-500">
+                  <label className="mt-2 flex items-center gap-2 pl-1 text-xs text-neutral-500">
                     <input
                       type="checkbox"
                       checked={p.isSelf}
@@ -484,7 +504,6 @@ function SubmitInner() {
   )
 }
 
-// useSearchParams는 Suspense 경계 안에서 써야 빌드가 안전함
 export default function SubmitPage() {
   return (
     <Suspense fallback={null}>
