@@ -1,9 +1,7 @@
 'use client'
-
 import { useState } from 'react'
 import EditDeleteModal from './EditDeleteModal'
 import ReportButton from './ReportButton'
-
 interface Profile {
   id: string
   nickname: string
@@ -12,16 +10,14 @@ interface Profile {
   grade: number | null
   class_number: number | null
   department: string | null
+  message: string | null
   created_at: string
 }
-
 export default function ProfileCard({ profile }: { profile: Profile }) {
   const [showModal, setShowModal] = useState(false)
-
   const meta = profile.grade
     ? `${profile.graduation_year}년 ${profile.grade}학년 ${profile.class_number}반`
     : `${profile.graduation_year}년 졸업${profile.department ? ' · ' + profile.department : ''}`
-
   return (
     <>
       <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between gap-3">
@@ -43,6 +39,12 @@ export default function ProfileCard({ profile }: { profile: Profile }) {
               <button onClick={() => setShowModal(true)} className="text-xs text-gray-400 hover:text-blue-500">
                 + 인스타 추가
               </button>
+            )}
+            {/* 등록할 때 남긴 "이 친구에게 한마디" — 본인이 보면 연결 동기가 생김 */}
+            {profile.message && (
+              <p className="mt-1 text-xs text-gray-500 italic">
+                💬 “{profile.message}”
+              </p>
             )}
           </div>
         </div>
