@@ -7,6 +7,7 @@ import { getSchoolBySlug } from '@/lib/api/schools'
 import { getProfilesBySchool, getGraduationYearsBySchool, getSchoolProfileCount, getTotalProfileCount } from '@/lib/api/profiles'
 import { incrSchoolView, getSchoolView } from '@/lib/api/views'
 import { getTracesBySchool, getTraceCountBySchool } from '@/lib/api/traces'
+import { getSchoolSearchCount } from '@/lib/api/searches'
 import ProfileCard from '@/components/ProfileCard'
 import ShareButton from '@/components/ShareButton'
 import SchoolWarmth from '@/components/SchoolWarmth'
@@ -57,13 +58,14 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
   const ua = h.get('user-agent') ?? ''
   const isBot = /bot|crawl|spider|slurp|facebookexternalhit|bingpreview|embedly|pinterest|whatsapp|telegram/i.test(ua)
 
-  const [{ data: profiles, count }, years, totalProfiles, viewCount, traces, traceCount] = await Promise.all([
+  const [{ data: profiles, count }, years, totalProfiles, viewCount, traces, traceCount, searchCount] = await Promise.all([
     getProfilesBySchool(school.id, page, yearFilter),
     getGraduationYearsBySchool(school.id),
     getTotalProfileCount(),
     isBot ? getSchoolView(school.id) : incrSchoolView(school.id),
     getTracesBySchool(school.id),
     getTraceCountBySchool(school.id),
+    getSchoolSearchCount(school.school_name, school.sido),
   ])
 
   const totalPages = Math.ceil(count / 20)
@@ -129,13 +131,14 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* 온기 띠 + 한 줄 흔적 (방문자 수 / 흔적 리스트 / 드롭다운 / 인스타 등록) */}
+      {/* 온기 띠 + 한 줄 흔적 (방문자 수 / 검색 수 / 흔적 리스트 / 드롭다운 / 인스타 등록) */}
       <SchoolWarmth
         schoolId={school.id}
         schoolName={school.school_name}
         slug={slug}
         viewCount={viewCount}
         profileCount={count}
+        searchCount={searchCount}
         initialTraces={traces}
         hasTraces={traceCount > 0}
       />
