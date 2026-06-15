@@ -1,21 +1,20 @@
 import { supabase } from '@/lib/supabase'
 
 // 학교명에서 검색 매칭용 "후보 토큰들"을 만든다.
-// 사람들은 보통 짧게 검색한다: "인천초은중학교" → 실제로는 "초은중" 으로 검색.
-// 정답 토큰을 한 번에 맞히기 어려우므로, 여러 후보를 만들어 가장 많이 잡히는 걸 쓴다.
+// 사람들은 보통 짧게 검색한다: "인천초은중학교" → 실제 검색은 "초은중".
+// sido 기반 지역 제거는 형태가 제각각이라 불안정 → 대신 학교명을 뒤에서부터
+// 여러 길이로 잘라 후보를 만들고, 그중 search_logs에서 가장 많이 잡히는 토큰을 쓴다.
 //
-// 전략:
-//  1) 전체 학교명 (예: 인천초은중학교)
-//  2) 접미사만 한 글자로 축약 (초등학교→초, 중학교→중, 고등학교→고, 대학교→대)
-//     예: 인천초은중학교 → 인천초은중
-//  3) 시도/지역 접두사 후보 제거 + 축약형
-//     예: 인천초은중 → 초은중   (지역명을 떼면 사람들이 실제 치는 형태가 됨)
-export function schoolSearchTokens(schoolName: string, sido?: string | null): string[] {
+// 예) "인천초은중학교"
+//  - 접미사 축약: "인천초은중"
+//  - 축약형에서 앞글자를 1~3개 떼본 것: "천초은중", "초은중", "은중"
+//  → 이 중 "초은중"이 search_logs의 "초은중"과 매칭되어 33건이 잡힘
+export function schoolSearchTokens(schoolName: string): string[] {
   const tokens = new Set<string>()
   const full = schoolName.trim()
   tokens.add(full)
 
-  // 접미사 한 글자 축약형
+  // 접미사를 한 글자로 축약 (초등학교→초, 중학교→중, 고등학교→고, 대학교/전문대학→대)
   const shortType = full
     .replace(/초등학교$/u, '초')
     .replace(/중학교$/u, '중')
@@ -24,38 +23,28 @@ export function schoolSearchTokens(schoolName: string, sido?: string | null): st
     .replace(/전문대학$/u, '대')
   tokens.add(shortType)
 
-  // 지역 접두사 후보 제거 (시도명 앞글자 + 흔한 도시 접두사)
-  // sido 예: "인천광역시" → "인천" 떼보기
-  const prefixes: string[] = []
-  if (sido) {
-    const sidoShort = sido
-      .replace(/특별자치시|특별자치도|특별시|광역시|자치도|도$/u, '')
-      .trim()
-    if (sidoShort.length >= 2) prefixes.push(sidoShort)
-  }
-  // 흔한 시 단위 접두사도 시도 (학교명 앞 2글자가 지역일 가능성)
-  for (const p of prefixes) {
-    if (shortType.startsWith(p)) {
-      const stripped = shortType.slice(p.length)
-      if (stripped.length >= 2) tokens.add(stripped)
-    }
-    if (full.startsWith(p)) {
-      const stripped2 = full.slice(p.length)
-      if (stripped2.length >= 2) tokens.add(stripped2)
+  // 축약형에서 앞 지역 접두사를 1~3글자씩 떼본 후보들
+  // (지역명이 보통 앞 2글자이므로, 떼고 남은 게 사람들이 실제 치는 핵심어가 됨)
+  for (let cut = 1; cut <= 3; cut++) {
+    if (shortType.length - cut >= 2) {
+      tokens.add(shortType.slice(cut))
     }
   }
 
+  // 너무 짧은(1글자) 토큰은 오매칭 위험이 커서 제외
   return Array.from(tokens).filter((t) => t.length >= 2)
 }
 
 // 이 학교가 search_logs에서 몇 번 검색됐는지 카운트.
-// 여러 후보 토큰으로 각각 세어 가장 큰 값을 사용 (가장 잘 맞은 토큰 기준).
+// 여러 후보 토큰으로 각각 세어 "가장 많이 잡힌 값"을 사용.
+// 단, 너무 짧은 토큰이 과대 매칭하는 걸 막기 위해 길이가 긴 토큰을 우선 신뢰하되,
+// 여기서는 단순히 최댓값을 쓴다(빈 학교 선점 유도가 목적이라 약간의 관대함은 허용).
 // 실패하면 0을 돌려주고 페이지는 정상 동작.
 export async function getSchoolSearchCount(
   schoolName: string,
-  sido?: string | null
+  _sido?: string | null // 더 이상 사용하지 않지만 호출부 호환을 위해 시그니처 유지
 ): Promise<number> {
-  const tokens = schoolSearchTokens(schoolName, sido)
+  const tokens = schoolSearchTokens(schoolName)
   if (tokens.length === 0) return 0
 
   let best = 0
