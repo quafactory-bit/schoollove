@@ -145,7 +145,7 @@ export default function HomePage() {
 
         {/* 여기서 할 수 있는 것 — 아이콘으로 줄 시작점 맞추기 */}
         <p className="mt-8 text-xs font-medium text-neutral-400">스쿨러브아이에서 할 수 있는 것</p>
-        <ul className="mt-3 space-y-2.5">
+        <ul className="mt-3 space-y-3">
           {FEATURES.map((f) => (
             <li key={f.text} className="flex items-center gap-2.5 text-[15px] text-neutral-800">
               <span className="shrink-0 text-neutral-400">{f.icon}</span>
@@ -155,19 +155,19 @@ export default function HomePage() {
         </ul>
 
         {/* 감성 한 줄 — 행동 직전에 마음 건드리기 */}
-        <p className="mt-8 text-[15px] font-medium text-rose-500">
+        <p className="mt-9 text-[15px] font-medium text-rose-500">
           그 시절 누군가가, 지금 당신을 기억하고 있을지도 몰라요.
         </p>
 
         {/* 검색창 — 첫 화면의 주인공 */}
-        <div className="relative mt-3">
+        <div className="relative mt-3.5">
           <form
             onSubmit={(e) => {
               e.preventDefault()
               runSearch(q)
             }}
           >
-            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
               <svg className="h-5 w-5 shrink-0 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="7" />
                 <path d="m21 21-4.3-4.3" strokeLinecap="round" />
@@ -221,13 +221,13 @@ export default function HomePage() {
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Link
             href="/submit"
-            className="rounded-xl bg-blue-600 px-2 py-3.5 text-center text-sm font-semibold text-white transition active:scale-95"
+            className="rounded-xl bg-blue-600 px-2 py-4 text-center text-sm font-semibold text-white transition active:scale-95"
           >
             떠오르는 이름 남기기
           </Link>
           <Link
             href="/submit?self=1"
-            className="rounded-xl border border-neutral-200 bg-white px-2 py-3.5 text-center text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
+            className="rounded-xl border border-neutral-200 bg-white px-2 py-4 text-center text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
           >
             내 인스타 등록하기
           </Link>
@@ -248,7 +248,7 @@ export default function HomePage() {
       </section>
 
       {/* ── 사용법 (학교 선택 → 이름 남기기 → 사람들이 모이기) ── */}
-      <section className="mt-14">
+      <section className="mt-16">
         <div className="grid grid-cols-3 gap-2">
           {[
             { icon: <Search className="h-6 w-6" />, step: '①', text: '학교를 고르고' },
@@ -257,7 +257,7 @@ export default function HomePage() {
           ].map((s) => (
             <div
               key={s.step}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-neutral-100 bg-white px-2 py-5 text-center"
+              className="flex flex-col items-center gap-2 rounded-2xl border border-neutral-100 bg-white px-2 py-6 text-center"
             >
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-500">
                 {s.icon}
@@ -271,16 +271,16 @@ export default function HomePage() {
       </section>
 
       {/* ── 방금 학교에 누군가 연결됐어요 (학교 단위, 최근순 중복 제거) ── */}
-      <section className="mt-14">
+      <section className="mt-16">
         <h2 className="mb-1 text-lg font-bold text-neutral-900">방금 학교에 누군가 연결됐어요</h2>
         <p className="mb-4 text-sm text-neutral-500">
           흩어져 있던 사람들이 학교별로 하나씩 다시 연결되고 있어요.
         </p>
 
         {loading ? (
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             {[0, 1, 2].map((i) => (
-              <li key={i} className="h-14 animate-pulse rounded-2xl bg-neutral-100" />
+              <li key={i} className="h-16 animate-pulse rounded-2xl bg-neutral-100" />
             ))}
           </ul>
         ) : (() => {
@@ -306,7 +306,7 @@ export default function HomePage() {
                 </p>
                 <Link
                   href="/submit"
-                  className="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition active:scale-95"
+                  className="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition active:scale-95"
                 >
                   떠오르는 이름 남기기
                 </Link>
@@ -316,7 +316,7 @@ export default function HomePage() {
 
           return (
             <>
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {schools.map((p, idx) => {
                   // 문구 통일: 이름/인스타 구분 없이 모두 "누군가 연결됐어요"
                   // 라벨만 맨 위=방금(파랑), 나머지=연결됨(연한 파랑)으로 구분
@@ -329,7 +329,7 @@ export default function HomePage() {
                     <li key={p.id}>
                       <Link
                         href={p.school ? `/school/${p.school.slug}` : '#'}
-                        className="flex items-center gap-3 rounded-2xl border border-neutral-100 bg-white px-4 py-3 transition hover:bg-neutral-50"
+                        className="flex items-center gap-3 rounded-2xl border border-neutral-100 bg-white px-4 py-3.5 transition hover:bg-neutral-50"
                       >
                         <div className="min-w-0 flex-1">
                           <span
@@ -350,12 +350,12 @@ export default function HomePage() {
               </ul>
 
               {/* 구경 → 남기기로 잇기 */}
-              <div className="mt-5 rounded-2xl border border-dashed border-neutral-200 px-6 py-6 text-center">
+              <div className="mt-6 rounded-2xl border border-dashed border-neutral-200 px-6 py-7 text-center">
                 <p className="text-sm font-medium text-neutral-700">내 학교가 안 보이나요?</p>
                 <p className="mt-1 text-sm text-neutral-500">지금 떠오르는 이름을 먼저 남겨보세요.</p>
                 <Link
                   href="/submit"
-                  className="mt-4 inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition active:scale-95"
+                  className="mt-4 inline-block rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition active:scale-95"
                 >
                   떠오르는 이름 남기기
                 </Link>
@@ -378,19 +378,19 @@ export default function HomePage() {
               className="h-auto w-full"
             />
           </Link>
-          <div className="px-6 py-5 text-center">
+          <div className="px-6 py-6 text-center">
             <p className="text-base font-bold text-neutral-900">문득 떠오른 이름이 있다면,</p>
             <p className="mt-1 text-sm text-neutral-500">지금 학교에 남겨보세요.</p>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <Link
                 href="/submit"
-                className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition active:scale-95"
+                className="rounded-xl bg-blue-600 px-5 py-3.5 text-sm font-semibold text-white transition active:scale-95"
               >
                 떠오르는 이름 남기기
               </Link>
               <Link
                 href="/submit?self=1"
-                className="rounded-xl border border-neutral-200 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
+                className="rounded-xl border border-neutral-200 bg-white px-5 py-3.5 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
               >
                 내 인스타 등록하기
               </Link>
@@ -400,7 +400,7 @@ export default function HomePage() {
       </section>
 
       {/* ── 서비스 공유 ───────────────────────────────────────── */}
-      <section className="mt-6 text-center">
+      <section className="mt-8 text-center">
         <ShareButton
           text="기억나는 이름부터 학교에 남겨보는 곳 - 스쿨러브아이"
           url="https://www.schoollove.kr"
