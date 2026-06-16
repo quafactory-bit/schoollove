@@ -132,7 +132,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-none px-3 pb-24 sm:max-w-xl">
+    <main className="mx-auto w-full max-w-3xl px-3 pb-24">
       {/* ── 히어로 (왼쪽 정렬: 환영 → 정체 → 할 수 있는 것 → 감성 → 검색 → CTA) ── */}
       <section className="pt-6 text-left sm:pt-10">
         <h1 className="text-[30px] font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-4xl">
@@ -374,7 +374,7 @@ export default function HomePage() {
               alt="문득 떠오른 이름이 있다면 지금 학교에 남겨보세요"
               width={1536}
               height={1024}
-              sizes="(max-width: 640px) 100vw, 36rem"
+              sizes="(max-width: 640px) 100vw, 48rem"
               className="h-auto w-full"
             />
           </Link>
