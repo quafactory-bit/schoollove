@@ -35,7 +35,7 @@ const FEATURES = [
   {
     text: '우리 학교 동창들 찾아보기',
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="11" cy="11" r="7" />
         <path d="m21 21-4.3-4.3" />
       </svg>
@@ -44,7 +44,7 @@ const FEATURES = [
   {
     text: '같은 반이었던 사람들 모아보기',
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
@@ -55,7 +55,7 @@ const FEATURES = [
   {
     text: '그때 그 친구의 지금 인스타 보기',
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="2" width="20" height="20" rx="5" />
         <circle cx="12" cy="12" r="4" />
         <path d="M17.5 6.5h.01" />
@@ -65,7 +65,7 @@ const FEATURES = [
   {
     text: '“나 여기 있어” 한 줄 남기기',
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
       </svg>
     ),
@@ -132,22 +132,22 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-lg px-5 pb-24">
+    <main className="mx-auto w-full max-w-lg px-4 pb-24">
       {/* ── 히어로 (왼쪽 정렬: 환영 → 정체 → 할 수 있는 것 → 감성 → 검색 → CTA) ── */}
-      <section className="pt-10 text-left sm:pt-14">
-        <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-3xl">
+      <section className="pt-6 text-left sm:pt-10">
+        <h1 className="text-[30px] font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-4xl">
           Welcome to 스쿨러브
         </h1>
-        <p className="mt-2.5 text-[15px] leading-relaxed text-neutral-500">
+        <p className="mt-3 text-base leading-relaxed text-neutral-500">
           스쿨러브아이는 학교와 이름으로
           <br className="sm:hidden" /> 동창을 찾는 온라인 디렉토리예요.
         </p>
 
         {/* 여기서 할 수 있는 것 — 아이콘으로 줄 시작점 맞추기 */}
-        <p className="mt-8 text-xs font-medium text-neutral-400">스쿨러브아이에서 할 수 있는 것</p>
-        <ul className="mt-3 space-y-3">
+        <p className="mt-8 text-[13px] font-medium text-neutral-400">스쿨러브아이에서 할 수 있는 것</p>
+        <ul className="mt-3.5 space-y-3.5">
           {FEATURES.map((f) => (
-            <li key={f.text} className="flex items-center gap-2.5 text-[15px] text-neutral-800">
+            <li key={f.text} className="flex items-center gap-3 text-base text-neutral-800">
               <span className="shrink-0 text-neutral-400">{f.icon}</span>
               <span>{f.text}</span>
             </li>
@@ -155,20 +155,20 @@ export default function HomePage() {
         </ul>
 
         {/* 감성 한 줄 — 행동 직전에 마음 건드리기 */}
-        <p className="mt-9 text-[15px] font-medium text-rose-500">
+        <p className="mt-9 text-base font-medium text-rose-500">
           그 시절 누군가가, 지금 당신을 기억하고 있을지도 몰라요.
         </p>
 
         {/* 검색창 — 첫 화면의 주인공 */}
-        <div className="relative mt-3.5">
+        <div className="relative mt-4">
           <form
             onSubmit={(e) => {
               e.preventDefault()
               runSearch(q)
             }}
           >
-            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
-              <svg className="h-5 w-5 shrink-0 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <div className="flex items-center gap-2.5 rounded-2xl border border-neutral-200 bg-white px-5 py-4 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+              <svg className="h-6 w-6 shrink-0 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="7" />
                 <path d="m21 21-4.3-4.3" strokeLinecap="round" />
               </svg>
@@ -204,9 +204,9 @@ export default function HomePage() {
                     key={s.id}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => goSchool(s.slug)}
-                    className="block w-full px-4 py-2.5 text-left hover:bg-neutral-50"
+                    className="block w-full px-4 py-3 text-left hover:bg-neutral-50"
                   >
-                    <span className="text-sm font-medium text-neutral-900">{s.school_name}</span>
+                    <span className="text-[15px] font-medium text-neutral-900">{s.school_name}</span>
                     <span className="ml-2 text-xs text-neutral-400">
                       {s.sido ?? ''} {s.sigungu ?? ''}
                     </span>
@@ -218,28 +218,28 @@ export default function HomePage() {
         </div>
 
         {/* 메인 CTA — 같은 크기 2열 */}
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
           <Link
             href="/submit"
-            className="rounded-xl bg-blue-600 px-2 py-4 text-center text-sm font-semibold text-white transition active:scale-95"
+            className="rounded-2xl bg-blue-600 px-2 py-[18px] text-center text-[15px] font-semibold text-white transition active:scale-95"
           >
             떠오르는 이름 남기기
           </Link>
           <Link
             href="/submit?self=1"
-            className="rounded-xl border border-neutral-200 bg-white px-2 py-4 text-center text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
+            className="rounded-2xl border border-neutral-200 bg-white px-2 py-[18px] text-center text-[15px] font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
           >
             내 인스타 등록하기
           </Link>
         </div>
 
         {/* 인기 학교 */}
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-wrap gap-2">
           {POPULAR.map((name) => (
             <button
               key={name}
               onClick={() => runSearch(name)}
-              className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-600 transition hover:border-neutral-300 hover:bg-neutral-100"
+              className="rounded-full border border-neutral-200 bg-neutral-50 px-3.5 py-2 text-[13px] text-neutral-600 transition hover:border-neutral-300 hover:bg-neutral-100"
             >
               {name}
             </button>
@@ -248,21 +248,21 @@ export default function HomePage() {
       </section>
 
       {/* ── 사용법 (학교 선택 → 이름 남기기 → 사람들이 모이기) ── */}
-      <section className="mt-16">
-        <div className="grid grid-cols-3 gap-2">
+      <section className="mt-14">
+        <div className="grid grid-cols-3 gap-2.5">
           {[
-            { icon: <Search className="h-6 w-6" />, step: '①', text: '학교 고르기' },
-            { icon: <PenLine className="h-6 w-6" />, step: '②', text: '이름 남기기' },
-            { icon: <Heart className="h-6 w-6" />, step: '③', text: '함께 모이기' },
+            { icon: <Search className="h-7 w-7" />, step: '①', text: '학교 고르기' },
+            { icon: <PenLine className="h-7 w-7" />, step: '②', text: '이름 남기기' },
+            { icon: <Heart className="h-7 w-7" />, step: '③', text: '함께 모이기' },
           ].map((s) => (
             <div
               key={s.step}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-neutral-100 bg-white px-2 py-6 text-center"
+              className="flex flex-col items-center gap-2.5 rounded-2xl border border-neutral-100 bg-white px-2 py-7 text-center"
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-500">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-500">
                 {s.icon}
               </span>
-              <span className="whitespace-nowrap text-xs font-medium text-neutral-500">
+              <span className="whitespace-nowrap text-[13px] font-medium text-neutral-500">
                 {s.step} {s.text}
               </span>
             </div>
@@ -271,9 +271,9 @@ export default function HomePage() {
       </section>
 
       {/* ── 방금 학교에 누군가 연결됐어요 (학교 단위, 최근순 중복 제거) ── */}
-      <section className="mt-16">
-        <h2 className="mb-1 text-lg font-bold text-neutral-900">방금 학교에 누군가 연결됐어요</h2>
-        <p className="mb-4 text-sm text-neutral-500">
+      <section className="mt-14">
+        <h2 className="mb-1.5 text-xl font-bold text-neutral-900">방금 학교에 누군가 연결됐어요</h2>
+        <p className="mb-4 text-[15px] text-neutral-500">
           흩어져 있던 사람들이 학교별로 하나씩 다시 연결되고 있어요.
         </p>
 
@@ -299,14 +299,14 @@ export default function HomePage() {
             // 콜드스타트: 아직 학교가 없으면 첫 등록 유도
             return (
               <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-6 py-10 text-center">
-                <p className="text-sm text-neutral-600">
+                <p className="text-[15px] text-neutral-600">
                   아직 연결된 학교가 없어요.
                   <br />
                   기억나는 이름을 가장 먼저 남겨보세요.
                 </p>
                 <Link
                   href="/submit"
-                  className="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition active:scale-95"
+                  className="mt-5 inline-block rounded-2xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white transition active:scale-95"
                 >
                   떠오르는 이름 남기기
                 </Link>
@@ -329,17 +329,17 @@ export default function HomePage() {
                     <li key={p.id}>
                       <Link
                         href={p.school ? `/school/${p.school.slug}` : '#'}
-                        className="flex items-center gap-3 rounded-2xl border border-neutral-100 bg-white px-4 py-3.5 transition hover:bg-neutral-50"
+                        className="flex items-center gap-3 rounded-2xl border border-neutral-100 bg-white px-4 py-4 transition hover:bg-neutral-50"
                       >
                         <div className="min-w-0 flex-1">
                           <span
-                            className={`mr-1.5 rounded-full px-1.5 py-0.5 align-middle text-[10px] font-medium ${labelClass}`}
+                            className={`mr-1.5 rounded-full px-2 py-0.5 align-middle text-[11px] font-medium ${labelClass}`}
                           >
                             {label}
                           </span>
-                          <span className="text-sm font-medium text-neutral-800">{line}</span>
+                          <span className="text-[15px] font-medium text-neutral-800">{line}</span>
                           {p.graduation_year && (
-                            <span className="ml-1 text-xs text-neutral-400"> · {p.graduation_year}년</span>
+                            <span className="ml-1 text-[13px] text-neutral-400"> · {p.graduation_year}년</span>
                           )}
                         </div>
                         <span className="shrink-0 text-neutral-300">›</span>
@@ -351,11 +351,11 @@ export default function HomePage() {
 
               {/* 구경 → 남기기로 잇기 */}
               <div className="mt-6 rounded-2xl border border-dashed border-neutral-200 px-6 py-7 text-center">
-                <p className="text-sm font-medium text-neutral-700">내 학교가 안 보이나요?</p>
-                <p className="mt-1 text-sm text-neutral-500">지금 떠오르는 이름을 먼저 남겨보세요.</p>
+                <p className="text-[15px] font-medium text-neutral-700">내 학교가 안 보이나요?</p>
+                <p className="mt-1 text-[15px] text-neutral-500">지금 떠오르는 이름을 먼저 남겨보세요.</p>
                 <Link
                   href="/submit"
-                  className="mt-4 inline-block rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition active:scale-95"
+                  className="mt-4 inline-block rounded-2xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white transition active:scale-95"
                 >
                   떠오르는 이름 남기기
                 </Link>
@@ -366,7 +366,7 @@ export default function HomePage() {
       </section>
 
       {/* ── 하단 감성 배너 + 이름 남기기 CTA ─────────────────── */}
-      <section className="mt-16">
+      <section className="mt-14">
         <div className="block overflow-hidden rounded-3xl border border-neutral-100">
           <Link href="/submit">
             <Image
@@ -374,23 +374,23 @@ export default function HomePage() {
               alt="문득 떠오른 이름이 있다면 지금 학교에 남겨보세요"
               width={1536}
               height={1024}
-              sizes="(max-width: 640px) 90vw, 32rem"
+              sizes="(max-width: 640px) 100vw, 32rem"
               className="h-auto w-full"
             />
           </Link>
-          <div className="px-6 py-6 text-center">
-            <p className="text-base font-bold text-neutral-900">문득 떠오른 이름이 있다면,</p>
-            <p className="mt-1 text-sm text-neutral-500">지금 학교에 남겨보세요.</p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <div className="px-6 py-7 text-center">
+            <p className="text-lg font-bold text-neutral-900">문득 떠오른 이름이 있다면,</p>
+            <p className="mt-1.5 text-[15px] text-neutral-500">지금 학교에 남겨보세요.</p>
+            <div className="mt-5 flex flex-col gap-2.5 sm:flex-row sm:justify-center">
               <Link
                 href="/submit"
-                className="rounded-xl bg-blue-600 px-5 py-3.5 text-sm font-semibold text-white transition active:scale-95"
+                className="rounded-2xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white transition active:scale-95"
               >
                 떠오르는 이름 남기기
               </Link>
               <Link
                 href="/submit?self=1"
-                className="rounded-xl border border-neutral-200 bg-white px-5 py-3.5 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
+                className="rounded-2xl border border-neutral-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
               >
                 내 인스타 등록하기
               </Link>
