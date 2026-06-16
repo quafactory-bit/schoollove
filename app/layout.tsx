@@ -4,6 +4,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Footer';
+import TabBar from '@/components/TabBar';
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 export const viewport: Viewport = {
   themeColor: '#000000',
@@ -43,8 +44,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko" className={cn('font-sans', geist.variable)}>
       <body className={geist.className}>
         <Providers>
-          {children}
-          <Footer />
+          {/* 하단 탭바에 콘텐츠가 가리지 않게 여백 확보 */}
+          <div className="pb-16">
+            {children}
+            <Footer />
+          </div>
+          <TabBar />
         </Providers>
       </body>
     </html>
