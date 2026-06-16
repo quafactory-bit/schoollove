@@ -270,11 +270,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 방금 학교에 이름이 남겨졌어요 (학교 단위, 최근순 중복 제거) ── */}
+      {/* ── 방금 학교에 누군가 연결됐어요 (학교 단위, 최근순 중복 제거) ── */}
       <section className="mt-14">
-        <h2 className="mb-1 text-lg font-bold text-neutral-900">방금 학교에 이름이 남겨졌어요</h2>
+        <h2 className="mb-1 text-lg font-bold text-neutral-900">방금 학교에 누군가 연결됐어요</h2>
         <p className="mb-4 text-sm text-neutral-500">
-          누군가의 기억 속 이름들이 학교별로 하나씩 모이고 있어요.
+          흩어져 있던 사람들이 학교별로 하나씩 다시 연결되고 있어요.
         </p>
 
         {loading ? (
@@ -300,7 +300,7 @@ export default function HomePage() {
             return (
               <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-6 py-10 text-center">
                 <p className="text-sm text-neutral-600">
-                  아직 이름이 남겨진 학교가 없어요.
+                  아직 연결된 학교가 없어요.
                   <br />
                   기억나는 이름을 가장 먼저 남겨보세요.
                 </p>
@@ -318,26 +318,12 @@ export default function HomePage() {
             <>
               <ul className="space-y-2">
                 {schools.map((p, idx) => {
-                  // 라벨/문구 규칙: 맨 위=방금 / 인스타 연결됨 / 그 외=이름 남겨짐
+                  // 문구 통일: 이름/인스타 구분 없이 모두 "누군가 연결됐어요"
+                  // 라벨만 맨 위=방금(파랑), 나머지=연결됨(연한 파랑)으로 구분
                   const isTop = idx === 0
-                  const connected = !!p.instagram_id
-                  let label: string
-                  let labelClass: string
-                  let line: string
-
-                  if (isTop) {
-                    label = '방금'
-                    labelClass = 'bg-blue-600 text-white'
-                    line = `${p.school?.school_name}에 이름이 남겨졌어요`
-                  } else if (connected) {
-                    label = '인스타 연결됨'
-                    labelClass = 'bg-blue-50 text-blue-600'
-                    line = `${p.school?.school_name}에 남겨진 이름이 연결됐어요`
-                  } else {
-                    label = '이름 남겨짐'
-                    labelClass = 'bg-neutral-100 text-neutral-500'
-                    line = `${p.school?.school_name}에 누군가의 이름이 남겨졌어요`
-                  }
+                  const label = isTop ? '방금' : '연결됨'
+                  const labelClass = isTop ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
+                  const line = `${p.school?.school_name}에 누군가 연결됐어요`
 
                   return (
                     <li key={p.id}>
