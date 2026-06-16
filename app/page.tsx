@@ -132,9 +132,9 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 pb-24">
+    <main className="mx-auto w-full max-w-md px-5 pb-24">
       {/* ── 히어로 (왼쪽 정렬: 환영 → 정체 → 할 수 있는 것 → 감성 → 검색 → CTA) ── */}
-      <section className="mx-auto max-w-md pt-10 text-left sm:pt-14">
+      <section className="pt-10 text-left sm:pt-14">
         <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-3xl">
           Welcome to 스쿨러브
         </h1>
@@ -374,7 +374,7 @@ export default function HomePage() {
               alt="문득 떠오른 이름이 있다면 지금 학교에 남겨보세요"
               width={1536}
               height={1024}
-              sizes="(max-width: 640px) 90vw, 42rem"
+              sizes="(max-width: 640px) 90vw, 28rem"
               className="h-auto w-full"
             />
           </Link>
