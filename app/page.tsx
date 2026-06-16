@@ -132,7 +132,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-md px-5 pb-24">
+    <main className="mx-auto w-full max-w-lg px-5 pb-24">
       {/* ── 히어로 (왼쪽 정렬: 환영 → 정체 → 할 수 있는 것 → 감성 → 검색 → CTA) ── */}
       <section className="pt-10 text-left sm:pt-14">
         <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-3xl">
@@ -251,9 +251,9 @@ export default function HomePage() {
       <section className="mt-16">
         <div className="grid grid-cols-3 gap-2">
           {[
-            { icon: <Search className="h-6 w-6" />, step: '①', text: '학교를 고르고' },
-            { icon: <PenLine className="h-6 w-6" />, step: '②', text: '떠오른 이름을 남기고' },
-            { icon: <Heart className="h-6 w-6" />, step: '③', text: '학교 사람들이 모이기' },
+            { icon: <Search className="h-6 w-6" />, step: '①', text: '학교 고르기' },
+            { icon: <PenLine className="h-6 w-6" />, step: '②', text: '이름 남기기' },
+            { icon: <Heart className="h-6 w-6" />, step: '③', text: '함께 모이기' },
           ].map((s) => (
             <div
               key={s.step}
@@ -262,7 +262,7 @@ export default function HomePage() {
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-500">
                 {s.icon}
               </span>
-              <span className="text-xs font-medium text-neutral-500">
+              <span className="whitespace-nowrap text-xs font-medium text-neutral-500">
                 {s.step} {s.text}
               </span>
             </div>
@@ -374,7 +374,7 @@ export default function HomePage() {
               alt="문득 떠오른 이름이 있다면 지금 학교에 남겨보세요"
               width={1536}
               height={1024}
-              sizes="(max-width: 640px) 90vw, 28rem"
+              sizes="(max-width: 640px) 90vw, 32rem"
               className="h-auto w-full"
             />
           </Link>
