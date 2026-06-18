@@ -223,13 +223,13 @@ export default function HomePage() {
             href="/submit"
             className="rounded-2xl bg-blue-600 px-2 py-[18px] text-center text-[15px] font-semibold text-white transition active:scale-95"
           >
-            떠오르는 이름 남기기
+            친구 등록하기
           </Link>
           <Link
             href="/submit?self=1"
             className="rounded-2xl border border-neutral-200 bg-white px-2 py-[18px] text-center text-[15px] font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
           >
-            내 인스타 등록하기
+            내 인스타 연결하기
           </Link>
         </div>
 
@@ -308,7 +308,7 @@ export default function HomePage() {
                   href="/submit"
                   className="mt-5 inline-block rounded-2xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white transition active:scale-95"
                 >
-                  떠오르는 이름 남기기
+                  친구 등록하기
                 </Link>
               </div>
             )
@@ -357,7 +357,7 @@ export default function HomePage() {
                   href="/submit"
                   className="mt-4 inline-block rounded-2xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white transition active:scale-95"
                 >
-                  떠오르는 이름 남기기
+                  친구 등록하기
                 </Link>
               </div>
             </>
@@ -386,13 +386,13 @@ export default function HomePage() {
                 href="/submit"
                 className="rounded-2xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white transition active:scale-95"
               >
-                떠오르는 이름 남기기
+                친구 등록하기
               </Link>
               <Link
                 href="/submit?self=1"
                 className="rounded-2xl border border-neutral-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
               >
-                내 인스타 등록하기
+                내 인스타 연결하기
               </Link>
             </div>
           </div>
