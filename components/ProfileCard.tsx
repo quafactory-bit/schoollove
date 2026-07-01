@@ -22,7 +22,7 @@ export default function ProfileCard({ profile }: { profile: Profile }) {
     <>
       <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
+          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-sm shrink-0">
             {profile.nickname[0]}
           </div>
           <div className="min-w-0">
@@ -32,15 +32,15 @@ export default function ProfileCard({ profile }: { profile: Profile }) {
             </div>
             {profile.instagram_id ? (
               <a href={`https://instagram.com/${profile.instagram_id}`} target="_blank" rel="noopener noreferrer"
-                className="text-blue-500 text-sm hover:underline">
+                className="text-gray-900 text-sm font-medium hover:underline">
                 @{profile.instagram_id}
               </a>
             ) : (
-              <button onClick={() => setShowModal(true)} className="text-xs text-gray-400 hover:text-blue-500">
+              <button onClick={() => setShowModal(true)} className="text-xs text-gray-400 hover:text-gray-900">
                 + 인스타 추가
               </button>
             )}
-            {/* 등록할 때 남긴 "이 친구에게 한마디" — 본인이 보면 연결 동기가 생김 */}
+            {/* 등록할 때 남긴 "이 친구에게 한마디" - 본인이 보면 연결 동기가 생김 */}
             {profile.message && (
               <p className="mt-1 text-xs text-gray-500 italic">
                 💬 “{profile.message}”
