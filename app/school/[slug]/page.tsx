@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { headers } from 'next/headers'
 import { Users, MapPin, Calendar, ChevronRight } from 'lucide-react'
 import { getSchoolBySlug } from '@/lib/api/schools'
@@ -14,6 +15,7 @@ import SchoolWarmth from '@/components/SchoolWarmth'
 import { getSchoolPageMetadata } from '@/lib/seo'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { formatNumber } from '@/lib/utils'
+import { schoolTypeImage } from '@/lib/images'
 
 // 프로필 3명 이상인 학교만 구글에 index. 미만은 noindex (thin content 방지)
 const INDEX_THRESHOLD = 3
@@ -90,44 +92,59 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
       </nav>
 
       {/* 학교 헤더 */}
-      <div className="card p-5 space-y-3">
-        <div>
-          <h1 className="text-xl font-black text-gray-900">{school.school_name}</h1>
-          <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
-            <MapPin size={12} />
-            <span>{school.sido} {school.sigungu}</span>
-            <span className="mx-1 text-gray-300">·</span>
-            <span>{SCHOOL_TYPE_LABELS[school.school_type]}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-1.5">
-            <Users size={15} className="text-brand-blue" />
-            <span className="font-semibold text-gray-900">{formatNumber(count)}</span>
-            <span className="text-gray-500">명 등록</span>
-          </div>
-          {years.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <Calendar size={15} className="text-brand-blue" />
-              <span className="text-gray-500">{years[years.length - 1]}~{years[0]}년</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-2">
-          <Link
-            href={`/submit?school=${slug}`}
-            className="btn-primary inline-block text-sm text-center flex-1 sm:flex-none"
-          >
-            등록하기
-          </Link>
-          <ShareButton
-            text={shareText}
-            url={shareUrl}
-            label="공유"
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
+      <div className="card overflow-hidden">
+        {/* 타입별 실사 배너 */}
+        <div className="relative aspect-[16/9] w-full">
+          <Image
+            src={schoolTypeImage(school.school_type)}
+            alt=""
+            fill
+            sizes="(max-width: 600px) 100vw, 600px"
+            className="object-cover"
+            priority
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+        </div>
+
+        <div className="p-5 space-y-3">
+          <div>
+            <h1 className="text-xl font-black text-gray-900">{school.school_name}</h1>
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
+              <MapPin size={12} />
+              <span>{school.sido} {school.sigungu}</span>
+              <span className="mx-1 text-gray-300">·</span>
+              <span>{SCHOOL_TYPE_LABELS[school.school_type]}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1.5">
+              <Users size={15} className="text-brand-blue" />
+              <span className="font-semibold text-gray-900">{formatNumber(count)}</span>
+              <span className="text-gray-500">명 등록</span>
+            </div>
+            {years.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Calendar size={15} className="text-brand-blue" />
+                <span className="text-gray-500">{years[years.length - 1]}~{years[0]}년</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <Link
+              href={`/submit?school=${slug}`}
+              className="btn-primary inline-block text-sm text-center flex-1 sm:flex-none"
+            >
+              등록하기
+            </Link>
+            <ShareButton
+              text={shareText}
+              url={shareUrl}
+              label="공유"
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
+            />
+          </div>
         </div>
       </div>
 
