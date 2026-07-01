@@ -56,7 +56,7 @@ export default function SchoolWarmth({
 
   const isCustom = selected === '__custom__';
 
-  // 빈 페이지(등록 적음)인데 검색은 많은 경우 = "찾는 사람 많은데 아직 비어있다" → 선점 유도
+  // 빈 페이지(등록 적음)인데 검색은 많은 경우 = "찾는 사람 많은데 아직 비어있다" -> 선점 유도
   const showSearchDemand = profileCount < PROOF_THRESHOLD && searchCount >= SEARCH_THRESHOLD;
 
   async function submit() {
@@ -87,7 +87,7 @@ export default function SchoolWarmth({
 
   return (
     <div className="card p-4 space-y-3">
-      {/* 빈 페이지 + 검색 수요 많음: "N명이 찾고 있어요 → 네가 첫 번째가 되면 그들이 본다" */}
+      {/* 빈 페이지 + 검색 수요 많음: "N명이 찾고 있어요 -> 네가 첫 번째가 되면 그들이 본다" */}
       {showSearchDemand && (
         <div className="rounded-xl bg-amber-50 px-4 py-3.5 text-center">
           <p className="flex items-center justify-center gap-1.5 text-sm font-bold text-amber-700">
@@ -179,24 +179,24 @@ export default function SchoolWarmth({
         {err && <p className="text-xs text-red-500">{err}</p>}
       </div>
 
-      {/* "N명이 모였어요 → 내 인스타 연결" (등록이 충분히 쌓인 학교) */}
+      {/* "N명이 모였어요 -> 내 인스타 연결" (등록이 충분히 쌓인 학교) */}
       {profileCount >= PROOF_THRESHOLD ? (
         <Link
           href={`/submit?school=${slug}&self=1`}
-          className="block rounded-xl bg-blue-50 px-4 py-3.5 text-center transition hover:bg-blue-100"
+          className="block rounded-xl bg-gray-100 px-4 py-3.5 text-center transition hover:bg-gray-200"
         >
-          <span className="flex items-center justify-center gap-1.5 text-sm font-semibold text-blue-700">
+          <span className="flex items-center justify-center gap-1.5 text-sm font-semibold text-gray-900">
             <Users size={15} />
             {schoolName}에 이미 {formatNumber(profileCount)}명이 모였어요
           </span>
-          <span className="mt-0.5 block text-xs text-blue-500">
+          <span className="mt-0.5 block text-xs text-gray-500">
             그중 누군가 당신을 기억하고 있을지도 몰라요 · 내 인스타 연결하기
           </span>
         </Link>
       ) : (
         <Link
           href={`/submit?school=${slug}&self=1`}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-900 transition-colors"
         >
           📷 내 인스타 등록하기
         </Link>
