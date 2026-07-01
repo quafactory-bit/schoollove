@@ -1,55 +1,66 @@
-import type { Config } from 'tailwindcss'
-
-const config: Config = {
-  content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
-  theme: {
-    extend: {
-      colors: {
-        brand: {
-          blue: '#2563EB',
-          'blue-hover': '#1D4ED8',
-          'blue-light': '#EFF6FF',
-        },
-        gray: {
-          50: '#F9FAFB',
-          100: '#F3F4F6',
-          200: '#E5E7EB',
-          300: '#D1D5DB',
-          400: '#9CA3AF',
-          500: '#6B7280',
-          600: '#4B5563',
-          700: '#374151',
-          800: '#1F2937',
-          900: '#111827',
-        },
-      },
-      fontFamily: {
-        sans: [
-          '"Noto Sans KR"',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          'system-ui',
-          'sans-serif',
-        ],
-      },
-      fontSize: {
-        '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
-      },
-      maxWidth: {
-        'content': '640px',
-      },
-      boxShadow: {
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
-        'card-hover': '0 4px 12px 0 rgba(0, 0, 0, 0.1)',
-        'search': '0 2px 8px 0 rgba(37, 99, 235, 0.12)',
-      },
-    },
-  },
-  plugins: [],
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white text-gray-900 font-sans;
+    min-height: 100dvh;
+    letter-spacing: -0.018em;
+  }
+  /* 스크롤바 */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-300;
+  }
 }
-
-export default config
+@layer components {
+  .page-container {
+    @apply max-w-content mx-auto px-5 py-6;
+  }
+  .card {
+    @apply bg-white border border-gray-200 rounded-2xl shadow-card;
+  }
+  .btn-primary {
+    @apply bg-brand-blue text-white font-bold py-3 px-6 rounded-2xl hover:bg-brand-blue-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-white text-gray-700 font-medium py-3 px-6 rounded-2xl border border-gray-200 hover:bg-gray-50 transition-colors;
+  }
+  .input-base {
+    @apply w-full border border-gray-200 rounded-2xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition-all;
+  }
+  .chip {
+    @apply inline-flex items-center px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer;
+  }
+  .chip-active {
+    @apply bg-brand-blue text-white;
+  }
+  .chip-inactive {
+    @apply bg-white text-gray-600 border border-gray-200 hover:border-gray-400 hover:text-gray-900;
+  }
+  .section-title {
+    @apply text-sm font-semibold text-gray-500 uppercase tracking-wide;
+  }
+  .divider {
+    @apply border-t border-gray-100 my-4;
+  }
+}
