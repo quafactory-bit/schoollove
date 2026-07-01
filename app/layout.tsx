@@ -2,10 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
-import { cn } from '@/lib/utils';
 import Footer from '@/components/Footer';
 import TabBar from '@/components/TabBar';
-const geist = Geist({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist', display: 'swap' });
 export const viewport: Viewport = {
   themeColor: '#000000',
   width: 'device-width',
@@ -41,8 +40,20 @@ export const metadata: Metadata = {
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" className={cn('font-sans', geist.variable)}>
-      <body className={geist.className}>
+    <html lang="ko" className={geist.variable}>
+      <head>
+        {/* 한글용 Pretendard (영문은 Geist 유지) */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+        />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `body{font-family:'Pretendard Variable',Pretendard,var(--font-geist),-apple-system,BlinkMacSystemFont,system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;letter-spacing:-0.018em;}`,
+          }}
+        />
+      </head>
+      <body className="antialiased">
         <Providers>
           {/* 하단 탭바에 콘텐츠가 가리지 않게 여백 확보 */}
           <div className="pb-16">
