@@ -214,8 +214,8 @@ function SubmitInner() {
     const othersAtSchool = Math.max(done.totalAtSchool - done.success, 0)
     return (
       <main className="mx-auto w-full max-w-[600px] px-5 pb-24 pt-10 text-center">
-        <div className="mx-auto mb-6 w-full max-w-xs">
-          <Image src={IMG.completeSchool} alt="" width={1536} height={1024} className="h-auto w-full" />
+<div className="mx-auto mb-6 w-full max-w-xs overflow-hidden rounded-2xl">
+          <Image src={IMG.completeGraduation} alt="졸업 축하" width={1000} height={750} className="h-auto w-full" />
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight text-neutral-900">
           {selfMode ? '연결 완료!' : '등록 완료!'}
