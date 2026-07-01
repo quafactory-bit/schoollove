@@ -213,25 +213,25 @@ function SubmitInner() {
   if (done) {
     const othersAtSchool = Math.max(done.totalAtSchool - done.success, 0)
     return (
-      <main className="mx-auto w-full max-w-md px-5 pb-24 pt-10 text-center">
+      <main className="mx-auto w-full max-w-[600px] px-5 pb-24 pt-10 text-center">
         <div className="mx-auto mb-6 w-full max-w-xs">
           <Image src={IMG.completeSchool} alt="" width={1536} height={1024} className="h-auto w-full" />
         </div>
-        <h1 className="text-2xl font-extrabold text-neutral-900">
+        <h1 className="text-2xl font-extrabold tracking-tight text-neutral-900">
           {selfMode ? '연결 완료!' : '등록 완료!'}
         </h1>
         <p className="mt-3 text-sm text-neutral-600">
-          {school?.school_name}에 <b className="text-blue-600">{done.success}명</b>{' '}
+          {school?.school_name}에 <b className="text-neutral-900">{done.success}명</b>{' '}
           {selfMode ? '연결됐어요.' : '등록됐어요.'}
           {done.dup > 0 && <span className="block text-neutral-400">{done.dup}명은 이미 등록되어 있었어요.</span>}
           {done.fail > 0 && <span className="block text-red-400">{done.fail}명은 등록에 실패했어요.</span>}
         </p>
 
         {othersAtSchool > 0 && (
-          <div className="mx-auto mt-6 max-w-xs rounded-xl bg-blue-50 px-4 py-4">
-            <p className="text-sm font-semibold text-blue-700">혼자가 아니에요 👋</p>
+          <div className="mx-auto mt-6 max-w-xs rounded-2xl bg-neutral-100 px-4 py-4">
+            <p className="text-sm font-bold text-neutral-900">혼자가 아니에요 👋</p>
             <p className="mt-1 text-sm text-neutral-600">
-              이 학교엔 이미 <b className="text-blue-600">{done.totalAtSchool}명</b>이 함께 있어요.
+              이 학교엔 이미 <b className="text-neutral-900">{done.totalAtSchool}명</b>이 함께 있어요.
             </p>
           </div>
         )}
@@ -240,14 +240,14 @@ function SubmitInner() {
           {school && (
             <Link
               href={`/school/${school.slug}`}
-              className="block w-full rounded-xl bg-blue-600 px-5 py-4 text-sm font-semibold text-white transition active:scale-95"
+              className="block w-full rounded-2xl bg-neutral-900 px-5 py-4 text-sm font-bold text-white transition active:scale-95"
             >
               우리 학교 페이지에서 확인하기
             </Link>
           )}
           <button
             onClick={shareSchool}
-            className="block w-full rounded-xl border border-neutral-200 px-5 py-4 text-sm font-semibold text-neutral-700"
+            className="block w-full rounded-2xl border border-neutral-200 px-5 py-4 text-sm font-bold text-neutral-700 transition hover:bg-neutral-50"
           >
             단톡방에 공유하기
           </button>
@@ -265,11 +265,11 @@ function SubmitInner() {
 
   // ── 등록 폼 ─────────────────────────────────────────────
   return (
-    <main className="mx-auto w-full max-w-md px-5 pb-28">
+    <main className="mx-auto w-full max-w-[600px] px-5 pb-28">
       <div className="mx-auto mt-6 mb-2 w-40">
         <Image src={IMG.bannerSubmit} alt="" width={1536} height={1024} className="h-auto w-full" priority />
       </div>
-      <h1 className="text-center text-2xl font-extrabold text-neutral-900">
+      <h1 className="text-center text-2xl font-extrabold tracking-tight text-neutral-900">
         {selfMode ? '내 인스타를 연결해요' : '기억나는 친구 이름을 남겨보세요'}
       </h1>
       <p className="mt-2.5 text-center text-sm text-neutral-500">
@@ -282,7 +282,7 @@ function SubmitInner() {
       <section className="mt-9">
         <label className="mb-2 block text-sm font-semibold text-neutral-800">학교</label>
         {school ? (
-          <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-4 py-3.5">
+          <div className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3.5">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-neutral-900">{school.school_name}</p>
               <p className="truncate text-xs text-neutral-500">
@@ -291,7 +291,7 @@ function SubmitInner() {
                 {school.sigungu ? ` ${school.sigungu}` : ''}
               </p>
             </div>
-            <button onClick={() => setSchool(null)} className="ml-3 shrink-0 text-xs text-blue-600 underline">
+            <button onClick={() => setSchool(null)} className="ml-3 shrink-0 text-xs text-neutral-500 underline">
               변경
             </button>
           </div>
@@ -302,11 +302,11 @@ function SubmitInner() {
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => results.length && setOpen(true)}
               placeholder="학교 이름을 검색하세요"
-              className="w-full rounded-xl border border-neutral-200 px-4 py-3.5 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-2xl border border-neutral-200 px-4 py-3.5 text-base outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100"
               autoComplete="off"
             />
             {open && (
-              <div className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-neutral-200 bg-white shadow-lg">
+              <div className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-2xl border border-neutral-200 bg-white shadow-lg">
                 {searching ? (
                   <p className="px-4 py-3 text-sm text-neutral-400">검색 중…</p>
                 ) : results.length === 0 ? (
@@ -339,7 +339,7 @@ function SubmitInner() {
             <select
               value={gradYear}
               onChange={(e) => setGradYear(e.target.value)}
-              className="rounded-xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-blue-500"
+              className="rounded-2xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-neutral-900"
             >
               <option value="">졸업년도</option>
               {YEARS.map((y) => (
@@ -355,14 +355,14 @@ function SubmitInner() {
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
                   placeholder="학과(선택)"
-                  className="rounded-xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-blue-500"
+                  className="rounded-2xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-neutral-900"
                 />
                 <input
                   value={studentYear}
                   onChange={(e) => setStudentYear(e.target.value.replace(/\D/g, ''))}
                   placeholder="학번(선택)"
                   inputMode="numeric"
-                  className="rounded-xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-blue-500"
+                  className="rounded-2xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-neutral-900"
                 />
               </>
             ) : (
@@ -370,7 +370,7 @@ function SubmitInner() {
                 <select
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
-                  className="rounded-xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-blue-500"
+                  className="rounded-2xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-neutral-900"
                 >
                   <option value="">학년</option>
                   {Array.from({ length: gradeMax }, (_, i) => i + 1).map((g) => (
@@ -384,7 +384,7 @@ function SubmitInner() {
                   onChange={(e) => setClassNumber(e.target.value.replace(/\D/g, ''))}
                   placeholder="반"
                   inputMode="numeric"
-                  className="rounded-xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-blue-500"
+                  className="rounded-2xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-neutral-900"
                 />
               </>
             )}
@@ -403,15 +403,15 @@ function SubmitInner() {
           )}
           <div className="space-y-4">
             {people.map((p, i) => (
-              <div key={i} className="rounded-xl border border-neutral-100 bg-neutral-50/50 p-3">
+              <div key={i} className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-3">
                 <div className="flex gap-2">
                   <input
                     value={p.nickname}
                     onChange={(e) => updatePerson(i, 'nickname', e.target.value)}
                     placeholder={selfMode ? '내 이름 또는 별명' : '이름 또는 별명'}
-                    className="w-2/5 rounded-xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-blue-500"
+                    className="w-2/5 rounded-2xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-neutral-900"
                   />
-                  <div className="flex flex-1 items-center rounded-xl border border-neutral-200 bg-white px-3 focus-within:border-blue-500">
+                  <div className="flex flex-1 items-center rounded-2xl border border-neutral-200 bg-white px-3 focus-within:border-neutral-900">
                     <span className="text-sm text-neutral-400">@</span>
                     <input
                       value={p.instagram}
@@ -423,7 +423,7 @@ function SubmitInner() {
                   {!selfMode && people.length > 1 && (
                     <button
                       onClick={() => removePerson(i)}
-                      className="shrink-0 rounded-xl px-2 text-neutral-300 hover:text-red-400"
+                      className="shrink-0 rounded-2xl px-2 text-neutral-300 hover:text-red-400"
                       aria-label="삭제"
                     >
                       ✕
@@ -439,7 +439,7 @@ function SubmitInner() {
                       onChange={(e) => updatePerson(i, 'message', e.target.value.slice(0, 30))}
                       placeholder={selfMode ? '나를 한마디로 소개 (선택)' : '이 친구에게 한마디 (선택)'}
                       maxLength={30}
-                      className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-3 text-sm outline-none focus:border-blue-500"
+                      className="w-full rounded-2xl border border-neutral-200 bg-white px-3 py-3 text-sm outline-none focus:border-neutral-900"
                     />
                     {!selfMode && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -448,7 +448,7 @@ function SubmitInner() {
                             key={m}
                             type="button"
                             onClick={() => updatePerson(i, 'message', m)}
-                            className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs text-neutral-500 hover:border-blue-400 hover:text-blue-500"
+                            className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs text-neutral-500 hover:border-neutral-400 hover:text-neutral-900"
                           >
                             {m}
                           </button>
@@ -465,7 +465,7 @@ function SubmitInner() {
                       type="checkbox"
                       checked={p.isSelf}
                       onChange={(e) => updatePerson(i, 'isSelf', e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                      className="h-3.5 w-3.5 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-400"
                     />
                     내 인스타예요 (공개 노출에 동의)
                   </label>
@@ -476,7 +476,7 @@ function SubmitInner() {
           {!selfMode && (
             <button
               onClick={addPerson}
-              className="mt-3 w-full rounded-xl border border-dashed border-neutral-300 py-3 text-sm font-medium text-neutral-500 hover:bg-neutral-50"
+              className="mt-3 w-full rounded-2xl border border-dashed border-neutral-300 py-3 text-sm font-medium text-neutral-500 hover:bg-neutral-50"
             >
               ＋ 친구 추가
             </button>
@@ -491,7 +491,7 @@ function SubmitInner() {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full rounded-xl bg-blue-600 py-4 text-base font-semibold text-white transition active:scale-95 disabled:opacity-50"
+            className="w-full rounded-2xl bg-neutral-900 py-4 text-base font-bold text-white transition active:scale-95 disabled:opacity-50"
           >
             {submitting ? '등록 중…' : selfMode ? '내 인스타 연결하기' : '등록하기'}
           </button>
