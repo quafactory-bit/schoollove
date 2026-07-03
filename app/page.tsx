@@ -7,7 +7,6 @@ import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import ShareButton from '@/components/ShareButton'
 import { Search, PenLine, Heart } from 'lucide-react'
-import WorldcupBanner from '@/components/WorldcupBanner'
 
 // 메인에서 보여줄 "최근 등록" 한 줄의 모양
 type RecentRow = {
@@ -115,11 +114,6 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto w-full max-w-[600px] px-5 pb-24">
-      {/* ── 2026 월드컵 응원 띠배너 (시즌 한정 · 종료 후 제거) ── */}
-      <div className="-mx-5 overflow-hidden sm:mx-0 sm:mt-4 sm:rounded-2xl">
-        <WorldcupBanner />
-      </div>
-
       {/* ── 히어로 ── */}
       <section className="pt-7 text-left">
         <span className="inline-flex items-center rounded-full border border-neutral-200 px-3 py-1.5 text-[12.5px] font-semibold text-neutral-500">
