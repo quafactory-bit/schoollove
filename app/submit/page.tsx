@@ -266,7 +266,6 @@ function SubmitInner() {
   // ── 등록 폼 ─────────────────────────────────────────────
   return (
     <main className="mx-auto w-full max-w-[600px] px-5 pb-28">
-      <h1 className="mt-8 text-center text-2xl font-extrabold tracking-tight text-neutral-900">
       <h1 className="text-center text-2xl font-extrabold tracking-tight text-neutral-900">
         {selfMode ? '내 인스타를 연결해요' : '기억나는 친구 이름을 남겨보세요'}
       </h1>
