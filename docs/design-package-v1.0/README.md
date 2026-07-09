@@ -1,4 +1,4 @@
-# SchoolLove Development Package
+# SchoolLoveI Development Package
 
 **Current Version**
 v1.0
