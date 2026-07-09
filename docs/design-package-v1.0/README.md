@@ -1,3 +1,15 @@
+# SchoolLove Development Package
+
+**Current Version**
+v1.0
+
+**Status**
+FROZEN
+
+**Last Updated**
+2026-07-09
+
+---
 # SchoolLoveI Development Package v1.0 (FROZEN)
 
 이 패키지는 Claude Code 개발 기준본입니다.
