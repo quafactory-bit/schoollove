@@ -10,7 +10,7 @@ FROZEN
 2026-07-09
 
 ---
-# SchoolLoveI Development Package v1.0 (FROZEN)
+# SchoolLoveI Development Package
 
 이 패키지는 Claude Code 개발 기준본입니다.
 
