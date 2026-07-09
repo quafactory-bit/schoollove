@@ -50,9 +50,16 @@ max level 없음
 ## 3. 레벨 곡선 — v1.0 임시 곡선
 
 ```ts
-const threshold = (L: number): number =>
-  Math.round(50 * Math.pow(L, 1.5))
+const threshold = (L: number): number => {
+  if (L === 1) return 0
+
+  return Math.round(50 * Math.pow(L, 1.5))
+}
 ```
+
+`threshold(1) = 0`은 명시적 예외다.
+
+Level 1은 cumulativeXp 0에서 시작한다.
 
 이 곡선은 **UI/cold-start를 위한 임시 값**이다.
 
