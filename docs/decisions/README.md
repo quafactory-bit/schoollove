@@ -1,4 +1,4 @@
-# Architecture Decisions
+# SchoolLoveI Decisions
 
 이 폴더는 설계 과정에서 왜 이런 결정을 했는지를 기록합니다.
 
