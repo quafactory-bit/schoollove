@@ -168,8 +168,11 @@ schools.level_updated_at
 
 - 레벨 계산은 Policy에서 수행한다.
 - 새 계산 레벨이 저장 레벨보다 낮으면 저장 레벨을 유지한다.
-- 레벨이 상승할 때 `current_level`을 갱신한다.
-- 레벨 값이 실제로 변경될 때 `level_updated_at`을 갱신한다.
+- `current_level = null`은 미초기화/backfill 상태로 본다.
+- null에서 계산된 Level을 최초 저장하는 것은 초기화이며 Level Up으로 보지 않는다.
+- 초기화 시 `current_level`만 저장하고 `level_updated_at`은 갱신하지 않는다.
+- 저장된 유효 Level N에서 더 높은 Level M(M > N)으로 상승할 때 `current_level`을 갱신한다.
+- 실제 Level 상승이 발생한 경우에만 `level_updated_at`을 갱신한다.
 
 ---
 
