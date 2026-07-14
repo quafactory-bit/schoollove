@@ -359,3 +359,122 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - 남은 단계는 운영 승인
 - 다른 학교 선택 차단 검증은 선택 사항
 - 해당 선택 사항은 완료 판단을 막지 않음
+
+---
+
+## 2026-07-14 (2)
+
+### 구현
+
+- Register Flow → Level 연결 Phase 1 (`docs/decisions/2026-07-14-register-flow-level-connection-phase0.md` Phase 0 결정 문서 기준)
+- `app/submit/page.tsx`의 클라이언트 직접 `supabase.from('profiles').insert()` 호출을 제거하고, 공식 서버 Route `POST /api/profiles` 호출로 교체
+- Register Flow의 화면, 문구, 입력 순서, 로딩 상태, 성공 UX는 무수정
+- `POST /api/profiles`에서 프로필 insert 성공 직후, 해당 학교의 실제 프로필 수(`getSchoolProfileCount`)를 다시 조회해 `cumulativeXp`로 사용하고 기존 `syncSchoolLevel`을 호출 — 등록 1명 = 1 XP 잠정 정책만 사용
+- Level Sync 실패(내부 오류 반환 또는 예외 발생)는 서버 로그만 남기고 프로필 등록 성공 응답(201)을 취소하지 않는 non-blocking 방식으로 구현
+- 프로필 insert 자체가 실패한 경우(중복/validation/DB 오류)는 Level Sync를 호출하지 않음
+- 기존 Zod validation과 Upstash rate limit(20회/60초/IP)은 무수정 재사용
+- Route validation과 실제 submit 페이지 필드를 대조해 두 가지 불일치를 보완:
+  - `is_self`, `message` 필드가 Zod 스키마에 없어 저장되지 않던 문제를 보완(FROZEN `12-db-schema.md`의 기존 `profiles` 컬럼 목록에 이미 존재하는 필드)
+  - `graduation_year` 서버 validation 범위(1990~2035)가 submit 페이지의 실제 졸업년도 드롭다운 범위(1970~2032)와 달라 1970~1989년 졸업자가 서버에서 거부되던 문제를 실제 범위(1970~2032)로 보정
+- `types/profile.ts`의 `Profile`/`ProfileInsert`에 누락되어 있던 `is_self`, `message` 필드 보완(DB에는 이미 존재하는 필드, 타입 정의만 실제와 불일치했음)
+
+### 관련 파일
+
+- `app/submit/page.tsx`
+- `app/api/profiles/route.ts`
+- `app/api/profiles/route.test.ts` (신규, 14 tests)
+- `types/profile.ts`
+- `docs/decisions/2026-07-14-register-flow-level-connection-phase0.md` (Phase 0 결정 문서, 별도 커밋 전 작성)
+
+### 검증
+
+- `npx vitest run app/api/profiles/route.test.ts` → 14 passed
+- `npx tsc --noEmit` → 오류 없음
+- `npm test` → 6 test files, 74 tests 통과 (기존 60 + 신규 14)
+- `.env.local` 부재로 실제 Supabase/브라우저 기반 smoke test는 미실행
+
+### 비고
+
+- Feed event 생성(`FEED_EVENT_CREATED`)과 XP Source 최종 확정은 이번 범위에 포함하지 않음 — `14-open-issues.md`의 DEFERRED 상태 유지
+- `lib/policy/levelPolicy.ts`, `lib/policy/levelPersistence.ts`, `lib/api/levels.ts`는 무수정 재사용
+- School Hub, Home Feed, `search_logs.clicked_school_id`는 이번 범위 밖
+- 배치 등록(여러 명 동시 제출) 시 인당 1회씩 Level Sync가 반복 호출되는 비효율 최적화는 후속 과제로 남김(Phase 0 결정 문서에 이미 기록됨)
+- 실제 Supabase 환경에서의 수동 QA(더미 학교로 실제 `/submit` 등록 → `current_level` 변화 확인)는 아직 수행하지 않음
+
+---
+
+## 2026-07-14 (3)
+
+### 구현
+
+- Register Flow → Level Phase 1 실제 smoke test 준비 과정에서 발견된 실제 결함 2건 수정
+- **결함 1 — Upstash rate limit 환경변수 누락 시 500**: 로컬 `.env.local`에 `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`이 없을 때 `app/api/profiles/route.ts`의 `ratelimit.limit(ip)`에서 `Failed to parse URL from /pipeline` 예외가 발생해 `POST /api/profiles`가 처리되지 않은 500으로 끝나던 것을 확인
+  - `app/api/profiles/route.ts`에 `checkRateLimit(ip)` helper를 분리해 Upstash 설정 여부를 먼저 확인
+  - production: 설정 누락을 우회하지 않고 `console.error` 로그 후 명확한 `500 { error: '서버 설정 오류입니다.' }`로 fail-closed (`app/api/admin/auth/route.ts`의 `ADMIN_PASSWORD` 누락 처리와 동일 관례)
+  - development/test: `console.warn` 경고만 남기고 rate limit을 건너뛰어 로컬 개발과 smoke test가 막히지 않도록 함
+  - Upstash가 정상 설정된 경우(production 포함)의 기존 rate limit 정상/초과 동작은 무수정 유지
+  - 실제 환경변수 값은 로그에 남기지 않음(존재 여부만 확인)
+  - 저장소 내 다른 rate limit 사용처(`app/api/traces/route.ts`)를 조사했으나 동일한 fallback 관례가 없었음을 확인 — 이번 수정은 `app/api/profiles/route.ts`에만 적용하고 `app/api/traces/route.ts`는 이번 범위에 포함하지 않음(확인된 실제 결함이 아님)
+- **결함 2 — 전체 실패 시 "완료" 문구 오표시**: `app/submit/page.tsx`에서 프로필 등록이 전부 실패(성공 0명 + 실패 1명 이상)해도 결과 화면 제목이 `연결 완료!`/`등록 완료!`로 표시되던 것을 확인
+  - `app/submit/resultText.ts`(신규, `app/admin/tools/level-sync/validation.ts`와 동일한 "페이지 옆 순수 함수 모듈" 관례를 따름)에 `isAllFailed`, `resultHeading` 순수 함수 분리
+  - 성공 0명 + 실패 1명 이상일 때만 제목을 `등록하지 못했어요`/`연결하지 못했어요`로 변경, 그 외(전체 성공/부분 성공/중복만 있는 경우)는 기존 `완료!` 문구 그대로 유지
+  - 전체 실패 시 본문의 "N명 등록/연결됐어요" 줄만 숨기고, 기존 중복/실패 안내 줄과 레이아웃·재시도 버튼(`계속 등록하기`)은 무수정
+
+### 관련 파일
+
+- `app/api/profiles/route.ts` (rate limit fallback 추가)
+- `app/api/profiles/route.test.ts` (신규 rate limit fallback 테스트 3개 추가, 기존 테스트는 Upstash 설정 상태를 명시적으로 stub하도록 보완)
+- `app/submit/page.tsx` (전체 실패 시 문구 수정)
+- `app/submit/resultText.ts` (신규)
+- `app/submit/resultText.test.ts` (신규)
+
+### 검증
+
+- `npx vitest run app/api/profiles/route.test.ts app/submit/resultText.test.ts` → 23 passed
+- `npx tsc --noEmit` → 오류 없음
+- `npm test` → 7 test files, 83 tests 통과 (기존 74 + 신규 9)
+- `.env.local` 부재로 실제 Supabase/브라우저 기반 재현 smoke test(수정 후)는 미실행
+
+### 비고
+
+- DB 변경, FROZEN 문서 변경, Level Policy/Persistence 수정, Feed event는 이번 범위에 포함하지 않음
+- `app/api/traces/route.ts`에도 동일한 Upstash 설정 누락 패턴이 존재하나 이번에 확인된 실제 결함 범위가 아니므로 수정하지 않음 — 후속 검토 대상으로 남김
+- 수정 후 실제 로컬 `.env.local` 없는 상태에서의 브라우저 재현 smoke test는 아직 수행하지 않음
+
+---
+
+## 2026-07-14 (4)
+
+### 구현
+
+- 결함 1(Upstash rate limit 환경변수 누락 시 500)과 결함 2(전체 실패 시 `연결 완료!` 오표시) 수정에 대한 수동 브라우저 smoke test 수행(운영자 보고 기준)
+- 검증 경로:
+  - `localhost:3001` (`npm run dev`)
+- 시나리오 1 — 정상 등록:
+  - `/submit` 화면과 CSS 정상 렌더링 확인
+  - `POST /api/profiles` → 201 응답
+  - Upstash 환경변수가 없는 development 환경에서 rate limit 우회 warning 출력, 요청은 정상 처리됨(결함 1 수정 확인)
+  - 결과 화면: `연결 완료!` + `1명 연결됐어요` 정상 표시
+- 시나리오 2 — 전체 실패(브라우저 Network를 Offline으로 설정해 재현):
+  - 성공 0명 · 실패 1명 상태 재현
+  - 결과 화면: `연결하지 못했어요` + `1명은 등록에 실패했어요` 표시(결함 2 수정 확인)
+  - 기존의 잘못된 `연결 완료!` 및 성공 인원 문장은 표시되지 않음
+  - 테스트 후 Network 설정을 No throttling으로 복구
+
+### 관련 파일
+
+- `docs/IMPLEMENTATION_LOG.md`
+- 기능 소스 변경 없음
+- 테스트 코드 변경 없음
+
+### 검증
+
+- 수동 브라우저 smoke test 시나리오 2개 모두 통과(운영자 보고 기준)
+- rate limit fallback(development 우회) 실제 동작 확인
+- 전체 실패 결과 화면 문구 실제 동작 확인
+
+### 비고
+
+- Register Flow → Level Phase 1 및 rate limit/전체 실패 화면 수정의 수동 smoke test 완료
+- 이번 smoke test는 `POST /api/profiles` 응답과 화면 문구만 확인했으며, `schools.current_level`/`level_updated_at`이 실제로 갱신됐는지는 이번 시나리오에 포함되지 않음 — DB 레벨 확인은 이전 턴에서 준비한 더미 학교 SQL을 사용한 별도 확인이 필요
+- collector/BoostKitchen 관련 내용 없음

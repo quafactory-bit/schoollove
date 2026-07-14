@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { IMG } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
+import { isAllFailed, resultHeading } from './resultText'
 
 type SchoolLite = {
   id: string
@@ -162,16 +163,24 @@ function SubmitInner() {
     let fail = 0
     for (const p of valid) {
       const insta = normalizeInsta(p.instagram) || null
-      const { error } = await supabase.from('profiles').insert({
-        ...base,
-        nickname: p.nickname.trim(),
-        instagram_id: insta,
-        is_self: insta ? p.isSelf : false,
-        message: p.message.trim() || null, // 이 친구에게 한마디
-      })
-      if (!error) success++
-      else if (error.code === '23505') dup++
-      else fail++
+      try {
+        const res = await fetch('/api/profiles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...base,
+            nickname: p.nickname.trim(),
+            instagram_id: insta,
+            is_self: insta ? p.isSelf : false,
+            message: p.message.trim() || null, // 이 친구에게 한마디
+          }),
+        })
+        if (res.ok) success++
+        else if (res.status === 409) dup++
+        else fail++
+      } catch {
+        fail++
+      }
     }
 
     let totalAtSchool = success
@@ -212,17 +221,22 @@ function SubmitInner() {
   // ── 등록 완료 화면 ──────────────────────────────────────
   if (done) {
     const othersAtSchool = Math.max(done.totalAtSchool - done.success, 0)
+    const allFailed = isAllFailed(done)
     return (
       <main className="mx-auto w-full max-w-[600px] px-5 pb-24 pt-10 text-center">
 <div className="mx-auto mb-6 w-full max-w-xs overflow-hidden rounded-2xl">
           <Image src={IMG.completeGraduation} alt="졸업 축하" width={1000} height={750} className="h-auto w-full" />
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight text-neutral-900">
-          {selfMode ? '연결 완료!' : '등록 완료!'}
+          {resultHeading(selfMode, done)}
         </h1>
         <p className="mt-3 text-sm text-neutral-600">
-          {school?.school_name}에 <b className="text-neutral-900">{done.success}명</b>{' '}
-          {selfMode ? '연결됐어요.' : '등록됐어요.'}
+          {!allFailed && (
+            <>
+              {school?.school_name}에 <b className="text-neutral-900">{done.success}명</b>{' '}
+              {selfMode ? '연결됐어요.' : '등록됐어요.'}
+            </>
+          )}
           {done.dup > 0 && <span className="block text-neutral-400">{done.dup}명은 이미 등록되어 있었어요.</span>}
           {done.fail > 0 && <span className="block text-red-400">{done.fail}명은 등록에 실패했어요.</span>}
         </p>

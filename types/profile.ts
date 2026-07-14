@@ -11,6 +11,8 @@ export interface Profile {
   nickname: string
   instagram_id: string | null
   description?: string | null
+  is_self: boolean
+  message?: string | null
   report_count: number
   is_hidden: boolean
   created_at: string
@@ -28,6 +30,8 @@ export interface ProfileInsert {
   nickname: string
   instagram_id?: string | null
   description?: string | null
+  is_self?: boolean
+  message?: string | null
 }
 
 export interface Report {
