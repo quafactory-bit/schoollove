@@ -478,3 +478,82 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - Register Flow → Level Phase 1 및 rate limit/전체 실패 화면 수정의 수동 smoke test 완료
 - 이번 smoke test는 `POST /api/profiles` 응답과 화면 문구만 확인했으며, `schools.current_level`/`level_updated_at`이 실제로 갱신됐는지는 이번 시나리오에 포함되지 않음 — DB 레벨 확인은 이전 턴에서 준비한 더미 학교 SQL을 사용한 별도 확인이 필요
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-15
+
+### 구현
+
+- Register Flow → Level 연결 Phase 2 — 데이터 정합성·중복 처리·실패 처리 검증
+- 기준 커밋 `c077c31`(Phase 1 완료 상태) 기준으로 `app/api/profiles/route.ts`, `lib/api/levels.ts`, `types/profile.ts`, 기존 테스트를 코드 레벨로 재분석한 결과, 코드 로직 자체의 결함은 발견되지 않음(상세는 아래 "확인된 사실" 참고)
+- 다만 (a) 여러 명을 한 번에 등록할 때 학교당 신규 성공 건수만큼 `syncSchoolLevel`이 반복 호출되는 동작과 (b) 성공/중복/실패 배치 분류 로직이 `app/submit/page.tsx`의 `handleSubmit` 클로저 내부에 인라인되어 있어 자동 테스트가 불가능했던 두 가지 실제 확인 공백을 발견
+- `app/submit/page.tsx`의 등록 루프(사람별 `POST /api/profiles` 순차 호출 + 성공/중복/실패 집계)를 `app/submit/registerPeople.ts`로 분리 — 동작은 100% 동일(로직 이동만), fetch 호출 순서/횟수/바디, 카운트 규칙 무변경
+- `normalizeInsta`도 함께 이동(등록 루프와 강하게 결합된 순수 함수)
+- 분리로 확보된 테스트 가능성을 이용해 배치 시나리오(신규 1명/중복만/신규+중복 혼합/여러 신규/실패/재시도) 테스트 8개를 `app/submit/registerPeople.test.ts`에 신규 작성
+- `app/api/profiles/route.test.ts`에 배치·재시도 관점 테스트 2개 추가(같은 학교 신규 성공 2건 연속 시 `syncSchoolLevel`이 정확히 2번, 각기 다른 cumulativeXp로 호출되는지 / 성공 후 동일 등록 재시도 시 `syncSchoolLevel`이 최초 1회만 호출되는지)
+- 코드 변경 없음: `app/api/profiles/route.ts`, `lib/api/levels.ts`, `lib/policy/levelPolicy.ts`, `lib/policy/levelPersistence.ts`, `types/profile.ts` — 분석 결과 기존 로직이 이미 정책을 만족해 수정 불필요로 판단
+
+### 확인된 사실
+
+- 신규 프로필 등록 성공 시: `app/api/profiles/route.ts`의 `profiles` insert 성공 직후(에러 없음)에만 `syncSchoolLevel` 호출. 중복(23505→409)과 그 외 실패(400/429/500)는 Level Sync 도달 전에 응답이 반환되어 호출되지 않음(회귀 테스트로 재확인)
+- 여러 명 등록 시: 사람 1명 = `POST /api/profiles` 1회 = (성공 시) `syncSchoolLevel` 1회. N명 신규 성공이면 동일 학교에 대해 `syncSchoolLevel`이 N번 순차 호출됨(비효율이지만 데이터 정합성 문제는 아님 — 아래 "남은 blocker" 참고)
+- Level Sync 실패 시: `try/catch`로 감싸져 있어 API 응답은 항상 `201 { data }` 유지(새 필드 추가 없음), 화면은 `res.ok` 여부만으로 success를 집계하므로 Level Sync 실패는 사용자에게 노출되지 않음(Phase 0 결정 문서의 채택된 권장안과 일치, 회귀 없음 확인)
+- 재시도 시 XP/Level 중복 반영 가능성: 없음. `cumulativeXp`가 `getSchoolProfileCount`(실제 DB row count)로 매번 새로 계산되는 파생값이라 "누적 합산"이 아니며, `resolveLevelUpdate`의 저장 판단이 저장된 Level 이상으로만 갱신되는 단조 증가 정책이라 동일 값으로 재호출해도 재저장이 일어나지 않음(`lib/api/levels.test.ts` 기존 테스트 1·2로 이미 검증됨). 또한 `profiles` 테이블의 기존 unique index(`uq_profiles_identity`)가 동일 학교/졸업년도/학년/반/이름 조합의 재삽입을 DB 레벨에서 차단해, 재시도가 성공 응답을 두 번 받는 경우 자체가 발생하지 않음
+- 부분 성공 시 success/dup/fail 카운트: `registerPeople`가 매 요청의 실제 HTTP 상태(201/409/그외)만으로 집계하므로 항상 실제 DB 결과와 일치하며, `success + dup + fail`이 시도 인원수와 항상 같음(신규 테스트로 검증)
+
+### 관련 파일
+
+- `app/submit/registerPeople.ts` (신규)
+- `app/submit/registerPeople.test.ts` (신규, 8 tests)
+- `app/submit/page.tsx` (등록 루프를 `registerPeople` 호출로 교체 — 동작 무변경)
+- `app/api/profiles/route.test.ts` (배치/재시도 테스트 2개 추가)
+- `docs/IMPLEMENTATION_LOG.md`
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run app/api/profiles/route.test.ts app/submit/registerPeople.test.ts app/submit/resultText.test.ts` → 35 passed
+- `npm test` → 8 test files, 95 tests 통과 (기존 83 + 신규 12)
+- `git diff --check` → 공백 오류 없음
+
+### 비고
+
+- 남은 blocker(정책 미확정, 임의 구현하지 않음): 여러 명 일괄 등록 시 학교당 `syncSchoolLevel`이 인당 1회씩 반복 호출되는 비효율은 Phase 0 결정 문서(`Concurrency considerations`)에서 이미 식별된 사항으로, 이번 Phase 2에서도 재확인만 하고 해결하지 않음. 해결하려면 `POST /api/profiles`를 배치 API로 바꾸거나(FROZEN `13-api.md` §10 "신규 P1 데이터 모델/배치 API 임의 추가 금지"와 상충 가능, 별도 결정 필요) 요청 간 상태를 공유하는 새 인프라가 필요해 이번 Phase 2의 "기존 정책 안에서 최소 구현" 범위를 벗어난다고 판단
+- FROZEN `07-register-flow.md` §5의 "동명이인 허용 + 확인 후 등록 계속" 흐름은 현재 코드에 없고(DB unique index가 동일 이름을 즉시 차단), 이는 Phase 1 이전부터 존재하던 기존 Register Flow의 완성도 공백이며 Level Sync 연결과는 무관 — 이번 Phase 2 범위 밖으로 남김
+- `app/api/traces/route.ts`, admin Level Sync 도구, 다른 rate limit 사용처는 무수정
+- DB migration/schema 변경 없음
+- Feed event, XP Source 최종 확정은 이번 범위에 포함하지 않음
+- collector/BoostKitchen 관련 내용 없음
+- 새로운 정책 결정이 없어 `docs/decisions/`에 신규 문서를 추가하지 않음
+
+---
+
+## 2026-07-15 (2)
+
+### 구현
+
+- Register Flow → Level Phase 2(배치 등록 정합성/중복 처리 검증, `registerPeople` 분리)에 대한 수동 브라우저 smoke test 수행(운영자 보고 기준)
+- 시나리오 — 같은 학교에 친구 3명 동시 제출(신규 2명 + 기존 인물과 동일한 중복 1명):
+  - 결과 화면: `2명 등록됐어요` 정확히 표시(신규 성공 카운트 일치)
+  - 결과 화면: `1명은 이미 등록되어 있었어요` 정확히 표시(중복 카운트 일치)
+  - 학교 전체 인원: 기존 1명 + 신규 성공 2명만 반영되어 `3명이 함께 있어요` 표시 — 중복 1명은 전체 인원에 추가 반영되지 않음
+  - 실패 문구·500 오류 없음
+  - `registerPeople` 모듈 분리 이후에도 기존 등록 UI와 부분 중복 집계 정상 동작 확인
+
+### 관련 파일
+
+- `docs/IMPLEMENTATION_LOG.md`
+- 기능 소스 변경 없음
+- 테스트 코드 변경 없음
+
+### 검증
+
+- 수동 브라우저 smoke test 1개 시나리오 통과(운영자 보고 기준)
+- 신규 2명/중복 1명 배치 등록의 성공·중복 카운트, 학교 전체 인원 반영이 모두 실제 화면에서 기대값과 일치함을 확인
+
+### 비고
+
+- Register Flow → Level Phase 2의 배치(신규+중복 혼합) 등록 시나리오 수동 smoke test 완료
+- 이번 smoke test는 화면 카운트와 학교 전체 인원 표시만 확인했으며, `schools.current_level`/`level_updated_at`이 신규 성공 2건 기준으로 정확히 갱신됐는지는 DB 레벨로 별도 확인되지 않음(이전 턴에서 준비한 더미 학교 SQL로 별도 확인 필요)
+- collector/BoostKitchen 관련 내용 없음

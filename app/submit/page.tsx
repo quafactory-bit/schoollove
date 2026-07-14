@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { IMG } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
 import { isAllFailed, resultHeading } from './resultText'
+import { normalizeInsta, registerPeople } from './registerPeople'
 
 type SchoolLite = {
   id: string
@@ -40,15 +41,6 @@ const INITIAL_SELF: Person[] = [{ nickname: '', instagram: '', isSelf: true, mes
 
 // 따뜻한 프리셋 (악용 방지: 부정 표현 대신 긍정 프레임 유도)
 const MSG_PRESETS = ['보고싶다', '잘 지내?', '그때 고마웠어', '연락하고 지내자']
-
-function normalizeInsta(raw: string): string {
-  let s = raw.trim()
-  if (!s) return ''
-  s = s.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
-  s = s.replace(/[/?].*$/, '')
-  s = s.replace(/^@/, '')
-  return s.trim()
-}
 
 function SubmitInner() {
   const searchParams = useSearchParams()
@@ -158,30 +150,7 @@ function SubmitInner() {
       student_year: isUni && studentYear ? Number(studentYear) : null,
     }
 
-    let success = 0
-    let dup = 0
-    let fail = 0
-    for (const p of valid) {
-      const insta = normalizeInsta(p.instagram) || null
-      try {
-        const res = await fetch('/api/profiles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...base,
-            nickname: p.nickname.trim(),
-            instagram_id: insta,
-            is_self: insta ? p.isSelf : false,
-            message: p.message.trim() || null, // 이 친구에게 한마디
-          }),
-        })
-        if (res.ok) success++
-        else if (res.status === 409) dup++
-        else fail++
-      } catch {
-        fail++
-      }
-    }
+    const { success, dup, fail } = await registerPeople(valid, base)
 
     let totalAtSchool = success
     const { count: schoolTotal } = await supabase

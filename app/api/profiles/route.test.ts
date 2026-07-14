@@ -324,3 +324,36 @@ describe('POST /api/profiles — Upstash rate limit 환경변수 누락 처리',
     expect(fromMock).not.toHaveBeenCalled()
   })
 })
+
+describe('POST /api/profiles — 배치/재시도 데이터 정합성 (Phase 2)', () => {
+  it('d. 같은 학교에 신규 성공 요청이 2건 연속되면 syncSchoolLevel도 정확히 2번, 각 호출 시점의 실제 프로필 수로 호출됨', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValueOnce(5).mockResolvedValueOnce(6)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+
+    const first = await POST(createRequest({ body: { ...VALID_BODY, nickname: '첫번째' } }))
+    const second = await POST(createRequest({ body: { ...VALID_BODY, nickname: '두번째' } }))
+
+    expect(first.status).toBe(201)
+    expect(second.status).toBe(201)
+    expect(syncSchoolLevel).toHaveBeenCalledTimes(2)
+    expect(syncSchoolLevel).toHaveBeenNthCalledWith(1, SCHOOL_ID, 5)
+    expect(syncSchoolLevel).toHaveBeenNthCalledWith(2, SCHOOL_ID, 6)
+  })
+
+  it('g. 재시도 시나리오: 동일 등록이 성공 후 중복으로 재시도되면 syncSchoolLevel은 최초 성공 1회만 호출됨 (Level 중복 반영 없음)', async () => {
+    singleMock
+      .mockResolvedValueOnce({ data: { id: 'p1' }, error: null })
+      .mockResolvedValueOnce({ data: null, error: { code: '23505', message: 'duplicate' } })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(3)
+    vi.mocked(syncSchoolLevel).mockResolvedValue({ id: SCHOOL_ID, current_level: 1, level_updated_at: null })
+
+    const firstAttempt = await POST(createRequest({ body: VALID_BODY }))
+    const retryAttempt = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(firstAttempt.status).toBe(201)
+    expect(retryAttempt.status).toBe(409)
+    expect(getSchoolProfileCount).toHaveBeenCalledTimes(1)
+    expect(syncSchoolLevel).toHaveBeenCalledTimes(1)
+  })
+})
