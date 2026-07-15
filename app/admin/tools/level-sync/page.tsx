@@ -6,14 +6,14 @@ import { supabase } from '@/lib/supabase'
 import { searchSchools, getSchoolById } from '@/lib/api/schools'
 import { calculateLevelState } from '@/lib/policy/levelPolicy'
 import { resolveLevelUpdate } from '@/lib/policy/levelPersistence'
-import { validateCumulativeXp, compareStoredAndCalculatedLevel } from './validation'
+import {
+  validateCumulativeXp,
+  compareStoredAndCalculatedLevel,
+  describeSyncResult,
+  type LevelSnapshot,
+} from './validation'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import type { School } from '@/types/school'
-
-interface LevelSnapshot {
-  current_level: number | null
-  level_updated_at: string | null
-}
 
 export default function LevelSyncPage() {
   const [query, setQuery] = useState('')
@@ -166,16 +166,8 @@ export default function LevelSyncPage() {
       : null
 
   // 실행 결과 표시는 route 응답의 before/after 확정 사실만 사용한다.
-  // Level을 다시 계산하지 않으며, 동일 Level과 downgrade 방지는 구분하지 않는다.
-  const resultLabel = execResult
-    ? execResult.before.current_level === null && execResult.after.current_level !== null
-      ? '최초 초기화'
-      : execResult.before.current_level !== null &&
-          execResult.after.current_level !== null &&
-          execResult.after.current_level > execResult.before.current_level
-        ? '실제 저장 Level 상승'
-        : '저장 Level 변경 없음'
-    : null
+  // 판단 로직은 ./validation의 describeSyncResult로 분리해 독립적으로 테스트한다.
+  const resultLabel = execResult ? describeSyncResult(execResult.before, execResult.after) : null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -188,8 +180,9 @@ export default function LevelSyncPage() {
         </div>
 
         <p className="text-xs text-gray-500 mb-6">
-          Level Persistence 저장 상태를 학교 단위로 조회하는 개발 검증 도구입니다. 현재는 조회만
-          가능하며, 동기화 실행 기능은 다음 단계에서 추가됩니다.
+          Level Persistence 저장 상태를 학교 단위로 조회하고, cumulative XP를 입력해 동기화를
+          실행하는 관리자 도구입니다. cumulative XP는 아직 자동으로 연결되지 않아 개발 검증용으로
+          직접 입력합니다.
         </p>
 
         {/* 학교 이름 검색 */}

@@ -26,6 +26,29 @@ export function validateCumulativeXp(raw: string): CumulativeXpValidation {
   return { value: parsed, error: null }
 }
 
+export type LevelSnapshot = {
+  current_level: number | null
+  level_updated_at: string | null
+}
+
+// route 응답의 before/after 확정 사실만으로 실행 결과 문구를 정한다.
+// Level을 다시 계산하지 않으며, 동일 Level과 downgrade 방지는 구분하지 않고
+// 둘 다 "저장 Level 변경 없음"으로 표시한다(§8 null 초기화 vs 실제 Level Up 구분과 별개로,
+// 화면 표시는 이 세 가지 분류만 사용).
+export function describeSyncResult(before: LevelSnapshot, after: LevelSnapshot): string {
+  if (before.current_level === null && after.current_level !== null) {
+    return '최초 초기화'
+  }
+  if (
+    before.current_level !== null &&
+    after.current_level !== null &&
+    after.current_level > before.current_level
+  ) {
+    return '실제 저장 Level 상승'
+  }
+  return '저장 Level 변경 없음'
+}
+
 export type LevelComparison = 'uninitialized' | 'increase' | 'same' | 'lower'
 
 // resolveLevelUpdate의 persistence 판단을 재구현하지 않는다 — 이건 화면에 어떤 문구를

@@ -624,3 +624,82 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - Register Flow → Level Phase 3의 남은 blocker 중 "클라이언트 라우터 캐시로 인한 stale count 가능성"이 이번 smoke test로 해소됨
 - Level 표시(f/g/h 시나리오) 관련 blocker(School Hub 화면 변경 미착수)는 여전히 유효 — 이번 smoke test 범위 밖
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-15 (5)
+
+### 구현
+
+- Admin Level Sync 도구 완성 및 자동 검증
+- 기준 커밋 `da20678` 기준으로 `app/admin/tools/level-sync/page.tsx`, `validation.ts`, `validation.test.ts`, `app/api/admin/tools/level-sync/route.ts`, `route.test.ts`, `lib/api/levels.ts`, `levels.test.ts`, `lib/admin-auth.ts`를 재분석한 결과, **학교 검색·ID 조회·Level 스냅샷 조회·cumulativeXp 입력/검증·계산 미리보기·실행 버튼(`POST /api/admin/tools/level-sync` 연결)·실행 중 중복 클릭 방지·학교 변경 시 이전 결과 초기화·성공 후 최신 저장값 재조회가 이미 모두 구현되어 있었음**을 확인 — 코드 자체는 이미 완성 상태였고 새로 구현할 기능은 없었음
+- 확인된 미완성/결함 2건(둘 다 최소 범위로 수정):
+  1. **안내 문구가 실제 구현 상태와 불일치**: 페이지 상단 문구가 "현재는 조회만 가능하며, 동기화 실행 기능은 다음 단계에서 추가됩니다"라고 표시하고 있었으나, 바로 아래 코드는 이미 `handleSync`가 `POST /api/admin/tools/level-sync`를 실제로 호출하도록 완전히 연결되어 있어 문구가 관리자에게 사실과 다른 정보를 주고 있었음 — 실제 구현 상태(조회 + 동기화 실행 가능)를 반영하도록 문구만 수정. 기존 스타일/레이아웃 무변경
+  2. **실행 결과 문구 판단 로직이 컴포넌트 내부에 인라인되어 테스트 불가능**: `resultLabel`(최초 초기화/실제 상승/변경 없음 3분류) 계산이 `page.tsx` 클로저 안에 있어 자동 테스트가 없었음 — 동작 무변경으로 `app/admin/tools/level-sync/validation.ts`에 `describeSyncResult(before, after)` 순수 함수로 추출하고 `page.tsx`는 이를 호출만 하도록 변경
+- `lib/api/schools.ts`(admin 도구가 사용하는 `searchSchools`/`getSchoolById`)에 대한 테스트가 전무했던 공백을 발견해 `lib/api/schools.test.ts` 신규 작성(시나리오 a/b/c: 검색 성공, ID 조회 성공, 존재하지 않는 학교)
+- 나머지 요구 시나리오(d~q)는 기존 `validation.test.ts`(cumulativeXp validation), `route.test.ts`(401/400/500 각 분기, 성공/unchanged, mock 호출 인자), `levels.test.ts`(downgrade 방지, null 초기화)로 이미 충분히 커버되어 있음을 확인하고 중복 테스트를 추가하지 않음
+- 코드 로직 변경 없음(순수 추출 + 문구 정정만) — `lib/policy/levelPolicy.ts`, `lib/policy/levelPersistence.ts`, `lib/api/levels.ts`, `app/api/admin/tools/level-sync/route.ts`, `lib/admin-auth.ts`는 무수정
+
+### 확인된 사실
+
+- 인증: `requireAdmin`이 쿠키 부재/유효하지 않은 세션 모두 동일하게 401만 반환(403 경로 없음) — `app/api/admin/auth/route.ts`와 동일한 기존 관례이며 결함 아님
+- "학교 없음"(404): FROZEN 결정 문서(`2026-07-10-level-sync-no-404.md`)에 따라 이 라우트는 404를 절대 반환하지 않고 원인 불명 실패를 500 `Snapshot failed`로 통일 — 이번에도 이 정책을 그대로 유지, 변경하지 않음
+- Level 감소 방지: `resolveLevelUpdate`가 저장된 Level 이상일 때만 갱신하므로 계산 Level이 더 낮아도 저장값은 항상 유지됨(`lib/api/levels.test.ts` 기존 테스트로 이미 검증됨, 이번에 재확인만 함)
+- 성공 후 재조회: `handleSync` 성공 시 `loadLevelSnapshot(schoolId)`을 다시 호출해 anon client로 최신 `current_level`/`level_updated_at`을 재조회함(route 응답을 재계산하지 않음) — 이미 구현되어 있었음, 무수정
+- 중복 클릭 방지: `executing` 상태로 버튼 disabled + `handleSync`/`selectSchool`/`handleIdLookup` 모두 진입 시 `executing` 체크로 조기 반환 — 이미 구현되어 있었음, 무수정
+- 학교 변경 시 초기화: `selectSchool`이 `xpInput`/`execResult`/`execError`를 매번 초기화 — 이미 구현되어 있었음, 무수정
+
+### 관련 파일
+
+- `app/admin/tools/level-sync/page.tsx` (안내 문구 수정, `resultLabel` 로직을 `describeSyncResult` 호출로 교체 — 동작 무변경)
+- `app/admin/tools/level-sync/validation.ts` (`describeSyncResult`, `LevelSnapshot` 타입 추가)
+- `app/admin/tools/level-sync/validation.test.ts` (`describeSyncResult` 테스트 5개 추가)
+- `lib/api/schools.test.ts` (신규, 5 tests)
+- `docs/IMPLEMENTATION_LOG.md`
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run app/admin/tools/level-sync/validation.test.ts app/api/admin/tools/level-sync/route.test.ts lib/api/schools.test.ts lib/api/levels.test.ts` → 50 passed
+- `npm test` → 10 test files, 113 tests 통과 (기존 103 + 신규 10)
+- `git diff --check` → 공백 오류 없음
+
+### 비고
+
+- 결함은 문구 불일치 1건뿐이었고, 그 외에는 이미 운영 가능한 완성 상태였음을 확인
+- Register Flow, 공개 School Hub UI, DB schema/migration/RPC/RLS는 이번에도 무수정
+- collector/BoostKitchen 관련 내용 없음
+- 새로운 정책 결정이 없어 `docs/decisions/`에 신규 문서를 추가하지 않음
+
+---
+
+## 2026-07-15 (6)
+
+### 구현
+
+- Admin Level Sync 도구 완성 작업(문구 수정, `describeSyncResult` 추출)에 대한 수동 브라우저 smoke test 수행(운영자 보고 기준)
+- 시나리오 — 관리자 로그인 → `/admin/tools/level-sync` 접근 → 학교 검색·선택 → cumulativeXp 입력/실행 반복:
+  - 안내 문구가 실제 동기화 실행 기능에 맞게 표시됨(더 이상 "다음 단계에서 추가됩니다" 아님) 확인
+  - 선택 학교의 School ID, `current_level`, `level_updated_at` 정상 표시 확인
+  - cumulativeXp `0` 입력 → 계산 Level Lv.1, 저장 Level 1 → `저장 Level 변경 없음` 표시
+  - cumulativeXp `141` 입력·실행 → Level 1 → 2로 실제 저장 상승, `실제 저장 Level 상승` 표시
+  - 상승 후 `current_level`이 2로 재조회되고 `level_updated_at`이 새 시간으로 저장됨 확인(성공 후 최신 저장값 재조회 동작 확인)
+  - 동일 cumulativeXp `141` 재실행 → Level 2 유지, `level_updated_at` 불변 → `저장 Level 변경 없음` 표시(재시도 시 중복 반영 없음 확인)
+  - Level 2 상태에서 cumulativeXp `0` 입력·실행 → 계산 Level은 Lv.1이지만 저장 Level 2 유지(다운그레이드 차단), `저장 Level 변경 없음` 표시
+  - 다른 학교 선택 시 이전 XP 입력값·계산 미리보기·실행 결과·오류 메시지 모두 초기화 확인, 새 학교의 `current_level`/`level_updated_at`만 새로 표시됨 확인
+
+### 관련 파일
+
+- `docs/IMPLEMENTATION_LOG.md`
+- 기능 소스 변경 없음
+- 테스트 코드 변경 없음
+
+### 검증
+
+- 수동 브라우저 smoke test 1개 시나리오(문구 확인 + 상승 + unchanged + downgrade 차단 + 학교 변경 초기화) 통과(운영자 보고 기준)
+- `describeSyncResult` 추출 및 안내 문구 수정 이후에도 기존 동작이 화면에서 그대로 재현됨을 확인(회귀 없음)
+
+### 비고
+
+- Admin Level Sync 도구 완성 작업의 수동 smoke test 완료 — 남은 blocker 없음
+- collector/BoostKitchen 관련 내용 없음
