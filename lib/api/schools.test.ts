@@ -107,3 +107,69 @@ describe('getSchoolById — admin Level Sync 도구 "School ID로 직접 조회"
     await expect(getSchoolById('does-not-exist')).resolves.toBeNull()
   })
 })
+
+describe('getSchoolGrowthSnapshot — School Hub/Home 공용 성장 스냅샷 (읽기 전용)', () => {
+  it('school row + profile count를 읽어 calculateSchoolGrowthSnapshot 결과를 그대로 반환', async () => {
+    const schoolRow = {
+      id: 'school-1',
+      school_name: '대치고등학교',
+      slug: 'daechi-high',
+      current_level: null,
+      level_updated_at: null,
+    }
+    // 순서: 1) schools select 2) profiles count(getSchoolProfileCount 내부, head:true 조회라 data는 사용 안 함)
+    const { supabase, supabaseServer, calls } = createMockSupabase([
+      { data: schoolRow, error: null },
+      { data: null, error: null },
+    ])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getSchoolGrowthSnapshot } = await import('./schools')
+
+    const result = await getSchoolGrowthSnapshot('school-1')
+
+    expect(result).not.toBeNull()
+    expect(result?.schoolId).toBe('school-1')
+    expect(result?.schoolName).toBe('대치고등학교')
+    expect(result?.slug).toBe('daechi-high')
+    expect(result?.storedCurrentLevel).toBeNull()
+    expect(result?.effectiveLevel).toBe(result?.calculatedLevel)
+    // 첫 호출은 schools 테이블, 두 번째 호출은 profiles 테이블(getSchoolProfileCount)
+    expect(calls.length).toBe(2)
+    const firstSelect = findCall(calls[0], 'select')
+    expect(firstSelect?.args).toEqual(['id, school_name, slug, current_level, level_updated_at'])
+  })
+
+  it('school row 조회 실패 시 null 반환, profiles count는 조회하지 않음', async () => {
+    const { supabase, supabaseServer, calls } = createMockSupabase([
+      { data: null, error: { message: 'not found' } },
+    ])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getSchoolGrowthSnapshot } = await import('./schools')
+
+    const result = await getSchoolGrowthSnapshot('missing-school')
+
+    expect(result).toBeNull()
+    expect(calls.length).toBe(1) // schools 조회 1회만, profiles count 호출 없음
+  })
+
+  it('저장된 current_level이 계산 Level보다 높으면 effectiveLevel은 저장값을 그대로 유지', async () => {
+    const schoolRow = {
+      id: 'school-2',
+      school_name: '작은학교',
+      slug: 'small-school',
+      current_level: 5,
+      level_updated_at: '2026-01-01T00:00:00.000Z',
+    }
+    const { supabase, supabaseServer } = createMockSupabase([
+      { data: schoolRow, error: null },
+      { data: null, error: null },
+    ])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getSchoolGrowthSnapshot } = await import('./schools')
+
+    const result = await getSchoolGrowthSnapshot('school-2')
+
+    expect(result?.storedCurrentLevel).toBe(5)
+    expect(result?.effectiveLevel).toBe(5)
+  })
+})

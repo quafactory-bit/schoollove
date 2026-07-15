@@ -1,5 +1,8 @@
 import { supabase, supabaseServer } from '@/lib/supabase'
 import type { School } from '@/types/school'
+import type { SchoolGrowthSnapshot } from '@/types/schoolGrowth'
+import { calculateSchoolGrowthSnapshot } from '@/lib/policy/schoolGrowth'
+import { getSchoolProfileCount } from '@/lib/api/profiles'
 
 // ─── 학교 검색 (자동완성) ─────────────────────────────────────────
 export async function searchSchools(query: string, limit = 10): Promise<School[]> {
@@ -86,4 +89,33 @@ export async function getSchoolById(id: string): Promise<School | null> {
 
   if (error) return null
   return data
+}
+
+// ─── School Growth Snapshot 조회 (읽기 전용) ──────────────────────
+// School Hub/Home Growth Feed가 공통으로 쓸 성장 스냅샷을 조회·계산한다.
+// DB를 수정하지 않고 syncSchoolLevel도 호출하지 않는다 — current_level/level_updated_at을
+// 있는 그대로 읽고, visible profile count(getSchoolProfileCount, is_hidden=false 재사용)와 함께
+// calculateSchoolGrowthSnapshot()에 넘겨 계산만 수행한다.
+export async function getSchoolGrowthSnapshot(schoolId: string): Promise<SchoolGrowthSnapshot | null> {
+  const { data, error } = await supabaseServer
+    .from('schools')
+    .select('id, school_name, slug, current_level, level_updated_at')
+    .eq('id', schoolId)
+    .single()
+
+  if (error || !data) {
+    console.error('getSchoolGrowthSnapshot error:', error)
+    return null
+  }
+
+  const visibleProfileCount = await getSchoolProfileCount(schoolId)
+
+  return calculateSchoolGrowthSnapshot({
+    schoolId: data.id,
+    schoolName: data.school_name,
+    slug: data.slug,
+    visibleProfileCount,
+    storedCurrentLevel: data.current_level,
+    levelUpdatedAt: data.level_updated_at,
+  })
 }

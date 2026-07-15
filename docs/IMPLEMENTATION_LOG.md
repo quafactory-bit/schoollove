@@ -703,3 +703,65 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 
 - Admin Level Sync 도구 완성 작업의 수동 smoke test 완료 — 남은 blocker 없음
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-15 (7)
+
+### 구현
+
+- School Growth Foundation Phase 1A — School Hub/Home Growth Feed가 공통으로 쓸 성장 정책·데이터 계약·순수 계산 로직 확정
+- **미커밋 Home v1.1 정리**: 승인되지 않았던 검색 랜딩 중심 Home 구현을 기준 커밋(`7f335f7`) 상태로 되돌림
+  - `app/page.tsx`를 기준 커밋 내용으로 완전히 복원(`git checkout`이 이 환경 권한상 차단되어 기준 커밋에서 읽었던 원본 내용을 그대로 재작성하는 방식으로 복원, 이후 `git diff`로 기준 커밋과 완전히 동일함을 확인)
+  - `docs/IMPLEMENTATION_LOG.md`에 남아 있던 미커밋 Home v1.1 관련 두 항목(구현 기록 + 시각 보완/build 기록)만 정확히 제거하고, 그 이전에 이미 존재하던 기록은 전혀 수정하지 않음
+  - `docs/design-package-v1.1/01-home-final-design.md`, `docs/decisions/2026-07-15-home-final-design-v1.md`는 새 제품 방향과 충돌해 SUPERSEDED로 표시(이 환경에서 `rm`이 차단되어 실제 삭제는 사용자가 직접 수행해야 함 — 각 파일에 정확한 삭제 명령 기재)
+  - `components/TabBar.tsx`의 홈(`/`)/학교 찾기(`/search`) 2축 구조는 유지(FROZEN `04-home-feed.md` §6과 일치하는 기존 확정 사항). `/submit`, `/invite` 라우트 파일과 관리자 페이지 숨김 로직(`pathname.startsWith('/admin')`)은 그대로 존재함을 재확인
+- `docs/decisions/2026-07-15-school-growth-foundation.md`(신규) 작성 — Home 성장 피드 방향, School Hub 우선 구현 순서, 주간/오늘 랭킹 기준, 실제 데이터만 사용, 순위 변화 표시 유보, Home v1.1 미채택을 정책 근거로 기록
+- **School Growth Snapshot** 구현(신규, 순수 계산):
+  - `types/schoolGrowth.ts` — `SchoolGrowthSnapshot`/`SchoolGrowthSnapshotInput`/`SchoolState`('A'|'B'|'C'만, D는 제외) 계약 정의
+  - `lib/policy/schoolGrowth.ts` — `calculateSchoolGrowthSnapshot()`(순수 함수, `calculateLevelState` 재사용, DB 접근·`syncSchoolLevel` 호출 없음), `classifySchoolState()`(A/B/C 경계, `03-level-policy.md` §5 그대로)
+  - `effectiveLevel`은 `storedCurrentLevel`이 `calculatedLevel`보다 높을 때만 저장값을 사용(Level 하락 금지, §8 저장값 우선 원칙 그대로 적용)
+  - `isNearLevelUp`은 `remainingToNext <= 2`(§7 확정값) 그대로 사용 — 임의 기준 없음
+  - `remainingToNext`는 실제 curve 계산값을 그대로 반환하며, State A의 "다음 레벨까지 1명" UI 카피(§7)로 대체하지 않음(대체는 화면 레이어의 책임이라고 코드에 명시)
+  - `lib/api/schools.ts`에 `getSchoolGrowthSnapshot(schoolId)` I/O 래퍼 추가 — 기존 `getSchoolProfileCount`(visible profile count) 재사용, 신규 count 로직 없음, DB 수정 없음
+- **Ranking 데이터 계약** 구현(신규, 순수 계산만):
+  - `types/ranking.ts` — `GrowthRankingInput`/`GrowthRankingRow` 계약 정의
+  - `lib/policy/schoolRanking.ts` — `sortGrowthRanking()`/`topGrowthRanking()`(순수 함수, 신규 공개 프로필 수 내림차순 → 최근 등록 시각 내림차순 → 학교명 오름차순, 가짜 학교로 빈 자리를 채우지 않음)
+  - 실제 DB 집계(주간/오늘 신규 등록 수를 학교별로 효율적으로 구하는 쿼리)는 이번 Phase에서 구현하지 않음 — 아래 "비고"의 blocker 참고
+
+### 확인된 사실 / blocker
+
+- **School State D(대표학교) 미구현**: `03-level-policy.md` §6의 완성도(Completion) 계산식이 FROZEN 문서에 없어(“세부 집계 구현은 Policy 계층이 소유한다”고만 되어 있고 실제 공식·집계 대상이 없음) State D 판정과 완성도 %를 구현하지 않음. `SchoolState` 타입도 `'A'|'B'|'C'`로만 정의함. **완성도 계산식이 결정되기 전까지는 진행 불가.**
+- **주간/오늘 성장 랭킹 DB 집계 미구현**: 저장소 전체에서 `.rpc()` 호출은 `search_schools_v2`(학교 이름 검색) 하나뿐이며, 학교별 신규 등록 수를 기간별로 집계하는 기존 RPC/view가 없음을 확인. 전체 `profiles`를 무제한으로 내려받아 JS 집계하거나 학교별 N+1 count 반복 호출은 금지 조건에 해당해 시도하지 않음. 아래 "6. 주간·오늘 성장 랭킹의 데이터 접근 분석"에 RPC 설계안(입력/출력/인덱스/RLS)까지 정리해 별도 승인 후 진행 대상으로 남김.
+- `effectiveLevel > calculatedLevel`인 드문 경우(신고로 프로필이 숨김 처리되어 현재 인원이 과거보다 줄어든 경우)에 `nextLevel`/`remainingToNext`/`progressPercent`는 항상 `calculatedLevel` 기준으로 계산되며 `effectiveLevel` 기준으로 재계산하지 않는다 — Level 공식(`threshold()`)이 `lib/policy/levelPolicy.ts` 밖으로 노출되어 있지 않아 임의로 재구현하지 않기 위한 설계 선택이며, 코드 주석에 명시함(School Hub Phase 1B 화면 설계 시 참고 필요).
+
+### 관련 파일
+
+- `app/page.tsx` (기준 커밋 상태로 복원)
+- `components/TabBar.tsx` (2축 구조 유지 확인, 변경 없음)
+- `docs/design-package-v1.1/01-home-final-design.md` (SUPERSEDED로 표시)
+- `docs/decisions/2026-07-15-home-final-design-v1.md` (SUPERSEDED로 표시)
+- `docs/decisions/2026-07-15-school-growth-foundation.md` (신규)
+- `types/schoolGrowth.ts` (신규)
+- `types/ranking.ts` (신규)
+- `lib/policy/schoolGrowth.ts` (신규)
+- `lib/policy/schoolGrowth.test.ts` (신규, 18 tests)
+- `lib/policy/schoolRanking.ts` (신규)
+- `lib/policy/schoolRanking.test.ts` (신규, 7 tests)
+- `lib/api/schools.ts` (`getSchoolGrowthSnapshot` 추가)
+- `lib/api/schools.test.ts` (신규 테스트 3개 추가)
+- `docs/IMPLEMENTATION_LOG.md`
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run lib/policy/schoolGrowth.test.ts lib/policy/schoolRanking.test.ts lib/api/schools.test.ts` → 31 passed
+- `npm test` → 12 test files, 139 tests 통과 (기존 113 + 신규 26)
+- `npm run build` → 이 세션의 도구 권한 설정으로 실행이 차단되어 수행하지 못함(우회 시도 안 함)
+- `git diff --check` → 공백 오류 없음
+
+### 비고
+
+- Home Growth Feed UI, School Hub UI, DB migration, RPC 생성, 실제 랭킹 배너, Register Flow, Admin 도구는 이번 Phase 1A에서 구현하지 않음(지시된 금지 범위)
+- 남은 blocker 2건(State D 완성도 계산식, 주간/오늘 랭킹 DB 집계 설계 승인)은 Phase 1B 착수 전 확정 필요
+- collector/BoostKitchen 관련 내용 없음
