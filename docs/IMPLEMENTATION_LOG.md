@@ -557,3 +557,70 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - Register Flow → Level Phase 2의 배치(신규+중복 혼합) 등록 시나리오 수동 smoke test 완료
 - 이번 smoke test는 화면 카운트와 학교 전체 인원 표시만 확인했으며, `schools.current_level`/`level_updated_at`이 신규 성공 2건 기준으로 정확히 갱신됐는지는 DB 레벨로 별도 확인되지 않음(이전 턴에서 준비한 더미 학교 SQL로 별도 확인 필요)
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-15 (3)
+
+### 구현
+
+- Register Flow → Level 연결 Phase 3 — 학교 실제 profile count, 저장된 Level 상태, 학교 페이지 표시 간 정합성 분석
+- 기준 커밋 `934c26e` 기준으로 `app/school/[slug]/page.tsx`, `app/school/[slug]/[year]/page.tsx`, `app/school/[slug]/[year]/[class]/page.tsx`, `lib/api/schools.ts`, `lib/api/profiles.ts`, `lib/api/levels.ts`, `types/school.ts`, `next.config.ts`, `app/admin/tools/level-sync/page.tsx`(읽기 전용 확인, 무수정)를 코드 레벨로 분석
+- **핵심 발견 — 코드 결함 없음**: School/Year/Class 페이지 어디에도 `current_level`/`level_updated_at`을 표시하는 코드가 없음(`current_level`/`level_updated_at`을 참조하는 곳은 `lib/api/levels.ts`, `lib/policy/levelPersistence.ts`, admin Level Sync 도구뿐). 즉 이번 Phase 3이 검증 대상으로 삼은 시나리오 f/g/h(Level null 처리, 저장값 vs 계산값 우선순위, Level Sync 성공 후 화면이 최신 저장값을 읽는지)는 **공개 학교 페이지에는 적용 대상 자체가 없음** — Level 표시는 Phase 0 결정 문서에서 이미 "School Hub 화면 변경"으로 범위 밖 처리된 항목이며, 구현 원칙 2("정책에 명확히 없으면 임의로 UI를 추가하지 않는다")에 따라 이번에도 추가하지 않음
+- profile count(화면에 유일하게 표시되는 정합성 대상)는 School/Year/Class 세 페이지 모두 `lib/api/profiles.ts`의 count 함수(`getProfilesBySchool`/`getYearProfileCount`/`getClassProfileCount`/`getSchoolProfileCount`)를 통해 매 요청마다 `is_hidden=false` 기준으로 DB에서 새로 계산되며, 이는 Level Sync의 `cumulativeXp` 소스(`getSchoolProfileCount`)와 완전히 동일한 정의를 공유함 — 화면 인원 수와 Level 계산의 count 정의가 서로 다를 경로 없음
+- 캐시/정적 렌더링으로 인한 staleness 위험 재확인: School 페이지는 `headers()` 사용으로, School/Year/Class 페이지 모두 `searchParams` 사용으로 Next.js가 자동으로 동적 렌더링을 강제함(둘 다 Next.js App Router에서 정적 캐싱을 무효화하는 API). 추가로 이 저장소의 Next.js 버전(`^15.3.8`)은 fetch 요청이 기본적으로 캐시되지 않는 버전이라 서버 측 캐싱으로 인한 stale 데이터 경로는 발견되지 않음. 다만 클라이언트 라우터 캐시(Link를 통한 소프트 내비게이션)는 정적 코드 분석만으로 100% 확증할 수 없어 "수동 smoke test 필요 여부"에 별도로 남김
+- admin Level Sync 도구(무수정, 읽기 전용 확인만)는 이미 `current_level: null`을 "미초기화 (null)"로 명시 표시하고, 저장값을 우선 표시하며 계산값이 더 낮을 때 "하락 없음"을 명시하는 등 구현 원칙 7·8을 이미 만족하고 있음을 확인
+- 코드 변경 없음(결함 미발견) — `lib/api/profiles.ts`(테스트 신규 추가는 있으나 함수 로직 무수정 회귀 테스트만 작성)를 포함해 이번 Phase 3에서 실제 소스 코드는 수정하지 않음
+- `lib/api/profiles.ts`의 count 함수들(School Hub/Year/Class 화면과 Level Sync가 공유하는 유일한 profile count 소스)에 대한 테스트가 전무했던 공백을 발견해 `lib/api/profiles.test.ts` 신규 작성 — 쿼리 필터(`school_id`/`graduation_year`/`grade`/`class_number`/`is_hidden=false`)가 의도한 그대로인지, 오류·null 시 0/빈 배열로 안전하게 처리되는지 회귀 고정
+
+### 관련 파일
+
+- `lib/api/profiles.test.ts` (신규, 8 tests)
+- `docs/IMPLEMENTATION_LOG.md`
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run lib/api/profiles.test.ts` → 8 passed
+- `npm test` → 9 test files, 103 tests 통과 (기존 95 + 신규 8)
+- `git diff --check` → 공백 오류 없음
+
+### 비고
+
+- 결함 없음 — School/Year/Class 페이지의 profile count 표시는 이미 항상 최신 DB 값을 정확한 필터로 읽고 있으며, Level Sync와 동일한 count 정의를 공유함
+- Level 표시(f/g/h 시나리오)는 공개 페이지에 아직 노출되지 않아 검증 대상이 없음 — School Hub에 Level을 실제로 노출하려면 별도의 School Hub 화면 변경 결정이 선행되어야 하며, 이는 Phase 0에서 이미 범위 밖으로 명시된 항목이라 이번 Phase 3에서 임의로 추가하지 않음(blocker로 보고, 새 정책 결정 없이는 구현하지 않음)
+- admin Level Sync 도구는 읽기 전용으로만 확인했고 무수정
+- DB migration/schema 변경 없음, FROZEN 문서 무수정
+- collector/BoostKitchen 관련 내용 없음
+- 코드 결함이 없어 `docs/decisions/`에 신규 문서를 추가하지 않음
+
+---
+
+## 2026-07-15 (4)
+
+### 구현
+
+- Register Flow → Level Phase 3(학교 페이지 profile count 정합성 분석)에 대한 수동 브라우저 smoke test 수행(운영자 보고 기준)
+- 시나리오 — 학교 페이지 → 등록하기 링크 이동 → 신규 1명 등록 → 성공 화면의 `우리 학교 페이지에서 확인하기` 링크(소프트 내비게이션)로 복귀:
+  - 브라우저 새로고침 없이 등록 인원이 기존 3명 → 4명으로 즉시 반영됨
+  - 학교 카드에 `4명 등록` 표시
+  - 안내 영역에 `이미 4명이 모였어요` 표시
+  - 프로필 목록에도 실제 4개 항목 표시
+  - 클라이언트 라우터 캐시로 인한 오래된 count 표시는 발생하지 않음 — Phase 3 분석에서 남겼던 유일한 미확증 항목(Client Router Cache staleness)이 실제로 문제없음을 확인
+
+### 관련 파일
+
+- `docs/IMPLEMENTATION_LOG.md`
+- 기능 소스 변경 없음
+- 테스트 코드 변경 없음
+
+### 검증
+
+- 수동 브라우저 smoke test 1개 시나리오 통과(운영자 보고 기준)
+- 신규 등록 후 소프트 내비게이션으로 학교 페이지 복귀 시 최신 profile count가 즉시 반영됨을 확인
+
+### 비고
+
+- Register Flow → Level Phase 3의 남은 blocker 중 "클라이언트 라우터 캐시로 인한 stale count 가능성"이 이번 smoke test로 해소됨
+- Level 표시(f/g/h 시나리오) 관련 blocker(School Hub 화면 변경 미착수)는 여전히 유효 — 이번 smoke test 범위 밖
+- collector/BoostKitchen 관련 내용 없음
