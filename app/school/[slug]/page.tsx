@@ -1,21 +1,20 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
 import { headers } from 'next/headers'
-import { Users, MapPin, Calendar, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { getSchoolBySlug } from '@/lib/api/schools'
 import { getProfilesBySchool, getGraduationYearsBySchool, getSchoolProfileCount, getTotalProfileCount } from '@/lib/api/profiles'
 import { incrSchoolView, getSchoolView } from '@/lib/api/views'
 import { getTracesBySchool, getTraceCountBySchool } from '@/lib/api/traces'
 import { getSchoolSearchCount } from '@/lib/api/searches'
+import { calculateSchoolGrowthSnapshot } from '@/lib/policy/schoolGrowth'
 import ProfileCard from '@/components/ProfileCard'
-import ShareButton from '@/components/ShareButton'
 import SchoolWarmth from '@/components/SchoolWarmth'
+import SchoolGrowthPanel from '@/components/SchoolGrowthPanel'
 import { getSchoolPageMetadata } from '@/lib/seo'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { formatNumber } from '@/lib/utils'
-import { schoolTypeImage } from '@/lib/images'
 
 // 프로필 3명 이상인 학교만 구글에 index. 미만은 noindex (thin content 방지)
 const INDEX_THRESHOLD = 3
@@ -60,15 +59,31 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
   const ua = h.get('user-agent') ?? ''
   const isBot = /bot|crawl|spider|slurp|facebookexternalhit|bingpreview|embedly|pinterest|whatsapp|telegram/i.test(ua)
 
-  const [{ data: profiles, count }, years, totalProfiles, viewCount, traces, traceCount, searchCount] = await Promise.all([
-    getProfilesBySchool(school.id, page, yearFilter),
-    getGraduationYearsBySchool(school.id),
-    getTotalProfileCount(),
-    isBot ? getSchoolView(school.id) : incrSchoolView(school.id),
-    getTracesBySchool(school.id),
-    getTraceCountBySchool(school.id),
-    getSchoolSearchCount(school.school_name, school.sido),
-  ])
+  const [{ data: profiles, count }, years, totalProfiles, viewCount, traces, traceCount, searchCount, visibleProfileCount] =
+    await Promise.all([
+      getProfilesBySchool(school.id, page, yearFilter),
+      getGraduationYearsBySchool(school.id),
+      getTotalProfileCount(),
+      isBot ? getSchoolView(school.id) : incrSchoolView(school.id),
+      getTracesBySchool(school.id),
+      getTraceCountBySchool(school.id),
+      getSchoolSearchCount(school.school_name, school.sido),
+      // Growth Snapshot용 학교 전체(연도 필터 없는) 공개 프로필 수 — 위 count는 yearFilter가
+      // 있으면 그 연도만의 수라 Level 계산에 그대로 쓸 수 없다(lib/api/levels.ts와 동일 정의 필요).
+      getSchoolProfileCount(school.id),
+    ])
+
+  // School Hub Growth Panel — 읽기·계산만 수행한다. DB에 쓰지 않고 syncSchoolLevel도 호출하지 않는다.
+  // school은 getSchoolBySlug()가 select('*')로 이미 가져온 값이라 current_level/level_updated_at을
+  // 다시 조회하지 않는다(불필요한 중복 호출 방지).
+  const growthSnapshot = calculateSchoolGrowthSnapshot({
+    schoolId: school.id,
+    schoolName: school.school_name,
+    slug: school.slug,
+    visibleProfileCount,
+    storedCurrentLevel: school.current_level ?? null,
+    levelUpdatedAt: school.level_updated_at ?? null,
+  })
 
   const totalPages = Math.ceil(count / 20)
   const shareText = `${school.school_name} 동창 인스타, 여기서 찾아봐요`
@@ -91,62 +106,17 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
         <span className="text-gray-600 font-medium">{school.school_name}</span>
       </nav>
 
-      {/* 학교 헤더 */}
-      <div className="card overflow-hidden">
-        {/* 타입별 실사 배너 */}
-        <div className="relative aspect-[16/9] w-full">
-          <Image
-            src={schoolTypeImage(school.school_type)}
-            alt=""
-            fill
-            sizes="(max-width: 600px) 100vw, 600px"
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-        </div>
-
-        <div className="p-5 space-y-3">
-          <div>
-            <h1 className="text-xl font-black text-gray-900">{school.school_name}</h1>
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
-              <MapPin size={12} />
-              <span>{school.sido} {school.sigungu}</span>
-              <span className="mx-1 text-gray-300">·</span>
-              <span>{SCHOOL_TYPE_LABELS[school.school_type]}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1.5">
-              <Users size={15} className="text-brand-blue" />
-              <span className="font-semibold text-gray-900">{formatNumber(count)}</span>
-              <span className="text-gray-500">명 등록</span>
-            </div>
-            {years.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <Calendar size={15} className="text-brand-blue" />
-                <span className="text-gray-500">{years[years.length - 1]}~{years[0]}년</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Link
-              href={`/submit?school=${slug}`}
-              className="btn-primary inline-block text-sm text-center flex-1 sm:flex-none"
-            >
-              등록하기
-            </Link>
-            <ShareButton
-              text={shareText}
-              url={shareUrl}
-              label="공유"
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
-            />
-          </div>
-        </div>
-      </div>
+      {/* 학교 성장 패널 — 학교 정체성 + 성장 메시지 + 진행률 + 핵심 CTA (School Hub Growth UI) */}
+      <SchoolGrowthPanel
+        schoolName={school.school_name}
+        schoolType={school.school_type}
+        sido={school.sido}
+        sigungu={school.sigungu}
+        slug={slug}
+        snapshot={growthSnapshot}
+        shareText={shareText}
+        shareUrl={shareUrl}
+      />
 
       {/* 온기 띠 + 한 줄 흔적 (방문자 수 / 검색 수 / 흔적 리스트 / 드롭다운 / 인스타 등록) */}
       <SchoolWarmth
@@ -160,6 +130,12 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
         hasTraces={traceCount > 0}
       />
 
+      {/*
+        State C "사람 둘러보기" CTA가 스크롤로 연결하는 기존 탐색 영역
+        (연도 필터 + 프로필 리스트/빈 상태 + 페이지네이션 + 졸업년도 링크).
+        새 라우트를 만들지 않고 같은 페이지 안의 앵커로만 연결한다.
+      */}
+      <div id="discover" className="space-y-5">
       {/* 졸업년도 필터 */}
       {years.length > 0 && (
         <div className="overflow-x-auto -mx-4 px-4">
@@ -191,6 +167,8 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
           ))}
         </div>
       ) : (
+        // 등록 CTA/공유 버튼은 상단 SchoolGrowthPanel에 이미 있어(Phase 2B, State A 중복 정리)
+        // 여기서는 간단한 빈 상태 설명만 유지한다 — 중복 CTA를 다시 만들지 않는다.
         <div className="card p-8 text-center space-y-3">
           <p className="text-3xl">🌱</p>
           <p className="font-bold text-gray-800">
@@ -210,18 +188,6 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
               지금까지 전국에서 {formatNumber(totalProfiles)}명이 동창을 등록했어요.
             </p>
           )}
-
-          <div className="flex flex-col gap-2 pt-2">
-            <Link href={`/submit?school=${slug}`} className="btn-primary inline-block text-sm">
-              친구 이름 남기기
-            </Link>
-            <ShareButton
-              text={shareText}
-              url={shareUrl}
-              label="친구들에게 이 페이지 알리기"
-              className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:border-brand-blue hover:text-brand-blue transition-colors"
-            />
-          </div>
         </div>
       )}
 
@@ -254,6 +220,7 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
           </div>
         </section>
       )}
+      </div>
     </div>
   )
 }

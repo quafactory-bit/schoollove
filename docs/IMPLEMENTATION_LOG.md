@@ -825,3 +825,86 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - migration은 사용자가 Supabase SQL Editor에서 직접 적용 완료했고, 실제 데이터로 스모크 테스트까지 마쳐 결함 없음을 확인함(위 "Supabase 적용 및 스모크 테스트 결과" 참고)
 - 가짜 학교·가짜 순위·가짜 Level Up 없음, 전체 profiles 다운로드/학교별 N+1 없음
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-16
+
+### 구현
+
+- School Hub Growth UI Phase 2A — 학교 상세 페이지(`app/school/[slug]/page.tsx`) 상단을 School Growth Snapshot 기반 성장 패널로 전환. Home Growth Feed·State D·DB migration·RPC 수정은 이번 범위에 포함하지 않음
+- `docs/decisions/2026-07-16-school-hub-growth-ui.md`(신규) 작성 — State A/B/C만 구현, State D·최대 Level 보류 근거, 임박 기준, State A "다음 레벨까지 1명" FROZEN 카피 적용, Home Feed보다 School Hub를 먼저 만드는 이유, `/invite` 대신 기존 `ShareButton` 재사용 근거를 기록
+- **View model 순수 함수**(신규, `lib/policy/schoolHubGrowthView.ts`): `getSchoolStateContent(schoolState)`(State A/B/C별 제목·설명·helperText·주/보조 CTA, "동창" 표현 미사용), `buildSchoolStateCtaHref(kind, slug)`(기존 `/submit?school=`·`&self=1` 쿼리 관례만 재사용, 새 파라미터 없음, `discover`는 페이지 내 앵커, `share`는 href 없이 기존 `ShareButton`으로 렌더링), `formatRemainingToNextLabel`(State A는 `03-level-policy.md` §7에 따라 "다음 레벨까지 1명" 고정 카피, State B/C는 `snapshot.remainingToNext` 그대로), `formatProgressPercentLabel`
+- **`SchoolGrowthPanel` 컴포넌트**(신규, `components/SchoolGrowthPanel.tsx`): 학교 이름+Lv. 배지+지역/유형/등록수 → State별 성장 메시지 → 성장 진행 영역(Lv.N→Lv.N+1, `레벨업 임박` 배지는 `snapshot.isNearLevelUp`일 때만, `role="progressbar"` + `aria-valuenow/min/max`로 접근성 텍스트 제공, `width: ${progressPercent}%`는 snapshot 값 그대로 사용) → 핵심 CTA(주 CTA는 Link, 보조 CTA가 `share`면 기존 `ShareButton` 재사용) → helperText(State B만)
+- **`app/school/[slug]/page.tsx` 수정**: 장식용 타입별 배너 이미지(`schoolTypeImage`, 16:9 풀와이드)와 기존 "학교 헤더" 카드를 `SchoolGrowthPanel`로 교체. `getSchoolProfileCount(school.id)`(연도 필터 없는 학교 전체 공개 프로필 수)를 기존 `Promise.all` 병렬 호출에 1건만 추가해 `calculateSchoolGrowthSnapshot()`(순수 함수, DB 접근 없음)을 호출 — `school`은 `getSchoolBySlug()`가 이미 `select('*')`로 가져온 값이라 `current_level`/`level_updated_at` 재조회 없음(불필요한 중복 호출 방지). `syncSchoolLevel`은 호출하지 않음. 기존 연도 필터·프로필 리스트·빈 상태·페이지네이션·졸업년도 링크 블록을 `id="discover"`로 감싸 State C "사람 둘러보기" CTA가 페이지 내 앵커로 연결되게 함(새 라우트 없음). `SchoolWarmth`는 무수정 그대로 유지
+- `types/school.ts`의 `School`에 `current_level?`, `level_updated_at?`(둘 다 optional, `12-db-schema.md` P1 컬럼을 타입에 반영) 추가 — optional로 둔 이유는 무관한 `lib/api/search.ts::SchoolSearchResult`/미사용 `components/SubmitForm.tsx`와의 불필요한 타입 충돌을 피하기 위함(그 파일들은 수정하지 않음)
+- **Phase 2B — Level 정책 감사(코드 미수정, 별도 세션) 결과에 따라 내부 Level/XP와 공개 사람 수 성장 단계를 분리**: 감사에서 공개 프로필 6명 학교가 Lv.1·"다음 Level까지 135명"·진행률 4%로 정확히 계산됨에도 State B 화면이 항상 "조금만 더 모이면 다음 Level로 올라가요."를 표시해(State B 상한 10명으로는 Level 2 threshold 141에 구조적으로 도달 불가) 실제와 다른 문구를 보여주고 있음을 확인 — 감사 대안 A/B/C 중 대안 C(내부 Level 유지 + 화면에 별도 사람 수 성장 목표 표시)를 채택(`docs/decisions/2026-07-16-school-hub-growth-ui.md` Addendum에 근거 기록)
+- **사람 수 기반 성장 단계 순수 함수 추가**(`lib/policy/schoolHubGrowthView.ts`): `calculatePeopleGrowthStage(schoolState, visibleProfileCount)`(XP/`remainingToNext`를 입력·계산에 전혀 사용하지 않음 — State A: `remainingPeople=1, progressPercent=0`, State B: `remainingPeople=11-count`, `progressPercent=round(((count-1)/10)*100)` 0~100 clamp, `remainingPeople<=2`면 `isNearGrowth`, State C: `progressPercent=100, isComplete=true`, 다음 목표 없음), `formatPeopleGrowthRemainingLabel(schoolState, stage)`(State A "첫 기록까지 1명", State B "다음 성장 단계까지 N명", State C는 null), `formatPeopleGrowthDescription(remainingPeople)`("N명만 더 모이면 다음 성장 단계로 이어져요.", "Level" 표현 미사용). State B → C 진입 기준(11명)은 새 값이 아니라 `lib/policy/schoolGrowth.ts::classifySchoolState`의 기존 경계를 그대로 재사용
+- **State B 고정 카피 제거**: `getSchoolStateContent('B').description`을 `null`로 변경(정적 카피 없음을 타입으로 명시, `SchoolStateContent.description`을 `string | null`로 변경)하고 실제 표시는 `formatPeopleGrowthDescription`이 담당하도록 화면 레이어로 이동. `helperText`도 "이름을 남기면 학교의 다음 Level에 가까워져요." → "이름을 남기면 다음 성장 단계에 가까워져요."로 수정해 "Level" 표현을 제거. 기존 `formatRemainingToNextLabel`/`formatProgressPercentLabel`(XP 기반)은 삭제하지 않고 그대로 유지(다른 잠재적 소비자를 위해 보존, 현재는 아무도 호출하지 않음)
+- **`SchoolGrowthPanel` 성장 진행 영역을 XP 기반에서 사람 수 기반으로 교체**(`components/SchoolGrowthPanel.tsx`): 기존 `Lv.N → Lv.N+1` 큰 진행 영역과 XP `progressPercent`/`remainingToNext` 표시를 제거. Level은 학교 이름 옆 `Lv.{effectiveLevel}` 배지 + `isNearLevelUp`일 때만 붙는 작은 "레벨업 임박" 배지로만 유지(색상: indigo 계열). 그 아래 "학교 성장" 섹션을 새로 추가해 `calculatePeopleGrowthStage` 결과로 진행 바(색상: blue 계열, XP 바와 시각적으로 분리)·실제 공개 프로필 수·`formatPeopleGrowthRemainingLabel`·`isNearGrowth`일 때 "성장 임박" 배지(State C 완료 상태는 "활발하게 이어지는 학교")를 표시
+- **State A 중복 CTA 정리**(`app/school/[slug]/page.tsx`): 사람 발견 영역의 프로필 0명 빈 상태에서 기존에 중복으로 존재하던 "친구 이름 남기기" 버튼과 두 번째 `ShareButton`(공유 버튼)을 제거 — 등록/공유 CTA는 상단 `SchoolGrowthPanel`(State A 주 CTA "첫 이름 남기기", 보조 CTA "학교 공유하기")에만 남기고, 빈 상태는 설명 텍스트(이모지 + 안내 문구 + 사회적 증거 조건부 노출)만 유지. 더 이상 쓰이지 않는 `ShareButton` import를 `page.tsx`에서 제거(컴포넌트 자체는 `SchoolGrowthPanel.tsx`가 계속 사용, 삭제 아님)
+- **디자인 색상 보완**: `tailwind.config.ts`의 `brand.blue`가 "브랜드 컬러를 흑백 모노톤으로 통일"이라는 기존 사이트 전역 결정에 따라 실제로는 거의 검정(`#0a0a0a`)임을 확인 — 이 전역 토큰은 School Hub만을 위해 바꾸지 않고, `SchoolGrowthPanel.tsx` 내부에서만 Tailwind 기본 팔레트 `indigo`(Level 배지·레벨업 임박)/`blue`(사람 수 성장 바·성장 임박 배지)를 사용해 "브랜드 보라·파랑 계열" 요청을 시각화. 그라데이션·애니메이션은 추가하지 않고 기존 카드 구조(`p-5 space-y-4`, `rounded-xl bg-gray-50 p-3.5`)와 CTA 스타일(`btn-primary` 등)은 무수정 유지
+
+### 확인된 사실 / 범위 결정
+
+- Year(`[year]/page.tsx`)·Class(`[year]/[class]/page.tsx`) 페이지는 이번 범위에 포함하지 않음 — `05-school-hub.md`가 School Hub(최상위)만 State 대상으로 정의하고, Product Constitution이 Year/Class를 별도 "필터" 계층으로 정의하기 때문(결정 문서에 근거 기록)
+- "최대 Level이라 nextLevel이 null" 지시는 `03-level-policy.md` §1/§9("최대 레벨은 없다")와 충돌해 구현하지 않음 — `SchoolGrowthSnapshot.nextLevel`은 항상 number이므로 null 분기 자체가 발생하지 않음(결정 문서에 근거 기록)
+- Growth Snapshot은 순수 함수라 그 자체로는 실패할 수 없음(Phase 1B에서 이미 21개 테스트로 검증) — 유일한 실패 경로는 `getSchoolProfileCount`가 DB 오류 시 조용히 0을 반환하는 기존 계약(Phase 0부터 존재, 이번에 변경하지 않음)이며, 이는 이번 범위에서 고치지 않는 기존 한계로 보고만 함
+- 학교 헤더의 "연도 범위"(예: "2015~2020년") 보조 표시는 제거함 — 기존 "기능"(연도별 탐색 자체)이 아니라 부가 통계 표시였고, 실제 연도 탐색(연도 필터 chips + 졸업년도 링크)은 그대로 유지됨
+- **(Phase 2B) State D는 계속 보류함** — 완성도(Completion) 계산식 미확정이라는 동일한 이유로 이번에도 구현하지 않음, `types/schoolGrowth.ts::SchoolState`는 그대로 `'A' | 'B' | 'C'` 유지
+- **(Phase 2B) Level threshold 공식·cumulativeXp 계산·Register Flow·Admin Level Sync·DB/RPC/migration은 감사 대안 C의 전제(내부 Level 유지) 그대로 무수정** — 이번 Phase는 화면 표시 레이어(`schoolHubGrowthView.ts`, `SchoolGrowthPanel.tsx`, `page.tsx`의 빈 상태 블록)만 변경함
+
+### 관련 파일
+
+- `lib/policy/schoolHubGrowthView.ts` (Phase 2A 신규 + Phase 2B 수정: `PeopleGrowthStage`/`calculatePeopleGrowthStage`/`formatPeopleGrowthRemainingLabel`/`formatPeopleGrowthDescription` 추가, `SchoolStateContent.description`을 `string | null`로 변경, State B `description`/`helperText` 문구 수정)
+- `lib/policy/schoolHubGrowthView.test.ts` (Phase 2A 신규 15 tests + Phase 2B 신규 15 tests = 30 tests, 기존 State B 관련 테스트 2개는 새 정책에 맞게 갱신)
+- `components/SchoolGrowthPanel.tsx` (Phase 2A 신규 + Phase 2B 수정: XP 기반 성장 진행 영역을 사람 수 기반으로 교체, Level 배지/성장 바 색상 분리)
+- `app/school/[slug]/page.tsx` (Phase 2A 상단 구조 교체 + Phase 2B: 빈 상태 블록의 중복 CTA 2개 제거, 미사용 `ShareButton` import 제거)
+- `types/school.ts` (`current_level`/`level_updated_at` optional 필드 추가, Phase 2B 무수정)
+- `docs/decisions/2026-07-16-school-hub-growth-ui.md` (Phase 2A 신규 + Phase 2B: Addendum 섹션 추가)
+- `docs/IMPLEMENTATION_LOG.md`
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run lib/policy/schoolHubGrowthView.test.ts` → 30 passed (Phase 2B 반영 최신 결과)
+- `npm test` → 15 test files, 212 tests 통과 (기존 197 + Phase 2B 신규 15)
+- `npm run build` → 이 세션의 도구 권한 설정으로 실행이 차단되어 수행하지 못함(우회 시도 안 함) — 사용자가 PowerShell에서 직접 실행 필요
+- `git diff --check` → 공백 오류 없음
+
+### 비고
+
+- State D, Completion 계산식, Home Growth Feed UI, Home 순위 UI는 이번에도 구현하지 않음
+- Register Flow·Invite Flow 내부 동작, Admin, DB schema/migration/RPC, Home UI, `SchoolWarmth` 내부 동작은 Phase 2A/2B 모두 무수정
+- React UI 테스트 도구가 저장소에 없어 페이지 컴포넌트 자체의 렌더링 테스트는 하지 않음 — 순수 view model(`schoolHubGrowthView.ts`)과 기존에 이미 검증된 `schoolGrowth.ts`/`getSchoolProfileCount` 테스트로 커버되는 범위만 자동 테스트하고, 나머지(존재하지 않는 slug의 notFound, metadata 생성 유지, Bottom Navigation 유지, Year/Class 탐색 유지, 390px/430px/데스크톱 레이아웃)는 코드 diff 리뷰로만 확인함 — 실제 브라우저 수동 검증은 아직 수행하지 않음(남은 blocker로 보고)
+- collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-17
+
+### 구현
+
+- School Hub Growth UI Phase 2B 최종 점검 — 기준 커밋(`d6d1558`) 대비 미커밋 Phase 2A/2B 구현(`app/school/[slug]/page.tsx`, `components/SchoolGrowthPanel.tsx`, `lib/policy/schoolHubGrowthView.ts`/`.test.ts`, `types/school.ts`, 두 결정 문서)을 코드 레벨로 재검토
+- 사람 수 기반 성장 계산(`calculatePeopleGrowthStage`), State B 동적 문구(`formatPeopleGrowthDescription`), State A 중복 CTA 제거(`page.tsx` 빈 상태 블록), Level 배지/성장 진행 바 색상 분리는 이미 요구사항과 정확히 일치함을 확인 — 추가 로직 변경 없음
+- 확인된 결함 1건 수정: `components/SchoolGrowthPanel.tsx`의 State C(완료 상태) 문구가 "성장 목표 달성"으로 표시되고 있었으나, 지시된 문구는 "활발하게 이어지는 학교"였음 — 해당 문자열만 정정(계산 로직·`isComplete` 판단 기준은 무수정)
+- `docs/IMPLEMENTATION_LOG.md`의 2026-07-16 기존 항목 중 위 문구를 언급한 한 곳만 실제 구현과 일치하도록 함께 정정(새 완료 항목 생성 아님)
+
+### 관련 파일
+
+- `components/SchoolGrowthPanel.tsx` (State C 완료 문구 정정: "성장 목표 달성" → "활발하게 이어지는 학교")
+- `docs/IMPLEMENTATION_LOG.md` (2026-07-16 항목의 동일 문구 언급 정정 + 이번 점검 기록 추가)
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run lib/policy/schoolHubGrowthView.test.ts` → 30 passed
+- `npm test` → 15 test files, 212 tests 통과 (Phase 2B 기준과 동일, 회귀 없음)
+- `git diff --check` → 공백 오류 없음
+- `npm run build`는 이번 세션에서 실행하지 않음(사용자가 PowerShell에서 직접 실행 예정)
+
+### 비고
+
+- State C 완료 문구는 React 컴포넌트 JSX 리터럴이라 순수 함수 테스트로 커버되지 않음 — 저장소에 React 렌더링 테스트 도구가 없다는 기존 제약(2026-07-16 항목에 이미 기록)과 동일. 실제 화면 확인은 수동 브라우저 검증 필요(아래 수동 재검증 URL 참고)
+- Level threshold/cumulativeXp, Register Flow, Admin, DB/RPC/migration, Home UI, State D는 이번에도 무수정
+- collector/BoostKitchen 관련 내용 없음
