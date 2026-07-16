@@ -765,3 +765,63 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - Home Growth Feed UI, School Hub UI, DB migration, RPC 생성, 실제 랭킹 배너, Register Flow, Admin 도구는 이번 Phase 1A에서 구현하지 않음(지시된 금지 범위)
 - 남은 blocker 2건(State D 완성도 계산식, 주간/오늘 랭킹 DB 집계 설계 승인)은 Phase 1B 착수 전 확정 필요
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-15 (8)
+
+### 구현
+
+- School Growth Foundation Phase 1B — 최근 7일 학교 성장 순위와 오늘 가장 빠르게 성장한 학교 집계 기반 구현(RPC 설계 + 순수 계산 보완, Home/School Hub UI 연결은 이번 범위 아님)
+- 작업 전 working tree가 기준 커밋(`1271656`)과 완전히 일치함을 확인 후 시작
+- **Level Policy threshold export**(`lib/policy/levelPolicy.ts`): 기존 module-scope `threshold()`에 `export`만 추가, 공식·기존 동작 무변경(`levelPolicy.test.ts` 11/11 회귀 없음 확인)
+- **School Growth Snapshot 보완**(`lib/policy/schoolGrowth.ts`, Phase 1A blocker 해소): `effectiveLevel`이 `calculatedLevel`보다 높은 드문 경우(신고로 프로필이 숨겨져 현재 인원이 줄어든 경우)에도 `nextLevel`/`nextLevelThreshold`/`remainingToNext`/`progressPercent`를 `effectiveLevel` 기준으로 재계산 — 새로 export한 `threshold()`를 재사용하고 공식은 복제하지 않음. 일반적인 경우(`effectiveLevel === calculatedLevel`)는 기존과 동일하게 `calculateLevelState` 결과를 그대로 사용
+- **시간 계산 순수 함수**(신규, `lib/policy/growthPeriod.ts`): `getRecentWeekStart(now)`(now-7일), `getSeoulTodayStartUtc(now)`(Asia/Seoul 00:00을 UTC로, KST가 DST 없는 UTC+9 고정이라는 사실을 이용해 시스템 로컬 타임존에 의존하지 않고 UTC getter만으로 계산)
+- **DB 집계 RPC**(신규, `supabase/migrations/20260715120000_school_growth_ranking_rpc.sql`): `school_growth_ranking_v1(p_since, p_until, p_limit)` — 기간 내 `is_hidden=false` 신규 프로필을 학교별로 집계해 신규 수 내림차순 → 최근 등록 시각 내림차순 → 학교명 오름차순 → school_id 오름차순으로 정렬 후 반환. `SECURITY INVOKER`, `anon`/`authenticated`에 `EXECUTE` 부여·`PUBLIC` revoke. 개인정보성 필드(nickname/instagram_id/message) 미반환. 부분 인덱스 `idx_profiles_visible_created_school (created_at DESC, school_id) WHERE is_hidden = false` 함께 추가. **사용자가 Supabase SQL Editor에서 직접 적용 완료(2026-07-15) — 아래 "Supabase 적용 및 스모크 테스트 결과" 참고**
+- **TypeScript RPC 래퍼**(신규, `lib/api/schools.ts`): `getWeeklySchoolGrowthRanking(now)`(최근 7일 TOP 5), `getTodayFastestGrowingSchool(now)`(오늘 TOP 1, 없으면 null) — 둘 다 같은 RPC를 `p_since`/`p_limit`만 다르게 호출. bigint/count 문자열을 안전한 정수로 검증·변환, 잘못된 행은 로그 남기고 건너뜀(조용히 왜곡하지 않음), RPC 오류 시 예외 없이 빈 배열/null 반환. `lib/policy/schoolRanking.ts::topGrowthRanking()`을 재사용해 `rank` 부여. **Home/School Hub UI에는 연결하지 않음**
+- `docs/decisions/2026-07-15-school-growth-ranking-rpc.md`(신규) 작성 — RPC를 하나로 통합한 이유, SECURITY INVOKER 선택 근거, 권한 설정, `visible_profile_count` 추가 이유, 인덱스 설계 근거를 기록
+
+### 확인된 사실
+
+- `supabase/migrations/` 디렉터리가 이번까지 저장소에 전혀 없었음(기존 RPC `search_schools_v2`도 migration 파일 없이 Supabase에서 직접 생성된 것으로 추정) — 이번에 표준 Supabase CLI 명명 규칙(`YYYYMMDDHHMMSS_설명.sql`)으로 새로 만듦
+- `supabase-schema.sql`은 이미 알려진 대로 실제 운영 DB 대비 stale함(current_level/level_updated_at/search_logs 등 누락) — canonical mirror로 활발히 유지되고 있지 않다고 판단해 이번 RPC/인덱스 추가분을 반영하지 않음(임의 수정 대신 보고만 함)
+
+### Supabase 적용 및 스모크 테스트 결과 (사용자 직접 수행, 2026-07-15)
+
+- 적용 전 충돌 검사: `public.school_growth_ranking_v1(timestamptz,timestamptz,integer)` 미존재, `idx_profiles_visible_created_school` 미존재 — 신규 생성만 발생함을 사전 확인
+- migration 적용: Supabase SQL Editor에서 `20260715120000_school_growth_ranking_rpc.sql` 실행 → Success, 부분 인덱스·RPC·`anon`/`authenticated` 권한 실제 생성 확인
+- 최근 7일 조회: 0 rows — 실제 공개 프로필 최신 `created_at`이 2026-07-05로, 최근 7일 신규 등록이 없다는 실제 데이터와 일치(오탐 아님)
+- 전체 기간(2000-01-01 ~ 현재) TOP 5 조회: 신규 공개 프로필 수 6, 4, 3, 2, 2 순으로 정상 반환. 동률 2개 학교는 `most_recent_registration_at` 내림차순으로 정확히 정렬. 개인정보 필드 없음. `visible_profile_count`가 실제 누적 공개 프로필 수와 일치
+- 프로필 진단: 전체 25건, 공개 25건, `oldest_created_at` 2026-05-27T20:17:37.568094+00, `newest_created_at` 2026-07-05T21:02:24.297593+00
+- `anon` 권한 검증: `BEGIN; SET LOCAL ROLE anon; SELECT * FROM public.school_growth_ranking_v1(...); ROLLBACK;` 구조로 실행 → anon 역할에서도 동일한 TOP 5 5행 정상 반환, `EXECUTE` 권한·`SECURITY INVOKER`·기존 RLS와의 호환성 모두 오류 없이 확인됨
+- 실제 검증에서 발견된 결함 없음 — migration 파일과 구현 코드는 이번에 수정하지 않음
+
+### 관련 파일
+
+- `lib/policy/levelPolicy.ts` (`threshold` export 추가)
+- `lib/policy/schoolGrowth.ts` (`effectiveLevel` 기준 진행률 계산 보완)
+- `lib/policy/schoolGrowth.test.ts` (q/r/s/t 등 신규 테스트 5개 추가)
+- `lib/policy/growthPeriod.ts` (신규)
+- `lib/policy/growthPeriod.test.ts` (신규, 12 tests)
+- `supabase/migrations/20260715120000_school_growth_ranking_rpc.sql` (신규; 최종 SELECT에 결정적 ORDER BY 보정 — CTE 내부 정렬만으로는 최종 반환 순서가 보장되지 않아 `FROM ranked r` 뒤에 동일한 4단계 정렬을 명시적으로 추가; 이후 사용자가 Supabase SQL Editor에서 직접 적용 완료)
+- `supabase/migrations/20260715120000_school_growth_ranking_rpc.test.ts` (신규, 정적 SQL 검토; 최종 ORDER BY 검증 + 인코딩 손상 문자 부재 검증 추가로 15 tests)
+- `lib/api/schools.ts` (`getWeeklySchoolGrowthRanking`/`getTodayFastestGrowingSchool` 추가)
+- `lib/api/schools.test.ts` (신규 테스트 13개 추가)
+- `docs/decisions/2026-07-15-school-growth-ranking-rpc.md` (신규)
+- `docs/IMPLEMENTATION_LOG.md`
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run lib/policy/levelPolicy.test.ts lib/policy/schoolGrowth.test.ts lib/policy/growthPeriod.test.ts lib/api/schools.test.ts supabase/migrations/20260715120000_school_growth_ranking_rpc.test.ts` → 78 passed
+- `npm test` → 14 test files, 182 tests 통과 (기존 139 + 신규 43)
+- `npm run build` → 이 세션의 도구 권한 설정으로 실행이 차단되어 직접 수행하지 못함(우회 시도 안 함) — 사용자가 PowerShell에서 직접 실행해 성공 확인함
+- `git diff --check` → 공백 오류 없음
+- migration 파일의 인코딩을 `file` 명령과 `od -c` 바이트 덤프로 직접 확인 — 정상 UTF-8, BOM 없음(저장소 내 다른 한국어 파일들과 동일 관례). PowerShell `Get-Content`에서 깨져 보인 것은 콘솔 표시 문제로 판단, 파일 내용은 수정하지 않음
+
+### 비고
+
+- Home UI, School Hub UI는 이번 Phase 1B에서도 구현하지 않음(RPC/래퍼/순수 계산까지만) — RPC가 실제 DB에 적용·검증된 상태로 이후 Phase에서 연결 가능
+- migration은 사용자가 Supabase SQL Editor에서 직접 적용 완료했고, 실제 데이터로 스모크 테스트까지 마쳐 결함 없음을 확인함(위 "Supabase 적용 및 스모크 테스트 결과" 참고)
+- 가짜 학교·가짜 순위·가짜 Level Up 없음, 전체 profiles 다운로드/학교별 N+1 없음
+- collector/BoostKitchen 관련 내용 없음

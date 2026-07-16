@@ -163,6 +163,76 @@ describe('calculateSchoolGrowthSnapshot', () => {
   })
 })
 
+describe('calculateSchoolGrowthSnapshot — Phase 1B 보완: effectiveLevel > calculatedLevel 일관성', () => {
+  it('q. 저장 Level이 계산 Level보다 높은 상태 — nextLevel/threshold가 effectiveLevel 기준으로 재계산됨', () => {
+    const snapshot = calculateSchoolGrowthSnapshot({
+      ...BASE,
+      visibleProfileCount: 0, // calculatedLevel = 1
+      storedCurrentLevel: 5,
+    })
+
+    expect(snapshot.effectiveLevel).toBe(5)
+    expect(snapshot.calculatedLevel).toBe(1)
+    // nextLevel은 calculatedLevel(1)+1이 아니라 effectiveLevel(5)+1 기준
+    expect(snapshot.nextLevel).toBe(6)
+  })
+
+  it('r. 해당 상태에서 다음 Level까지 남은 인원은 threshold(6)-visibleProfileCount이며 1 이상의 정수', () => {
+    const snapshot = calculateSchoolGrowthSnapshot({
+      ...BASE,
+      visibleProfileCount: 0,
+      storedCurrentLevel: 5,
+    })
+
+    expect(Number.isInteger(snapshot.remainingToNext)).toBe(true)
+    expect(snapshot.remainingToNext).toBeGreaterThanOrEqual(1)
+    // effectiveLevel 기준이므로 calculatedLevel(1) 기준 remainingToNext보다 훨씬 커야 한다
+    const calculatedOnly = calculateLevelState(0).remainingToNext
+    expect(snapshot.remainingToNext).toBeGreaterThan(calculatedOnly)
+  })
+
+  it('s. 이 edge case에서도 progressPercent는 0~100 범위(현재 실제 인원이 threshold 미만이므로 보통 0)', () => {
+    const snapshot = calculateSchoolGrowthSnapshot({
+      ...BASE,
+      visibleProfileCount: 0,
+      storedCurrentLevel: 5,
+    })
+
+    expect(snapshot.progressPercent).toBeGreaterThanOrEqual(0)
+    expect(snapshot.progressPercent).toBeLessThanOrEqual(100)
+    expect(snapshot.progressPercent).toBe(0) // 현재 인원이 Lv5 threshold에 전혀 못 미치므로 0
+  })
+
+  it('t. 최대 Level 처리 — 매우 높은 저장 Level에서도 예외 없이 계산됨', () => {
+    const snapshot = calculateSchoolGrowthSnapshot({
+      ...BASE,
+      visibleProfileCount: 10,
+      storedCurrentLevel: 500,
+    })
+
+    expect(snapshot.effectiveLevel).toBe(500)
+    expect(snapshot.nextLevel).toBe(501)
+    expect(Number.isFinite(snapshot.nextLevelThreshold)).toBe(true)
+    expect(Number.isFinite(snapshot.remainingToNext)).toBe(true)
+    expect(snapshot.progressPercent).toBeGreaterThanOrEqual(0)
+    expect(snapshot.progressPercent).toBeLessThanOrEqual(100)
+  })
+
+  it('effectiveLevel === calculatedLevel(일반적인 경우)에는 기존 calculateLevelState 결과와 완전히 동일', () => {
+    const count = 300
+    const snapshot = calculateSchoolGrowthSnapshot({
+      ...BASE,
+      visibleProfileCount: count,
+      storedCurrentLevel: null,
+    })
+    const expected = calculateLevelState(count)
+
+    expect(snapshot.nextLevel).toBe(expected.level + 1)
+    expect(snapshot.nextLevelThreshold).toBe(expected.xpForNextLevel)
+    expect(snapshot.remainingToNext).toBe(expected.remainingToNext)
+  })
+})
+
 describe('classifySchoolState — l. School State A/B/C 경계 (03-level-policy.md §5)', () => {
   it('0명 → A', () => {
     expect(classifySchoolState(0)).toBe('A')

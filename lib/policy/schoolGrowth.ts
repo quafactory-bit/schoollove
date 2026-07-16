@@ -1,4 +1,4 @@
-import { calculateLevelState } from './levelPolicy'
+import { calculateLevelState, threshold } from './levelPolicy'
 import type {
   SchoolGrowthSnapshot,
   SchoolGrowthSnapshotInput,
@@ -17,9 +17,14 @@ export function classifySchoolState(visibleProfileCount: number): SchoolState {
   return 'C'
 }
 
+function clampProgress(xpIntoLevel: number, bracketWidth: number): number {
+  if (bracketWidth <= 0) return 0
+  return Math.min(100, Math.max(0, Math.round((xpIntoLevel / bracketWidth) * 100)))
+}
+
 // School Hub와 Home Growth Feed가 공통으로 쓰는 읽기 전용 성장 스냅샷 계산.
 // 순수 함수 — DB를 읽거나 쓰지 않고, syncSchoolLevel을 호출하지 않는다.
-// Level 공식은 재구현하지 않고 calculateLevelState()를 그대로 재사용한다.
+// Level 공식은 재구현하지 않고 calculateLevelState()/threshold()를 그대로 재사용한다.
 export function calculateSchoolGrowthSnapshot(
   input: SchoolGrowthSnapshotInput
 ): SchoolGrowthSnapshot {
@@ -42,13 +47,34 @@ export function calculateSchoolGrowthSnapshot(
       ? storedCurrentLevel
       : calculatedState.level
 
-  const progressPercent =
-    calculatedState.xpForNextLevel > 0
-      ? Math.min(
-          100,
-          Math.max(0, Math.round((calculatedState.xpIntoLevel / calculatedState.xpForNextLevel) * 100))
-        )
-      : 0
+  let nextLevel: number
+  let nextLevelThreshold: number
+  let remainingToNext: number
+  let progressPercent: number
+
+  if (effectiveLevel === calculatedState.level) {
+    // 일반적인 경우: calculateLevelState 결과를 그대로 재사용한다(재계산하지 않음).
+    nextLevel = calculatedState.level + 1
+    nextLevelThreshold = calculatedState.xpForNextLevel
+    remainingToNext = calculatedState.remainingToNext
+    progressPercent = clampProgress(calculatedState.xpIntoLevel, calculatedState.xpForNextLevel)
+  } else {
+    // 드문 경우: storedCurrentLevel(effectiveLevel)이 calculatedState.level보다 높다
+    // (예: 신고로 프로필이 숨김 처리되어 현재 visibleProfileCount가 과거보다 줄어든 경우).
+    // Level 표시(effectiveLevel)는 내려가지 않지만, "다음 레벨까지"는 실제 현재 인원 기준으로
+    // 다시 계산해야 정확하므로 threshold()를 effectiveLevel 기준으로 재사용한다.
+    // (threshold 공식 자체는 복제하지 않고 levelPolicy.ts의 동일 함수를 그대로 호출한다.)
+    const currentThreshold = threshold(effectiveLevel)
+    const nextThreshold = threshold(effectiveLevel + 1)
+    // visibleProfileCount는 정의상 currentThreshold보다 작다(그렇지 않다면 calculatedState.level이
+    // 이미 effectiveLevel 이상이었을 것이다) — 진행률은 0으로, 남은 인원은 이 격차 전체로 계산한다.
+    const xpIntoLevel = Math.max(0, visibleProfileCount - currentThreshold)
+
+    nextLevel = effectiveLevel + 1
+    nextLevelThreshold = nextThreshold - currentThreshold
+    remainingToNext = Math.max(1, Math.ceil(nextThreshold - visibleProfileCount))
+    progressPercent = clampProgress(xpIntoLevel, nextLevelThreshold)
+  }
 
   return {
     schoolId,
@@ -58,11 +84,11 @@ export function calculateSchoolGrowthSnapshot(
     storedCurrentLevel,
     calculatedLevel: calculatedState.level,
     effectiveLevel,
-    nextLevel: calculatedState.level + 1,
-    nextLevelThreshold: calculatedState.xpForNextLevel,
-    remainingToNext: calculatedState.remainingToNext,
+    nextLevel,
+    nextLevelThreshold,
+    remainingToNext,
     progressPercent,
-    isNearLevelUp: calculatedState.remainingToNext <= NEAR_LEVEL_UP_THRESHOLD,
+    isNearLevelUp: remainingToNext <= NEAR_LEVEL_UP_THRESHOLD,
     schoolState: classifySchoolState(visibleProfileCount),
     levelUpdatedAt,
   }

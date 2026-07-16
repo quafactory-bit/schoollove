@@ -4,7 +4,10 @@ import type { LevelPolicy } from '@/types/level'
 // docs/design-package-v1.0/03-level-policy.md §3 기준
 // threshold(L) = 레벨 L에 도달하기 위해 필요한 최소 누적 XP
 // 이 값을 복제하지 말고 항상 이 모듈을 통해서만 계산한다.
-function threshold(level: number): number {
+// School Growth Snapshot(lib/policy/schoolGrowth.ts)이 저장 Level 기준 진행률을
+// 계산할 때 재사용할 수 있도록 export한다 — 공식과 기존 calculateLevelState 동작은
+// 전혀 변경하지 않는다(Phase 1A blocker 해소, Phase 1B).
+export function threshold(level: number): number {
   if (level === 1) return 0
   return Math.round(50 * Math.pow(level, 1.5))
 }
