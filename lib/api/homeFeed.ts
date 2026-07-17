@@ -6,7 +6,14 @@ import type { HomeActivitySchoolRef, RecentRegisterActivity, RecentTraceActivity
 // nickname/instagram_id는 select 자체에 포함하지 않는다(개인 식별 필드를 애초에 조회하지 않음).
 // 전체 테이블을 내려받지 않고 항상 limit으로 제한 조회하며, 학교 정보는 join으로 한 번에 가져와
 // 학교별 추가 조회(N+1)를 만들지 않는다.
-export const HOME_ACTIVITY_FETCH_LIMIT = 16
+//
+// Phase 4A(docs/decisions/2026-07-17-home-activity-grouping.md) — 등록 활동은 화면에 보여주기 전
+// 같은 학교·졸업연도·날짜끼리 묶이므로, 원본 16건만 조회하면 묶은 뒤 화면에 남는 활동 수가 지나치게
+// 줄어들 수 있다. 등록 조회 limit만 24로 늘려 여유를 두고(여전히 제한 조회, 전체 조회 아님), 화면에
+// 최종적으로 노출하는 활동 수(HOME_ACTIVITY_FEED_LIMIT)는 묶은 뒤 별도로 16으로 자른다.
+export const HOME_REGISTER_FETCH_LIMIT = 24
+export const HOME_TRACE_FETCH_LIMIT = 16
+export const HOME_ACTIVITY_FEED_LIMIT = 16
 
 type RawSchoolRef = { school_name: unknown; slug: unknown; current_level: unknown } | null
 
@@ -28,7 +35,7 @@ type RawRegisterRow = {
 
 // 최근 공개(is_hidden=false) 프로필 등록 활동. school은 join으로 한 번에 가져온다(N+1 없음).
 export async function getRecentRegisterActivity(
-  limit = HOME_ACTIVITY_FETCH_LIMIT
+  limit = HOME_REGISTER_FETCH_LIMIT
 ): Promise<RecentRegisterActivity[]> {
   const { data, error } = await supabaseServer
     .from('profiles')
@@ -66,7 +73,7 @@ type RawTraceRow = {
 // 최근 공개(is_hidden=false) 흔적. School Hub(SchoolWarmth)가 이미 동일 필드(message,
 // created_at, school_id, is_hidden)를 모든 방문자에게 그대로 노출하고 있어(기존 공개 기능),
 // 같은 필드 그대로 Home 피드에 재사용한다 — 새로운 개인정보 노출을 만들지 않는다.
-export async function getRecentTraceActivity(limit = HOME_ACTIVITY_FETCH_LIMIT): Promise<RecentTraceActivity[]> {
+export async function getRecentTraceActivity(limit = HOME_TRACE_FETCH_LIMIT): Promise<RecentTraceActivity[]> {
   const { data, error } = await supabaseServer
     .from('traces')
     .select('id, created_at, message, school:schools(school_name, slug, current_level)')

@@ -956,3 +956,44 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - 남은 blocker: Level Up 이벤트 이력 테이블/스키마 없음(별도 migration 필요, 이번 범위 밖). `supabase/migrations/20260715120000_school_growth_ranking_rpc.sql`이 아직 Supabase에 적용되지 않아, 적용 전까지는 오늘 성장 스트립/주간 순위가 항상 숨김 또는 오류 상태로만 보임(코드 결함 아님, 인프라 적용 여부 문제)
 - School Hub, Level 정책, Register Flow, Admin, DB/migration/RPC SQL은 이번에도 무수정
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-17 (3)
+
+### 구현
+
+- Home Activity Feed Quality — Phase 4A 구현 (`docs/decisions/2026-07-17-home-activity-grouping.md` 참고)
+- 같은 학교(slug) + 같은 졸업연도(graduationYear) + 같은 날짜(`created_at`의 UTC 날짜, `YYYY-MM-DD`)인 실제 등록(register) 활동만 하나의 활동으로 묶는 `groupRegisterActivity`를 `lib/policy/homeFeed.ts`에 추가. 학교/졸업연도/날짜 중 하나라도 다르면 절대 합치지 않음. 졸업연도가 없는(`null`) 등록은 "같은 학교 + 같은 날짜"만으로 묶음
+- 각 묶음은 실제 원본 등록 건수를 `count`로 그대로 보존(가짜로 늘리거나 줄이지 않음). 묶음의 대표 `createdAt`은 묶음 안에서 가장 최신인 원본 `created_at`
+- `formatRegisterActivityText(schoolName, graduationYear, count = 1)`에 `count` 인자를 추가해 단수(`count===1`, 기존 문구 그대로)/복수(`count>=2`, "이름 N개가 새로 남겨졌어요") 문구를 분기. 두 문구 모두 개인 이름/닉네임/Instagram ID를 포함하지 않음(기존과 동일하게 입력으로도 받지 않음)
+- trace 활동은 이번에도 개별 항목으로 유지 — 등록과 합치지 않고, trace끼리도 합치지 않음(메시지가 자유 텍스트라 대표를 정할 근거가 없어 묶으면 정보 손실이 생기기 때문)
+- `buildHomeActivityFeed`가 (1) 등록 행을 `groupRegisterActivity`로 묶고 → (2) trace와 병합해 대표/원본 `createdAt` 내림차순으로 정렬 → (3) 최종 배열에 `limit`을 적용하는 순서로 동작하도록 변경(limit은 묶기 이전 원본이 아니라 묶은 뒤 최종 배열에 적용)
+- `lib/api/homeFeed.ts`의 `HOME_ACTIVITY_FETCH_LIMIT`(16, 등록/흔적 공용)를 세 상수로 분리: `HOME_REGISTER_FETCH_LIMIT`(24, 묶기로 인한 화면 활동 감소를 상쇄하기 위해 24~32 범위 안에서 증가 — 여전히 고정 limit 조회, 전체 조회 아님, join/N+1 구조 무수정), `HOME_TRACE_FETCH_LIMIT`(16, 묶지 않으므로 기존 그대로), `HOME_ACTIVITY_FEED_LIMIT`(16, 묶은 뒤 화면 최종 노출 상한 — 기존 최종 화면 상한과 동일하게 유지)
+- `app/page.tsx`는 `HOME_ACTIVITY_FETCH_LIMIT` → `HOME_ACTIVITY_FEED_LIMIT` import/사용처만 교체(레이아웃·CTA 배치 로직 자체는 무수정 — `getFeedCtaVisibility(activityItems.length)`가 이미 `buildHomeActivityFeed`의 최종 반환 길이를 인자로 받고 있어 묶은 뒤 개수 기준으로 자연스럽게 동작)
+- `types/homeFeed.ts`의 `HomeActivityItem`에 `count: number` 필드만 최소 추가 — `type` 필드가 이미 register/trace 구분자 역할을 하고 있어 별도 `activityKind`를 추가하지 않았고, `slug`가 이미 School Hub 링크 키로 쓰이고 있어 `schoolSlug`로 리네임하지 않았으며, `graduationYear`는 이미 완성된 `text`에 반영돼 있어 화면이 별도로 필요로 하지 않아 추가하지 않음(최소 추가 원칙)
+
+### 관련 파일
+
+- `types/homeFeed.ts` (`HomeActivityItem.count` 필드 추가)
+- `lib/policy/homeFeed.ts` (`formatRegisterActivityText` count 인자, `groupRegisterActivity`/`registerActivityDateKey` 신규, `buildHomeActivityFeed` 묶기 반영)
+- `lib/policy/homeFeed.test.ts` (묶기 테스트 15개 신규 추가, 기존 register id 형식이 `register:p1`에서 `register:a-high::2020::2026-07-17`(학교+졸업연도+날짜 묶음 키)로 바뀐 것을 반영해 기존 테스트 2개 갱신)
+- `lib/api/homeFeed.ts` (`HOME_ACTIVITY_FETCH_LIMIT` → `HOME_REGISTER_FETCH_LIMIT`/`HOME_TRACE_FETCH_LIMIT`/`HOME_ACTIVITY_FEED_LIMIT` 분리)
+- `lib/api/homeFeed.test.ts` (새 limit 상수 테스트 3개 추가)
+- `app/page.tsx` (import/사용 상수명만 교체)
+- `docs/decisions/2026-07-17-home-activity-grouping.md` (신규)
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run lib/policy/homeFeed.test.ts lib/api/homeFeed.test.ts` → 44 tests 통과(신규 묶기/limit 테스트 포함)
+- `npm test` → 18 test files, 266 tests 통과(Phase 3A 기준 251 tests에서 15개 신규 추가, 전체 회귀 없음)
+- `git diff --check` → 공백 오류 없음(줄바꿈 문자 관련 경고만 있음, 실제 오류 아님)
+- `npm run build`는 이번 세션에서 실행하지 않음(사용자가 PowerShell에서 직접 실행 예정)
+- 실제 Supabase 환경에서의 브라우저 smoke test는 이번 세션에서 수행하지 않음(사용자가 직접 확인 예정 — 아래 최종 보고의 수동 검증 항목 참고)
+
+### 비고
+
+- 등록 활동은 화면 노출 전 항상 묶여서 표시되므로, 같은 학교·졸업연도·날짜에 등록이 1건뿐이면 기존과 동일한 단수 문구가 그대로 유지된다(회귀 없음)
+- School Hub, Level 정책, 등록 API, DB/migration/RPC SQL, Admin은 이번에도 무수정
+- collector/BoostKitchen 관련 내용 없음

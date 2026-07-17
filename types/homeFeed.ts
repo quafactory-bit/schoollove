@@ -28,6 +28,9 @@ export type HomeActivityType = 'register' | 'trace'
 
 // register/trace를 병합·정렬한 뒤 화면이 그대로 렌더링하는 정규화된 피드 항목.
 // text는 이미 완성된 문장이다(컴포넌트는 문구를 다시 조합하지 않는다).
+// register 활동은 같은 학교·같은 졸업연도·같은 날짜끼리 하나의 항목으로 묶일 수 있다
+// (docs/decisions/2026-07-17-home-activity-grouping.md). count는 그 묶음 안 실제 원본 등록 수
+// (묶이지 않으면 1, trace는 항상 1)이며 text(단수/복수 문구)는 이미 count를 반영해 완성돼 있다.
 export type HomeActivityItem = {
   id: string
   type: HomeActivityType
@@ -36,6 +39,7 @@ export type HomeActivityItem = {
   schoolName: string
   slug: string
   currentLevel: number | null
+  count: number
 }
 
 // "이번 주 학교 성장 순위" 한 행 — GrowthRankingRow(types/ranking.ts)에 School Hub의

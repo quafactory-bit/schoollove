@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { getTodayFastestGrowingSchool, getWeeklySchoolGrowthRankingWithStatus } from '@/lib/api/schools'
-import { getRecentRegisterActivity, getRecentTraceActivity, HOME_ACTIVITY_FETCH_LIMIT } from '@/lib/api/homeFeed'
+import { getRecentRegisterActivity, getRecentTraceActivity, HOME_ACTIVITY_FEED_LIMIT } from '@/lib/api/homeFeed'
 import { buildHomeActivityFeed, buildWeeklyRankingViewRow, getFeedCtaVisibility } from '@/lib/policy/homeFeed'
 import HomeActivityFeed from '@/components/HomeActivityFeed'
 import WeeklyGrowthRanking from '@/components/WeeklyGrowthRanking'
@@ -27,7 +27,7 @@ export default async function HomePage() {
     getRecentTraceActivity(),
   ])
 
-  const activityItems = buildHomeActivityFeed(registerActivity, traceActivity, HOME_ACTIVITY_FETCH_LIMIT)
+  const activityItems = buildHomeActivityFeed(registerActivity, traceActivity, HOME_ACTIVITY_FEED_LIMIT)
   const weeklyRows = weeklyRankingResult.status === 'ok' ? weeklyRankingResult.rows.map(buildWeeklyRankingViewRow) : []
   const ctaVisibility = getFeedCtaVisibility(activityItems.length)
 

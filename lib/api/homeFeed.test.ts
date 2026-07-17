@@ -99,6 +99,19 @@ describe('getRecentRegisterActivity — 최근 공개 프로필 등록 활동', 
     expect(selectArg).not.toMatch(/nickname/)
     expect(selectArg).not.toMatch(/instagram/)
   })
+
+  it('Phase 4A: 기본 limit은 HOME_REGISTER_FETCH_LIMIT(24~32 범위)을 사용한다 — 묶기 이후 화면 활동이 지나치게 줄지 않도록 여유를 둔 제한 조회', async () => {
+    const { supabase, supabaseServer, calls } = createMockSupabase([{ data: [], error: null }])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getRecentRegisterActivity, HOME_REGISTER_FETCH_LIMIT } = await import('./homeFeed')
+
+    await getRecentRegisterActivity()
+
+    expect(HOME_REGISTER_FETCH_LIMIT).toBeGreaterThanOrEqual(24)
+    expect(HOME_REGISTER_FETCH_LIMIT).toBeLessThanOrEqual(32)
+    const limitCall = findCall(calls[0], 'limit')
+    expect(limitCall?.args).toEqual([HOME_REGISTER_FETCH_LIMIT])
+  })
 })
 
 describe('getRecentTraceActivity — 최근 공개 흔적 활동', () => {
@@ -135,5 +148,24 @@ describe('getRecentTraceActivity — 최근 공개 흔적 활동', () => {
     const { getRecentTraceActivity } = await import('./homeFeed')
 
     await expect(getRecentTraceActivity()).resolves.toEqual([])
+  })
+
+  it('Phase 4A: trace 기본 limit(HOME_TRACE_FETCH_LIMIT)은 기존과 동일하게 16을 유지한다', async () => {
+    const { supabase, supabaseServer, calls } = createMockSupabase([{ data: [], error: null }])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getRecentTraceActivity, HOME_TRACE_FETCH_LIMIT } = await import('./homeFeed')
+
+    await getRecentTraceActivity()
+
+    expect(HOME_TRACE_FETCH_LIMIT).toBe(16)
+    const limitCall = findCall(calls[0], 'limit')
+    expect(limitCall?.args).toEqual([16])
+  })
+})
+
+describe('HOME_ACTIVITY_FEED_LIMIT — 화면 최종 노출 활동 수 상한(Phase 4A)', () => {
+  it('묶기 이후 화면에 보여줄 최종 활동 수는 16을 유지한다', async () => {
+    const { HOME_ACTIVITY_FEED_LIMIT } = await import('./homeFeed')
+    expect(HOME_ACTIVITY_FEED_LIMIT).toBe(16)
   })
 })

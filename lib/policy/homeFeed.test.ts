@@ -115,15 +115,19 @@ describe('buildHomeActivityFeed — 최근 활동(4,5,6,7)', () => {
     },
   ]
 
-  it('4. 날짜 정렬(register/trace를 합쳐 created_at 내림차순)', () => {
+  it('4. 날짜 정렬(register/trace를 합쳐 created_at 내림차순) — register id는 Phase 4A부터 학교+졸업연도+날짜 묶음 키를 쓴다', () => {
     const result = buildHomeActivityFeed(registerRows, traceRows, 10)
-    expect(result.map((r) => r.id)).toEqual(['register:p1', 'trace:t1', 'register:p2'])
+    expect(result.map((r) => r.id)).toEqual([
+      'register:a-high::2020::2026-07-17',
+      'trace:t1',
+      'register:b-high::none::2026-07-17',
+    ])
   })
 
   it('5. limit 적용', () => {
     const result = buildHomeActivityFeed(registerRows, traceRows, 2)
     expect(result).toHaveLength(2)
-    expect(result.map((r) => r.id)).toEqual(['register:p1', 'trace:t1'])
+    expect(result.map((r) => r.id)).toEqual(['register:a-high::2020::2026-07-17', 'trace:t1'])
   })
 
   it('6. 빈 배열 입력이면 빈 배열 반환', () => {
@@ -143,6 +147,169 @@ describe('buildHomeActivityFeed — 최근 활동(4,5,6,7)', () => {
     const serialized = JSON.stringify(result)
     expect(serialized).not.toMatch(/nickname/i)
     expect(serialized).not.toMatch(/instagram/i)
+  })
+})
+
+describe('buildHomeActivityFeed — 등록 활동 묶기(Phase 4A, 1~20)', () => {
+  function registerRow(overrides: Partial<RecentRegisterActivity> = {}): RecentRegisterActivity {
+    return {
+      id: 'p1',
+      createdAt: '2026-07-17T10:00:00.000Z',
+      graduationYear: 2022,
+      school: { schoolName: '두루고등학교', slug: 'duru-high', currentLevel: 2 },
+      ...overrides,
+    }
+  }
+
+  it('1/20. 같은 학교·같은 졸업연도·같은 날짜 3건 → 1개 활동, count는 실제 원본 건수(3)', () => {
+    const rows: RecentRegisterActivity[] = [
+      registerRow({ id: 'p1', createdAt: '2026-07-17T10:00:00.000Z' }),
+      registerRow({ id: 'p2', createdAt: '2026-07-17T11:00:00.000Z' }),
+      registerRow({ id: 'p3', createdAt: '2026-07-17T09:00:00.000Z' }),
+    ]
+    const result = buildHomeActivityFeed(rows, [], 10)
+    expect(result).toHaveLength(1)
+    expect(result[0].count).toBe(3)
+    expect(result[0].text).toBe('두루고등학교 2022년 졸업에 이름 3개가 새로 남겨졌어요.')
+  })
+
+  it('2. 같은 학교·다른 졸업연도 → 분리된 활동', () => {
+    const rows: RecentRegisterActivity[] = [
+      registerRow({ id: 'p1', graduationYear: 2022 }),
+      registerRow({ id: 'p2', graduationYear: 2023 }),
+    ]
+    const result = buildHomeActivityFeed(rows, [], 10)
+    expect(result).toHaveLength(2)
+    expect(result.every((r) => r.count === 1)).toBe(true)
+  })
+
+  it('3. 다른 학교·같은 졸업연도 → 분리된 활동', () => {
+    const rows: RecentRegisterActivity[] = [
+      registerRow({ id: 'p1', school: { schoolName: '두루고등학교', slug: 'duru-high', currentLevel: 2 } }),
+      registerRow({ id: 'p2', school: { schoolName: '가고등학교', slug: 'ga-high', currentLevel: 1 } }),
+    ]
+    const result = buildHomeActivityFeed(rows, [], 10)
+    expect(result).toHaveLength(2)
+  })
+
+  it('4. 같은 학교·같은 졸업연도·다른 날짜 → 분리된 활동', () => {
+    const rows: RecentRegisterActivity[] = [
+      registerRow({ id: 'p1', createdAt: '2026-07-17T10:00:00.000Z' }),
+      registerRow({ id: 'p2', createdAt: '2026-07-16T10:00:00.000Z' }),
+    ]
+    const result = buildHomeActivityFeed(rows, [], 10)
+    expect(result).toHaveLength(2)
+  })
+
+  it('5/19. 졸업연도 없는 같은 학교·같은 날짜 2건 → 묶이고 졸업연도 없는 복수 문구를 쓴다', () => {
+    const rows: RecentRegisterActivity[] = [
+      registerRow({ id: 'p1', graduationYear: null, createdAt: '2026-07-17T10:00:00.000Z' }),
+      registerRow({ id: 'p2', graduationYear: null, createdAt: '2026-07-17T11:00:00.000Z' }),
+    ]
+    const result = buildHomeActivityFeed(rows, [], 10)
+    expect(result).toHaveLength(1)
+    expect(result[0].count).toBe(2)
+    expect(result[0].text).toBe('두루고등학교에 이름 2개가 새로 남겨졌어요.')
+  })
+
+  it('6. 등록 1건 → 기존 단수 문구를 그대로 쓴다', () => {
+    const result = buildHomeActivityFeed([registerRow({ id: 'p1' })], [], 10)
+    expect(result).toHaveLength(1)
+    expect(result[0].count).toBe(1)
+    expect(result[0].text).toBe('누군가 두루고등학교 2022년 졸업에 이름을 남겼어요.')
+  })
+
+  it('8. 묶음의 대표 createdAt은 입력 순서와 무관하게 가장 최신 시간이다', () => {
+    const rows: RecentRegisterActivity[] = [
+      registerRow({ id: 'p1', createdAt: '2026-07-17T09:00:00.000Z' }),
+      registerRow({ id: 'p2', createdAt: '2026-07-17T23:00:00.000Z' }),
+      registerRow({ id: 'p3', createdAt: '2026-07-17T05:00:00.000Z' }),
+    ]
+    const result = buildHomeActivityFeed(rows, [], 10)
+    expect(result).toHaveLength(1)
+    expect(result[0].createdAt).toBe('2026-07-17T23:00:00.000Z')
+  })
+
+  it('9. 묶은 뒤에도 전체 활동은 createdAt(등록 묶음은 대표 시간) 내림차순으로 정렬된다', () => {
+    const registerRows: RecentRegisterActivity[] = [
+      registerRow({ id: 'p1', graduationYear: 2022, createdAt: '2026-07-17T08:00:00.000Z' }),
+      registerRow({ id: 'p2', graduationYear: 2022, createdAt: '2026-07-17T12:00:00.000Z' }),
+      registerRow({
+        id: 'p3',
+        graduationYear: 2023,
+        createdAt: '2026-07-17T18:00:00.000Z',
+      }),
+    ]
+    const traceRows: RecentTraceActivity[] = [
+      {
+        id: 't1',
+        createdAt: '2026-07-17T15:00:00.000Z',
+        message: '나 여기 있어',
+        school: { schoolName: '두루고등학교', slug: 'duru-high', currentLevel: 2 },
+      },
+    ]
+    const result = buildHomeActivityFeed(registerRows, traceRows, 10)
+    const createdAts = result.map((r) => r.createdAt)
+    const sorted = [...createdAts].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+    expect(createdAts).toEqual(sorted)
+    expect(result[0].id).toBe('register:duru-high::2023::2026-07-17')
+  })
+
+  it('10. trace는 같은 학교·같은 날짜 등록과도 합쳐지지 않는다', () => {
+    const registerRows: RecentRegisterActivity[] = [registerRow({ id: 'p1', createdAt: '2026-07-17T10:00:00.000Z' })]
+    const traceRows: RecentTraceActivity[] = [
+      {
+        id: 't1',
+        createdAt: '2026-07-17T11:00:00.000Z',
+        message: '나 여기 있어',
+        school: { schoolName: '두루고등학교', slug: 'duru-high', currentLevel: 2 },
+      },
+    ]
+    const result = buildHomeActivityFeed(registerRows, traceRows, 10)
+    expect(result).toHaveLength(2)
+    expect(result.map((r) => r.type).sort()).toEqual(['register', 'trace'])
+  })
+
+  it('11. trace끼리도 서로 합쳐지지 않는다', () => {
+    const traceRows: RecentTraceActivity[] = [
+      {
+        id: 't1',
+        createdAt: '2026-07-17T10:00:00.000Z',
+        message: '나 여기 있어',
+        school: { schoolName: '두루고등학교', slug: 'duru-high', currentLevel: 2 },
+      },
+      {
+        id: 't2',
+        createdAt: '2026-07-17T11:00:00.000Z',
+        message: '나도 있어',
+        school: { schoolName: '두루고등학교', slug: 'duru-high', currentLevel: 2 },
+      },
+    ]
+    const result = buildHomeActivityFeed([], traceRows, 10)
+    expect(result).toHaveLength(2)
+    expect(result.every((r) => r.count === 1)).toBe(true)
+  })
+
+  it('12. 묶은 뒤 최종 활동 수는 limit(16)을 넘지 않는다', () => {
+    const registerRows: RecentRegisterActivity[] = Array.from({ length: 20 }, (_, i) =>
+      registerRow({
+        id: `p${i}`,
+        graduationYear: i,
+        createdAt: `2026-07-17T${String(i % 24).padStart(2, '0')}:00:00.000Z`,
+      })
+    )
+    const result = buildHomeActivityFeed(registerRows, [], 16)
+    expect(result.length).toBeLessThanOrEqual(16)
+    expect(result).toHaveLength(16)
+  })
+
+  it('18. 묶은 활동도 학교 slug(링크)를 그대로 유지한다', () => {
+    const rows: RecentRegisterActivity[] = [
+      registerRow({ id: 'p1' }),
+      registerRow({ id: 'p2' }),
+    ]
+    const result = buildHomeActivityFeed(rows, [], 10)
+    expect(result[0].slug).toBe('duru-high')
   })
 })
 
