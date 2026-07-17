@@ -908,3 +908,51 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - State C 완료 문구는 React 컴포넌트 JSX 리터럴이라 순수 함수 테스트로 커버되지 않음 — 저장소에 React 렌더링 테스트 도구가 없다는 기존 제약(2026-07-16 항목에 이미 기록)과 동일. 실제 화면 확인은 수동 브라우저 검증 필요(아래 수동 재검증 URL 참고)
 - Level threshold/cumulativeXp, Register Flow, Admin, DB/RPC/migration, Home UI, State D는 이번에도 무수정
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-17 (2)
+
+### 구현
+
+- Home Growth Feed v2 — Phase 3A 구현 (`docs/decisions/2026-07-17-home-growth-feed-v2.md` 참고)
+- `app/page.tsx`를 검색 Hero + 추억 슬라이더 + 정적 통계 중심 MVP에서, 실제 활동이 이어지는 성장 피드로 전면 교체
+  - 상단: 로고 + `<form method="get" action="/search">` 순수 GET 검색 폼(새 클라이언트 컴포넌트/훅 추가하지 않음, `/search` 페이지의 기존 검색 폼 패턴 그대로 재사용)
+  - 오늘 가장 빠르게 성장한 학교: 기존 `getTodayFastestGrowingSchool` 재사용, 실제 데이터 없으면 스트립 자체를 렌더링하지 않음
+  - 최근 활동 피드: 신규 `lib/api/homeFeed.ts::getRecentRegisterActivity`/`getRecentTraceActivity`가 각각 최신 16건만 제한 조회(school은 join으로 한 번에 가져와 N+1 없음), `lib/policy/homeFeed.ts::buildHomeActivityFeed`가 두 원천을 `created_at` 내림차순으로 병합
+  - 이번 주 학교 성장 순위 TOP 5: 기존 `getWeeklySchoolGrowthRanking`/RPC 계약 재사용 + 신규 `getWeeklySchoolGrowthRankingWithStatus`로 RPC 오류와 실제 빈 순위를 구분(오류를 가짜 빈 상태로 위장하지 않음)
+  - 순위 각 행의 사람 수 성장 표시는 School Hub의 `calculatePeopleGrowthStage`/`formatPeopleGrowthRemainingLabel`을 `lib/policy/homeFeed.ts::buildWeeklyRankingViewRow`에서 그대로 재사용(Level curve 재구현 없음)
+  - 피드 CTA(검색/등록)는 `getFeedCtaVisibility(itemCount)`가 활동 4개/8개 이상일 때만 각각 노출하도록 배치(첫 CTA가 첫 활동보다 먼저 나오지 않도록 레이아웃 순서 자체를 피드→순위→피드→CTA로 고정)
+- `types/ranking.ts`의 `GrowthRankingInput`/`GrowthRankingRow`에 `visibleProfileCount`를 추가 — RPC가 이미 반환하던 `visible_profile_count`를 TypeScript 매핑(`mapGrowthRankingRow`)이 내부에서만 쓰고 외부에 노출하지 않던 공백을 채움(RPC/DB 무수정, 매핑 함수만 필드 추가)
+- `lib/api/schools.ts`의 `fetchGrowthRanking`을 `{status:'ok', rows} | {status:'error'}` 반환으로 리팩터링하고, 기존 `getWeeklySchoolGrowthRanking`/`getTodayFastestGrowingSchool`은 이 결과를 그대로 unwrap하도록 변경(외부 계약·기존 테스트 동작 무변경, 회귀 테스트로 확인) — Home 전용 `getWeeklySchoolGrowthRankingWithStatus` 신규 추가
+- Level Up 활동은 구현하지 않음 — `schools.current_level`/`level_updated_at`은 현재 상태 스냅샷일 뿐 "언제 어느 Level에서 어느 Level로 올랐는가"를 확정할 이벤트 이력이 저장소에 없어, 현재 상태를 이벤트로 위장하지 않기 위해 제외(블로커로 기록). 대신 `current_level`을 활동/순위 행 옆에 `Lv.N` 보조 배지로만 표시(이미 조회된 join/RPC 결과라 추가 조회 없음)
+- trace는 이번 Phase에서 최근 활동 피드에 포함 — `lib/api/traces.ts`/`components/SchoolWarmth.tsx`를 직접 확인한 결과 `traces.message`가 이미 모든 방문자에게 공개 표시되는 기존 기능이고(is_hidden=false 필터, 개인 식별 필드 없음), `school_id`/`created_at`이 모두 존재해 안전 근거가 확인됨. 원문 그대로 노출하지 않고 `formatTraceActivityText`가 20자로 잘라 짧게만 표시
+- 개인 이름/인스타그램 ID는 `lib/api/homeFeed.ts`의 두 조회 함수가 애초에 select하지 않음(원천 배제), Upstash 방문자 카운트(`lib/api/views.ts`)는 연결하지 않음
+
+### 관련 파일
+
+- `app/page.tsx` (전면 교체)
+- `types/homeFeed.ts` (신규)
+- `types/ranking.ts` (`visibleProfileCount` 필드 추가)
+- `lib/policy/homeFeed.ts` (신규), `lib/policy/homeFeed.test.ts` (신규, 23 tests)
+- `lib/api/homeFeed.ts` (신규), `lib/api/homeFeed.test.ts` (신규, 6 tests)
+- `lib/api/schools.ts` (`fetchGrowthRanking` 상태 반환으로 리팩터링, `getWeeklySchoolGrowthRankingWithStatus` 추가)
+- `lib/api/schools.test.ts` (`visibleProfileCount`/`WithStatus` 테스트 4개 추가)
+- `lib/policy/schoolRanking.test.ts` (`visibleProfileCount` 필드 보완, 타입 오류 수정)
+- `components/TodayGrowthStrip.tsx`, `components/HomeActivityFeed.tsx`, `components/HomeActivityItem.tsx`, `components/WeeklyGrowthRanking.tsx`, `components/HomeFeedCta.tsx` (신규)
+- `docs/decisions/2026-07-17-home-growth-feed-v2.md` (신규)
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run lib/policy/homeFeed.test.ts lib/api/homeFeed.test.ts lib/api/schools.test.ts lib/policy/schoolRanking.test.ts` → 신규/수정분 전부 통과
+- `npm test` → 18 test files, 251 tests 통과 (신규 테스트 파일 2개 + 기존 파일 2개에 33개 신규 케이스 추가, 전체 회귀 없음)
+- `git diff --check` → 공백 오류 없음(줄바꿈 문자 관련 경고만 있음, 실제 오류 아님)
+- `npm run build`는 이번 세션에서 실행하지 않음(사용자가 PowerShell에서 직접 실행 예정)
+- 실제 Supabase 환경에서의 브라우저 smoke test는 이번 세션에서 수행하지 않음(사용자가 직접 확인 예정 — 아래 최종 보고의 수동 검증 항목 참고)
+
+### 비고
+
+- 남은 blocker: Level Up 이벤트 이력 테이블/스키마 없음(별도 migration 필요, 이번 범위 밖). `supabase/migrations/20260715120000_school_growth_ranking_rpc.sql`이 아직 Supabase에 적용되지 않아, 적용 전까지는 오늘 성장 스트립/주간 순위가 항상 숨김 또는 오류 상태로만 보임(코드 결함 아님, 인프라 적용 여부 문제)
+- School Hub, Level 정책, Register Flow, Admin, DB/migration/RPC SQL은 이번에도 무수정
+- collector/BoostKitchen 관련 내용 없음

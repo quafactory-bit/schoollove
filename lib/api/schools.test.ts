@@ -355,4 +355,68 @@ describe('getWeeklySchoolGrowthRanking / getTodayFastestGrowingSchool — 주간
       expect.objectContaining({ p_since: '2026-07-14T15:00:00.000Z' })
     )
   })
+
+  it('m. 각 행에 visibleProfileCount(RPC의 visible_profile_count)가 그대로 포함된다', async () => {
+    const { supabase, supabaseServer } = createMockSupabase([])
+    supabaseServer.rpc.mockResolvedValue({ data: [rawRow({ visible_profile_count: 6 })], error: null })
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getWeeklySchoolGrowthRanking } = await import('./schools')
+
+    const result = await getWeeklySchoolGrowthRanking(new Date('2026-07-15T00:00:00.000Z'))
+
+    expect(result[0].visibleProfileCount).toBe(6)
+  })
+})
+
+describe('getWeeklySchoolGrowthRankingWithStatus — Home 순위 섹션 오류/빈 상태 구분', () => {
+  function rawRow(overrides: Record<string, unknown> = {}) {
+    return {
+      school_id: 's1',
+      school_name: '가고등학교',
+      slug: 'ga-high',
+      new_visible_profiles: 3,
+      most_recent_registration_at: '2026-07-15T00:00:00.000Z',
+      current_level: 2,
+      visible_profile_count: 6,
+      ...overrides,
+    }
+  }
+
+  it('RPC 오류 시 status: "error"를 반환한다(빈 배열로 위장하지 않음)', async () => {
+    const { supabase, supabaseServer } = createMockSupabase([])
+    supabaseServer.rpc.mockResolvedValue({ data: null, error: { message: 'db error' } })
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getWeeklySchoolGrowthRankingWithStatus } = await import('./schools')
+
+    const result = await getWeeklySchoolGrowthRankingWithStatus(new Date('2026-07-15T00:00:00.000Z'))
+
+    expect(result).toEqual({ status: 'error' })
+  })
+
+  it('실제 0건이면 status: "ok", rows: []를 반환한다(오류와 구분됨)', async () => {
+    const { supabase, supabaseServer } = createMockSupabase([])
+    supabaseServer.rpc.mockResolvedValue({ data: [], error: null })
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getWeeklySchoolGrowthRankingWithStatus } = await import('./schools')
+
+    const result = await getWeeklySchoolGrowthRankingWithStatus(new Date('2026-07-15T00:00:00.000Z'))
+
+    expect(result).toEqual({ status: 'ok', rows: [] })
+  })
+
+  it('정상 결과면 status: "ok"와 rank가 부여된 rows를 반환한다', async () => {
+    const { supabase, supabaseServer } = createMockSupabase([])
+    supabaseServer.rpc.mockResolvedValue({ data: [rawRow()], error: null })
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getWeeklySchoolGrowthRankingWithStatus } = await import('./schools')
+
+    const result = await getWeeklySchoolGrowthRankingWithStatus(new Date('2026-07-15T00:00:00.000Z'))
+
+    expect(result.status).toBe('ok')
+    if (result.status === 'ok') {
+      expect(result.rows).toHaveLength(1)
+      expect(result.rows[0].rank).toBe(1)
+      expect(result.rows[0].visibleProfileCount).toBe(6)
+    }
+  })
 })

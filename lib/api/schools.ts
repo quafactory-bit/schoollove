@@ -188,10 +188,18 @@ function mapGrowthRankingRow(row: RawGrowthRankingRow): GrowthRankingInput | nul
     mostRecentRegistrationAt,
     currentLevel,
     remainingToNext,
+    visibleProfileCount,
   }
 }
 
-async function fetchGrowthRanking(since: Date, limit: number): Promise<GrowthRankingRow[]> {
+// Home Growth Feed v2(Phase 3A)는 RPC 오류와 "실제로 0건"을 구분해서 표시해야 한다
+// (오류를 가짜 빈 상태로 위장하지 않는다) — 그래서 내부 fetch는 상태를 함께 반환하고,
+// 기존에 이미 테스트로 고정된 두 함수(배열/단일 null 반환 계약)는 이 결과를 그대로 unwrap만 한다.
+type GrowthRankingFetchResult =
+  | { status: 'ok'; rows: GrowthRankingRow[] }
+  | { status: 'error' }
+
+async function fetchGrowthRankingWithStatus(since: Date, limit: number): Promise<GrowthRankingFetchResult> {
   const { data, error } = await supabaseServer.rpc(GROWTH_RANKING_RPC, {
     p_since: since.toISOString(),
     p_limit: limit,
@@ -200,11 +208,11 @@ async function fetchGrowthRanking(since: Date, limit: number): Promise<GrowthRan
   if (error) {
     // RPC 오류 시 원문 메시지만 남기고 전체 응답이나 비밀정보는 로그에 남기지 않는다.
     console.error(`${GROWTH_RANKING_RPC} error:`, error.message)
-    return []
+    return { status: 'error' }
   }
   if (!Array.isArray(data)) {
     console.error(`${GROWTH_RANKING_RPC}: 예상하지 못한 응답 형식`)
-    return []
+    return { status: 'error' }
   }
 
   const rows: GrowthRankingInput[] = []
@@ -215,20 +223,28 @@ async function fetchGrowthRanking(since: Date, limit: number): Promise<GrowthRan
 
   // SQL이 이미 정렬·LIMIT을 보장하지만, rank 부여와 정렬 규칙 일관성을 위해
   // lib/policy/schoolRanking.ts의 순수 함수를 그대로 재사용한다(재정렬은 멱등적으로 동일 결과).
-  return topGrowthRanking(rows, limit)
+  return { status: 'ok', rows: topGrowthRanking(rows, limit) }
 }
 
 // "이번 주 학교 성장 순위" — 최근 7일 신규 공개 프로필 수 기준 TOP 5.
-// 실제 대상이 없으면 빈 배열을 반환한다(가짜 학교로 채우지 않음). Home UI에는 아직 연결하지 않는다.
+// 실제 대상이 없으면 빈 배열을 반환한다(가짜 학교로 채우지 않음).
 export async function getWeeklySchoolGrowthRanking(now: Date = new Date()): Promise<GrowthRankingRow[]> {
-  const since = getRecentWeekStart(now)
-  return fetchGrowthRanking(since, WEEKLY_RANKING_LIMIT)
+  const result = await fetchGrowthRankingWithStatus(getRecentWeekStart(now), WEEKLY_RANKING_LIMIT)
+  return result.status === 'ok' ? result.rows : []
+}
+
+// Home Growth Feed v2 전용 — RPC 오류와 실제 빈 순위를 구분해야 하는 화면(순위 섹션 오류 상태)을
+// 위해 상태를 그대로 노출하는 래퍼. 기존 getWeeklySchoolGrowthRanking(배열만 반환)의 계약은
+// 바꾸지 않고 그대로 둔다(다른 잠재적 소비자와의 회귀를 피하기 위함).
+export async function getWeeklySchoolGrowthRankingWithStatus(
+  now: Date = new Date()
+): Promise<GrowthRankingFetchResult> {
+  return fetchGrowthRankingWithStatus(getRecentWeekStart(now), WEEKLY_RANKING_LIMIT)
 }
 
 // "오늘 가장 빠르게 성장한 학교" — Asia/Seoul 기준 오늘 00:00부터 현재까지 TOP 1.
-// 실제 등록이 없으면 null을 반환한다(가짜 기본 학교를 반환하지 않음). Home UI에는 아직 연결하지 않는다.
+// 실제 등록이 없으면 null을 반환한다(가짜 기본 학교를 반환하지 않음).
 export async function getTodayFastestGrowingSchool(now: Date = new Date()): Promise<GrowthRankingRow | null> {
-  const since = getSeoulTodayStartUtc(now)
-  const rows = await fetchGrowthRanking(since, TODAY_RANKING_LIMIT)
-  return rows[0] ?? null
+  const result = await fetchGrowthRankingWithStatus(getSeoulTodayStartUtc(now), TODAY_RANKING_LIMIT)
+  return result.status === 'ok' ? (result.rows[0] ?? null) : null
 }

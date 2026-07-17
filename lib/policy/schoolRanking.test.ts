@@ -10,6 +10,7 @@ function row(overrides: Partial<GrowthRankingInput> & { schoolId: string }): Gro
     mostRecentRegistrationAt: null,
     currentLevel: null,
     remainingToNext: 1,
+    visibleProfileCount: 0,
     ...overrides,
   }
 }
