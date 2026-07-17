@@ -38,6 +38,14 @@ vi.mock('@/lib/api/levels', () => ({
   syncSchoolLevel: vi.fn(),
 }))
 
+const { revalidatePathMock } = vi.hoisted(() => ({
+  revalidatePathMock: vi.fn(),
+}))
+
+vi.mock('next/cache', () => ({
+  revalidatePath: revalidatePathMock,
+}))
+
 import { POST } from './route'
 import { getSchoolProfileCount } from '@/lib/api/profiles'
 import { syncSchoolLevel } from '@/lib/api/levels'
@@ -355,5 +363,72 @@ describe('POST /api/profiles — 배치/재시도 데이터 정합성 (Phase 2)'
     expect(retryAttempt.status).toBe(409)
     expect(getSchoolProfileCount).toHaveBeenCalledTimes(1)
     expect(syncSchoolLevel).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('POST /api/profiles — 홈 피드 재검증 계약 (Phase 4B, docs/decisions/2026-07-17-home-feed-freshness.md)', () => {
+  it('2. 정상 등록 성공 → 홈("/") 재검증 정확히 1회', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(201)
+    expect(revalidatePathMock).toHaveBeenCalledTimes(1)
+    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+  })
+
+  it('4. validation 실패(school_id UUID 아님) → 재검증 호출 안 함', async () => {
+    const response = await POST(createRequest({ body: { ...VALID_BODY, school_id: 'not-a-uuid' } }))
+
+    expect(response.status).toBe(400)
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+
+  it('5. rate limit 차단 → 재검증 호출 안 함', async () => {
+    ratelimitLimitMock.mockResolvedValue({ success: false, limit: 20, remaining: 0, reset: 60 })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(429)
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+
+  it('6. Supabase insert 실패 → 재검증 호출 안 함', async () => {
+    singleMock.mockResolvedValue({ data: null, error: { code: '500', message: 'db down' } })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(500)
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+
+  it('7. 중복 등록 거절(23505) → 재검증 호출 안 함', async () => {
+    singleMock.mockResolvedValue({ data: null, error: { code: '23505', message: 'duplicate' } })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(409)
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+
+  it('11. 재검증(revalidatePath) 실패가 이미 성공한 등록 응답을 실패로 바꾸지 않음', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+    revalidatePathMock.mockImplementation(() => {
+      throw new Error('cache error')
+    })
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(json).toEqual({ data: { id: 'p1' } })
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
   })
 })

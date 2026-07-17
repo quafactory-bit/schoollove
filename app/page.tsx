@@ -10,6 +10,13 @@ import HomeFeedCta from '@/components/HomeFeedCta'
 
 // Home Growth Feed v2 (Phase 3A) — docs/decisions/2026-07-17-home-growth-feed-v2.md
 // 홈은 검색 랜딩페이지가 아니라 실제 학교 활동이 이어지는 성장 피드다.
+
+// Home Feed Freshness (Phase 4B) — docs/decisions/2026-07-17-home-feed-freshness.md
+// 홈은 실제 활동 피드이므로 빌드 시점 데이터로 영구 고정되지 않는다. 60초 ISR로 짧은 주기 재검증을
+// 보장하고, profile/trace 등록 성공 직후에는 각 API route(app/api/profiles/route.ts,
+// app/api/traces/route.ts)가 revalidateHomeFeed()로 이 경로를 즉시 재검증한다.
+export const revalidate = 60
+
 // 첫 화면 구간(part1)에 보여줄 활동 수 — 순위 섹션 앞에 어느 정도 활동을 먼저 보여주기 위함.
 const FEED_PART1_SIZE = 6
 // 순위 섹션과 검색 CTA 사이(part2)에 보여줄 활동 수.

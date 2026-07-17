@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { supabaseServer } from '@/lib/supabase';
+import { revalidateHomeFeed } from '@/lib/api/homeFeedCache';
 import { z } from 'zod';
 
 const redis = Redis.fromEnv();
@@ -78,6 +79,10 @@ export async function POST(request: NextRequest) {
     console.error('POST /api/traces error:', error);
     return NextResponse.json({ error: '등록 중 오류가 발생했습니다.' }, { status: 500 });
   }
+
+  // Phase 4B(docs/decisions/2026-07-17-home-feed-freshness.md) — 등록이 이미 성공했으므로
+  // 최종 성공 응답을 반환하기 직전에만 홈을 재검증한다.
+  revalidateHomeFeed();
 
   return NextResponse.json({ data }, { status: 201 });
 }

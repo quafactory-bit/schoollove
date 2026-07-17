@@ -4,6 +4,7 @@ import { Redis } from '@upstash/redis';
 import { supabaseServer } from '@/lib/supabase';
 import { getSchoolProfileCount } from '@/lib/api/profiles';
 import { syncSchoolLevel } from '@/lib/api/levels';
+import { revalidateHomeFeed } from '@/lib/api/homeFeedCache';
 import { z } from 'zod';
 
 // Upstash rate limit 설정 누락 처리.
@@ -145,6 +146,10 @@ export async function POST(request: NextRequest) {
       error: syncError,
     });
   }
+
+  // Phase 4B(docs/decisions/2026-07-17-home-feed-freshness.md) — 등록이 이미 성공했으므로
+  // 최종 성공 응답을 반환하기 직전에만 홈을 재검증한다.
+  revalidateHomeFeed();
 
   return NextResponse.json({ data }, { status: 201 });
 }

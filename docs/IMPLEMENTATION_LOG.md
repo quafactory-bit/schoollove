@@ -997,3 +997,44 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - 등록 활동은 화면 노출 전 항상 묶여서 표시되므로, 같은 학교·졸업연도·날짜에 등록이 1건뿐이면 기존과 동일한 단수 문구가 그대로 유지된다(회귀 없음)
 - School Hub, Level 정책, 등록 API, DB/migration/RPC SQL, Admin은 이번에도 무수정
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-17 (Phase 4B)
+
+### 구현
+
+- 홈(`app/page.tsx`) 캐시 동작 감사: `revalidate`/`dynamic` route segment config가 전혀 없어 Next.js 15가 이 페이지를 완전 정적(SSG)으로 취급하고 있었고, 빌드 시점에 한 번 렌더링된 뒤 새 배포 전까지 절대 갱신되지 않는 상태였음을 실제 코드와 `npm run build`의 `○ /` 표시로 확인
+- `app/page.tsx`에 `export const revalidate = 60`(ISR 60초) 추가 — 새 배포 없이도 최근 등록/흔적/오늘 성장/주간 순위가 최대 60초 이내로 최신화됨
+- profile/trace 등록 성공 직후 홈을 즉시 재검증하는 최소 helper `revalidateHomeFeed()`(`lib/api/homeFeedCache.ts`) 추가 — `next/cache`의 `revalidatePath('/')`만 호출하고, 예외를 내부에서 흡수해 호출자에게 전파하지 않음(환경변수/사용자 데이터 로그 없음)
+- `app/api/profiles/route.ts`: DB insert 성공(및 기존 Level sync 처리) 이후, 최종 `201` 응답 직전에 `revalidateHomeFeed()` 호출 추가. validation 실패/rate limit 차단/insert 실패(중복 포함) 경로에서는 호출하지 않음
+- `app/api/traces/route.ts`: 동일하게 DB insert 성공 이후 최종 `201` 응답 직전에 `revalidateHomeFeed()` 호출 추가. validation 실패/rate limit 차단/dedupe 거절/insert 실패 경로에서는 호출하지 않음
+- `force-dynamic`은 선택하지 않음 — 홈은 완전 공개·비개인화 페이지라 요청마다 DB를 조회할 근거가 없고, ISR 60초 + 성공 쓰기 후 즉시 재검증 조합만으로 "새 배포 없이 최신 데이터" 요구를 DB 비용 증가 없이 만족함
+- DB/migration/RPC/School Hub/Admin/Level 정책/Upstash 방문자 카운트/rate limit fail-closed 정책/활동 묶음 정책/홈 디자인·문구는 이번에도 무수정
+
+### 관련 파일
+
+- `app/page.tsx` (`export const revalidate = 60` 추가)
+- `app/page.test.ts` (신규 — 재검증 계약 소스 검증)
+- `lib/api/homeFeedCache.ts` (신규)
+- `lib/api/homeFeedCache.test.ts` (신규)
+- `app/api/profiles/route.ts` (`revalidateHomeFeed()` 호출 추가)
+- `app/api/profiles/route.test.ts` (재검증 계약 테스트 5개 추가, 기존 테스트 무수정)
+- `app/api/traces/route.ts` (`revalidateHomeFeed()` 호출 추가)
+- `app/api/traces/route.test.ts` (신규 — 기존 동작 회귀 테스트 7개 + 재검증 계약 테스트 6개)
+- `docs/decisions/2026-07-17-home-feed-freshness.md` (신규)
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run` → 21 test files, 289 tests 통과(Phase 4A 기준 266 tests에서 23개 신규 추가 — `lib/api/homeFeedCache.test.ts` 2 + `app/page.test.ts` 2 + `app/api/profiles/route.test.ts` 신규 6 + `app/api/traces/route.test.ts`(신규 파일) 13, 기존 테스트 회귀 없음)
+- `npm test` → 동일하게 21 test files, 289 tests 통과
+- `git diff --check` → 공백 오류 없음(줄바꿈 문자 관련 경고만 있음, 실제 오류 아님)
+- `npm run build`는 이번 세션에서 실행하지 않음(사용자가 PowerShell에서 직접 실행 예정)
+- 실제 Supabase 환경에서의 재검증 동작(등록 후 홈이 실제로 갱신되는지) 브라우저 smoke test는 이번 세션에서 수행하지 않음(사용자가 직접 확인 예정)
+
+### 비고
+
+- `app/page.tsx`는 React Server Component(.tsx)라 현재 vitest 설정(esbuild 기본 변환, `tsconfig.json`의 `jsx: "preserve"`)으로는 직접 import해 렌더링 테스트를 할 수 없음(JSX 파싱 실패) — React 테스트 도구/새 의존성을 추가하지 않기로 한 제약과 결합해, `revalidate` export 계약은 컴포넌트를 import하는 대신 소스 텍스트를 정적으로 검사하는 방식(`app/page.test.ts`)으로 검증함
+- School Hub, Level 정책, 등록 API의 나머지 로직(validation/rate limit/dedupe/Level sync), DB/migration/RPC SQL, Admin은 이번에도 무수정
+- collector/BoostKitchen 관련 내용 없음
