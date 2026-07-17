@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { Search } from 'lucide-react'
 import { getTodayFastestGrowingSchool, getWeeklySchoolGrowthRankingWithStatus } from '@/lib/api/schools'
 import { getRecentRegisterActivity, getRecentTraceActivity, HOME_ACTIVITY_FEED_LIMIT } from '@/lib/api/homeFeed'
 import { buildHomeActivityFeed, buildWeeklyRankingViewRow, getFeedCtaVisibility } from '@/lib/policy/homeFeed'
@@ -7,6 +6,7 @@ import HomeActivityFeed from '@/components/HomeActivityFeed'
 import WeeklyGrowthRanking from '@/components/WeeklyGrowthRanking'
 import TodayGrowthStrip from '@/components/TodayGrowthStrip'
 import HomeFeedCta from '@/components/HomeFeedCta'
+import SearchBar from '@/components/SearchBar'
 
 // Home Growth Feed v2 (Phase 3A) — docs/decisions/2026-07-17-home-growth-feed-v2.md
 // 홈은 검색 랜딩페이지가 아니라 실제 학교 활동이 이어지는 성장 피드다.
@@ -51,18 +51,7 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      <form method="get" action="/search" className="mt-4">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-          <input
-            name="q"
-            type="text"
-            placeholder="학교 이름을 검색하세요"
-            className="w-full rounded-full border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-[14px] outline-none transition focus:border-neutral-900"
-            autoComplete="off"
-          />
-        </div>
-      </form>
+      <SearchBar variant="home" className="mt-4" />
 
       {/* 오늘 가장 빠르게 성장한 학교 — 실제 데이터가 있을 때만, 얇은 한 줄 */}
       {todayGrowth && (

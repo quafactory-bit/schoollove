@@ -1038,3 +1038,58 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - `app/page.tsx`는 React Server Component(.tsx)라 현재 vitest 설정(esbuild 기본 변환, `tsconfig.json`의 `jsx: "preserve"`)으로는 직접 import해 렌더링 테스트를 할 수 없음(JSX 파싱 실패) — React 테스트 도구/새 의존성을 추가하지 않기로 한 제약과 결합해, `revalidate` export 계약은 컴포넌트를 import하는 대신 소스 텍스트를 정적으로 검사하는 방식(`app/page.test.ts`)으로 검증함
 - School Hub, Level 정책, 등록 API의 나머지 로직(validation/rate limit/dedupe/Level sync), DB/migration/RPC SQL, Admin은 이번에도 무수정
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-17 (Phase 4C)
+
+### 구현
+
+- School Search Autocomplete 구현 (`docs/decisions/2026-07-17-school-search-autocomplete.md` 기준) — 홈과 `/search` 검색창에 타이핑만으로 실제 학교 후보가 드롭다운으로 뜨고, 후보 클릭/Enter 선택 시 해당 School Hub(`/school/[slug]`)로 바로 이동하도록 함. 기존에는 둘 다 순수 GET form이라 Enter를 눌러야만 `/search?q=`로 이동했음
+- `lib/api/search.ts`: 기존 `searchSchools`(RPC `search_schools_v2` + 학교별 `profiles` count N+1)에서 RPC 호출부를 `fetchSchoolsBySearchRpc` helper로 분리하고, 이를 재사용하는 `searchSchoolsForAutocomplete(query)`를 신규 추가(lim=6, N+1 count 조회 없음). 기존 `searchSchools`/`searchProfiles`/`searchAll`/`logSearch`는 동작 무변경
+- `lib/policy/schoolSearchAutocomplete.ts`(신규): React 렌더링 없이 테스트 가능한 순수 로직 — 쿼리 정규화/최소 길이(2글자) 판정, 결과 6개 제한, `/school/[slug]`·`/search?q=` URL 생성, 키보드 ArrowUp/Down 순환 이동(`moveActiveIndex`), Enter 동작 판정(`resolveEnterAction`), `setTimeout` 기반 디바운스(250ms) + `requestId` 순번 기반 오래된 응답 무시를 담당하는 `createDebouncedAutocompleteSearcher` 팩토리
+- `lib/hooks/useSchoolAutocomplete.ts`(신규): 위 컨트롤러의 콜백을 React state(`status: 'idle'|'loading'|'ok'|'error'`, `results`)로 반영만 하는 얇은 wrapper. 기존 `lib/hooks/useSchoolSearch.ts`(react-query 기반, `SubmitForm.tsx`가 실제로 사용 중인 학교+동문 통합 검색)는 계약이 달라 무수정으로 남김
+- `components/SearchBar.tsx`: 저장소에 이미 있었지만 실제로는 어디서도 import되지 않던 죽은 코드(학교+동문 통합 검색 + 개인정보 노출)를 신규 계약으로 전면 교체 — `variant: 'home' | 'search'` prop으로 두 화면의 기존 입력창 모양(홈: rounded-full pill + lucide 아이콘, `/search`: rounded-xl + inline svg 아이콘)만 다르게 렌더링하고, 상태/로직은 완전히 공용
+  - `role="combobox"`/`aria-expanded`/`aria-controls`/`aria-activedescendant` + `role="listbox"`/`role="option"`/`aria-selected`로 접근성 속성 부여
+  - ArrowDown/ArrowUp: 후보 순환 이동 · Enter: 활성 후보 있으면 School Hub 이동, 없으면 기존 `/search?q=` 전체 검색 · Escape: 드롭다운만 닫음(입력값 유지)
+  - 마우스 hover(`hover:bg-gray-50`, CSS pseudo-class)와 키보드 활성 상태(`bg-blue-50`, React state)를 다른 시각 신호로 분리
+  - 바깥 클릭 시 닫힘, 입력창 재포커스 시 유효한 결과가 있으면 재오픈(재조회 없이 캐시된 결과 그대로 표시)
+  - 후보에는 학교명·시도/시군구·학교 유형만 표시(개인 데이터·`profile_count` 없음), 긴 학교명은 `truncate`로 안전 처리, 드롭다운은 `z-50`(하단 탭바 `z-40`보다 위)로 입력창 너비를 그대로 따름
+- `app/page.tsx`: 검색 `<form>`을 `<SearchBar variant="home" className="mt-4" />`로 교체(레이아웃 위치·활동 피드·성장 순위·CTA 무수정, 미사용된 `Search` import 제거)
+- `app/search/page.tsx`: 검색 `<form>`을 `<SearchBar variant="search" initialQuery={q} className="mb-6" />`로 교체(URL의 `q` 값을 입력창 초기값으로 표시, 기존 전체 검색 결과 렌더링 로직 무수정)
+
+### 관련 파일
+
+- `lib/policy/schoolSearchAutocomplete.ts` (신규)
+- `lib/policy/schoolSearchAutocomplete.test.ts` (신규 — 25 tests)
+- `lib/hooks/useSchoolAutocomplete.ts` (신규)
+- `lib/api/search.ts` (`fetchSchoolsBySearchRpc` helper 분리, `searchSchoolsForAutocomplete` 추가)
+- `lib/api/search.test.ts` (신규 — 8 tests, 기존에 테스트 파일이 없었음)
+- `components/SearchBar.tsx` (미사용 구현을 신규 자동완성 계약으로 전면 교체)
+- `app/page.tsx` (검색 form → `SearchBar` 교체)
+- `app/search/page.tsx` (검색 form → `SearchBar` 교체)
+- `docs/decisions/2026-07-17-school-search-autocomplete.md` (신규)
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run lib/policy/schoolSearchAutocomplete.test.ts lib/api/search.test.ts` → 2 test files, 31 tests 통과
+- `npm test` → 23 test files, 320 tests 통과(Phase 4B 기준 289 tests에서 31개 신규 추가, 기존 테스트 회귀 없음)
+- `git diff --check` → 공백 오류 없음(LF→CRLF 줄바꿈 경고만 있음, 실제 오류 아님)
+- `npm run build`는 이번 세션에서 실행하지 않음(지시에 따라 생략)
+- 실제 Supabase 환경(`.env.local` 존재)에서 `npm run dev`로 브라우저 smoke test 수행:
+  - 홈에서 "진명여자고" 입력 → "학교를 찾는 중..." 로딩 상태 → 실제 후보(진명여자고등학교 · 서울특별시 양천구 · 고등학교) 표시 확인
+  - ArrowDown으로 후보 활성화(파란 배경) → Enter → `/school/seoul-yangcheon-jinmyeongyeojagodeunghaggyo`(School Hub)로 정상 이동 확인
+  - "진명여고"(RPC가 매칭하지 못하는 축약어) 입력 → "일치하는 학교를 찾지 못했어요" + 전체 검색 폴백 링크 표시 확인(0건 상태)
+  - `/search?q=진명` 접근 → 입력창에 `q` 초기값 표시 + 자동완성 드롭다운과 기존 전체 검색 결과("학교 검색 결과" 섹션)가 동시에 정상 표시되어 충돌 없음 확인
+  - 입력창 재포커스 없이 페이지 내 다른 영역(로고 텍스트) 클릭 → 드롭다운 닫힘 확인, 다시 입력창 클릭 → 재조회 없이 드롭다운 재표시 확인
+  - Escape 키 → 드롭다운만 닫히고 전체 검색 결과와 입력값은 유지됨을 확인
+  - 브라우저 콘솔에 자동완성 관련 오류 없음(기존에도 있던 Upstash 환경변수 누락 경고, GoTrueClient 중복 경고만 존재 — 둘 다 이번 변경과 무관)
+
+### 비고
+
+- 모바일 390px/430px 뷰포트에서의 실제 리사이즈 스크린샷 검증은 이번 세션의 브라우저 자동화 환경이 창 크기 변경을 반영하지 않아(리사이즈 API는 성공을 반환하지만 스크린샷 해상도가 그대로였음) 수행하지 못함. 대신 드롭다운이 `absolute left-0 right-0`로 입력창 너비를 그대로 따르고 고정 픽셀 너비가 없는 점, 긴 학교명에 `truncate`를 적용한 점, 입력창 wrapper 클래스 자체가 기존(변경 전) 홈/`/search` 폼과 동일한 점(기존에도 모바일에서 문제가 없었음)을 근거로 코드 검토만으로 판단함 — 실제 모바일 기기/뷰포트 확인은 후속 과제로 남김
+- `search_schools_v2`가 "진명여고" 같은 단어 축약("여자고등학교"→"여고")은 매칭하지 못함(RPC는 지역 prefix 매칭용으로 설계됨) — 기존 RPC의 알려진 특성이며 이번 범위에서 RPC를 수정하지 않았으므로 그대로 둠
+- 후보에 현재 Level을 보조 정보로 표시하는 옵션은 `search_schools_v2`가 `current_level`을 반환하지 않아 추가 조회 없이는 불가능해 생략함(N+1 금지와 상충) — decision 문서에 후속 과제로 기록
+- DB/migration/RPC/School Hub/Home Feed/Level 정책/등록 API/Admin/`lib/api/schools.ts`(admin Level Sync용 검색)/`lib/hooks/useSchoolSearch.ts`(`SubmitForm.tsx`용)는 이번에도 무수정
+- collector/BoostKitchen 관련 내용 없음

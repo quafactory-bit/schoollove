@@ -26,18 +26,27 @@ export interface ProfileSearchResult {
   school_slug: string
 }
 
-export async function searchSchools(query: string): Promise<SchoolSearchResult[]> {
+// search_schools_v2 RPC 호출 하나로 통일 — searchSchools(전체 검색)와
+// searchSchoolsForAutocomplete(자동완성) 둘 다 이 함수만 거쳐 학교 목록을 가져온다.
+// 지역 prefix까지 매칭하는 기존 RPC를 재사용한다 (예: "순천이수초" → "이수초등학교").
+async function fetchSchoolsBySearchRpc(
+  query: string,
+  limit: number
+): Promise<Array<Omit<SchoolSearchResult, 'profile_count'>>> {
   if (query.trim().length < 2) return []
 
-  // 지역 prefix까지 매칭하는 RPC 사용 (예: "순천이수초" → "이수초등학교")
   const { data, error } = await supabase.rpc('search_schools_v2', {
     q: query.trim(),
-    lim: 20,
+    lim: limit,
   })
 
   if (error || !data) return []
 
-  const schools = data as Array<Omit<SchoolSearchResult, 'profile_count'>>
+  return data as Array<Omit<SchoolSearchResult, 'profile_count'>>
+}
+
+export async function searchSchools(query: string): Promise<SchoolSearchResult[]> {
+  const schools = await fetchSchoolsBySearchRpc(query, 20)
 
   const schoolsWithCount = await Promise.all(
     schools.map(async (school) => {
@@ -51,6 +60,34 @@ export async function searchSchools(query: string): Promise<SchoolSearchResult[]
   )
 
   return schoolsWithCount
+}
+
+// ─── 자동완성 전용 (Phase 4C) ─────────────────────────────────────
+// docs/decisions/2026-07-17-school-search-autocomplete.md
+// 드롭다운에는 profile_count가 필요 없으므로(개인/집계 데이터 미표시) profile_count
+// enrichment(N+1 profiles 조회)를 생략한다 — searchSchools와 같은 RPC·정렬을 그대로
+// 재사용하되, 자동완성 후보 수만큼만(limit) 가볍게 가져온다.
+export interface SchoolAutocompleteResult {
+  id: string
+  school_name: string
+  school_type: SchoolType
+  sido: string
+  sigungu: string
+  slug: string
+}
+
+const AUTOCOMPLETE_RESULT_LIMIT = 6
+
+export async function searchSchoolsForAutocomplete(query: string): Promise<SchoolAutocompleteResult[]> {
+  const schools = await fetchSchoolsBySearchRpc(query, AUTOCOMPLETE_RESULT_LIMIT)
+  return schools.map(({ id, school_name, school_type, sido, sigungu, slug }) => ({
+    id,
+    school_name,
+    school_type,
+    sido,
+    sigungu,
+    slug,
+  }))
 }
 
 export async function searchProfiles(query: string): Promise<ProfileSearchResult[]> {

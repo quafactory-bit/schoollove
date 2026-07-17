@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { searchAll, logSearch } from '@/lib/api/search'
 import { schoolTypeLabel } from '@/lib/utils'
+import SearchBar from '@/components/SearchBar'
 import type { Metadata } from 'next'
 
 interface Props {
@@ -33,23 +34,7 @@ export default async function SearchPage({ searchParams }: Props) {
       <div className="max-w-2xl mx-auto px-4 py-8">
 
         {/* 검색창 */}
-        <form method="get" action="/search" className="mb-6">
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-              </svg>
-            </span>
-            <input
-              name="q"
-              type="text"
-              defaultValue={q}
-              placeholder="학교 이름을 검색하세요"
-              className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-              autoComplete="off"
-            />
-          </div>
-        </form>
+        <SearchBar variant="search" initialQuery={q} className="mb-6" />
 
         {!q && (
           <p className="text-center text-gray-400 text-sm mt-16">검색어를 입력해주세요.</p>
