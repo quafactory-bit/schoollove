@@ -1093,3 +1093,76 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - 후보에 현재 Level을 보조 정보로 표시하는 옵션은 `search_schools_v2`가 `current_level`을 반환하지 않아 추가 조회 없이는 불가능해 생략함(N+1 금지와 상충) — decision 문서에 후속 과제로 기록
 - DB/migration/RPC/School Hub/Home Feed/Level 정책/등록 API/Admin/`lib/api/schools.ts`(admin Level Sync용 검색)/`lib/hooks/useSchoolSearch.ts`(`SubmitForm.tsx`용)는 이번에도 무수정
 - collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-17 (search_logs 원문 공개 조회 제거)
+
+### 구현
+
+- `search_logs`가 anon에게 SELECT가 열려 있어(테이블 GRANT 또는 RLS 정책) query 원문 + created_at 등 629건의 개별 로그 행이 외부에 노출될 수 있던 문제를 제거 — School Hub는 원본 로그가 아니라 "검색 횟수" 숫자만 필요하므로, 원본 행 조회를 완전히 막고 집계 전용 RPC 하나로만 접근하도록 좁힘(`docs/decisions/2026-07-17-search-logs-aggregate-rpc.md` 기준)
+- 신규 migration `public.get_school_search_count(search_tokens text[])` 추가: `SECURITY DEFINER` + `SET search_path = ''`, `public.search_logs`를 스키마까지 명시해서 참조. 입력 배열에서 앞에서부터 최대 8개 토큰만 사용 → btrim 후 길이 2~100인 토큰만 사용 → 중복 제거 → 각 토큰마다 기존과 동일한 `query ILIKE '%' || token || '%'` 카운트 계산 → 최댓값 반환. id/query/created_at 등 개별 로그 행은 어떤 경우에도 반환하지 않음. `PUBLIC` 기본 EXECUTE 권한은 REVOKE하고 anon/authenticated/service_role에만 GRANT
+- 같은 migration에서 `search_logs` 원본 공개 조회 제거: 기존 공개 조회 정책이 있다면 `DROP POLICY IF EXISTS`로 안전 제거하고, RLS 정책 유무와 무관하게 `REVOKE SELECT ON public.search_logs FROM anon, authenticated`로 테이블 단위 SELECT 권한 자체를 회수. `search_logs_insert` 정책과 컬럼 단위 INSERT 권한, service_role 권한은 변경하지 않음
+- `lib/api/searches.ts`의 `getSchoolSearchCount()`에서 `search_logs` 직접 SELECT(토큰별 반복 `.ilike` 쿼리)를 제거하고, `schoolSearchTokens()`로 만든 토큰 배열을 그대로 `supabase.rpc('get_school_search_count', { search_tokens })`에 전달하는 구조로 변경. RPC 오류/비정상 반환값(null/문자열/NaN/Infinity)이면 기존과 동일하게 0을 반환해 페이지 렌더링이 깨지지 않도록 함. 함수 시그니처(`schoolName`, `_sido`)와 `schoolSearchTokens()`의 토큰 생성 의미는 그대로 유지
+- 기존 `logSearch()`(INSERT, `lib/api/search.ts`)는 무수정 — RPC로 옮기지 않음
+
+### 관련 파일
+
+- `supabase/migrations/20260717120000_search_logs_aggregate_rpc.sql` (신규)
+- `supabase/migrations/20260717120000_search_logs_aggregate_rpc.test.ts` (신규 — migration SQL 정적 검토 17 tests)
+- `lib/api/searches.ts` (`getSchoolSearchCount()`를 RPC 호출 구조로 변경)
+- `lib/api/searches.test.ts` (신규 — 기존에 테스트 파일이 없었음, 14 tests)
+- `docs/decisions/2026-07-17-search-logs-aggregate-rpc.md` (신규)
+
+### 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run lib/api/searches.test.ts supabase/migrations/20260717120000_search_logs_aggregate_rpc.test.ts` → 2 test files, 31 tests 통과
+- `npm test` → 25 test files, 351 tests 통과(Phase 4C 기준 320 tests에서 31개 신규 추가, 기존 테스트 회귀 없음)
+- `git diff --check` → 공백 오류 없음
+- `search_logs` 직접 SELECT 잔존 여부 확인(`.from('search_logs')` grep) → 애플리케이션 코드(`app/`, `lib/`, `components/`)에는 `lib/api/search.ts`의 기존 `logSearch()` INSERT 한 곳만 남아 있고, 직접 SELECT는 전부 제거됨을 확인
+- 원격 Supabase에는 이번 세션에서 migration을 적용하지 않음 — `supabase-schema.sql`/`supabase/migrations/`에 애초에 `search_logs` 테이블 자체가 없어(운영 DB에만 존재, 저장소-운영 스키마 drift 기존 확인 사항) 이 migration은 함수/권한 변경만 다루며 적용 전 운영 대시보드에서 실제 컬럼(`query`, `created_at`, `id`, `result_count`)과 기존 정책 이름을 재확인해야 함
+
+### 비고
+
+- migration의 `DROP POLICY IF EXISTS "anon can read search_logs counts"`는 운영 대시보드에서 확인된 실제 정책 이름을 가정한 것 — 이름이 다르면 no-op이 되므로 안전하지만, 적용 전 실제 이름을 다시 확인 필요
+- rate limit/CAPTCHA/UI 변경은 이번 범위에 포함하지 않음(지시에 따라 생략)
+- DB 데이터(기존 629건)는 수정·삭제하지 않음, git add/commit/push 없음
+- collector/BoostKitchen 관련 내용 없음
+
+---
+
+## 2026-07-18 (Search logs RLS manual security sync 및 원격 검증)
+
+### 적용된 migration
+
+- `supabase/migrations/20260717120000_search_logs_aggregate_rpc.sql`
+- `supabase/migrations/20260717130000_rls_manual_security_sync.sql`
+
+두 migration 모두 별도 세션에서 원격 Supabase에 이미 적용된 상태였음을 이번 세션에서 읽기 전용 조회로 확인함(이번 세션 자체는 DB를 변경하지 않음).
+
+### 최종 보안 상태(원격에서 확인된 상태)
+
+- `anon`/`authenticated`의 `search_logs` 직접 `SELECT`는 테이블 권한·RLS 양쪽에서 차단됨
+- `anon`/`authenticated`의 `search_logs` INSERT는 `query`, `result_count`, `clicked_school_id` 컬럼으로만 제한됨(`id`, `created_at`은 컬럼 권한 목록에 없어 기본값만 적용)
+- `search_logs_insert` RLS 정책이 적용되어 있음(`query` 길이 1~100, `result_count`는 NULL 또는 0 이상)
+- `search_logs_query_length_check`(길이 제약), `search_logs_result_count_check`(비음수 제약), `search_logs_clicked_school_id_fkey`(schools 외래키) 제약조건이 모두 적용돼 있음
+- `public.get_school_search_count(text[])`는 집계된 `integer` 하나만 반환하며 개별 로그 행(`id`/`query`/`created_at`)은 어떤 경우에도 반환하지 않음
+- 함수의 `PUBLIC` 기본 `EXECUTE` 권한은 회수돼 있고, `anon`/`authenticated`/`service_role`에만 `EXECUTE`가 허용돼 있음
+
+### 원격 검증
+
+- `supabase_migrations.schema_migrations`의 두 migration 이력이 로컬 파일 내용과 일치함(`statements` 대조)
+- 원격 함수 정의(`pg_get_functiondef`)·테이블 컬럼·권한(`information_schema`/`pg_proc`/`pg_policies`)·제약조건·인덱스가 로컬 두 migration과 일치함
+- SQL 직접 호출(`supabase db query --linked`)로 `get_school_search_count` 호출 성공
+- anon PostgREST 호출(`supabase.rpc('get_school_search_count', ...)`)도 동일하게 성공(에러 없음, `number` 반환)
+- `NULL`, 빈 배열 입력 모두 오류 없이 `0`을 반환함을 확인
+- 원본 검색 로그 행(`query`/`id`/`created_at` 등)은 이번 검증 과정의 어떤 응답에서도 노출되지 않았음
+- 이번 검증 과정에서 `INSERT`/`UPDATE`/`DELETE`/DDL 등 DB를 변경하는 명령은 실행하지 않음(전부 `SELECT` 전용)
+- `public.get_school_search_count(text[])`는 단일 `integer`를 반환하는 함수이므로 행 정렬 검증은 적용 대상이 아니다. 비매칭 토큰, `NULL`, 빈 배열에 대한 SQL 직접 호출은 모두 오류 없이 `0`을 반환했고, anon PostgREST 호출도 `number` 타입의 `0`을 반환했다.
+
+### 남은 후속 작업
+
+- 후속 정적·원격 감사에서 `get_school_search_count`의 `ILIKE '%' || token || '%'`가 사용자 토큰의 `%`, `_`, `\`를 리터럴이 아닌 ILIKE 패턴 문자로 처리하는 문제가 발견됨 — SQL injection은 아니며(파라미터화된 SQL만 실행, 원본 로그 행 미반환), aggregate count 범위가 의도보다 넓어질 수 있는 정확성 문제임. `%`/`_`/`\` 와일드카드 리터럴 처리 보정 migration이 필요하며, 이 보정은 설계만 완료된 상태이고 아직 구현·적용되지 않았음
+- 기존 적용 migration 파일(`20260717120000_search_logs_aggregate_rpc.sql`, `20260717130000_rls_manual_security_sync.sql`)은 이번 보정과 무관하게 수정하지 않음 — 새 migration으로만 해결할 예정
+- `search_logs.query`용 trigram 인덱스는 이번 보안 보정과 분리된 별도 성능 migration으로 검토 예정(적용 여부 미결정, 현재 데이터 규모에서 시급성 없음)

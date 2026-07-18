@@ -36,9 +36,9 @@ export function schoolSearchTokens(schoolName: string): string[] {
 }
 
 // 이 학교가 search_logs에서 몇 번 검색됐는지 카운트.
-// 여러 후보 토큰으로 각각 세어 "가장 많이 잡힌 값"을 사용.
-// 단, 너무 짧은 토큰이 과대 매칭하는 걸 막기 위해 길이가 긴 토큰을 우선 신뢰하되,
-// 여기서는 단순히 최댓값을 쓴다(빈 학교 선점 유도가 목적이라 약간의 관대함은 허용).
+// 여러 후보 토큰 중 "가장 많이 잡힌 값"을 집계 RPC(get_school_search_count)로 계산한다.
+// search_logs 원문(query/id/created_at)은 anon에게 공개되지 않으므로(2026-07-17
+// search-logs-aggregate-rpc 결정) 더 이상 테이블을 직접 SELECT하지 않는다.
 // 실패하면 0을 돌려주고 페이지는 정상 동작.
 export async function getSchoolSearchCount(
   schoolName: string,
@@ -47,15 +47,11 @@ export async function getSchoolSearchCount(
   const tokens = schoolSearchTokens(schoolName)
   if (tokens.length === 0) return 0
 
-  let best = 0
-  for (const token of tokens) {
-    const { count, error } = await supabase
-      .from('search_logs')
-      .select('id', { count: 'exact', head: true })
-      .ilike('query', `%${token}%`)
-    if (!error && typeof count === 'number' && count > best) {
-      best = count
-    }
-  }
-  return best
+  const { data, error } = await supabase.rpc('get_school_search_count', {
+    search_tokens: tokens,
+  })
+
+  if (error) return 0
+  if (typeof data !== 'number' || !Number.isFinite(data)) return 0
+  return data
 }
