@@ -106,3 +106,53 @@ describe('schoolSearchTokens — 기존 토큰 생성 동작 회귀 없음', () 
     expect(tokens.every((t) => t.length >= 2)).toBe(true)
   })
 })
+
+// 2026-07-18 와일드카드 리터럴 처리 보정(migration B) 관련 회귀 —
+// TS는 %, _, \ 를 미리 이스케이프하지 않고 원문 그대로 RPC에 전달한다.
+// 이스케이프는 SQL(get_school_search_count) 쪽 책임이며, TS가 별도로
+// 이스케이프하면 이중 이스케이프가 되어 오히려 매칭이 깨진다.
+describe('get_school_search_count — 와일드카드 문자 전달(이스케이프는 SQL 책임)', () => {
+  it('학교명에 %가 포함돼도 원문 그대로 search_tokens에 전달한다', async () => {
+    const { supabase, rpc } = createMockSupabase({ data: 0, error: null })
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { getSchoolSearchCount } = await import('./searches')
+
+    await getSchoolSearchCount('학교%이름')
+
+    const [, { search_tokens }] = rpc.mock.calls[0]
+    expect(search_tokens).toContain('학교%이름')
+  })
+
+  it('학교명에 _가 포함돼도 원문 그대로 search_tokens에 전달한다', async () => {
+    const { supabase, rpc } = createMockSupabase({ data: 0, error: null })
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { getSchoolSearchCount } = await import('./searches')
+
+    await getSchoolSearchCount('학교_이름')
+
+    const [, { search_tokens }] = rpc.mock.calls[0]
+    expect(search_tokens).toContain('학교_이름')
+  })
+
+  it('학교명에 \\가 포함돼도 원문 그대로 search_tokens에 전달한다(TS가 이중 이스케이프하지 않음)', async () => {
+    const { supabase, rpc } = createMockSupabase({ data: 0, error: null })
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { getSchoolSearchCount } = await import('./searches')
+
+    await getSchoolSearchCount('학교\\이름')
+
+    const [, { search_tokens }] = rpc.mock.calls[0]
+    expect(search_tokens).toContain('학교\\이름')
+  })
+
+  it('정상 schoolSearchTokens 경로는 RPC에 최대 5개 토큰만 전달한다', async () => {
+    const { supabase, rpc } = createMockSupabase({ data: 0, error: null })
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { getSchoolSearchCount } = await import('./searches')
+
+    await getSchoolSearchCount('인천초은중학교')
+
+    const [, { search_tokens }] = rpc.mock.calls[0]
+    expect(search_tokens.length).toBeLessThanOrEqual(5)
+  })
+})

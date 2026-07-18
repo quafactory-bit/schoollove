@@ -1166,3 +1166,32 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - 후속 정적·원격 감사에서 `get_school_search_count`의 `ILIKE '%' || token || '%'`가 사용자 토큰의 `%`, `_`, `\`를 리터럴이 아닌 ILIKE 패턴 문자로 처리하는 문제가 발견됨 — SQL injection은 아니며(파라미터화된 SQL만 실행, 원본 로그 행 미반환), aggregate count 범위가 의도보다 넓어질 수 있는 정확성 문제임. `%`/`_`/`\` 와일드카드 리터럴 처리 보정 migration이 필요하며, 이 보정은 설계만 완료된 상태이고 아직 구현·적용되지 않았음
 - 기존 적용 migration 파일(`20260717120000_search_logs_aggregate_rpc.sql`, `20260717130000_rls_manual_security_sync.sql`)은 이번 보정과 무관하게 수정하지 않음 — 새 migration으로만 해결할 예정
 - `search_logs.query`용 trigram 인덱스는 이번 보안 보정과 분리된 별도 성능 migration으로 검토 예정(적용 여부 미결정, 현재 데이터 규모에서 시급성 없음)
+
+### Migration B — 와일드카드 리터럴 처리 보정(로컬 구현, 원격 미적용)
+
+- 신규 migration `supabase/migrations/20260718100000_escape_search_log_count_wildcards.sql` 로컬 구현. 기존 `20260717120000_search_logs_aggregate_rpc.sql`은 수정하지 않고(원격에 이미 적용되어 로컬과 일치 확인된 상태 그대로 유지), 이 후속 migration에서 `public.get_school_search_count(search_tokens text[])`를 `CREATE OR REPLACE`로 재정의함
+- 함수명·인자(`search_tokens text[]`)·반환 타입(`integer`)·`LANGUAGE sql`·`STABLE`·`SECURITY DEFINER`·`SET search_path = ''`·`PUBLIC` REVOKE·`anon`/`authenticated`/`service_role` GRANT 등 기존 공개 계약은 전부 그대로 유지함
+- `%`, `_`, `\` 리터럴 처리: `replace()`를 백슬래시 → `%` → `_` 순서로 3중 적용해 이스케이프한 뒤 `ILIKE (...) ESCAPE E'\\'`로 매칭 — 순서가 바뀌면 새로 만든 백슬래시가 다시 이스케이프되어 의미가 깨지므로 이 순서가 정확성의 핵심임
+- 입력 배열 defense-in-depth 가드 추가: `cardinality(...) > 20`이면 예외 없이 빈 집합(→ 최종 0 반환)으로 처리. 정상 앱 경로(`schoolSearchTokens()`)는 구조적으로 최대 5개 토큰만 생성하므로 20은 충분한 여유이며, 기존 `[1:8]` 슬라이스가 이미 함수 내부 처리 비용을 완전히 상한선으로 막고 있어 이 가드는 HTTP payload 전송 비용 자체를 막지는 못함(그 방어는 PostgREST/플랫폼 계층의 몫) — 어디까지나 명백히 비정상적인 입력에 대한 추가 방어선
+- trigram 인덱스는 포함하지 않음 — 성능 최적화는 이번 보안 보정과 분리된 별도 migration으로 검토 예정
+- `lib/api/searches.ts`는 수정하지 않음 — TS는 `%`/`_`/`\`를 미리 이스케이프하지 않고 원문 토큰을 그대로 RPC에 전달하며, 이스케이프는 SQL 쪽 책임으로 유지
+
+#### 관련 파일
+
+- `supabase/migrations/20260718100000_escape_search_log_count_wildcards.sql` (신규)
+- `supabase/migrations/20260718100000_escape_search_log_count_wildcards.test.ts` (신규 — migration SQL 정적 검토 24 tests)
+- `lib/api/searches.test.ts` (와일드카드 문자 전달·토큰 상한 회귀 4 tests 추가, 기존 13 tests 무변경)
+
+#### 로컬 검증
+
+- `npx tsc --noEmit` → 오류 없음
+- `npx vitest run supabase/migrations/20260718100000_escape_search_log_count_wildcards.test.ts` → 1 test file, 24 tests 통과
+- `npx vitest run lib/api/searches.test.ts` → 1 test file, 17 tests 통과(기존 13 + 신규 4)
+- `npm test` → 전체 스위트 통과(회귀 없음)
+
+#### 아직 완료되지 않은 것
+
+- 이번 단계는 로컬 구현·정적 테스트만 수행함 — **원격 Supabase에는 아직 적용하지 않음**
+- 원격 스모크 테스트(SQL 직접 호출, anon PostgREST 호출)는 아직 수행하지 않음
+- trigram 인덱스는 적용하지 않음(별도 검토 예정)
+- git add/commit/push는 수행하지 않음
