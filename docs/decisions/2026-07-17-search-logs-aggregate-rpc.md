@@ -47,3 +47,9 @@ APPROVED — 적용 대기(운영 반영 전 수동 검토 필요)
 - `search_logs.query`용 trigram 인덱스는 이번 보안 보정과 분리된 별도 성능 작업으로 검토할 예정이다(적용 여부 미결정).
 
 **Status (as of 2026-07-18): APPLIED / VERIFIED — corrective migration planned**
+
+## Resolution — 2026-07-18(후속)
+
+위 Follow-up 상태 기록 이후, 와일드카드 리터럴 처리 보정(`20260718100000_escape_search_log_count_wildcards.sql`)을 구현·로컬 검증·원격 적용까지 완료했다(상세 내역은 `docs/IMPLEMENTATION_LOG.md`의 "Migration B 원격 적용 및 최종 검증 완료" 참고). `%`, `_`, `\`가 리터럴로 처리됨을 원격 SQL 직접 호출과 anon PostgREST 호출로 모두 확인했으며(`'%%'`, `'__'` 같은 순수 와일드카드 조합도 더 이상 전체 로그와 매칭되지 않음), 기존 함수 계약·권한·RLS 상태는 전혀 변경되지 않았다. `search_logs` 데이터는 이번 적용에서도 변경되지 않았다.
+
+**Status (as of 2026-07-18, 후속): RESOLVED — 검색 로그 집계 RPC·RLS·와일드카드 보정 작업 완료.** 남은 항목은 성능 전용 P2(trigram 인덱스, 별도 migration으로 추후 검토)뿐이며 보안·기능 미완료 항목은 없다.

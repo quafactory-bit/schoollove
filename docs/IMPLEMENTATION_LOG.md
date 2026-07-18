@@ -1195,3 +1195,103 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 - 원격 스모크 테스트(SQL 직접 호출, anon PostgREST 호출)는 아직 수행하지 않음
 - trigram 인덱스는 적용하지 않음(별도 검토 예정)
 - git add/commit/push는 수행하지 않음
+
+### Migration B 원격 적용 및 최종 검증 완료
+
+위 "Migration B — 와일드카드 리터럴 처리 보정(로컬 구현, 원격 미적용)" 기록은 그 시점(로컬 구현 직후)의 사실이며 수정하지 않는다. 이후 별도 단계에서 3개 로컬 커밋(`43d0e2b`/`5c03262`/`ba73bcd`)을 `origin/main`에 push하고, Migration B를 원격 Supabase에 적용·검증한 결과는 다음과 같다.
+
+#### 적용
+
+- `20260718100000_escape_search_log_count_wildcards.sql`이 원격에 적용됨(`npx supabase db push`, 대상은 이 파일 하나뿐임을 dry-run으로 사전 확인 후 진행)
+- 다른 migration은 함께 적용되지 않음 — 적용 직후 `npx supabase migration list`에서 4개 migration(`20260715120000`/`20260717120000`/`20260717130000`/`20260718100000`) 전부 local/remote 일치, `db push --dry-run`은 "Remote database is up to date." 반환
+- 기존 migration 파일(`20260717120000_search_logs_aggregate_rpc.sql`, `20260717130000_rls_manual_security_sync.sql`)은 이번 적용 과정에서도 수정하지 않음
+
+#### 함수 정의(원격에서 확인)
+
+- 함수명·인자(`search_tokens text[]`)·반환(`integer`) 계약 유지
+- `LANGUAGE sql`, `STABLE`, `SECURITY DEFINER`
+- `search_path`가 빈 값으로 고정됨
+- `public.search_logs`를 스키마까지 명시해서 참조
+- 앞 8개 토큰만 처리(`[1:8]`), 토큰 길이 2~100, `DISTINCT`로 중복 제거
+- 입력 배열이 20개를 초과하면 예외 없이 0으로 귀결(`cardinality` 가드)
+- `%`, `_`, `\`를 리터럴로 처리(`ESCAPE E'\\'`)
+- `PUBLIC` 기본 `EXECUTE` 권한 회수, `anon`/`authenticated`/`service_role`에는 `EXECUTE` 유지
+- `pg_get_functiondef`로 확인한 원격 함수 본문이 로컬 migration과 논리적으로 완전히 일치함(서식만 Postgres 정규화)
+
+#### 원격 smoke test(읽기 전용, 전부 synthetic 입력만 사용)
+
+- `NULL` → 오류 없이 `0`
+- 빈 배열 → 오류 없이 `0`
+- 비매칭 synthetic 토큰 → 오류 없이 `0`
+- 21개 synthetic 토큰 배열 → 오류 없이 `0`(cardinality 가드 작동 확인)
+- `'%%'`, `'__'`(순수 와일드카드 조합) → **오류 없이 `0`** — 보정 전이었다면 전체 로그와 매칭됐을 입력이 정확히 리터럴로 처리됨을 실제 원격에서 확인
+- `%`/`_`/`\`가 포함된 synthetic 토큰 → 오류 없이 처리됨
+- anon PostgREST 경로(`supabase.rpc('get_school_search_count', ...)`)로 위 입력을 동일하게 호출 → 전부 성공, `number` 타입 반환
+- 원본 검색 로그 행(`query`/`id`/`created_at`)은 SQL 직접 호출·anon RPC 호출 어디에서도 노출되지 않음
+- anon 클라이언트로 `search_logs` 직접 SELECT를 시도하면 오류로 차단됨(반환된 count는 `null`, 행 데이터 미노출) — 기존 차단 상태 그대로 유지
+- authenticated 역할도 `has_table_privilege` 기준 `search_logs` 직접 SELECT 권한 없음(anon과 동일)
+
+#### 영향 범위
+
+- **변경된 것**: `public.get_school_search_count(text[])` 함수 정의, 함수 COMMENT, 함수 EXECUTE 권한 재명시, migration history 1행 추가
+- **변경되지 않은 것**: `search_logs` 테이블 데이터·구조, RLS 정책, 테이블 권한, 인덱스, extension, 다른 함수, Git 파일(이번 적용 단계 자체는 DB만 변경, 저장소 파일은 이전 커밋 이후 무변경)
+- DB 데이터(운영 검색 로그) 변경 없음 — 전 과정 `SELECT` 전용, `INSERT`/`UPDATE`/`DELETE`/DDL 미실행
+
+#### 테스트
+
+- `npx tsc --noEmit` → 오류 없음
+- `npm test` → `27 test files / 404 tests` 통과
+
+#### 최종 판정
+
+검색 로그 집계 RPC·RLS·와일드카드 보정 작업 완료.
+
+원격 Vercel 배포 상태는 이번 작업 범위에서 읽기 전용 조회 도구(연결된 Vercel CLI, `gh` CLI 등)가 없어 검증되지 않았으므로 "완료"로 기록하지 않는다 — GitHub push 자체는 성공했고 3개 커밋이 `origin/main`에 반영됐음만 확인된 상태다.
+
+### 남은 P2 — trigram 인덱스(성능 최적화, 보안과 무관)
+
+- `search_logs.query`에 대한 trigram(GIN) 인덱스가 없어 `ILIKE '%...%'` 조회가 인덱스를 활용하지 못하고 순차 스캔에 의존한다.
+- 이는 **보안 결함이 아니며 현재 기능을 차단하는 요소도 아니다** — 현재 `search_logs` 규모(수백 건)에서는 성능 문제가 관찰되지 않음.
+- 데이터가 충분히 증가해 실제 성능 저하가 관찰될 때, 이번 보안 보정 migration과는 분리된 별도의 새 성능 migration으로만 검토·구현한다.
+- 현재 이 항목을 구현하지 않는다(이번 단계 범위 아님).
+
+---
+
+## 제품 개발 다음 단계(2026-07-18 기준 우선순위 — 구현 완료 기록과 별개)
+
+검색 로그 RPC·RLS·와일드카드 보정 작업(위 기록)은 인프라·보안 계층 완료 상태이며, 아래는 그 위에서 진행할 제품 개발 우선순위 정리다. 실제 구현 여부는 각 항목이 완료 기록으로 남기 전까지는 미완료로 간주한다.
+
+### 1순위 — 실제 서비스 연결 확인
+
+- 배포된 사이트에서 학교 검색 횟수가 실제로 표시되는지 확인
+- RPC 오류 발생 시 UI가 fallback(0 또는 대체 문구)으로 정상 동작하는지 확인
+- 모바일에서 School Hub 진입 흐름이 끊기지 않는지 확인
+
+### 2순위 — 게임형 성장 경험
+
+- 학교 현재 레벨 표시
+- 다음 레벨까지 남은 사람 수 표시
+- "한 명만 더" CTA
+- 첫 기록이 생긴 학교(State A) 상태 표현
+- 레벨업 직전 학교 노출
+
+### 3순위 — Home 성장 중계
+
+- 방금 성장한 학교
+- 오늘 처음 기록이 생긴 학교
+- 레벨업 임박 학교
+- 빠르게 성장한 학교
+- 활동이 없는 경우의 fallback 화면
+
+### 4순위 — 공유·소환
+
+- 학교 성장 카드
+- 친구 한 명 소환하기
+- 해당 School Hub 직접 공유
+- 학교·졸업연도가 미리 선택된 등록 흐름
+
+### 5순위 — 새 마케팅 전략
+
+- 감성은 세계관, 게임은 참여 엔진, 사람 발견은 보상이라는 구조
+- 첫 시즌: "우리 학교 깨우기"
+- 핵심 메시지: "우리 학교, 지금 몇 레벨일까?" / "한 명만 더 오면 레벨업"
