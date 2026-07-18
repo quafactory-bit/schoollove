@@ -8,6 +8,8 @@ import { IMG } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
 import { isAllFailed, resultHeading } from './resultText'
 import { normalizeInsta, registerPeople } from './registerPeople'
+import { getGrowthRewardCopy } from './growthRewardCopy'
+import RegistrationGrowthRewardCard from '@/components/RegistrationGrowthRewardCard'
 import type { RegistrationGrowthReward } from '@/types/registration'
 
 type SchoolLite = {
@@ -173,14 +175,15 @@ function SubmitInner() {
     setDone({ success, dup, fail, totalAtSchool, growthReward })
   }
 
-  function shareSchool() {
+  function shareSchool(text?: string) {
     if (!school) return
     const url = `https://www.schoollove.kr/school/${school.slug}`
-    const text = `${school.school_name} 우리 반 친구들 모아놨어! 너도 네 인스타 연결하러 와`
+    const defaultText = `${school.school_name} 우리 반 친구들 모아놨어! 너도 네 인스타 연결하러 와`
+    const shareText = text ?? defaultText
     if (typeof navigator !== 'undefined' && (navigator as Navigator).share) {
-      ;(navigator as Navigator).share({ title: '스쿨러브아이', text, url }).catch(() => {})
+      ;(navigator as Navigator).share({ title: '스쿨러브아이', text: shareText, url }).catch(() => {})
     } else {
-      navigator.clipboard?.writeText(`${text} ${url}`)
+      navigator.clipboard?.writeText(`${shareText} ${url}`)
       alert('링크가 복사되었어요')
     }
   }
@@ -200,14 +203,19 @@ function SubmitInner() {
   if (done) {
     const othersAtSchool = Math.max(done.totalAtSchool - done.success, 0)
     const allFailed = isAllFailed(done)
+    const growthCopy =
+      done && school ? getGrowthRewardCopy(done.growthReward, school.school_name) : null
     return (
       <main className="mx-auto w-full max-w-[600px] px-5 pb-24 pt-10 text-center">
 <div className="mx-auto mb-6 w-full max-w-xs overflow-hidden rounded-2xl">
           <Image src={IMG.completeGraduation} alt="졸업 축하" width={1000} height={750} className="h-auto w-full" />
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight text-neutral-900">
-          {resultHeading(selfMode, done)}
+          {growthCopy ? growthCopy.title : resultHeading(selfMode, done)}
         </h1>
+
+        {growthCopy && <RegistrationGrowthRewardCard copy={growthCopy} />}
+
         <p className="mt-3 text-sm text-neutral-600">
           {!allFailed && (
             <>
@@ -219,7 +227,7 @@ function SubmitInner() {
           {done.fail > 0 && <span className="block text-red-400">{done.fail}명은 등록에 실패했어요.</span>}
         </p>
 
-        {othersAtSchool > 0 && (
+        {!growthCopy && othersAtSchool > 0 && (
           <div className="mx-auto mt-6 max-w-xs rounded-2xl bg-neutral-100 px-4 py-4">
             <p className="text-sm font-bold text-neutral-900">혼자가 아니에요 👋</p>
             <p className="mt-1 text-sm text-neutral-600">
@@ -238,10 +246,10 @@ function SubmitInner() {
             </Link>
           )}
           <button
-            onClick={shareSchool}
+            onClick={() => shareSchool(growthCopy?.shareText)}
             className="block w-full rounded-2xl border border-neutral-200 px-5 py-4 text-sm font-bold text-neutral-700 transition hover:bg-neutral-50"
           >
-            단톡방에 공유하기
+            {growthCopy?.shareLabel ?? '단톡방에 공유하기'}
           </button>
           <button onClick={resetAll} className="block w-full px-5 py-3 text-sm text-neutral-400">
             계속 등록하기
