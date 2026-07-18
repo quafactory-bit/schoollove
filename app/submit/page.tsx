@@ -8,6 +8,7 @@ import { IMG } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
 import { isAllFailed, resultHeading } from './resultText'
 import { normalizeInsta, registerPeople } from './registerPeople'
+import type { RegistrationGrowthReward } from '@/types/registration'
 
 type SchoolLite = {
   id: string
@@ -63,7 +64,15 @@ function SubmitInner() {
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState('')
   const [done, setDone] = useState<
-    { success: number; dup: number; fail: number; totalAtSchool: number } | null
+    | {
+        success: number
+        dup: number
+        fail: number
+        totalAtSchool: number
+        // PHASE 6A — 데이터만 보관한다. 6B 전까지는 아래 렌더링에서 읽지 않는다.
+        growthReward?: RegistrationGrowthReward
+      }
+    | null
   >(null)
 
   const isUni = school?.school_type === 'university' || school?.school_type === 'college'
@@ -150,7 +159,7 @@ function SubmitInner() {
       student_year: isUni && studentYear ? Number(studentYear) : null,
     }
 
-    const { success, dup, fail } = await registerPeople(valid, base)
+    const { success, dup, fail, growthReward } = await registerPeople(valid, base)
 
     let totalAtSchool = success
     const { count: schoolTotal } = await supabase
@@ -161,7 +170,7 @@ function SubmitInner() {
     if (typeof schoolTotal === 'number') totalAtSchool = schoolTotal
 
     setSubmitting(false)
-    setDone({ success, dup, fail, totalAtSchool })
+    setDone({ success, dup, fail, totalAtSchool, growthReward })
   }
 
   function shareSchool() {

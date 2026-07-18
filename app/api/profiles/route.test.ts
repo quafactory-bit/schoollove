@@ -36,6 +36,7 @@ vi.mock('@/lib/api/profiles', () => ({
 
 vi.mock('@/lib/api/levels', () => ({
   syncSchoolLevel: vi.fn(),
+  getSchoolLevelSnapshot: vi.fn(),
 }))
 
 const { revalidatePathMock } = vi.hoisted(() => ({
@@ -48,7 +49,7 @@ vi.mock('next/cache', () => ({
 
 import { POST } from './route'
 import { getSchoolProfileCount } from '@/lib/api/profiles'
-import { syncSchoolLevel } from '@/lib/api/levels'
+import { syncSchoolLevel, getSchoolLevelSnapshot } from '@/lib/api/levels'
 
 const SCHOOL_ID = '11111111-1111-1111-1111-111111111111'
 
@@ -430,5 +431,168 @@ describe('POST /api/profiles — 홈 피드 재검증 계약 (Phase 4B, docs/dec
     expect(consoleErrorSpy).toHaveBeenCalled()
 
     consoleErrorSpy.mockRestore()
+  })
+})
+
+describe('POST /api/profiles — PHASE 6A 성장 보상(growthReward)', () => {
+  it('1. first_record — 0명→1명, 레벨은 그대로면 growthReward.outcome=first_record', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(getSchoolLevelSnapshot).mockResolvedValue({
+      id: SCHOOL_ID,
+      current_level: null,
+      level_updated_at: null,
+    })
+    vi.mocked(syncSchoolLevel).mockResolvedValue({
+      id: SCHOOL_ID,
+      current_level: 1,
+      level_updated_at: '2026-07-18T00:00:00.000Z',
+    })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(json.data).toEqual({ id: 'p1' })
+    expect(json.growthReward).toEqual({
+      schoolId: SCHOOL_ID,
+      before: {
+        visibleProfileCount: 0,
+        effectiveLevel: 1,
+        nextLevel: 2,
+        remainingToNext: 141,
+        progressPercent: 0,
+        isNearLevelUp: false,
+      },
+      after: {
+        visibleProfileCount: 1,
+        effectiveLevel: 1,
+        nextLevel: 2,
+        remainingToNext: 140,
+        progressPercent: 1,
+        isNearLevelUp: false,
+      },
+      outcome: 'first_record',
+    })
+  })
+
+  it('2. level_up — before/after가 레벨 임계값(141)을 가로지르면 outcome=level_up', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(141)
+    vi.mocked(getSchoolLevelSnapshot).mockResolvedValue({
+      id: SCHOOL_ID,
+      current_level: 1,
+      level_updated_at: null,
+    })
+    vi.mocked(syncSchoolLevel).mockResolvedValue({
+      id: SCHOOL_ID,
+      current_level: 2,
+      level_updated_at: '2026-07-18T00:00:00.000Z',
+    })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(json.growthReward.outcome).toBe('level_up')
+    expect(json.growthReward.before.effectiveLevel).toBe(1)
+    expect(json.growthReward.after.effectiveLevel).toBe(2)
+    expect(json.growthReward.before.visibleProfileCount).toBe(140)
+    expect(json.growthReward.after.visibleProfileCount).toBe(141)
+  })
+
+  it('3. progress — 레벨은 그대로, count만 늘면 outcome=progress', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(4)
+    vi.mocked(getSchoolLevelSnapshot).mockResolvedValue({
+      id: SCHOOL_ID,
+      current_level: 1,
+      level_updated_at: null,
+    })
+    vi.mocked(syncSchoolLevel).mockResolvedValue({
+      id: SCHOOL_ID,
+      current_level: 1,
+      level_updated_at: null,
+    })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(json.growthReward.outcome).toBe('progress')
+    expect(json.growthReward.before.visibleProfileCount).toBe(3)
+    expect(json.growthReward.after.visibleProfileCount).toBe(4)
+  })
+
+  it('4. getSchoolLevelSnapshot이 null을 반환하면 성공 응답은 유지되지만 growthReward는 생략된다', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(3)
+    vi.mocked(getSchoolLevelSnapshot).mockResolvedValue(null)
+    vi.mocked(syncSchoolLevel).mockResolvedValue({ id: SCHOOL_ID, current_level: 1, level_updated_at: null })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(json).toEqual({ data: { id: 'p1' } })
+    expect(json.growthReward).toBeUndefined()
+  })
+
+  it('5. syncSchoolLevel이 null을 반환하면(before snapshot은 성공해도) growthReward는 생략된다', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(3)
+    vi.mocked(getSchoolLevelSnapshot).mockResolvedValue({
+      id: SCHOOL_ID,
+      current_level: 1,
+      level_updated_at: null,
+    })
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(json).toEqual({ data: { id: 'p1' } })
+    expect(json.growthReward).toBeUndefined()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('6. 성장 스냅샷 계산 중 예외가 발생해도 201 유지, growthReward 생략, Home revalidation은 그대로 실행됨', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(3)
+    vi.mocked(getSchoolLevelSnapshot).mockRejectedValue(new Error('supabase unreachable'))
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(json).toEqual({ data: { id: 'p1' } })
+    expect(json.growthReward).toBeUndefined()
+    expect(syncSchoolLevel).not.toHaveBeenCalled()
+    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+    expect(consoleErrorSpy).toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('7. 응답에 개인정보(닉네임/인스타그램/profile id)가 growthReward에 포함되지 않는다', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(getSchoolLevelSnapshot).mockResolvedValue({
+      id: SCHOOL_ID,
+      current_level: null,
+      level_updated_at: null,
+    })
+    vi.mocked(syncSchoolLevel).mockResolvedValue({ id: SCHOOL_ID, current_level: 1, level_updated_at: null })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    const rewardKeys = Object.keys(json.growthReward)
+    expect(rewardKeys).toEqual(['schoolId', 'before', 'after', 'outcome'])
+    expect(JSON.stringify(json.growthReward)).not.toContain('gildong')
+    expect(JSON.stringify(json.growthReward)).not.toContain('홍길동')
   })
 })

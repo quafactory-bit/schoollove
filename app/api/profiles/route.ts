@@ -3,9 +3,13 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { supabaseServer } from '@/lib/supabase';
 import { getSchoolProfileCount } from '@/lib/api/profiles';
-import { syncSchoolLevel } from '@/lib/api/levels';
+import { syncSchoolLevel, getSchoolLevelSnapshot } from '@/lib/api/levels';
 import { revalidateHomeFeed } from '@/lib/api/homeFeedCache';
+import { calculateSchoolGrowthSnapshot } from '@/lib/policy/schoolGrowth';
+import { classifyRegistrationGrowthOutcome } from '@/lib/policy/registrationGrowthReward';
 import { z } from 'zod';
+import type { SchoolGrowthSnapshot } from '@/types/schoolGrowth';
+import type { RegistrationGrowthReward, RegistrationGrowthSnapshot } from '@/types/registration';
 
 // Upstash rate limit 설정 누락 처리.
 // - production: 설정 누락을 우회하지 않고 명확한 500으로 fail-closed한다
@@ -131,14 +135,56 @@ export async function POST(request: NextRequest) {
   // Register Flow → Level 연결 (docs/decisions/2026-07-14-register-flow-level-connection-phase0.md)
   // 프로필 insert가 이미 성공했으므로, 이 단계의 실패는 등록 성공 응답(201)을 취소하지 않는다.
   // XP Source는 여전히 미확정(잠정 정책)이라 cumulativeXp는 학교의 실제 visible profile 수를 그대로 사용한다.
+  //
+  // PHASE 6A(등록 후 성장 보상) — 이 insert는 바로 위에서 is_hidden=false로 확정됐으므로
+  // (성공한 insert 1건 = visible profile count +1) 별도 count 쿼리 없이
+  // afterVisibleProfileCount - 1을 beforeVisibleProfileCount로 산술 역산한다.
+  // before/after 성장 스냅샷 계산·outcome 판정 전체를 best-effort로 다뤄, 실패해도
+  // 프로필 등록 성공 응답(201 { data })은 그대로 유지한다(growthReward만 생략된다).
+  let growthReward: RegistrationGrowthReward | undefined;
+
   try {
-    const cumulativeXp = await getSchoolProfileCount(profile.school_id);
-    const syncResult = await syncSchoolLevel(profile.school_id, cumulativeXp);
+    const afterVisibleProfileCount = await getSchoolProfileCount(profile.school_id);
+    const beforeVisibleProfileCount = Math.max(0, afterVisibleProfileCount - 1);
+
+    const beforeLevelSnapshot = await getSchoolLevelSnapshot(profile.school_id);
+    const syncResult = await syncSchoolLevel(profile.school_id, afterVisibleProfileCount);
+
     if (!syncResult) {
       console.error('POST /api/profiles level sync failed:', {
         schoolId: profile.school_id,
-        cumulativeXp,
+        cumulativeXp: afterVisibleProfileCount,
       });
+    }
+
+    if (beforeLevelSnapshot && syncResult) {
+      const before = toGrowthSnapshot(
+        calculateSchoolGrowthSnapshot({
+          schoolId: profile.school_id,
+          schoolName: '',
+          slug: '',
+          visibleProfileCount: beforeVisibleProfileCount,
+          storedCurrentLevel: beforeLevelSnapshot.current_level,
+          levelUpdatedAt: beforeLevelSnapshot.level_updated_at,
+        })
+      );
+      const after = toGrowthSnapshot(
+        calculateSchoolGrowthSnapshot({
+          schoolId: profile.school_id,
+          schoolName: '',
+          slug: '',
+          visibleProfileCount: afterVisibleProfileCount,
+          storedCurrentLevel: syncResult.current_level,
+          levelUpdatedAt: syncResult.level_updated_at,
+        })
+      );
+
+      growthReward = {
+        schoolId: profile.school_id,
+        before,
+        after,
+        outcome: classifyRegistrationGrowthOutcome(before, after),
+      };
     }
   } catch (syncError) {
     console.error('POST /api/profiles level sync threw:', {
@@ -148,8 +194,17 @@ export async function POST(request: NextRequest) {
   }
 
   // Phase 4B(docs/decisions/2026-07-17-home-feed-freshness.md) — 등록이 이미 성공했으므로
-  // 최종 성공 응답을 반환하기 직전에만 홈을 재검증한다.
+  // 최종 성공 응답을 반환하기 직전에만 홈을 재검증한다. 성장 보상 계산 성공/실패와 무관하게 실행한다.
   revalidateHomeFeed();
 
-  return NextResponse.json({ data }, { status: 201 });
+  return NextResponse.json({ data, growthReward }, { status: 201 });
+}
+
+// calculateSchoolGrowthSnapshot()의 출력 중 클라이언트에 보낼 필드만 추린다.
+// schoolName/slug는 계산에 쓰이지 않는 pass-through 입력이라 응답에 포함하지 않는다
+// (app/submit/page.tsx가 이미 선택된 학교 정보를 갖고 있음).
+function toGrowthSnapshot(snapshot: SchoolGrowthSnapshot): RegistrationGrowthSnapshot {
+  const { visibleProfileCount, effectiveLevel, nextLevel, remainingToNext, progressPercent, isNearLevelUp } =
+    snapshot;
+  return { visibleProfileCount, effectiveLevel, nextLevel, remainingToNext, progressPercent, isNearLevelUp };
 }

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { normalizeInsta, registerPeople, type PersonInput, type RegisterBase } from './registerPeople'
+import type { RegistrationGrowthReward, RegistrationGrowthSnapshot } from '@/types/registration'
 
 const BASE: RegisterBase = {
   school_id: 'school-1',
@@ -16,6 +17,43 @@ function person(nickname: string, overrides: Partial<PersonInput> = {}): PersonI
 
 function fetchResponse(ok: boolean, status: number): Response {
   return { ok, status } as Response
+}
+
+function snapshot(overrides: Partial<RegistrationGrowthSnapshot> = {}): RegistrationGrowthSnapshot {
+  return {
+    visibleProfileCount: 1,
+    effectiveLevel: 1,
+    nextLevel: 2,
+    remainingToNext: 140,
+    progressPercent: 1,
+    isNearLevelUp: false,
+    ...overrides,
+  }
+}
+
+function reward(overrides: Partial<RegistrationGrowthReward> = {}): RegistrationGrowthReward {
+  return {
+    schoolId: BASE.school_id,
+    before: snapshot({ visibleProfileCount: 0 }),
+    after: snapshot({ visibleProfileCount: 1 }),
+    outcome: 'first_record',
+    ...overrides,
+  }
+}
+
+// PHASE 6A 성공 응답 — 기존 fetchResponse와 달리 실제 .json()을 갖는다.
+function fetchResponseWithBody(status: number, body: unknown): Response {
+  return { ok: true, status, json: async () => body } as unknown as Response
+}
+
+function fetchResponseWithInvalidJson(status: number): Response {
+  return {
+    ok: true,
+    status,
+    json: async () => {
+      throw new SyntaxError('Unexpected end of JSON input')
+    },
+  } as unknown as Response
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
@@ -129,6 +167,253 @@ describe('registerPeople', () => {
     const body = JSON.parse(fetchMock.mock.calls[0][1].body)
     expect(body.is_self).toBe(false)
     expect(body.instagram_id).toBeNull()
+  })
+})
+
+describe('registerPeople — PHASE 6A growthReward 집계', () => {
+  it('1. 단일 성공 + growthReward 전달 → 응답 body의 growthReward를 그대로 결과에 담는다', async () => {
+    const r = reward()
+    fetchMock.mockResolvedValue(fetchResponseWithBody(201, { data: { id: 'p1' }, growthReward: r }))
+
+    const result = await registerPeople([person('홍길동')], BASE)
+
+    expect(result).toEqual({ success: 1, dup: 0, fail: 0, growthReward: r })
+  })
+
+  it('2. 성공 응답에 growthReward가 없으면 기존 success/dup/fail 결과만 반환한다', async () => {
+    fetchMock.mockResolvedValue(fetchResponseWithBody(201, { data: { id: 'p1' } }))
+
+    const result = await registerPeople([person('홍길동')], BASE)
+
+    expect(result).toEqual({ success: 1, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('3. 성공 응답 body가 JSON이 아니어도 success는 유지되고 growthReward는 생략된다', async () => {
+    fetchMock.mockResolvedValue(fetchResponseWithInvalidJson(201))
+
+    const result = await registerPeople([person('홍길동')], BASE)
+
+    expect(result).toEqual({ success: 1, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('4. 여러 명 성공 → 첫 성공 응답의 before + 마지막 성공 응답의 after로 배치 growthReward를 만든다', async () => {
+    const first = reward({
+      before: snapshot({ visibleProfileCount: 0 }),
+      after: snapshot({ visibleProfileCount: 1 }),
+      outcome: 'first_record',
+    })
+    const second = reward({
+      before: snapshot({ visibleProfileCount: 1 }),
+      after: snapshot({ visibleProfileCount: 2 }),
+      outcome: 'progress',
+    })
+    fetchMock
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p1' }, growthReward: first }))
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p2' }, growthReward: second }))
+
+    const result = await registerPeople([person('가'), person('나')], BASE)
+
+    expect(result.success).toBe(2)
+    expect(result.growthReward?.before).toEqual(first.before)
+    expect(result.growthReward?.after).toEqual(second.after)
+  })
+
+  it('5. 중간에 duplicate가 섞여도 성공한 응답끼리만 growthReward가 집계된다', async () => {
+    const first = reward({ before: snapshot({ visibleProfileCount: 0 }), after: snapshot({ visibleProfileCount: 1 }) })
+    const third = reward({ before: snapshot({ visibleProfileCount: 1 }), after: snapshot({ visibleProfileCount: 2 }) })
+    fetchMock
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p1' }, growthReward: first }))
+      .mockResolvedValueOnce(fetchResponse(false, 409))
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p3' }, growthReward: third }))
+
+    const result = await registerPeople([person('가'), person('나'), person('다')], BASE)
+
+    expect(result).toMatchObject({ success: 2, dup: 1, fail: 0 })
+    expect(result.growthReward?.before).toEqual(first.before)
+    expect(result.growthReward?.after).toEqual(third.after)
+  })
+
+  it('6. 중간에 fail이 섞여도 성공한 응답끼리만 growthReward가 집계된다', async () => {
+    const first = reward({ before: snapshot({ visibleProfileCount: 0 }), after: snapshot({ visibleProfileCount: 1 }) })
+    const third = reward({ before: snapshot({ visibleProfileCount: 1 }), after: snapshot({ visibleProfileCount: 2 }) })
+    fetchMock
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p1' }, growthReward: first }))
+      .mockResolvedValueOnce(fetchResponse(false, 500))
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p3' }, growthReward: third }))
+
+    const result = await registerPeople([person('가'), person('나'), person('다')], BASE)
+
+    expect(result).toMatchObject({ success: 2, dup: 0, fail: 1 })
+    expect(result.growthReward?.before).toEqual(first.before)
+    expect(result.growthReward?.after).toEqual(third.after)
+  })
+
+  it('7. 모든 요청이 duplicate면 growthReward가 생성되지 않는다', async () => {
+    fetchMock.mockResolvedValue(fetchResponse(false, 409))
+
+    const result = await registerPeople([person('가'), person('나')], BASE)
+
+    expect(result).toEqual({ success: 0, dup: 2, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('8. 모든 요청이 fail이면 growthReward가 생성되지 않는다', async () => {
+    fetchMock.mockResolvedValue(fetchResponse(false, 500))
+
+    const result = await registerPeople([person('가'), person('나')], BASE)
+
+    expect(result).toEqual({ success: 0, dup: 0, fail: 2 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('9. 서로 다른 schoolId의 growthReward가 섞이면 배치 reward를 안전하게 생략한다(등록 결과 자체는 유지)', async () => {
+    const first = reward({ schoolId: 'school-1' })
+    const second = reward({ schoolId: 'school-2' })
+    fetchMock
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p1' }, growthReward: first }))
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p2' }, growthReward: second }))
+
+    const result = await registerPeople([person('가'), person('나')], BASE)
+
+    expect(result).toMatchObject({ success: 2, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('10. 배치 최종 outcome은 첫/마지막 응답의 outcome을 그대로 쓰지 않고 결합된 before/after 기준으로 재계산된다', async () => {
+    // 개별 응답은 각각 progress였지만, 배치 전체로 보면 레벨을 넘는 level_up이 되는 경우.
+    const first = reward({
+      before: snapshot({ visibleProfileCount: 139, effectiveLevel: 1 }),
+      after: snapshot({ visibleProfileCount: 140, effectiveLevel: 1 }),
+      outcome: 'progress',
+    })
+    const second = reward({
+      before: snapshot({ visibleProfileCount: 140, effectiveLevel: 1 }),
+      after: snapshot({ visibleProfileCount: 141, effectiveLevel: 2 }),
+      outcome: 'level_up',
+    })
+    fetchMock
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p1' }, growthReward: first }))
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p2' }, growthReward: second }))
+
+    const result = await registerPeople([person('가'), person('나')], BASE)
+
+    expect(result.growthReward?.before.effectiveLevel).toBe(1)
+    expect(result.growthReward?.after.effectiveLevel).toBe(2)
+    expect(result.growthReward?.outcome).toBe('level_up')
+  })
+})
+
+describe('registerPeople — PHASE 6A P1 수정: malformed growthReward 런타임 방어', () => {
+  // 독립 감사에서 실제로 registerPeople() 전체를 reject시켰던 malformed 객체와 동일한 형태.
+  const malformedSchoolId = { growthReward: { schoolId: 123, before: {}, after: {}, outcome: 'progress' } }
+
+  it('1. schoolId가 문자열이 아니면(malformedSchoolId) reward 없이 success만 집계되고 reject되지 않는다', async () => {
+    fetchMock.mockResolvedValue(fetchResponseWithBody(201, malformedSchoolId))
+
+    const result = await registerPeople([person('홍길동')], BASE)
+
+    expect(result).toEqual({ success: 1, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('2. before가 null이면 reward 없이 success만 집계되고 예외가 발생하지 않는다', async () => {
+    const body = { growthReward: { schoolId: BASE.school_id, before: null, after: snapshot(), outcome: 'progress' } }
+    fetchMock.mockResolvedValue(fetchResponseWithBody(201, body))
+
+    const result = await registerPeople([person('홍길동')], BASE)
+
+    expect(result).toEqual({ success: 1, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('3. after가 문자열이면 reward 없이 success만 집계되고 예외가 발생하지 않는다', async () => {
+    const body = { growthReward: { schoolId: BASE.school_id, before: snapshot(), after: 'invalid', outcome: 'progress' } }
+    fetchMock.mockResolvedValue(fetchResponseWithBody(201, body))
+
+    const result = await registerPeople([person('홍길동')], BASE)
+
+    expect(result).toEqual({ success: 1, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('4. 숫자 필드(remainingToNext)가 누락되면 reward가 생략된다', async () => {
+    const { remainingToNext: _omit, ...brokenSnapshot } = snapshot()
+    const body = {
+      growthReward: { schoolId: BASE.school_id, before: brokenSnapshot, after: snapshot(), outcome: 'progress' },
+    }
+    fetchMock.mockResolvedValue(fetchResponseWithBody(201, body))
+
+    const result = await registerPeople([person('홍길동')], BASE)
+
+    expect(result).toEqual({ success: 1, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('5. 숫자 필드가 NaN 또는 Infinity면 reward가 생략된다', async () => {
+    const nanBody = {
+      growthReward: reward({ before: snapshot({ progressPercent: NaN }) }),
+    }
+    const infinityBody = {
+      growthReward: reward({ after: snapshot({ remainingToNext: Infinity }) }),
+    }
+    fetchMock
+      .mockResolvedValueOnce(fetchResponseWithBody(201, nanBody))
+      .mockResolvedValueOnce(fetchResponseWithBody(201, infinityBody))
+
+    const result = await registerPeople([person('가'), person('나')], BASE)
+
+    expect(result).toEqual({ success: 2, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('6. outcome이 알 수 없는 값이면 reward가 생략된다', async () => {
+    const body = { growthReward: reward({ outcome: 'unknown' as never }) }
+    fetchMock.mockResolvedValue(fetchResponseWithBody(201, body))
+
+    const result = await registerPeople([person('홍길동')], BASE)
+
+    expect(result).toEqual({ success: 1, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('7. malformed reward가 정상 reward 사이에 있어도 성공/집계는 전부 유지되고 정상 reward만으로 배치가 조립된다', async () => {
+    const first = reward({ before: snapshot({ visibleProfileCount: 0 }), after: snapshot({ visibleProfileCount: 1 }) })
+    const third = reward({ before: snapshot({ visibleProfileCount: 1 }), after: snapshot({ visibleProfileCount: 2 }) })
+    fetchMock
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p1' }, growthReward: first }))
+      .mockResolvedValueOnce(fetchResponseWithBody(201, malformedSchoolId))
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p3' }, growthReward: third }))
+
+    const result = await registerPeople([person('가'), person('나'), person('다')], BASE)
+
+    expect(result.success).toBe(3)
+    expect(result.dup).toBe(0)
+    expect(result.fail).toBe(0)
+    expect(result.growthReward?.before).toEqual(first.before)
+    expect(result.growthReward?.after).toEqual(third.after)
+    // before.visibleProfileCount=0, after.visibleProfileCount=2, effectiveLevel 변화 없음
+    // → classifyRegistrationGrowthOutcome 규칙상 first_record로 재계산되어야 한다.
+    expect(result.growthReward?.outcome).toBe('first_record')
+  })
+
+  it('8. malformed reward만 있는 여러 성공 응답은 success를 전부 유지하고 fail을 늘리지 않으며 reward는 생략된다', async () => {
+    fetchMock.mockResolvedValue(fetchResponseWithBody(201, malformedSchoolId))
+
+    const result = await registerPeople([person('가'), person('나'), person('다')], BASE)
+
+    expect(result).toEqual({ success: 3, dup: 0, fail: 0 })
+    expect(result.growthReward).toBeUndefined()
+  })
+
+  it('9. 정상 reward는 여전히 type guard를 통과해 기존 동작이 유지된다(회귀)', async () => {
+    const r = reward()
+    fetchMock.mockResolvedValue(fetchResponseWithBody(201, { data: { id: 'p1' }, growthReward: r }))
+
+    const result = await registerPeople([person('홍길동')], BASE)
+
+    expect(result).toEqual({ success: 1, dup: 0, fail: 0, growthReward: r })
   })
 })
 
