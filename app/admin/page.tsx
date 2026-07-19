@@ -8,6 +8,7 @@ import {
 } from './_components/stat-icons';
 import { ReportsList } from './_components/reports-list';
 import { DeleteRequestsList } from './_components/delete-requests-list';
+import { EditRequestsList } from './_components/edit-requests-list';
 import { getDashboardStats, getRecentRequests } from '@/lib/api/admin';
 
 export const metadata = {
@@ -18,9 +19,10 @@ export const metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
-  const [stats, reports, deleteRequests] = await Promise.all([
+  const [stats, reports, editRequests, deleteRequests] = await Promise.all([
     getDashboardStats(),
     getRecentRequests('report', 20),
+    getRecentRequests('edit', 20),
     getRecentRequests('delete', 20),
   ]);
 
@@ -75,6 +77,11 @@ export default async function AdminDashboardPage() {
         <section>
           <h2 className="text-lg font-semibold text-black mb-4">최근 신고 목록</h2>
           <ReportsList reports={reports} emptyMessage="아직 신고가 없습니다." />
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-black mb-4">수정 요청 목록</h2>
+          <EditRequestsList requests={editRequests} />
         </section>
 
         <section>

@@ -1,5 +1,28 @@
 ﻿import { supabaseServer, getSupabaseAdmin } from '@/lib/supabase';
 
+// PHASE 7A ADMIN MUTATION AUTHORITY PATCH — 이 모듈의 mutation 함수와 일부 조회 함수는
+// service-role 클라이언트(getSupabaseAdmin())를 사용한다. 원격 권한 조회로 확인한 사실:
+// anon/authenticated는 profiles에 UPDATE 권한이 전혀 없고, reports에는 INSERT 외
+// 어떤 테이블 권한도 없다(SELECT조차 없음) — RLS 정책도 profiles_read(SELECT,
+// is_hidden=false만)/profiles_insert/reports_insert 세 개뿐이다. 그래서 이 모듈의
+// admin 전용 함수는 반드시 인증된 관리자 API route에서만 호출돼야 한다.
+//
+// 이 파일은 client component에서 "타입만"(`import type { AdminReport, AdminProfile }`)
+// 가져다 쓴다 — TypeScript type-only import는 컴파일 시 완전히 제거되므로 이 파일의
+// 런타임 코드(서비스 롤 키를 사용하는 함수 포함)는 클라이언트 번들에 절대 포함되지
+// 않는다(저장소에 'server-only' 패키지가 설치돼 있지 않아 새 의존성을 추가하는 대신
+// 이 방식으로 경계를 유지한다 — 기존 deleteProfileCompletely()의 주석 관례와 동일).
+// 새 함수를 이 파일에 추가할 때도 절대 client component에서 값(런타임)을 import하지
+// 않는다.
+function tryGetAdminClient(): ReturnType<typeof getSupabaseAdmin> | null {
+  try {
+    return getSupabaseAdmin();
+  } catch (error) {
+    console.error('getSupabaseAdmin() failed:', error);
+    return null;
+  }
+}
+
 export type DashboardStats = {
   totalProfiles: number;
   todayProfiles: number;
@@ -32,7 +55,9 @@ export type AdminReport = {
 
 /**
  * 관리자 대시보드용 통계 4종 집계.
- * RLS 정책으로 anon 키도 모든 reports/profiles 조회 가능.
+ * profiles 집계 2종은 공개 RLS(is_hidden=false)와 동일한 조건이라 anon 키(supabaseServer)로
+ * 충분하다. reports 집계 2종은 anon/authenticated에 reports 테이블 권한 자체가 없어
+ * (SELECT 포함 어떤 권한도 GRANT되지 않음, 원격 확인) service-role이 필요하다.
  */
 export async function getDashboardStats(): Promise<DashboardStats> {
   const now = new Date();
@@ -52,6 +77,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     kstMidnight.getTime() - kstOffset
   ).toISOString();
 
+  const admin = tryGetAdminClient();
+
   const [totalResult, todayResult, reportsResult, deleteRequestsResult] =
     await Promise.all([
       supabaseServer
@@ -63,17 +90,25 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         .select('*', { count: 'exact', head: true })
         .eq('is_hidden', false)
         .gte('created_at', todayStartUtc),
-      supabaseServer
-        .from('reports')
-        .select('*', { count: 'exact', head: true })
-        .eq('type', 'report')
-        .eq('status', 'pending'),
-      supabaseServer
-        .from('reports')
-        .select('*', { count: 'exact', head: true })
-        .eq('type', 'delete')
-        .eq('status', 'pending'),
+      admin
+        ? admin
+            .from('reports')
+            .select('*', { count: 'exact', head: true })
+            .eq('type', 'report')
+            .eq('status', 'pending')
+        : Promise.resolve({ count: null, error: new Error('admin client unavailable') }),
+      admin
+        ? admin
+            .from('reports')
+            .select('*', { count: 'exact', head: true })
+            .eq('type', 'delete')
+            .eq('status', 'pending')
+        : Promise.resolve({ count: null, error: new Error('admin client unavailable') }),
     ]);
+
+  if (reportsResult.error) console.error('getDashboardStats (reports) error:', reportsResult.error);
+  if (deleteRequestsResult.error)
+    console.error('getDashboardStats (delete requests) error:', deleteRequestsResult.error);
 
   return {
     totalProfiles: totalResult.count ?? 0,
@@ -85,12 +120,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
 /**
  * 신고/수정/삭제 요청 목록 조회.
+ * reports 테이블은 anon/authenticated에 SELECT 권한 자체가 없어(원격 확인) service-role이
+ * 반드시 필요하다.
  */
 export async function getRecentRequests(
   type: 'report' | 'edit' | 'delete',
   limit = 20
 ): Promise<AdminReport[]> {
-  const { data, error } = await supabaseServer
+  const admin = tryGetAdminClient();
+  if (!admin) return [];
+
+  const { data, error } = await admin
     .from('reports')
     .select(
       `
@@ -156,9 +196,13 @@ export async function getRecentRequests(
 
 /**
  * 신고/요청 상태를 'done'으로 변경.
+ * reports UPDATE는 anon/authenticated에 권한이 없어(원격 확인) service-role이 필요하다.
  */
 export async function markRequestAsDone(id: string): Promise<boolean> {
-  const { error } = await supabaseServer
+  const admin = tryGetAdminClient();
+  if (!admin) return false;
+
+  const { error } = await admin
     .from('reports')
     .update({ status: 'done' })
     .eq('id', id);
@@ -174,7 +218,10 @@ export async function markRequestAsDone(id: string): Promise<boolean> {
  * 신고/요청 상태를 'pending'으로 되돌림.
  */
 export async function markRequestAsPending(id: string): Promise<boolean> {
-  const { error } = await supabaseServer
+  const admin = tryGetAdminClient();
+  if (!admin) return false;
+
+  const { error } = await admin
     .from('reports')
     .update({ status: 'pending' })
     .eq('id', id);
@@ -187,10 +234,66 @@ export async function markRequestAsPending(id: string): Promise<boolean> {
 }
 
 /**
+ * PHASE 7A COMPLETION PATCH — 수정(edit) 요청 처리에 필요한 최소 정보 조회.
+ * 클라이언트가 보낸 값을 그대로 반영하지 않고, 서버가 reports 행에 실제 저장된
+ * profile_id/requested_instagram_id를 다시 읽어 그 값만 적용한다.
+ */
+export async function getEditRequestDetail(
+  id: string
+): Promise<{ profileId: string; requestedInstagramId: string } | null> {
+  const admin = tryGetAdminClient();
+  if (!admin) return null;
+
+  const { data, error } = await admin
+    .from('reports')
+    .select('profile_id, requested_instagram_id')
+    .eq('id', id)
+    .eq('type', 'edit')
+    .single();
+
+  if (error || !data) {
+    console.error('getEditRequestDetail error:', error);
+    return null;
+  }
+
+  const row = data as { profile_id: string; requested_instagram_id: string | null };
+  if (!row.requested_instagram_id) return null;
+
+  return { profileId: row.profile_id, requestedInstagramId: row.requested_instagram_id };
+}
+
+/**
+ * 수정 요청을 실제로 반영 — profiles.instagram_id를 요청된 값으로 갱신한다.
+ * (수정 요청 처리 시 호출)
+ */
+export async function applyProfileInstagramEdit(
+  profileId: string,
+  instagramId: string
+): Promise<boolean> {
+  const admin = tryGetAdminClient();
+  if (!admin) return false;
+
+  const { error } = await admin
+    .from('profiles')
+    .update({ instagram_id: instagramId })
+    .eq('id', profileId);
+
+  if (error) {
+    console.error('applyProfileInstagramEdit error:', error);
+    return false;
+  }
+  return true;
+}
+
+/**
  * 프로필 숨김 처리 (삭제 요청 처리 시 호출).
+ * profiles UPDATE는 anon/authenticated에 권한이 없어(원격 확인) service-role이 필요하다.
  */
 export async function hideProfile(profileId: string): Promise<boolean> {
-  const { error } = await supabaseServer
+  const admin = tryGetAdminClient();
+  if (!admin) return false;
+
+  const { error } = await admin
     .from('profiles')
     .update({ is_hidden: true })
     .eq('id', profileId);
@@ -206,7 +309,10 @@ export async function hideProfile(profileId: string): Promise<boolean> {
  * 프로필 숨김 해제 (되돌리기).
  */
 export async function unhideProfile(profileId: string): Promise<boolean> {
-  const { error } = await supabaseServer
+  const admin = tryGetAdminClient();
+  if (!admin) return false;
+
+  const { error } = await admin
     .from('profiles')
     .update({ is_hidden: false })
     .eq('id', profileId);
@@ -244,6 +350,9 @@ export type ProfilesResult = {
 
 /**
  * 관리자용 전체 프로필 목록 조회 (검색, 페이지네이션).
+ * anon 키(supabaseServer)는 RLS(profiles_read, is_hidden=false)로 숨김 처리된 프로필을
+ * 볼 수 없다 — 신고 3회 자동 hidden으로 숨겨진 프로필을 관리자가 검토·복구하려면
+ * 이 목록에서 반드시 보여야 하므로 service-role을 사용한다.
  */
 export async function getAdminProfiles(
   page = 1,
@@ -253,7 +362,10 @@ export async function getAdminProfiles(
   const from = (page - 1) * perPage;
   const to = from + perPage - 1;
 
-  let q = supabaseServer
+  const admin = tryGetAdminClient();
+  if (!admin) return { profiles: [], total: 0 };
+
+  let q = admin
     .from('profiles')
     .select(
       `
@@ -324,7 +436,8 @@ export async function getAdminProfiles(
  * 절대 클라이언트에서 호출하지 말 것. API route를 통해서만 호출.
  */
 export async function deleteProfileCompletely(profileId: string): Promise<boolean> {
-  const admin = getSupabaseAdmin();
+  const admin = tryGetAdminClient();
+  if (!admin) return false;
 
   // 1. 이 프로필을 참조하는 모든 reports 먼저 삭제 (외래키 제약)
   const { error: reportsError } = await admin

@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 interface Props {
   profileId: string
@@ -15,20 +14,35 @@ export default function EditDeleteModal({ profileId, nickname, instagramId, onCl
   const [selfClaimed, setSelfClaimed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
 
   const submit = async () => {
     if (!selfClaimed) return alert('본인 또는 정당한 관계자임을 확인해주세요.')
+    if (loading) return
     setLoading(true)
-    await supabase.from('reports').insert({
-      profile_id: profileId,
-      type: mode,
-      reason: mode === 'delete' ? '삭제 요청' : '수정 요청',
-      requested_instagram_id: mode === 'edit' ? newInstagram : null,
-      is_self_claimed: true,
-      status: 'pending',
-    })
-    setLoading(false)
-    setDone(true)
+    setError('')
+    try {
+      const body =
+        mode === 'edit'
+          ? { type: 'edit', profile_id: profileId, requested_instagram_id: newInstagram }
+          : { type: 'delete', profile_id: profileId }
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? '요청 처리 중 오류가 발생했습니다.')
+        setLoading(false)
+        return
+      }
+      setLoading(false)
+      setDone(true)
+    } catch {
+      setError('네트워크 오류가 발생했습니다.')
+      setLoading(false)
+    }
   }
 
   if (done) return (
@@ -91,11 +105,12 @@ export default function EditDeleteModal({ profileId, nickname, instagramId, onCl
               <input type="checkbox" checked={selfClaimed} onChange={e => setSelfClaimed(e.target.checked)} className="mt-0.5 shrink-0" />
               본인 또는 정당한 관계자입니다
             </label>
+            {error && <p className="text-xs text-red-500">{error}</p>}
             <button onClick={submit} disabled={loading || !newInstagram || !selfClaimed}
               className="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
               {loading ? '처리 중...' : '수정 요청'}
             </button>
-            <button onClick={() => setMode('select')} className="w-full text-gray-400 py-2 text-sm hover:text-gray-600">
+            <button onClick={() => { setMode('select'); setError('') }} className="w-full text-gray-400 py-2 text-sm hover:text-gray-600">
               뒤로
             </button>
           </div>
@@ -110,11 +125,12 @@ export default function EditDeleteModal({ profileId, nickname, instagramId, onCl
               <input type="checkbox" checked={selfClaimed} onChange={e => setSelfClaimed(e.target.checked)} className="mt-0.5 shrink-0" />
               본인 또는 정당한 관계자입니다
             </label>
+            {error && <p className="text-xs text-red-500">{error}</p>}
             <button onClick={submit} disabled={loading || !selfClaimed}
               className="w-full bg-red-500 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
               {loading ? '처리 중...' : '삭제 요청'}
             </button>
-            <button onClick={() => setMode('select')} className="w-full text-gray-400 py-2 text-sm hover:text-gray-600">
+            <button onClick={() => { setMode('select'); setError('') }} className="w-full text-gray-400 py-2 text-sm hover:text-gray-600">
               뒤로
             </button>
           </div>

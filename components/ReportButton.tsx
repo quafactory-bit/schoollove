@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 const REASONS = ['잘못된 정보', '사칭', '부적절한 내용', '기타']
 
@@ -9,19 +8,30 @@ export default function ReportButton({ profileId }: { profileId: string }) {
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
 
   const submit = async () => {
-    if (!reason) return
+    if (!reason || loading) return
     setLoading(true)
-    await supabase.from('reports').insert({
-      profile_id: profileId,
-      type: 'report',
-      reason,
-      is_self_claimed: false,
-      status: 'pending',
-    })
-    setLoading(false)
-    setDone(true)
+    setError('')
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'report', profile_id: profileId, reason }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? '신고 처리 중 오류가 발생했습니다.')
+        setLoading(false)
+        return
+      }
+      setLoading(false)
+      setDone(true)
+    } catch {
+      setError('네트워크 오류가 발생했습니다.')
+      setLoading(false)
+    }
   }
 
   if (!open) return (
@@ -58,11 +68,12 @@ export default function ReportButton({ profileId }: { profileId: string }) {
             </button>
           ))}
         </div>
+        {error && <p className="mb-3 text-xs text-red-500">{error}</p>}
         <button onClick={submit} disabled={loading || !reason}
           className="w-full bg-red-500 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 mb-2">
           {loading ? '처리 중...' : '신고하기'}
         </button>
-        <button onClick={() => setOpen(false)} className="w-full text-gray-400 py-2 text-sm hover:text-gray-600">
+        <button onClick={() => { setOpen(false); setError('') }} className="w-full text-gray-400 py-2 text-sm hover:text-gray-600">
           취소
         </button>
       </div>
