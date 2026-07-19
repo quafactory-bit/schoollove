@@ -29,6 +29,53 @@ export async function getProfilesBySchool(
   return { data: data || [], count: count || 0 };
 }
 
+// PHASE 7B — Year Hub 전용: 학교+졸업연도의 공개 프로필 전체를 한 번에 로드한다.
+// FROZEN 06-people-discovery.md §E "P1은 전체 기수 명단을 로드한 뒤 클라이언트 실시간
+// 필터"를 그대로 구현 — getProfilesBySchool()처럼 20개씩 페이지네이션하지 않는다(새
+// 페이지네이션 도입 금지 원칙과도 일치). limit은 서버 부하를 막는 방어적 상한일 뿐
+// 정책적 페이지네이션이 아니다 — 실제 한 학교·한 졸업연도 인원이 이 값을 넘는 경우는
+// v1.0 데이터 규모에서 확인되지 않았다.
+const YEAR_HUB_PROFILE_LIMIT = 500;
+
+// select('*')(getProfilesBySchool/getProfilesByClass의 기존 관례)를 그대로 따르지 않고
+// 공개 화면(ProfileCard/YearPeopleSearch)이 실제로 쓰는 컬럼만 명시적으로 선택한다 —
+// report_count/is_hidden/school_id/student_year/description/is_self 같은 비공개·관리자용
+// 필드는 이 함수가 Server Component → Client Component 경계를 넘길 때부터 아예 포함하지
+// 않는다(그 경계를 넘으면 RSC payload에 실려 브라우저로 전달되므로, 화면이 안 쓴다는
+// 이유만으로 넘기지 않는 것이 안전하다).
+export type YearHubPersonProfile = {
+  id: string;
+  nickname: string;
+  instagram_id: string | null;
+  graduation_year: number;
+  grade: number | null;
+  class_number: number | null;
+  department: string | null;
+  message: string | null;
+  created_at: string;
+};
+
+export async function getAllProfilesBySchoolYear(
+  schoolId: string,
+  year: number,
+  limit = YEAR_HUB_PROFILE_LIMIT
+): Promise<YearHubPersonProfile[]> {
+  const { data, error } = await supabaseServer
+    .from('profiles')
+    .select('id, nickname, instagram_id, graduation_year, grade, class_number, department, message, created_at')
+    .eq('school_id', schoolId)
+    .eq('graduation_year', year)
+    .eq('is_hidden', false)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('getAllProfilesBySchoolYear error:', error);
+    return [];
+  }
+  return (data as YearHubPersonProfile[]) || [];
+}
+
 export async function getProfilesByClass(
   schoolId: string,
   year: number,

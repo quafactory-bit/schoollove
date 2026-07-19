@@ -14,18 +14,6 @@ export interface SchoolSearchResult {
   created_at: string
 }
 
-export interface ProfileSearchResult {
-  id: string
-  nickname: string
-  instagram_id: string | null
-  graduation_year: number
-  grade: number | null
-  class_number: number | null
-  school_id: string
-  school_name: string
-  school_slug: string
-}
-
 // search_schools_v2 RPC 호출 하나로 통일 — searchSchools(전체 검색)와
 // searchSchoolsForAutocomplete(자동완성) 둘 다 이 함수만 거쳐 학교 목록을 가져온다.
 // 지역 prefix까지 매칭하는 기존 RPC를 재사용한다 (예: "순천이수초" → "이수초등학교").
@@ -90,67 +78,23 @@ export async function searchSchoolsForAutocomplete(query: string): Promise<Schoo
   }))
 }
 
-export async function searchProfiles(query: string): Promise<ProfileSearchResult[]> {
-  if (query.length < 2) return []
-  const { data: byNickname } = await supabase
-    .from('profiles')
-    .select(`
-      id,
-      nickname,
-      instagram_id,
-      graduation_year,
-      grade,
-      class_number,
-      school_id,
-      schools (school_name, slug)
-    `)
-    .ilike('nickname', `%${query}%`)
-    .eq('is_hidden', false)
-    .limit(5)
-  const { data: byInstagram } = await supabase
-    .from('profiles')
-    .select(`
-      id,
-      nickname,
-      instagram_id,
-      graduation_year,
-      grade,
-      class_number,
-      school_id,
-      schools (school_name, slug)
-    `)
-    .ilike('instagram_id', `%${query}%`)
-    .eq('is_hidden', false)
-    .not('instagram_id', 'is', null)
-    .limit(5)
-  const combined = [...(byNickname || []), ...(byInstagram || [])]
-  const unique = combined.filter(
-    (item, index, self) => index === self.findIndex((t) => t.id === item.id)
-  )
-  return unique.slice(0, 8).map((p: any) => ({
-    id: p.id,
-    nickname: p.nickname,
-    instagram_id: p.instagram_id,
-    graduation_year: p.graduation_year,
-    grade: p.grade,
-    class_number: p.class_number,
-    school_id: p.school_id,
-    school_name: p.schools?.school_name || '',
-    school_slug: p.schools?.slug || '',
-  }))
-}
+// PHASE 7B — 글로벌 인물 검색(searchProfiles/searchAll/ProfileSearchResult)은 계속 제거된
+// 상태로 유지한다. docs/design-package-v1.0/08-search.md §8 "하지 않는 것: 글로벌 사람
+// 실명 검색을 P1 핵심으로 확장"을 위반하고 있었다 — 사람 이름 검색은
+// components/YearPeopleSearch.tsx를 통해 선택된 학교·졸업연도 내부에서만, 서버 호출 없이
+// 클라이언트 state로만 동작한다(lib/policy/yearHub.ts). 학교 검색(searchSchools,
+// searchSchoolsForAutocomplete)은 이 파일에서 무변경으로 유지된다.
 
-export async function searchAll(query: string) {
-  const [schools, profiles] = await Promise.all([
-    searchSchools(query),
-    searchProfiles(query),
-  ])
-  return { schools, profiles }
-}
-
-// 검색 로그 기록 - fire and forget
-// 실패해도 사용자 검색 흐름에 영향 없도록 에러 무시
-export async function logSearch(query: string, resultCount: number): Promise<void> {
+// PHASE 7B COMPLETION PATCH — SCHOOL SEARCH CONTINUITY
+// 학교 검색 로그만 복구한다(사람 검색과는 무관 — Year Hub 이름 검색은 이 함수를 호출하지
+// 않는다). docs/decisions/2026-07-17-search-logs-aggregate-rpc.md #4 "logSearch()의 INSERT
+// 동작과 search_logs_insert 정책은 그대로 둔다"를 따라 기존 INSERT 계약(컬럼
+// query/result_count, RLS search_logs_insert)을 그대로 재사용했다 — School Hub의
+// getSchoolSearchCount()(lib/api/searches.ts)가 이 값을 읽는 유일한 소비자다. 이름을
+// logSearch → logSchoolSearch로 바꿔 "사람 검색"과 절대 혼동되지 않게 했다. fire-and-forget:
+// 실패해도 호출부의 검색 결과 표시를 절대 막지 않는다(호출부에서도 await하지 않고
+// void 호출로만 사용).
+export async function logSchoolSearch(query: string, resultCount: number): Promise<void> {
   try {
     const trimmed = query.trim()
     if (trimmed.length < 2) return

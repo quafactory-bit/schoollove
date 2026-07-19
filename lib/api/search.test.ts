@@ -142,3 +142,64 @@ describe('searchSchools — 기존 전체 검색 계약 회귀 없음 확인 (�
     expect(rpc).not.toHaveBeenCalled()
   })
 })
+
+// PHASE 7B COMPLETION PATCH — 학교 검색 로그 복구(logSearch → logSchoolSearch로 개명).
+// docs/decisions/2026-07-17-search-logs-aggregate-rpc.md #4가 그대로 두라고 한 INSERT
+// 계약(컬럼 query/result_count)을 재사용하는지, 사람 검색과 무관하게 학교 검색에서만
+// 쓰이는지, 실패해도 예외를 던지지 않는지를 확인한다.
+function createInsertMockSupabase(insertResult: { error: unknown } = { error: null }) {
+  const insert = vi.fn().mockResolvedValue(insertResult)
+  const from = vi.fn((_table: string) => ({ insert }))
+  return { supabase: { from }, from, insert }
+}
+
+describe('logSchoolSearch — PHASE 7B COMPLETION PATCH 학교 검색 로그 복구', () => {
+  it('2글자 이상이면 search_logs에 query/result_count만 insert한다', async () => {
+    const { supabase, from, insert } = createInsertMockSupabase()
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { logSchoolSearch } = await import('./search')
+
+    await logSchoolSearch('대치고', 3)
+
+    expect(from).toHaveBeenCalledWith('search_logs')
+    expect(insert).toHaveBeenCalledWith({ query: '대치고', result_count: 3 })
+  })
+
+  it('앞뒤 공백을 제거한 뒤 기록한다', async () => {
+    const { supabase, insert } = createInsertMockSupabase()
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { logSchoolSearch } = await import('./search')
+
+    await logSchoolSearch('  대치고  ', 3)
+
+    expect(insert).toHaveBeenCalledWith({ query: '대치고', result_count: 3 })
+  })
+
+  it('2글자 미만이면 insert를 호출하지 않는다', async () => {
+    const { supabase, insert } = createInsertMockSupabase()
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { logSchoolSearch } = await import('./search')
+
+    await logSchoolSearch('가', 0)
+
+    expect(insert).not.toHaveBeenCalled()
+  })
+
+  it('100자를 초과하면 insert를 호출하지 않는다', async () => {
+    const { supabase, insert } = createInsertMockSupabase()
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { logSchoolSearch } = await import('./search')
+
+    await logSchoolSearch('가'.repeat(101), 0)
+
+    expect(insert).not.toHaveBeenCalled()
+  })
+
+  it('insert 실패(reject)해도 예외를 던지지 않는다(fire-and-forget)', async () => {
+    const from = vi.fn(() => ({ insert: vi.fn().mockRejectedValue(new Error('network down')) }))
+    vi.doMock('@/lib/supabase', () => ({ supabase: { from } }))
+    const { logSchoolSearch } = await import('./search')
+
+    await expect(logSchoolSearch('대치고', 3)).resolves.toBeUndefined()
+  })
+})

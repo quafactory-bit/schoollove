@@ -9,6 +9,7 @@ import {
   moveActiveIndex,
   normalizeAutocompleteQuery,
   resolveEnterAction,
+  SCHOOL_SEARCH_STORAGE_KEY,
   shouldFetchAutocomplete,
 } from './schoolSearchAutocomplete'
 
@@ -47,12 +48,14 @@ describe('buildSchoolHubHref / buildFullSearchHref — URL 생성 (테스트 항
     expect(buildSchoolHubHref('daechi-high')).toBe('/school/daechi-high')
   })
 
-  it('전체 검색 URL은 /search?q=검색어(인코딩)다', () => {
-    expect(buildFullSearchHref('대치고')).toBe(`/search?q=${encodeURIComponent('대치고')}`)
+  it('PHASE 7B: 전체 검색 URL은 검색어를 쿼리로 붙이지 않고 항상 고정된 /search다(URL 노출 금지)', () => {
+    expect(buildFullSearchHref('대치고')).toBe('/search')
   })
 
-  it('전체 검색 URL 생성 시에도 앞뒤 공백을 제거한다', () => {
-    expect(buildFullSearchHref('  대치고  ')).toBe(`/search?q=${encodeURIComponent('대치고')}`)
+  it('어떤 입력값을 넣어도 결과 URL에 그 값이 포함되지 않는다(사람 이름이 섞여도 동일)', () => {
+    expect(buildFullSearchHref('홍길동')).toBe('/search')
+    expect(buildFullSearchHref('')).toBe('/search')
+    expect(buildFullSearchHref('  ')).toBe('/search')
   })
 })
 
@@ -93,6 +96,22 @@ describe('resolveEnterAction — Enter 동작 (테스트 항목 12, 13)', () => 
   it('activeIndex가 결과 범위를 벗어나면 전체 검색으로 폴백한다', () => {
     const action = resolveEnterAction('대치고', 5, ['a-high'])
     expect(action).toEqual({ type: 'search-all', href: buildFullSearchHref('대치고') })
+  })
+
+  it('PHASE 7B COMPLETION PATCH: 검색어가 2글자 미만이면(활성 후보 없어도) 전체 검색을 실행하지 않는다', () => {
+    expect(resolveEnterAction('가', -1, [])).toEqual({ type: 'noop' })
+    expect(resolveEnterAction(' 가 ', -1, ['a-high'])).toEqual({ type: 'noop' })
+  })
+
+  it('2글자 이상이면 전체 검색을 실행한다', () => {
+    const action = resolveEnterAction('가나', -1, [])
+    expect(action).toEqual({ type: 'search-all', href: buildFullSearchHref('가나') })
+  })
+})
+
+describe('SCHOOL_SEARCH_STORAGE_KEY — PHASE 7B COMPLETION PATCH', () => {
+  it('프로젝트 전용의 고정된 문자열 키다', () => {
+    expect(SCHOOL_SEARCH_STORAGE_KEY).toBe('schoollove:school-search-query')
   })
 })
 

@@ -168,3 +168,73 @@ describe('getProfilesBySchool — School Hub 상단 "N명 등록" 헤더의 실�
     expect(result).toEqual({ data: [], count: 0 })
   })
 })
+
+describe('getAllProfilesBySchoolYear — PHASE 7B Year Hub 전체 명단 로드(페이지네이션 없음)', () => {
+  it('school_id + graduation_year + is_hidden=false로 필터링하고 최신순으로 정렬한다', async () => {
+    const rows = [{ id: 'p1' }, { id: 'p2' }]
+    const { supabase, supabaseServer, calls } = createMockSupabase([{ data: rows, error: null }])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getAllProfilesBySchoolYear } = await import('./profiles')
+
+    const result = await getAllProfilesBySchoolYear('school-1', 2020)
+
+    expect(result).toEqual(rows)
+    const eqCalls = calls[0].filter((c) => c.method === 'eq')
+    expect(eqCalls).toEqual([
+      { method: 'eq', args: ['school_id', 'school-1'] },
+      { method: 'eq', args: ['graduation_year', 2020] },
+      { method: 'eq', args: ['is_hidden', false] },
+    ])
+    const orderCall = findCall(calls[0], 'order')
+    expect(orderCall?.args).toEqual(['created_at', { ascending: false }])
+  })
+
+  it('select("*")를 쓰지 않고 공개 화면이 실제로 쓰는 컬럼만 명시적으로 선택한다(report_count/is_hidden/school_id 등 비공개 필드를 client 경계로 넘기지 않음)', async () => {
+    const { supabase, supabaseServer, calls } = createMockSupabase([{ data: [], error: null }])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getAllProfilesBySchoolYear } = await import('./profiles')
+
+    await getAllProfilesBySchoolYear('school-1', 2020)
+
+    const selectCall = findCall(calls[0], 'select')
+    const selectArg = String(selectCall?.args[0])
+    expect(selectArg).not.toBe('*')
+    for (const forbidden of ['report_count', 'is_hidden', 'school_id', 'student_year', 'description', 'is_self']) {
+      expect(selectArg).not.toMatch(new RegExp(`\\b${forbidden}\\b`))
+    }
+    for (const required of ['id', 'nickname', 'instagram_id', 'graduation_year', 'grade', 'class_number', 'department', 'message', 'created_at']) {
+      expect(selectArg).toMatch(new RegExp(`\\b${required}\\b`))
+    }
+  })
+
+  it('range()로 페이지네이션하지 않고 limit()만 사용한다(전체 로드 후 클라이언트 필터 정책)', async () => {
+    const { supabase, supabaseServer, calls } = createMockSupabase([{ data: [], error: null }])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getAllProfilesBySchoolYear } = await import('./profiles')
+
+    await getAllProfilesBySchoolYear('school-1', 2020)
+
+    expect(findCall(calls[0], 'range')).toBeUndefined()
+    const limitCall = findCall(calls[0], 'limit')
+    expect(limitCall?.args).toEqual([500])
+  })
+
+  it('limit을 명시하면 그 값을 그대로 사용한다', async () => {
+    const { supabase, supabaseServer, calls } = createMockSupabase([{ data: [], error: null }])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getAllProfilesBySchoolYear } = await import('./profiles')
+
+    await getAllProfilesBySchoolYear('school-1', 2020, 50)
+
+    const limitCall = findCall(calls[0], 'limit')
+    expect(limitCall?.args).toEqual([50])
+  })
+
+  it('오류 시 예외를 던지지 않고 빈 배열을 반환한다', async () => {
+    const { supabase, supabaseServer } = createMockSupabase([{ data: null, error: { message: 'db down' } }])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getAllProfilesBySchoolYear } = await import('./profiles')
+
+    await expect(getAllProfilesBySchoolYear('school-1', 2020)).resolves.toEqual([])
+  })
+})

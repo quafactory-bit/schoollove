@@ -1,149 +1,23 @@
-import Link from 'next/link'
-import { searchAll, logSearch } from '@/lib/api/search'
-import { schoolTypeLabel } from '@/lib/utils'
-import SearchBar from '@/components/SearchBar'
 import type { Metadata } from 'next'
+import SchoolSearchResults from '@/components/SchoolSearchResults'
 
-interface Props {
-  searchParams: Promise<{ q?: string }>
+// PHASE 7B — 글로벌 인물 검색(searchProfiles/searchAll)은 FROZEN이 "하지 않는 것"으로
+// 명시한 항목이라 제거된 상태를 유지한다(사람 이름 검색은 Year Hub 내부에서만 동작).
+//
+// PHASE 7B COMPLETION PATCH — SCHOOL SEARCH CONTINUITY
+// 이 페이지는 searchParams(?q=)를 받지 않는다 — 검색어를 URL에 노출하지 않는다는 고정
+// 결정에 따라, 학교 검색어는 SearchBar가 sessionStorage에 저장하고
+// components/SchoolSearchResults.tsx가 마운트 시 그 값을 읽어 학교 검색만 수행한다. title도
+// 항상 고정값이라 쿼리가 title/canonical/redirect 어디에도 반영되지 않는다.
+export const metadata: Metadata = {
+  title: '학교 검색',
+  robots: { index: false },
 }
 
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const { q = '' } = await searchParams
-  return {
-    title: q ? `'${q}' 검색 결과 | 스쿨러브아이` : '검색 | 스쿨러브아이',
-    robots: { index: false },
-  }
-}
-
-export default async function SearchPage({ searchParams }: Props) {
-  const { q: rawQ = '' } = await searchParams
-  const q = rawQ.trim()
-
-  const { schools, profiles } = q.length >= 2
-    ? await searchAll(q)
-    : { schools: [], profiles: [] }
-
-  const totalCount = schools.length + profiles.length
-
-  if (q.length >= 2) {
-    await logSearch(q, totalCount)
-  }
+export default function SearchPage() {
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-
-        {/* 검색창 */}
-        <SearchBar variant="search" initialQuery={q} className="mb-6" />
-
-        {!q && (
-          <p className="text-center text-gray-400 text-sm mt-16">검색어를 입력해주세요.</p>
-        )}
-
-        {q && q.length < 2 && (
-          <p className="text-center text-gray-400 text-sm mt-16">두 글자 이상 입력해주세요.</p>
-        )}
-
-        {q.length >= 2 && (
-          <>
-            <div className="flex gap-4 mb-6 border-b border-gray-200 pb-2">
-              <span className="text-sm font-semibold text-blue-600">전체 ({totalCount})</span>
-              <span className="text-sm text-gray-400">학교 ({schools.length})</span>
-              <span className="text-sm text-gray-400">등록된 동문 ({profiles.length})</span>
-            </div>
-
-            {totalCount === 0 && (
-              <div className="text-center py-16">
-                <p className="text-gray-600 font-medium mb-1">검색 결과가 없습니다.</p>
-                <p className="text-sm text-gray-400 mb-6">
-                  찾는 학교가 없다면 내 공개 인스타그램을 먼저 등록해보세요.
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <Link href="/submit" className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg">
-                    내 인스타 등록하기
-                  </Link>
-                </div>
-              </div>
-            )}
-
-            {schools.length > 0 && (
-              <section className="mb-8">
-                <h2 className="text-sm font-semibold text-gray-500 mb-3">학교 검색 결과</h2>
-                <div className="space-y-2">
-                  {schools.map((school) => (
-                    <Link
-                      key={school.id}
-                      href={`/school/${school.slug}`}
-                      className="flex items-center justify-between bg-white rounded-xl px-4 py-3.5 border border-gray-100 hover:border-blue-300 hover:shadow-sm transition"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">🏫</span>
-                        <div>
-                          <div className="font-medium text-gray-800 text-sm">{school.school_name}</div>
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            {school.sido} {school.sigungu} · {schoolTypeLabel(school.school_type)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {school.profile_count > 0 ? (
-                          <span className="text-xs text-blue-500 bg-blue-50 px-2 py-1 rounded-full">
-                            동문 {school.profile_count}명
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-300">등록 없음</span>
-                        )}
-                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-gray-300">
-                          <path d="m9 18 6-6-6-6" />
-                        </svg>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {profiles.length > 0 && (
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold text-gray-500">등록된 동문</h2>
-                  <span className="text-xs text-gray-400">공개 등록 프로필</span>
-                </div>
-                <div className="space-y-2">
-                  {profiles.map((profile) => (
-                    <Link
-                      key={profile.id}
-                      href={`/school/${profile.school_slug}`}
-                      className="flex items-center justify-between bg-white rounded-xl px-4 py-3.5 border border-gray-100 hover:border-blue-300 hover:shadow-sm transition"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-500 shrink-0">
-                          {profile.nickname.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-800 text-sm">{profile.nickname}</div>
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            {profile.school_name} · {profile.graduation_year}년 졸업
-                          </div>
-                          {profile.instagram_id && (
-                            <div className="text-xs text-blue-400 mt-0.5">@{profile.instagram_id}</div>
-                          )}
-                        </div>
-                      </div>
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-gray-300 shrink-0">
-                        <path d="m9 18 6-6-6-6" />
-                      </svg>
-                    </Link>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-300 text-center mt-4">
-                  공개 등록된 인스타그램 프로필만 표시됩니다.
-                </p>
-              </section>
-            )}
-          </>
-        )}
-      </div>
+      <SchoolSearchResults />
     </main>
   )
 }

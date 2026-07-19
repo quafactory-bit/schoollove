@@ -3,18 +3,26 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { getSchoolBySlug } from '@/lib/api/schools'
-import { getProfilesBySchool, getClassesBySchoolYear, getYearProfileCount } from '@/lib/api/profiles'
-import ProfileCard from '@/components/ProfileCard'
+import { getAllProfilesBySchoolYear, getYearProfileCount } from '@/lib/api/profiles'
+import YearPeopleSearch from '@/components/YearPeopleSearch'
+import {
+  aggregateClassCounts,
+  classifyYearState,
+  formatRelativeTime,
+  pickMostActiveClass,
+  pickMostRecentRegistration,
+} from '@/lib/policy/yearHub'
 import { getYearPageMetadata } from '@/lib/seo'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { formatNumber } from '@/lib/utils'
 
 // 프로필 3명 이상인 페이지만 구글에 index. 미만은 noindex (thin content 방지)
+// PHASE 7B: noindex 임계값 자체는 무변경 — 아래 generateMetadata는 getYearProfileCount만
+// 별도로 호출해(가벼운 head:true count) 페이지 본문의 전체 명단 로드와 분리한다.
 const INDEX_THRESHOLD = 3
 
 interface PageProps {
   params: Promise<{ slug: string; year: string }>
-  searchParams: Promise<{ page?: string }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -34,23 +42,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function YearPage({ params, searchParams }: PageProps) {
+export default async function YearPage({ params }: PageProps) {
   const { slug, year: yearStr } = await params
-  const sp = await searchParams
   const year = parseInt(yearStr)
-  const page = sp.page ? parseInt(sp.page) : 1
 
   if (isNaN(year) || year < 1980 || year > new Date().getFullYear() + 10) notFound()
 
   const school = await getSchoolBySlug(slug)
   if (!school) notFound()
 
-  const [{ data: profiles, count }, classes] = await Promise.all([
-    getProfilesBySchool(school.id, page, year),
-    getClassesBySchoolYear(school.id, year),
-  ])
+  // PHASE 7B — docs/design-package-v1.0/06-people-discovery.md §E: 기수 전체 명단을
+  // 한 번에 로드한다(페이지네이션 없음). 반별 집계·가장 활발한 반·최근 등록·기수 상태는
+  // 전부 이 한 번의 조회 결과로부터 순수 함수(lib/policy/yearHub.ts)가 계산한다 —
+  // 추가 DB 왕복이 없다.
+  const profiles = await getAllProfilesBySchoolYear(school.id, year)
 
-  const totalPages = Math.ceil(count / 20)
+  const classes = aggregateClassCounts(profiles)
+  const mostActiveClass = pickMostActiveClass(classes)
+  const mostRecent = pickMostRecentRegistration(profiles)
+  const state = classifyYearState(profiles.length)
+  const now = new Date()
 
   return (
     <div className="page-container space-y-5">
@@ -63,48 +74,22 @@ export default async function YearPage({ params, searchParams }: PageProps) {
         <span className="text-gray-600 font-medium">{year}년 졸업</span>
       </nav>
 
-      {/* 헤더 */}
+      {/* A. 기수 헤더 */}
       <div className="card p-5 space-y-2">
         <h1 className="text-xl font-black text-gray-900">
           {school.school_name}
           <span className="text-brand-blue ml-2">{year}년</span>
         </h1>
         <p className="text-sm text-gray-500">
-          {SCHOOL_TYPE_LABELS[school.school_type]} · 졸업(예정) · 총 {formatNumber(count)}명
+          {SCHOOL_TYPE_LABELS[school.school_type]} · 졸업(예정) · 총 {formatNumber(profiles.length)}명
         </p>
         <Link href="/submit" className="btn-primary inline-block text-sm">
           등록하기
         </Link>
       </div>
 
-      {/* 반별 바로가기 (초/중/고만) */}
-      {classes.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="section-title">반별 보기</h2>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {classes.map(({ grade, class_number }) => (
-              <Link
-                key={`${grade}-${class_number}`}
-                href={`/school/${slug}/${year}/${grade}-${class_number}`}
-                className="card p-3 text-center hover:border-brand-blue transition-colors group"
-              >
-                <p className="font-semibold text-sm text-gray-800 group-hover:text-brand-blue">
-                  {grade}학년 {class_number}반
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 프로필 리스트 */}
-      {profiles.length > 0 ? (
-        <div className="card overflow-hidden divide-y divide-gray-100">
-          {profiles.map((profile) => (
-            <ProfileCard key={profile.id} profile={profile} />
-          ))}
-        </div>
-      ) : (
+      {state === 'empty' ? (
+        // State 1: 빈 기수 — 검색창을 아예 렌더하지 않는다(발견할 사람이 없음).
         <div className="card p-10 text-center space-y-2">
           <p className="text-2xl">📭</p>
           <p className="font-semibold text-gray-700">{year}년 등록된 사람이 없어요</p>
@@ -112,19 +97,62 @@ export default async function YearPage({ params, searchParams }: PageProps) {
             첫 번째로 등록하기
           </Link>
         </div>
-      )}
+      ) : (
+        <>
+          {/* B. 기수 컨텍스트 — 실제 데이터에서만 계산, 가짜 숫자·placeholder 없음 */}
+          <section className="card space-y-1.5 p-4 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-gray-900">이 기수 지금</p>
+              {state === 'active' && (
+                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-600">
+                  활발한 기수
+                </span>
+              )}
+            </div>
+            <p>등록 인원 {formatNumber(profiles.length)}명 · 등록 반 {classes.length}개</p>
+            {mostActiveClass && (
+              <p>
+                가장 활발한 반 ·{' '}
+                <span className="font-medium text-gray-800">
+                  {mostActiveClass.grade}학년 {mostActiveClass.classNumber}반
+                </span>{' '}
+                ({mostActiveClass.count}명)
+              </p>
+            )}
+            {mostRecent && <p>최근 등록 · {formatRelativeTime(mostRecent.created_at, now)}</p>}
+          </section>
 
-      {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          {page > 1 && (
-            <Link href={`/school/${slug}/${year}?page=${page - 1}`} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:border-brand-blue text-gray-600">이전</Link>
+          {/* E. 반 탐색 (초/중/고만 — grade/class_number가 있는 프로필만 집계됨) */}
+          {classes.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="section-title">반별 보기</h2>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {classes.map((c) => (
+                  <Link
+                    key={`${c.grade}-${c.classNumber}`}
+                    href={`/school/${slug}/${year}/${c.grade}-${c.classNumber}`}
+                    className="card p-3 text-center hover:border-brand-blue transition-colors group"
+                  >
+                    <p className="font-semibold text-sm text-gray-800 group-hover:text-brand-blue">
+                      {c.grade}학년 {c.classNumber}반
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      {c.count}명
+                      {mostActiveClass &&
+                        c.grade === mostActiveClass.grade &&
+                        c.classNumber === mostActiveClass.classNumber && (
+                          <span className="ml-1 text-blue-500">· 활발</span>
+                        )}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
           )}
-          <span className="text-sm text-gray-500">{page} / {totalPages}</span>
-          {page < totalPages && (
-            <Link href={`/school/${slug}/${year}?page=${page + 1}`} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:border-brand-blue text-gray-600">다음</Link>
-          )}
-        </div>
+
+          {/* C+D. 이름 검색 + 전체 명단(검색어 없을 때) */}
+          <YearPeopleSearch profiles={profiles} />
+        </>
       )}
     </div>
   )

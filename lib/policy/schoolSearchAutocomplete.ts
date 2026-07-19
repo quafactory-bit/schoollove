@@ -27,9 +27,26 @@ export function buildSchoolHubHref(slug: string): string {
   return `/school/${slug}`
 }
 
-export function buildFullSearchHref(query: string): string {
-  return `/search?q=${encodeURIComponent(normalizeAutocompleteQuery(query))}`
+// PHASE 7B — docs/design-package-v1.0/08-search.md §5 "검색 쿼리를 URL 파라미터로
+// 노출하지 않는다"를 따라 더 이상 검색어를 쿼리로 붙이지 않는다. app/search/page.tsx는
+// searchParams를 받지 않으므로 이 함수가 반환하는 목적지는 항상 고정된 /search다 — query
+// 인자는 시그니처 호환을 위해 유지하되 사용하지 않는다. 실제 검색어 전달은
+// SCHOOL_SEARCH_STORAGE_KEY(sessionStorage)로 이루어진다(PHASE 7B COMPLETION PATCH,
+// SearchBar.tsx의 navigateToFullSearch 참고).
+export function buildFullSearchHref(_query: string): string {
+  return '/search'
 }
+
+// PHASE 7B COMPLETION PATCH — SCHOOL SEARCH CONTINUITY
+// URL query 없이 SearchBar → /search로 학교 검색어를 전달하기 위한 sessionStorage 키.
+// 탭 단위로만 유지되고(새 탭/새로고침 후 새 세션에서는 비어 있음), 브라우저 히스토리나
+// 서버 로그에는 남지 않는다 — "검색어를 URL에 노출하지 않는다"는 고정 결정을 지키면서
+// 학교 검색 결과를 페이지 이동 이후에도 잃지 않기 위한 최소 수단으로 선택했다. React
+// Context 등으로 상태를 들고 다니는 대안도 검토했으나, Home/Submit → /search는 서로 다른
+// 라우트로의 실제 네비게이션이라 Context provider를 두 라우트에 걸쳐 공유하려면 레이아웃
+// 구조를 바꿔야 해서 더 무겁고, sessionStorage는 새로고침·새 탭·저장값 없음 상태를
+// 자연스럽게 표현할 수 있어 이 쪽이 더 단순하다.
+export const SCHOOL_SEARCH_STORAGE_KEY = 'schoollove:school-search-query'
 
 export type ArrowDirection = 'down' | 'up'
 
@@ -48,8 +65,11 @@ export type EnterAction =
   | { type: 'search-all'; href: string }
   | { type: 'noop' }
 
-// Enter 키 동작: 활성 후보가 있으면 School Hub로, 없으면 기존 /search?q= 전체 검색으로.
-// 검색어가 완전히 비어 있으면 아무 것도 하지 않는다(빈 쿼리로 이동하지 않음).
+// Enter 키 동작: 활성 후보가 있으면 School Hub로, 없으면 /search(검색어는 URL에 붙이지
+// 않음, PHASE 7B)로. 검색어가 2글자 미만(완전히 비어 있는 경우 포함)이면 아무 것도 하지
+// 않는다 — 자동완성 드롭다운 자체가 2글자 미만에서는 열리지 않는 것과 동일한 기준
+// (AUTOCOMPLETE_MIN_QUERY_LENGTH)을 Enter 폴백에도 그대로 적용해, 짧은 검색어로 전체
+// 검색이 실행되거나 sessionStorage에 저장되는 일이 없게 한다(PHASE 7B COMPLETION PATCH).
 export function resolveEnterAction(
   query: string,
   activeIndex: number,
@@ -59,7 +79,7 @@ export function resolveEnterAction(
     return { type: 'navigate-school', href: buildSchoolHubHref(resultSlugs[activeIndex]) }
   }
   const normalized = normalizeAutocompleteQuery(query)
-  if (!normalized) return { type: 'noop' }
+  if (normalized.length < AUTOCOMPLETE_MIN_QUERY_LENGTH) return { type: 'noop' }
   return { type: 'search-all', href: buildFullSearchHref(normalized) }
 }
 

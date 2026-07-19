@@ -99,9 +99,7 @@ export default async function SchoolPage({ params, searchParams }: PageProps) {
           {SCHOOL_TYPE_LABELS[school.school_type]}
         </Link>
         <ChevronRight size={12} />
-        <Link href={`/search?q=${encodeURIComponent(school.sido)}`} className="hover:text-gray-600">
-          {school.sido}
-        </Link>
+        <span>{school.sido}</span>
         <ChevronRight size={12} />
         <span className="text-gray-600 font-medium">{school.school_name}</span>
       </nav>

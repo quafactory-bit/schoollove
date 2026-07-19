@@ -15,16 +15,25 @@ import {
   buildFullSearchHref,
   buildSchoolHubHref,
   moveActiveIndex,
+  normalizeAutocompleteQuery,
   resolveEnterAction,
+  SCHOOL_SEARCH_STORAGE_KEY,
 } from '@/lib/policy/schoolSearchAutocomplete'
 
 interface SchoolSearchAutocompleteProps {
   variant: 'home' | 'search'
   initialQuery?: string
   className?: string
+  // PHASE 7B COMPLETION PATCH — /search 페이지가 자기 자신의 SearchBar에서도 다시 검색할
+  // 수 있어야 하는데(§6), buildFullSearchHref()는 항상 '/search'만 반환하므로 이미 /search에
+  // 있는 상태에서 router.push('/search')를 호출해도 동일 URL이라 Next.js가 사실상 no-op으로
+  // 처리해 화면이 갱신되지 않는다. onFullSearch가 주어지면 라우팅 대신 이 콜백을 직접 호출해
+  // 호출부(SchoolSearchResults)가 로컬 state로 즉시 재검색하게 한다. Home/Submit처럼 이
+  // prop이 없는 경우는 기존과 동일하게 router.push로 이동한다.
+  onFullSearch?: (normalizedQuery: string) => void
 }
 
-export default function SearchBar({ variant, initialQuery = '', className }: SchoolSearchAutocompleteProps) {
+export default function SearchBar({ variant, initialQuery = '', className, onFullSearch }: SchoolSearchAutocompleteProps) {
   const [query, setQuery] = useState(initialQuery)
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -62,13 +71,27 @@ export default function SearchBar({ variant, initialQuery = '', className }: Sch
 
   function navigateToFullSearch(q: string) {
     setOpen(false)
-    router.push(buildFullSearchHref(q))
+    const normalized = normalizeAutocompleteQuery(q)
+    // 검색어는 URL이 아니라 sessionStorage로만 전달한다(PHASE 7B COMPLETION PATCH) — 브라우저
+    // 히스토리·서버 로그에 남지 않는다. 프라이빗 모드 등에서 sessionStorage 접근이 막혀도
+    // 검색 자체(라우팅/콜백 호출)는 계속 진행되어야 하므로 실패를 조용히 무시한다.
+    try {
+      sessionStorage.setItem(SCHOOL_SEARCH_STORAGE_KEY, normalized)
+    } catch {
+      // sessionStorage 접근 실패는 무시 — 검색 흐름을 막지 않는다.
+    }
+    if (onFullSearch) {
+      onFullSearch(normalized)
+    } else {
+      router.push(buildFullSearchHref(normalized))
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    // 폼 제출(Enter/모바일 검색 버튼)은 항상 기존 /search?q= 전체 검색으로 보낸다 —
-    // 후보 선택은 키보드 Enter(handleKeyDown)와 클릭에서만 처리한다.
+    // 폼 제출(Enter/모바일 검색 버튼)은 학교 전체 검색으로 보낸다 — 검색어는 URL에 붙이지
+    // 않고 sessionStorage로만 전달한다(PHASE 7B COMPLETION PATCH). 후보 선택은 키보드
+    // Enter(handleKeyDown)와 클릭에서만 처리한다.
     const action = resolveEnterAction(query, -1, [])
     if (action.type === 'search-all') navigateToFullSearch(query)
   }
