@@ -13,11 +13,9 @@ import ProfileCard from '@/components/ProfileCard'
 import SchoolWarmth from '@/components/SchoolWarmth'
 import SchoolGrowthPanel from '@/components/SchoolGrowthPanel'
 import { getSchoolPageMetadata } from '@/lib/seo'
+import { isSchoolPageIndexable } from '@/lib/policy/seoIndexing'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { formatNumber } from '@/lib/utils'
-
-// 프로필 3명 이상인 학교만 구글에 index. 미만은 noindex (thin content 방지)
-const INDEX_THRESHOLD = 3
 
 // 사이트 전체 등록이 이 수를 넘으면 빈 페이지에 "전국 OOO명 등록" 사회적 증거를 노출.
 // 미만이면 숫자를 숨기고 "첫 기록을 남겨라" 카피로 동작 (작은 숫자 역효과 방지).
@@ -39,7 +37,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     ...meta,
-    robots: count >= INDEX_THRESHOLD
+    robots: isSchoolPageIndexable(count)
       ? { index: true, follow: true }
       : { index: false, follow: true },
   }

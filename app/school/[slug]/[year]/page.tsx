@@ -13,13 +13,14 @@ import {
   pickMostRecentRegistration,
 } from '@/lib/policy/yearHub'
 import { getYearPageMetadata } from '@/lib/seo'
+import { isYearPageIndexable } from '@/lib/policy/seoIndexing'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { formatNumber } from '@/lib/utils'
 
-// 프로필 3명 이상인 페이지만 구글에 index. 미만은 noindex (thin content 방지)
-// PHASE 7B: noindex 임계값 자체는 무변경 — 아래 generateMetadata는 getYearProfileCount만
-// 별도로 호출해(가벼운 head:true count) 페이지 본문의 전체 명단 로드와 분리한다.
-const INDEX_THRESHOLD = 3
+// PHASE 8: noindex 임계값은 lib/policy/seoIndexing.ts(SEO_INDEX_THRESHOLD)로 일원화됐다 —
+// sitemap도 동일 함수를 쓰므로 이 페이지의 noindex와 sitemap 포함 여부가 항상 일치한다.
+// generateMetadata는 getYearProfileCount만 별도로 호출해(가벼운 head:true count) 페이지
+// 본문의 전체 명단 로드와 분리한다(PHASE 7B부터 유지).
 
 interface PageProps {
   params: Promise<{ slug: string; year: string }>
@@ -36,7 +37,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     ...meta,
-    robots: count >= INDEX_THRESHOLD
+    robots: isYearPageIndexable(count)
       ? { index: true, follow: true }
       : { index: false, follow: true },
   }

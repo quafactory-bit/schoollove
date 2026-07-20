@@ -16,9 +16,10 @@ describe('app/school/[slug]/[year]/page.tsx — PHASE 7B People Discovery 계약
     expect(SOURCE).toMatch(/getAllProfilesBySchoolYear\(school\.id, year\)/)
   })
 
-  it('noindex 임계값 계산(getYearProfileCount, INDEX_THRESHOLD=3)은 그대로 유지한다(SEO 회귀 없음)', () => {
+  it('noindex 판단은 공통 정책 함수(isYearPageIndexable)만 쓰고 로컬 임계값 상수를 두지 않는다(PHASE 8)', () => {
     expect(SOURCE).toMatch(/getYearProfileCount/)
-    expect(SOURCE).toMatch(/const INDEX_THRESHOLD = 3/)
+    expect(SOURCE).toMatch(/isYearPageIndexable\(count\)/)
+    expect(SOURCE).not.toMatch(/const INDEX_THRESHOLD/)
   })
 
   it('반별 집계·가장 활발한 반·최근 등록·기수 상태를 정책 함수로 계산한다(컴포넌트에 로직을 두지 않음)', () => {

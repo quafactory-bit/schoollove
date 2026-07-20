@@ -6,11 +6,9 @@ import { getSchoolBySlug } from '@/lib/api/schools'
 import { getProfilesByClass, getClassProfileCount } from '@/lib/api/profiles'
 import ProfileCard from '@/components/ProfileCard'
 import { getClassPageMetadata } from '@/lib/seo'
+import { isClassPageIndexable } from '@/lib/policy/seoIndexing'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { parseClassFromUrl, formatNumber } from '@/lib/utils'
-
-// 프로필 3명 이상인 페이지만 구글에 index. 미만은 noindex (thin content 방지)
-const INDEX_THRESHOLD = 3
 
 interface PageProps {
   params: Promise<{ slug: string; year: string; class: string }>
@@ -32,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     ...meta,
-    robots: count >= INDEX_THRESHOLD
+    robots: isClassPageIndexable(count)
       ? { index: true, follow: true }
       : { index: false, follow: true },
   }
