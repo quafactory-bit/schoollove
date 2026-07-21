@@ -346,7 +346,57 @@ export type AdminProfile = {
 export type ProfilesResult = {
   profiles: AdminProfile[];
   total: number;
+  error: boolean;
 };
+
+const ADMIN_PROFILE_SELECT = `
+  id,
+  nickname,
+  instagram_id,
+  graduation_year,
+  grade,
+  class_number,
+  department,
+  report_count,
+  is_hidden,
+  created_at,
+  school:schools (
+    id,
+    school_name,
+    slug,
+    school_type
+  )
+`;
+
+// .ilike()의 값으로만 검색어를 넘긴다. PostgREST OR 표현식에 사용자 입력을 직접
+// 이어 붙이지 않으므로 쉼표·괄호·따옴표가 filter 문법을 깨지 않는다. SQL LIKE의
+// wildcard인 %, _와 escape 문자(\\)는 리터럴 검색이 되도록 escape한다.
+export function escapeLikePattern(query: string): string {
+  return query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
+function mapAdminProfiles(rows: unknown[]): AdminProfile[] {
+  return rows.map((row: any) => ({
+    id: row.id,
+    nickname: row.nickname,
+    instagram_id: row.instagram_id,
+    graduation_year: row.graduation_year,
+    grade: row.grade,
+    class_number: row.class_number,
+    department: row.department,
+    report_count: row.report_count,
+    is_hidden: row.is_hidden,
+    created_at: row.created_at,
+    school: row.school
+      ? {
+          id: row.school.id,
+          school_name: row.school.school_name,
+          slug: row.school.slug,
+          school_type: row.school.school_type,
+        }
+      : null,
+  })) as AdminProfile[];
+}
 
 /**
  * 관리자용 전체 프로필 목록 조회 (검색, 페이지네이션).
@@ -363,69 +413,82 @@ export async function getAdminProfiles(
   const to = from + perPage - 1;
 
   const admin = tryGetAdminClient();
-  if (!admin) return { profiles: [], total: 0 };
+  if (!admin) return { profiles: [], total: 0, error: true };
+
+  const trimmedQuery = query.trim();
+  if (trimmedQuery) {
+    const pattern = `%${escapeLikePattern(trimmedQuery)}%`;
+
+    // PostgREST는 embedded schools.school_name을 profiles의 .or() 안에서 다른
+    // profiles 컬럼과 함께 지원하지 않는다. 학교 ID와 nickname을 각각 같은 서버
+    // 관리자 경계에서 조회하고, profile ID로 합쳐 중복을 제거한다.
+    const { data: schools, error: schoolsError } = await admin
+      .from('schools')
+      .select('id')
+      .ilike('school_name', pattern);
+
+    if (schoolsError) {
+      console.error('getAdminProfiles school search error:', schoolsError);
+      return { profiles: [], total: 0, error: true };
+    }
+
+    const schoolIds = (schools ?? [])
+      .map((school: { id?: unknown }) => school.id)
+      .filter((id): id is string => typeof id === 'string');
+
+    const [nicknameResult, schoolResult] = await Promise.all([
+      admin
+        .from('profiles')
+        .select(ADMIN_PROFILE_SELECT)
+        .ilike('nickname', pattern)
+        .order('created_at', { ascending: false }),
+      schoolIds.length > 0
+        ? admin
+            .from('profiles')
+            .select(ADMIN_PROFILE_SELECT)
+            .in('school_id', schoolIds)
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (nicknameResult.error || schoolResult.error) {
+      console.error('getAdminProfiles profile search error:', nicknameResult.error ?? schoolResult.error);
+      return { profiles: [], total: 0, error: true };
+    }
+
+    const deduplicated = new Map<string, AdminProfile>();
+    for (const profile of mapAdminProfiles([...(nicknameResult.data ?? []), ...(schoolResult.data ?? [])])) {
+      deduplicated.set(profile.id, profile);
+    }
+    const profiles = Array.from(deduplicated.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    return {
+      profiles: perPage > 0 ? profiles.slice(from, to + 1) : profiles,
+      total: profiles.length,
+      error: false,
+    };
+  }
 
   let q = admin
     .from('profiles')
-    .select(
-      `
-      id,
-      nickname,
-      instagram_id,
-      graduation_year,
-      grade,
-      class_number,
-      department,
-      report_count,
-      is_hidden,
-      created_at,
-      school:schools (
-        id,
-        school_name,
-        slug,
-        school_type
-      )
-    `,
-      { count: 'exact' }
-    )
-    .order('created_at', { ascending: false })
-    .range(from, to);
+    .select(ADMIN_PROFILE_SELECT, { count: 'exact' })
+    .order('created_at', { ascending: false });
 
-  if (query.trim()) {
-    q = q.or(
-      `nickname.ilike.%${query}%,schools.school_name.ilike.%${query}%`
-    );
-  }
+  if (perPage > 0) q = q.range(from, to);
 
   const { data, error, count } = await q;
 
   if (error) {
     console.error('getAdminProfiles error:', error);
-    return { profiles: [], total: 0 };
+    return { profiles: [], total: 0, error: true };
   }
 
   return {
-    profiles: (data ?? []).map((row: any) => ({
-      id: row.id,
-      nickname: row.nickname,
-      instagram_id: row.instagram_id,
-      graduation_year: row.graduation_year,
-      grade: row.grade,
-      class_number: row.class_number,
-      department: row.department,
-      report_count: row.report_count,
-      is_hidden: row.is_hidden,
-      created_at: row.created_at,
-      school: row.school
-        ? {
-            id: row.school.id,
-            school_name: row.school.school_name,
-            slug: row.school.slug,
-            school_type: row.school.school_type,
-          }
-        : null,
-    })) as AdminProfile[],
+    profiles: mapAdminProfiles(data ?? []),
     total: count ?? 0,
+    error: false,
   };
 }
 

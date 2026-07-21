@@ -20,7 +20,7 @@ function createChainableFrom(script: MockResult[]) {
     cursor++
 
     const chain: any = {}
-    for (const method of ['select', 'eq', 'update', 'delete', 'order', 'range', 'or', 'limit']) {
+    for (const method of ['select', 'eq', 'update', 'delete', 'order', 'range', 'or', 'limit', 'ilike', 'in']) {
       chain[method] = (...args: unknown[]) => {
         record.push({ method, args })
         return chain
@@ -52,7 +52,7 @@ const PROFILE_ID = 'profile-1'
 function anonDeniedClient() {
   const from = vi.fn(() => {
     const chain: any = {}
-    for (const method of ['select', 'eq', 'update', 'delete', 'order', 'range', 'or', 'limit']) {
+    for (const method of ['select', 'eq', 'update', 'delete', 'order', 'range', 'or', 'limit', 'ilike', 'in']) {
       chain[method] = () => chain
     }
     chain.single = () => Promise.resolve({ data: null, error: { message: 'permission denied' } })
@@ -357,8 +357,103 @@ describe('getAdminProfiles — admin client 사용(숨김 프로필도 조회 �
     const result = await getAdminProfiles(1, '', 20)
 
     expect(result.total).toBe(1)
+    expect(result.error).toBe(false)
     expect(result.profiles[0].is_hidden).toBe(true)
     expect(adminFrom).toHaveBeenCalledWith('profiles')
     expect(anonClient.from).not.toHaveBeenCalled()
+  })
+
+  it('19. 닉네임 부분 일치 검색은 관리자 서버에서 수행하고 created_at 내림차순 결과를 유지한다', async () => {
+    const older = { id: 'profile-old', nickname: '운영검증', instagram_id: null, graduation_year: 2020, grade: null, class_number: null, department: null, report_count: 0, is_hidden: false, created_at: '2026-01-01T00:00:00.000Z', school: null }
+    const newer = { ...older, id: 'profile-new', created_at: '2026-01-02T00:00:00.000Z' }
+    const { from: adminFrom, calls } = createChainableFrom([
+      { data: [], error: null },
+      { data: [newer, older], error: null },
+    ])
+    const getSupabaseAdmin = vi.fn(() => ({ from: adminFrom }))
+    vi.doMock('@/lib/supabase', () => ({ supabaseServer: anonDeniedClient(), getSupabaseAdmin }))
+    const { getAdminProfiles } = await import('./admin')
+
+    const result = await getAdminProfiles(1, '운영검증', 0)
+
+    expect(result).toMatchObject({ total: 2, error: false })
+    expect(result.profiles.map((profile) => profile.id)).toEqual(['profile-new', 'profile-old'])
+    expect(adminFrom).toHaveBeenNthCalledWith(1, 'schools')
+    expect(adminFrom).toHaveBeenNthCalledWith(2, 'profiles')
+    expect(findCall(calls[0], 'ilike')?.args).toEqual(['school_name', '%운영검증%'])
+    expect(findCall(calls[1], 'ilike')?.args).toEqual(['nickname', '%운영검증%'])
+    expect(findCall(calls[1], 'order')?.args).toEqual(['created_at', { ascending: false }])
+    expect(findCall(calls[1], 'or')).toBeUndefined()
+  })
+
+  it('20. 학교명 부분 일치 검색은 먼저 학교 ID를 찾은 뒤 해당 학교 profiles를 조회한다', async () => {
+    const row = { id: PROFILE_ID, nickname: '테스트', instagram_id: null, graduation_year: 2020, grade: null, class_number: null, department: null, report_count: 0, is_hidden: true, created_at: '2026-01-01T00:00:00.000Z', school: { id: 'school-1', school_name: '한글고등학교', slug: 'hangul-high', school_type: 'high' } }
+    const { from: adminFrom, calls } = createChainableFrom([
+      { data: [{ id: 'school-1' }], error: null },
+      { data: [], error: null },
+      { data: [row], error: null },
+    ])
+    const getSupabaseAdmin = vi.fn(() => ({ from: adminFrom }))
+    vi.doMock('@/lib/supabase', () => ({ supabaseServer: anonDeniedClient(), getSupabaseAdmin }))
+    const { getAdminProfiles } = await import('./admin')
+
+    const result = await getAdminProfiles(1, '한글고', 0)
+
+    expect(result.profiles).toHaveLength(1)
+    expect(result.profiles[0].school?.school_name).toBe('한글고등학교')
+    expect(adminFrom).toHaveBeenNthCalledWith(3, 'profiles')
+    expect(findCall(calls[2], 'in')?.args).toEqual(['school_id', ['school-1']])
+    expect(findCall(calls[2], 'order')?.args).toEqual(['created_at', { ascending: false }])
+  })
+
+  it('21. 닉네임과 학교명에 모두 일치한 profile은 한 번만 반환한다', async () => {
+    const row = { id: PROFILE_ID, nickname: '한글고', instagram_id: null, graduation_year: 2020, grade: null, class_number: null, department: null, report_count: 0, is_hidden: false, created_at: '2026-01-01T00:00:00.000Z', school: { id: 'school-1', school_name: '한글고등학교', slug: 'hangul-high', school_type: 'high' } }
+    const { from: adminFrom } = createChainableFrom([
+      { data: [{ id: 'school-1' }], error: null },
+      { data: [row], error: null },
+      { data: [row], error: null },
+    ])
+    const getSupabaseAdmin = vi.fn(() => ({ from: adminFrom }))
+    vi.doMock('@/lib/supabase', () => ({ supabaseServer: anonDeniedClient(), getSupabaseAdmin }))
+    const { getAdminProfiles } = await import('./admin')
+
+    const result = await getAdminProfiles(1, '한글고', 0)
+
+    expect(result).toMatchObject({ total: 1, error: false })
+    expect(result.profiles).toHaveLength(1)
+  })
+
+  it('22. %, _, 쉼표, 괄호와 따옴표가 포함된 검색어도 filter 문법을 조합하지 않고 안전하게 전달한다', async () => {
+    const query = `한글%_,()'"`
+    const { from: adminFrom, calls } = createChainableFrom([
+      { data: [], error: null },
+      { data: [], error: null },
+    ])
+    const getSupabaseAdmin = vi.fn(() => ({ from: adminFrom }))
+    vi.doMock('@/lib/supabase', () => ({ supabaseServer: anonDeniedClient(), getSupabaseAdmin }))
+    const { getAdminProfiles } = await import('./admin')
+
+    const result = await getAdminProfiles(1, `  ${query}  `, 0)
+
+    expect(result).toMatchObject({ total: 0, error: false })
+    expect(findCall(calls[0], 'ilike')?.args).toEqual(['school_name', `%한글\\%\\_,()'"%`])
+    expect(findCall(calls[1], 'ilike')?.args).toEqual(['nickname', `%한글\\%\\_,()'"%`])
+    expect(findCall(calls[0], 'or')).toBeUndefined()
+    expect(findCall(calls[1], 'or')).toBeUndefined()
+  })
+
+  it('23. Supabase 검색 오류는 빈 결과가 아닌 error 상태로 반환한다', async () => {
+    const { from: adminFrom } = createChainableFrom([
+      { data: null, error: { message: 'PostgREST 400' } },
+    ])
+    const getSupabaseAdmin = vi.fn(() => ({ from: adminFrom }))
+    vi.doMock('@/lib/supabase', () => ({ supabaseServer: anonDeniedClient(), getSupabaseAdmin }))
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { getAdminProfiles } = await import('./admin')
+
+    const result = await getAdminProfiles(1, '운영검증', 0)
+
+    expect(result).toEqual({ profiles: [], total: 0, error: true })
+    consoleErrorSpy.mockRestore()
   })
 })
