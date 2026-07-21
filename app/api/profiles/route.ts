@@ -134,8 +134,6 @@ export async function POST(request: NextRequest) {
       ...profile,
       nickname,
       is_self: profile.is_self ?? false,
-      report_count: 0,
-      is_hidden: false,
     })
     .select()
     .single();
@@ -152,7 +150,7 @@ export async function POST(request: NextRequest) {
   // 프로필 insert가 이미 성공했으므로, 이 단계의 실패는 등록 성공 응답(201)을 취소하지 않는다.
   // XP Source는 여전히 미확정(잠정 정책)이라 cumulativeXp는 학교의 실제 visible profile 수를 그대로 사용한다.
   //
-  // PHASE 6A(등록 후 성장 보상) — 이 insert는 바로 위에서 is_hidden=false로 확정됐으므로
+  // PHASE 6A(등록 후 성장 보상) — 이 insert는 DB 기본값으로 is_hidden=false가 적용되므로
   // (성공한 insert 1건 = visible profile count +1) 별도 count 쿼리 없이
   // afterVisibleProfileCount - 1을 beforeVisibleProfileCount로 산술 역산한다.
   // before/after 성장 스냅샷 계산·outcome 판정 전체를 best-effort로 다뤄, 실패해도
