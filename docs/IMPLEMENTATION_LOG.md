@@ -1287,6 +1287,26 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - `components/CaptchaWidget.test.ts`, `app/submit/page.test.ts`(신규): 소스 텍스트 기반 계약 확인(이 저장소는 RTL/jsdom 미사용).
 - `app/submit/registerPeople.test.ts`: 기존 27개 호출부에 토큰 getter 인자 추가 + 배치 토큰 배급 신규 테스트 3개.
 
+### 병합·배포 및 검증 상태 동기화
+
+- Phase 9 Turnstile 코드와 Codex 작업 규칙은 PR #1을 통해 `main`에 포함됨.
+- 실제 PR #1 병합 커밋은 `0acb8f2`이며, 부모 이력에 Phase 9 구현 커밋 `1730f1c`와 Codex 작업 규칙 커밋 `e17328a`가 포함됨.
+- 이전에 전달받았던 `ca8c8f2`는 저장소에 존재하지 않는 잘못된 해시였으며 실제 병합 커밋으로 사용하지 않음.
+- 기존 Phase 9 로컬 검증에서 Phase 9 대상 테스트, 전체 테스트, typecheck 및 production build가 통과함.
+- 이번 상태 문서 동기화에서는 `git diff --check`가 통과했으며, 문서 전용 변경이므로 테스트·typecheck·build는 재실행하지 않음.
+- Preview UI 검증 완료: Turnstile 위젯 렌더링, 보안 확인 성공, 등록 버튼 활성화 및 Preview hostname 오류 `110200` 해소를 확인함.
+- Production UI 검증 완료: production `/submit`에서 Turnstile 위젯 렌더링, 보안 확인 성공, 등록 버튼 활성화 및 `110200` 오류 없음 확인.
+- 실제 production 등록 write는 production과 Preview가 운영 Supabase를 사용해 운영 데이터와 학교 Level을 변경할 위험이 있으므로 의도적으로 실행하지 않음.
+- 따라서 Production End-to-End Write 상태는 **미검증**이며, UI 검증 완료를 실제 등록 write 검증 완료로 간주하지 않음.
+
+최종 상태:
+
+- `CODE_PRESENT`
+- `LOCAL_VERIFIED`
+- `PREVIEW_UI_VERIFIED`
+- `PRODUCTION_UI_VERIFIED`
+- `PRODUCTION_END_TO_END_WRITE_NOT_TESTED`
+
 ### 남은 P2
 
 - 지역(hostname) 검증은 적용하지 않음 — `schoollove.kr`/`www.schoollove.kr` 등 유효 호스트가 여러 개라 하드코딩 시 정상 트래픽 오차단 위험이 action 검증보다 크다고 판단.

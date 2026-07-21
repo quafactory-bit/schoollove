@@ -135,11 +135,12 @@
 현재 Phase 9 CAPTCHA 상태는 다음과 같다.
 
 - `CODE_PRESENT`
-- `LOCAL_VERIFICATION_PENDING`
-- `PREVIEW_VERIFICATION_PENDING`
-- `PRODUCTION_NOT_DEPLOYED`
+- `LOCAL_VERIFIED`
+- `PREVIEW_UI_VERIFIED`
+- `PRODUCTION_UI_VERIFIED`
+- `PRODUCTION_END_TO_END_WRITE_NOT_TESTED`
 
-현재 production에는 Phase 9 CAPTCHA가 포함되지 않는다.
+Phase 9는 production에 배포되어 UI 검증까지 완료됐지만, 실제 production 등록 write는 검증하지 않았다.
 
 ## N. 과거 감사 결과 처리
 
