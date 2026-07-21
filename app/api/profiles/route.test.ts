@@ -272,6 +272,33 @@ describe('POST /api/profiles', () => {
     )
   })
 
+  it('12-2. INSERT payload는 사용자 입력만 유지하고 DB 기본값·보호 컬럼과 captchaToken을 보내지 않음', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+
+    await POST(createRequest({ body: VALID_BODY }))
+
+    const insertPayload = (insertMock.mock.calls[0] as unknown as [Record<string, unknown>])[0]
+    expect(insertPayload).toEqual({
+      school_id: SCHOOL_ID,
+      graduation_year: 2015,
+      grade: 3,
+      class_number: 2,
+      department: null,
+      student_year: null,
+      nickname: '홍길동',
+      instagram_id: 'gildong',
+      is_self: true,
+      message: '보고싶다',
+    })
+    expect(insertPayload).not.toHaveProperty('report_count')
+    expect(insertPayload).not.toHaveProperty('is_hidden')
+    expect(insertPayload).not.toHaveProperty('captchaToken')
+    expect(insertPayload).not.toHaveProperty('id')
+    expect(insertPayload).not.toHaveProperty('created_at')
+  })
+
   it('13. is_self 미전달 시 false로 저장됨 (친구 등록 기본값)', async () => {
     singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
     vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
