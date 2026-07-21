@@ -10,11 +10,11 @@ interface Props {
 // app/page.tsx가 활동을 충분히 보여준 뒤에만 이 컴포넌트를 렌더링한다.
 export default function HomeFeedCta({ title, buttonLabel, href }: Props) {
   return (
-    <div className="my-8 rounded-2xl border border-dashed border-neutral-200 px-5 py-7 text-center">
-      <p className="text-[15px] font-bold leading-relaxed text-neutral-800">{title}</p>
+    <div className="my-8 border-y border-schoollove-border py-7 text-center">
+      <p className="text-[15px] font-semibold leading-relaxed text-schoollove-text">{title}</p>
       <Link
         href={href}
-        className="mt-4 inline-block rounded-xl bg-neutral-900 px-6 py-3 text-[14px] font-bold text-white transition active:scale-95"
+        className="schoollove-focus mt-4 inline-flex min-h-11 items-center border border-schoollove-text px-6 text-[14px] font-semibold text-schoollove-text transition-colors hover:bg-schoollove-text hover:text-schoollove-bg"
       >
         {buttonLabel}
       </Link>

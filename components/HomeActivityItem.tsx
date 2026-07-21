@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Quote, UserPlus } from 'lucide-react'
 import { formatRelativeTime } from '@/lib/policy/homeFeed'
 import type { HomeActivityItem as HomeActivityItemType } from '@/types/homeFeed'
 
@@ -7,25 +8,62 @@ interface Props {
   now: Date
 }
 
-// 최근 활동 한 줄 — 카드가 아니라 글에 가까운 형태. 얇은 구분선과 여백만 사용한다.
-// 개인 이름/인스타 ID는 item.text 자체에 포함되지 않는다(lib/policy/homeFeed.ts가 보장).
+function SemanticSentence({ item }: { item: HomeActivityItemType }) {
+  const schoolIndex = item.text.indexOf(item.schoolName)
+  if (schoolIndex < 0) return <>{item.text}</>
+
+  const before = item.text.slice(0, schoolIndex)
+  const after = item.text.slice(schoolIndex + item.schoolName.length)
+  const divider = after.indexOf(' · ')
+  const action = divider >= 0 ? after.slice(0, divider) : after
+  const note = divider >= 0 ? after.slice(divider + 3) : null
+
+  return (
+    <>
+      <span className={item.type === 'register' ? 'font-medium text-schoollove-system' : undefined}>{before}</span>
+      <strong className="font-semibold text-schoollove-school">{item.schoolName}</strong>
+      <span className="font-medium text-schoollove-growth">{action}</span>
+      {note && <span className="text-schoollove-text"> · “{note}”</span>}
+    </>
+  )
+}
+
 export default function HomeActivityItem({ item, now }: Props) {
+  const isRegister = item.type === 'register'
+  const Icon = isRegister ? UserPlus : Quote
+  const label = isRegister ? 'NEW REGISTRATION' : 'SCHOOL NOTE'
+
   return (
     <Link
       href={`/school/${item.slug}`}
-      className="block border-b border-neutral-100 py-4 transition hover:bg-neutral-50"
+      aria-label={`${label}, ${item.schoolName}, ${formatRelativeTime(item.createdAt, now)}`}
+      className="schoollove-focus group grid min-h-11 grid-cols-[2.5rem_minmax(0,1fr)] gap-3 border-b border-schoollove-border py-5 last:border-b-0"
     >
-      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12.5px] text-neutral-400">
-        <span className="font-semibold text-neutral-600">{item.schoolName}</span>
-        {item.currentLevel !== null && (
-          <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10.5px] font-bold text-indigo-600">
-            Lv.{item.currentLevel}
+      <span
+        className={`flex h-9 w-9 items-center justify-center rounded-full ${
+          isRegister ? 'bg-schoollove-system-soft text-schoollove-system' : 'bg-schoollove-neutral-soft text-schoollove-secondary'
+        }`}
+        aria-hidden="true"
+      >
+        <Icon className="h-4 w-4" strokeWidth={1.7} />
+      </span>
+      <span className="min-w-0">
+        <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <span className={`font-status text-[10px] font-semibold tracking-[0.08em] ${isRegister ? 'text-schoollove-system' : 'text-schoollove-secondary'}`}>
+            {label}
           </span>
-        )}
-        <span aria-hidden>·</span>
-        <span>{formatRelativeTime(item.createdAt, now)}</span>
-      </div>
-      <p className="mt-1.5 text-[15px] leading-relaxed text-neutral-800">{item.text}</p>
+          <time className="font-status text-[11px] text-schoollove-muted" dateTime={item.createdAt}>
+            {formatRelativeTime(item.createdAt, now)}
+          </time>
+        </span>
+        <span className="mt-2 block break-keep text-[15px] leading-6 text-schoollove-text group-hover:underline">
+          <SemanticSentence item={item} />
+        </span>
+        <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-status text-[11px] text-schoollove-secondary">
+          {item.currentLevel !== null && <span className="font-medium text-schoollove-level">LV.{String(item.currentLevel).padStart(2, '0')}</span>}
+          {item.count > 1 && <span className="font-medium text-schoollove-number">등록 {item.count}명</span>}
+        </span>
+      </span>
     </Link>
   )
 }

@@ -1,6 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+:root {
+  --schoollove-bg: #ffffff;
+  --schoollove-surface: #ffffff;
+  --schoollove-surface-subtle: #fafaf8;
+  --schoollove-surface-pressed: #f7f7f5;
+  --schoollove-text: #292826;
+  --schoollove-text-secondary: #68645f;
+  --schoollove-text-muted: #7a756e;
+  --schoollove-border: #e5e2dd;
+  --schoollove-progress-track: #e8e5e0;
+  --schoollove-school: #58718a;
+  --schoollove-number: #60758a;
+  --schoollove-level: #7d6e90;
+  --schoollove-growth: #637b63;
+  --schoollove-system: #a86552;
+  --schoollove-warning: #8c6d3b;
+  --schoollove-system-soft: #f3e5df;
+  --schoollove-neutral-soft: #eeeae3;
+  --font-schoollove-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
@@ -12,7 +32,7 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-white text-gray-900 font-sans;
+    @apply bg-schoollove-bg text-schoollove-text font-sans;
     min-height: 100dvh;
     letter-spacing: -0.018em;
   }
@@ -29,6 +49,11 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-300;
+  }
+}
+@layer utilities {
+  .schoollove-focus {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-schoollove-school focus-visible:ring-offset-2 focus-visible:ring-offset-schoollove-bg;
   }
 }
 @layer components {
