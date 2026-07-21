@@ -51,9 +51,17 @@ export function normalizeInsta(raw: string): string {
 // 최종 outcome은 첫/마지막 응답의 outcome을 그대로 쓰지 않고, 이어붙인 before/after를
 // 기준으로 classifyRegistrationGrowthOutcome()을 다시 호출해 재계산한다(동일 정책 함수 재사용,
 // 새 판정 규칙을 만들지 않음).
+//
+// PHASE 9 — 각 요청은 CAPTCHA 토큰을 필요로 한다. Turnstile 토큰은 1회용이라 같은 토큰을
+// 여러 요청에 재사용할 수 없으므로, 사람마다 getCaptchaToken()을 호출해 새 토큰을 받는다
+// (components/CaptchaWidget.tsx의 requestNextToken — 첫 사람은 이미 받아둔 토큰을,
+// 이후는 위젯을 다시 실행해 받은 새 토큰을 반환한다). 토큰을 받지 못하면(위젯 오류 등)
+// 그 사람은 서버에 요청을 보내지 않고 바로 실패로 집계한다 — 검증되지 않은 요청을
+// 굳이 보내 서버가 CAPTCHA 실패로 400을 돌려주게 만들 필요가 없다.
 export async function registerPeople(
   people: PersonInput[],
-  base: RegisterBase
+  base: RegisterBase,
+  getCaptchaToken: () => Promise<string>
 ): Promise<RegisterResult> {
   let success = 0
   let dup = 0
@@ -64,6 +72,7 @@ export async function registerPeople(
   for (const p of people) {
     const insta = normalizeInsta(p.instagram) || null
     try {
+      const captchaToken = await getCaptchaToken()
       const res = await fetch('/api/profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,6 +82,7 @@ export async function registerPeople(
           instagram_id: insta,
           is_self: insta ? p.isSelf : false,
           message: p.message.trim() || null, // 이 친구에게 한마디
+          captchaToken,
         }),
       })
       if (res.ok) {

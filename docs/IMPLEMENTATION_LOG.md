@@ -1257,6 +1257,43 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 
 ---
 
+## 2026-07-20 (PHASE 9 — 공개 등록 CAPTCHA 보호)
+
+### 배경
+
+`docs/design-package-v1.0/07-register-flow.md` §8과 `13-api.md` §8이 P1으로 명시한 "Registration은 CAPTCHA를 적용한다"를 구현. 기존에는 `app/api/profiles` 등록 API에 Rate Limit(Upstash)만 있고 CAPTCHA가 없었다.
+
+### 선택한 공급자
+
+Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)와 `fetch` 기반 REST 검증(서버)만으로 구현 — 로그인 없는 공개 form에 적합, 무료, client token + server verification 구조가 명확히 분리됨.
+
+### 환경변수(Vercel에 설정 필요, 실제 값은 이 로그에 기록하지 않음)
+
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: 공개 키. client 위젯에서만 사용. 값이 없으면 등록 폼이 막히고 명확한 오류 문구를 보여준다(조용히 CAPTCHA를 생략하지 않음).
+- `TURNSTILE_SECRET_KEY`: 비밀 키. 서버(`lib/security/captcha.ts`)에서만 사용. **client bundle에 노출되지 않음(빌드 산출물 검사로 확인 완료)**. production에서 값이 없으면 등록 API가 fail-closed(500)로 차단된다.
+- Cloudflare 공식 테스트 키(dummy site/secret key)는 로컬 개발/테스트 전용이며 **production에서는 절대 사용하지 않는다**.
+
+### 구조
+
+- `lib/security/captcha.ts`(신규): 서버 전용 verification helper. timeout(5s)·HTTP 오류·JSON 파싱 오류·schema 불일치를 모두 fail-closed(500)로 처리, `success:false`는 400, action은 누락 없이 `register`와 정확히 일치해야 통과한다. 공급자 error-codes/token/secret은 로그에도 client 응답에도 원문을 노출하지 않는다.
+- `app/api/profiles/route.ts`: Zod schema에 `captchaToken` 필수 필드 추가(빈 문자열/2048자 초과 거부). Rate Limit → JSON 파싱 → 전체 Zod 검증 → **CAPTCHA 검증** → DB insert 순서(문서 예시와 검증 순서가 다르지만, CAPTCHA 실패 요청이 DB에 도달하지 않는다는 핵심 요건은 동일하게 지킴 — Zod를 통과 못 할 요청에 대해 Cloudflare API 호출을 낭비하지 않기 위함). `captchaToken`은 DB insert 페이로드와 성공/실패 응답 어디에도 포함되지 않는다.
+- `components/CaptchaWidget.tsx`(신규): Turnstile client 위젯. `app/submit/page.tsx`에서만 로드(전역 layout에 없음). 다중 등록(한 번에 여러 명)을 지원하는 기존 UX를 유지하기 위해 `requestNextToken()`을 노출 — Turnstile 토큰은 1회용이라, 배치의 첫 사람은 이미 받아둔 토큰을 쓰고 이후 사람마다 위젯을 reset+execute해 새 토큰을 받는다. 제출 전 만료·오류·timeout 뒤에도 별도 재시도 버튼으로 reset+execute해 새 challenge를 받을 수 있다.
+- `app/submit/registerPeople.ts`: `registerPeople(people, base, getCaptchaToken)`로 시그니처 변경 — 사람마다 새 토큰을 요청해 요청 body에 포함한다.
+
+### 테스트
+
+- `lib/security/captcha.test.ts`(21 tests): 정상 검증, 실패, action 불일치·누락, secret 누락 production(fail-closed)/development·test(우회), 네트워크 오류·timeout·잘못된 JSON·HTTP 오류·schema 불일치(모두 fail-closed), 원문 미노출.
+- `app/api/profiles/route.test.ts`(+12 tests): CAPTCHA 성공/실패/오류, 토큰 누락/빈 값/길이초과, rate limit 초과 시 CAPTCHA 미호출, DB insert 페이로드·응답에 토큰 미포함, 공급자 원문 미노출. 기존 43개 테스트는 CAPTCHA를 항상 성공으로 mock해 그대로 통과(약화 아님).
+- `components/CaptchaWidget.test.ts`, `app/submit/page.test.ts`(신규): 소스 텍스트 기반 계약 확인(이 저장소는 RTL/jsdom 미사용).
+- `app/submit/registerPeople.test.ts`: 기존 27개 호출부에 토큰 getter 인자 추가 + 배치 토큰 배급 신규 테스트 3개.
+
+### 남은 P2
+
+- 지역(hostname) 검증은 적용하지 않음 — `schoollove.kr`/`www.schoollove.kr` 등 유효 호스트가 여러 개라 하드코딩 시 정상 트래픽 오차단 위험이 action 검증보다 크다고 판단.
+- `lib/api/profiles.ts::insertProfile()`은 여전히 미사용 dead code이며 이번 phase에서도 손대지 않음(직접 연관 없음).
+
+---
+
 ## 제품 개발 다음 단계(2026-07-18 기준 우선순위 — 구현 완료 기록과 별개)
 
 검색 로그 RPC·RLS·와일드카드 보정 작업(위 기록)은 인프라·보안 계층 완료 상태이며, 아래는 그 위에서 진행할 제품 개발 우선순위 정리다. 실제 구현 여부는 각 항목이 완료 기록으로 남기 전까지는 미완료로 간주한다.

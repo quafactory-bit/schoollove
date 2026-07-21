@@ -7,6 +7,7 @@ import { syncSchoolLevel, getSchoolLevelSnapshot } from '@/lib/api/levels';
 import { revalidateHomeFeed } from '@/lib/api/homeFeedCache';
 import { calculateSchoolGrowthSnapshot } from '@/lib/policy/schoolGrowth';
 import { classifyRegistrationGrowthOutcome } from '@/lib/policy/registrationGrowthReward';
+import { verifyCaptchaToken } from '@/lib/security/captcha';
 import { z } from 'zod';
 import type { SchoolGrowthSnapshot } from '@/types/schoolGrowth';
 import type { RegistrationGrowthReward, RegistrationGrowthSnapshot } from '@/types/registration';
@@ -81,6 +82,10 @@ const Schema = z.object({
   is_self: z.boolean().optional(),
   // app/submit/page.tsx의 message textarea는 maxLength={30}로 제한된다.
   message: z.string().max(30).nullable().optional(),
+  // PHASE 9 — Cloudflare Turnstile client 위젯이 발급한 1회용 토큰. 빈 문자열 거부,
+  // 비정상적으로 긴 값 방어(실제 토큰은 이보다 훨씬 짧음). DB에는 저장하지 않으므로
+  // 아래 insert 페이로드를 만들 때 반드시 분리해서 제외한다.
+  captchaToken: z.string().trim().min(1).max(2048),
 });
 
 export async function POST(request: NextRequest) {
@@ -109,7 +114,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '입력값이 올바르지 않습니다.' }, { status: 400 });
   }
 
-  const profile = parsed.data;
+  // PHASE 9 — CAPTCHA 검증은 full Zod validation 이후, DB insert 이전에 수행한다. 이 순서는
+  // 문서가 제시한 예시(Rate Limit → CAPTCHA → 전체 Zod 검증)와 다르지만, CAPTCHA 실패
+  // 요청이 DB 쓰기/growth 로직에 도달하지 않는다는 핵심 요건은 그대로 지키면서, 애초에
+  // Zod를 통과하지 못할 요청(예: school_id가 UUID가 아님)에 대해 외부 Cloudflare API
+  // 호출을 낭비하지 않는다 — 현재 코드 구조상 더 단순하고 안전한 순서로 판단해 선택했다.
+  const { captchaToken, ...profile } = parsed.data;
+
+  const captchaResult = await verifyCaptchaToken(captchaToken, ip);
+  if (!captchaResult.verified) {
+    return NextResponse.json(captchaResult.body, { status: captchaResult.status });
+  }
+
   const nickname = profile.nickname.trim().replace(/\s+/g, ' ');
 
   const { data, error } = await supabaseServer
