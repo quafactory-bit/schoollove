@@ -47,6 +47,18 @@ vi.mock('next/cache', () => ({
   revalidatePath: revalidatePathMock,
 }))
 
+// PHASE 9 — verifyCaptchaToken은 이 파일에서 항상 mock으로 대체한다(실제 Cloudflare
+// 네트워크 검증은 lib/security/captcha.test.ts가 전담). 기본값은 성공 — 이렇게 해야
+// captchaToken 자체를 다루지 않는 기존 43개 테스트가 계속 통과한다(약화 아님, mock으로
+// 항상 통과하는 CAPTCHA 관문을 하나 더 거치는 것뿐, 그 외 검증 로직은 무변경).
+const { verifyCaptchaTokenMock } = vi.hoisted(() => ({
+  verifyCaptchaTokenMock: vi.fn(),
+}))
+
+vi.mock('@/lib/security/captcha', () => ({
+  verifyCaptchaToken: verifyCaptchaTokenMock,
+}))
+
 import { POST } from './route'
 import { getSchoolProfileCount } from '@/lib/api/profiles'
 import { syncSchoolLevel, getSchoolLevelSnapshot } from '@/lib/api/levels'
@@ -64,6 +76,7 @@ const VALID_BODY = {
   instagram_id: 'gildong',
   is_self: true,
   message: '보고싶다',
+  captchaToken: 'valid-turnstile-token',
 }
 
 function allowRateLimit() {
@@ -91,6 +104,8 @@ beforeEach(() => {
   vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://example.upstash.io')
   vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'test-token')
   allowRateLimit()
+  // 기본값: CAPTCHA 검증 성공. 개별 테스트에서 필요할 때만 실패로 덮어쓴다.
+  verifyCaptchaTokenMock.mockResolvedValue({ verified: true })
 })
 
 afterEach(() => {
@@ -594,5 +609,150 @@ describe('POST /api/profiles — PHASE 6A 성장 보상(growthReward)', () => {
     expect(rewardKeys).toEqual(['schoolId', 'before', 'after', 'outcome'])
     expect(JSON.stringify(json.growthReward)).not.toContain('gildong')
     expect(JSON.stringify(json.growthReward)).not.toContain('홍길동')
+  })
+})
+
+describe('POST /api/profiles — PHASE 9 CAPTCHA', () => {
+  it('1. CAPTCHA 검증 성공 → full Zod 검증 이후, DB insert 이전에 정확히 한 번 호출된다', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(201)
+    expect(verifyCaptchaTokenMock).toHaveBeenCalledTimes(1)
+    expect(verifyCaptchaTokenMock).toHaveBeenCalledWith('valid-turnstile-token', '127.0.0.1')
+  })
+
+  it('2. CAPTCHA 검증 실패(400) → insert/Level Sync 미호출, helper가 준 status/body를 그대로 반환', async () => {
+    verifyCaptchaTokenMock.mockResolvedValue({
+      verified: false,
+      status: 400,
+      body: { error: '보안 확인에 실패했습니다. 다시 시도해주세요.' },
+    })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(json).toEqual({ error: '보안 확인에 실패했습니다. 다시 시도해주세요.' })
+    expect(fromMock).not.toHaveBeenCalled()
+    expect(getSchoolProfileCount).not.toHaveBeenCalled()
+    expect(syncSchoolLevel).not.toHaveBeenCalled()
+  })
+
+  it('3. CAPTCHA 검증 오류(500, 예: secret 누락 production) → insert/Level Sync 미호출', async () => {
+    verifyCaptchaTokenMock.mockResolvedValue({
+      verified: false,
+      status: 500,
+      body: { error: '서버 설정 오류입니다.' },
+    })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(json).toEqual({ error: '서버 설정 오류입니다.' })
+    expect(fromMock).not.toHaveBeenCalled()
+    expect(getSchoolProfileCount).not.toHaveBeenCalled()
+    expect(syncSchoolLevel).not.toHaveBeenCalled()
+  })
+
+  it('4. captchaToken 누락 → 400, verifyCaptchaToken 자체가 호출되지 않는다(Zod가 먼저 거른다)', async () => {
+    const { captchaToken: _omit, ...withoutToken } = VALID_BODY
+    const response = await POST(createRequest({ body: withoutToken }))
+    const json = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(json).toEqual({ error: '입력값이 올바르지 않습니다.' })
+    expect(verifyCaptchaTokenMock).not.toHaveBeenCalled()
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('5. captchaToken 빈 문자열 → 400, verifyCaptchaToken 미호출', async () => {
+    const response = await POST(createRequest({ body: { ...VALID_BODY, captchaToken: '' } }))
+    const json = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(json).toEqual({ error: '입력값이 올바르지 않습니다.' })
+    expect(verifyCaptchaTokenMock).not.toHaveBeenCalled()
+  })
+
+  it('6. captchaToken이 2048자를 초과하면 400, verifyCaptchaToken 미호출(비정상적으로 긴 토큰 방어)', async () => {
+    const response = await POST(createRequest({ body: { ...VALID_BODY, captchaToken: 'a'.repeat(2049) } }))
+    const json = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(json).toEqual({ error: '입력값이 올바르지 않습니다.' })
+    expect(verifyCaptchaTokenMock).not.toHaveBeenCalled()
+  })
+
+  it('7. captchaToken이 정확히 2048자면 통과한다(경계값)', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+
+    const response = await POST(createRequest({ body: { ...VALID_BODY, captchaToken: 'a'.repeat(2048) } }))
+
+    expect(response.status).toBe(201)
+    expect(verifyCaptchaTokenMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('8. rate limit 초과 시 verifyCaptchaToken이 호출되지 않는다', async () => {
+    ratelimitLimitMock.mockResolvedValue({ success: false, limit: 20, remaining: 0, reset: 60 })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(429)
+    expect(verifyCaptchaTokenMock).not.toHaveBeenCalled()
+  })
+
+  it('9. CAPTCHA 성공 후 기존 growth/level sync가 그대로 동작한다(회귀 없음)', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(7)
+    vi.mocked(syncSchoolLevel).mockResolvedValue({ id: SCHOOL_ID, current_level: 2, level_updated_at: null })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(201)
+    expect(getSchoolProfileCount).toHaveBeenCalledWith(SCHOOL_ID)
+    expect(syncSchoolLevel).toHaveBeenCalledWith(SCHOOL_ID, 7)
+  })
+
+  it('10. 성공 응답에 captchaToken이 포함되지 않는다', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(JSON.stringify(json)).not.toContain('captchaToken')
+    expect(JSON.stringify(json)).not.toContain('valid-turnstile-token')
+  })
+
+  it('11. DB insert 페이로드에 captchaToken이 전달되지 않는다(DB에 저장하지 않음)', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+
+    await POST(createRequest({ body: VALID_BODY }))
+
+    const insertPayload = (insertMock.mock.calls[0] as unknown as [Record<string, unknown>])[0]
+    expect(Object.keys(insertPayload)).not.toContain('captchaToken')
+  })
+
+  it('12. 실패 응답에 공급자(Cloudflare) 원문 오류가 노출되지 않는다', async () => {
+    verifyCaptchaTokenMock.mockResolvedValue({
+      verified: false,
+      status: 400,
+      body: { error: '보안 확인에 실패했습니다. 다시 시도해주세요.' },
+    })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+    const json = await response.json()
+
+    expect(JSON.stringify(json)).not.toMatch(/invalid-input-response|timeout-or-duplicate|error-codes/)
   })
 })

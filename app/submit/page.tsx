@@ -10,7 +10,13 @@ import { isAllFailed, resultHeading } from './resultText'
 import { normalizeInsta, registerPeople } from './registerPeople'
 import { getGrowthRewardCopy } from './growthRewardCopy'
 import RegistrationGrowthRewardCard from '@/components/RegistrationGrowthRewardCard'
+import CaptchaWidget, { type CaptchaStatus, type CaptchaWidgetHandle } from '@/components/CaptchaWidget'
 import type { RegistrationGrowthReward } from '@/types/registration'
+
+// PHASE 9 — 공개 site key만 client에서 참조한다(비밀 키는 서버 전용
+// lib/security/captcha.ts에서만 읽음). 빌드 시점에 값이 없으면 등록 폼 자체를 막는다
+// (§4 "site key 누락 → 등록 UI에서 제출 불가 또는 명확한 오류").
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 type SchoolLite = {
   id: string
@@ -65,6 +71,8 @@ function SubmitInner() {
 
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState('')
+  const captchaRef = useRef<CaptchaWidgetHandle>(null)
+  const [captchaStatus, setCaptchaStatus] = useState<CaptchaStatus>('loading')
   const [done, setDone] = useState<
     | {
         success: number
@@ -150,6 +158,8 @@ function SubmitInner() {
     if (selfMode && !normalizeInsta(valid[0].instagram)) {
       return setErr('연결할 인스타 ID를 입력해주세요.')
     }
+    if (!TURNSTILE_SITE_KEY) return setErr('지금은 등록 기능을 사용할 수 없어요. 잠시 후 다시 시도해주세요.')
+    if (captchaStatus !== 'ready') return setErr('보안 확인을 먼저 완료해주세요.')
 
     setSubmitting(true)
     const base = {
@@ -161,7 +171,10 @@ function SubmitInner() {
       student_year: isUni && studentYear ? Number(studentYear) : null,
     }
 
-    const { success, dup, fail, growthReward } = await registerPeople(valid, base)
+    const { success, dup, fail, growthReward } = await registerPeople(valid, base, () => {
+      if (!captchaRef.current) return Promise.reject(new Error('captcha-not-ready'))
+      return captchaRef.current.requestNextToken()
+    })
 
     let totalAtSchool = success
     const { count: schoolTotal } = await supabase
@@ -484,10 +497,24 @@ function SubmitInner() {
       {/* 제출 */}
       {school && (
         <section className="mt-10">
+          {TURNSTILE_SITE_KEY ? (
+            <div className="mb-4">
+              <p id="captcha-label" className="mb-2 text-xs font-medium text-neutral-500">
+                보안 확인
+              </p>
+              <div aria-labelledby="captcha-label">
+                <CaptchaWidget ref={captchaRef} siteKey={TURNSTILE_SITE_KEY} onStatusChange={setCaptchaStatus} />
+              </div>
+            </div>
+          ) : (
+            <p className="mb-4 text-center text-sm text-red-500">
+              지금은 등록 기능을 사용할 수 없어요. 잠시 후 다시 시도해주세요.
+            </p>
+          )}
           {err && <p className="mb-3 text-center text-sm text-red-500">{err}</p>}
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || !TURNSTILE_SITE_KEY || captchaStatus !== 'ready'}
             className="w-full rounded-2xl bg-neutral-900 py-4 text-base font-bold text-white transition active:scale-95 disabled:opacity-50"
           >
             {submitting ? '등록 중…' : selfMode ? '내 인스타 연결하기' : '등록하기'}
