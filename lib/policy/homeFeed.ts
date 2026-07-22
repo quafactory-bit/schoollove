@@ -4,6 +4,7 @@ import { calculatePeopleGrowthStage, formatPeopleGrowthRemainingLabel } from '@/
 import type { GrowthRankingRow } from '@/types/ranking'
 import type {
   HomeActivityItem,
+  CurrentRankingViewRow,
   RecentRegisterActivity,
   RecentTraceActivity,
   WeeklyRankingViewRow,
@@ -171,6 +172,10 @@ export function buildWeeklyRankingViewRow(row: GrowthRankingRow): WeeklyRankingV
     isNearGrowth: peopleGrowth.isNearGrowth,
     isComplete: peopleGrowth.isComplete,
   }
+}
+
+export function buildCurrentRankingViewRow(row: GrowthRankingRow): CurrentRankingViewRow {
+  return buildWeeklyRankingViewRow(row)
 }
 
 // ─── 피드 내 CTA 배치 ─────────────────────────────────────────

@@ -130,6 +130,8 @@ export async function getSchoolGrowthSnapshot(schoolId: string): Promise<SchoolG
 const GROWTH_RANKING_RPC = 'school_growth_ranking_v1'
 const WEEKLY_RANKING_LIMIT = 5
 const TODAY_RANKING_LIMIT = 1
+const CURRENT_RANKING_LIMIT = 3
+const ALL_TIME_START = new Date(0)
 
 type RawGrowthRankingRow = {
   school_id: unknown
@@ -240,6 +242,12 @@ export async function getWeeklySchoolGrowthRankingWithStatus(
   now: Date = new Date()
 ): Promise<GrowthRankingFetchResult> {
   return fetchGrowthRankingWithStatus(getRecentWeekStart(now), WEEKLY_RANKING_LIMIT)
+}
+
+// 현재 학교 순위 — 전체 기간의 공개 프로필 누적 수 기준 TOP 3.
+// 기존 RPC의 숨김 제외·최근 등록 시각·학교명 tie-break와 집계를 그대로 재사용한다.
+export async function getCurrentSchoolRankingWithStatus(): Promise<GrowthRankingFetchResult> {
+  return fetchGrowthRankingWithStatus(ALL_TIME_START, CURRENT_RANKING_LIMIT)
 }
 
 // "오늘 가장 빠르게 성장한 학교" — Asia/Seoul 기준 오늘 00:00부터 현재까지 TOP 1.

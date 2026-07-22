@@ -6,10 +6,9 @@ import Footer from '@/components/Footer';
 import TabBar from '@/components/TabBar';
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist', display: 'swap' });
 export const viewport: Viewport = {
-  themeColor: '#000000',
+  themeColor: '#FFFFFF',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 };
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.schoollove.kr'),

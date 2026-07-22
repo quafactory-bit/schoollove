@@ -420,3 +420,19 @@ describe('getWeeklySchoolGrowthRankingWithStatus — Home 순위 섹션 오류/�
     }
   })
 })
+
+describe('getCurrentSchoolRankingWithStatus — 누적 공개 프로필 현재 순위', () => {
+  it('전체 기간 시작 시각과 TOP 3 제한을 기존 집계 RPC에 전달한다', async () => {
+    const { supabase, supabaseServer } = createMockSupabase([])
+    supabaseServer.rpc.mockResolvedValue({ data: [], error: null })
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getCurrentSchoolRankingWithStatus } = await import('./schools')
+
+    await getCurrentSchoolRankingWithStatus()
+
+    expect(supabaseServer.rpc).toHaveBeenCalledWith('school_growth_ranking_v1', {
+      p_since: '1970-01-01T00:00:00.000Z',
+      p_limit: 3,
+    })
+  })
+})

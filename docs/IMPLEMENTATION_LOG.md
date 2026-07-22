@@ -8,6 +8,38 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 
 ---
 
+## 2026-07-22
+
+### 구현
+
+- Home 저채도 아이보리 시각 체계와 의미 기반 타이포그래피 적용
+- Home 공통 배경 토큰을 흰색으로 전환하고 흰색 배경 AA 대비에 맞춰 보조·성장·경고 색상 명도 조정
+- 누적 공개 프로필 기준 현재 학교 순위 TOP 3 적용
+- 활동 카드를 얇은 구분선 피드로 변경하고 하단 내비게이션 색상 통합
+
+### 관련 파일
+
+- app/page.tsx, app/globals.css, app/layout.tsx
+- components/CurrentSchoolRanking.tsx, components/HomeActivityItem.tsx, components/HomeFeedCta.tsx, components/TabBar.tsx
+- lib/api/schools.ts, lib/policy/homeFeed.ts, types/homeFeed.ts, tailwind.config.ts
+
+### 검증
+
+- `npm.cmd run typecheck` 통과
+- 변경 관련 테스트 67개 통과
+- 전체 테스트 772개 통과
+- `npm.cmd run build` 통과
+- `git diff --check` 통과
+- Edge Chromium 360×800 / 390×844 / 412×915 실제 렌더링 및 가로 오버플로우 0 확인
+- hosted Supabase의 `school_growth_ranking_v1` 존재와 반환 계약 일치 확인(읽기 전용)
+
+### 비고
+
+- Level Up/순위 이력/LIVE 집계 데이터가 없어 해당 값은 표시하지 않음
+- 모바일 검증에서 발견한 헤더·푸터 링크 터치 영역만 최소 44px로 보정
+
+---
+
 ## 기록 규칙
 
 각 개발 작업 완료 후 아래 형식으로 기록합니다.

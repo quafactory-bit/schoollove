@@ -9,6 +9,25 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        schoollove: {
+          bg: 'var(--schoollove-bg)',
+          surface: 'var(--schoollove-surface)',
+          'surface-subtle': 'var(--schoollove-surface-subtle)',
+          'surface-pressed': 'var(--schoollove-surface-pressed)',
+          text: 'var(--schoollove-text)',
+          secondary: 'var(--schoollove-text-secondary)',
+          muted: 'var(--schoollove-text-muted)',
+          border: 'var(--schoollove-border)',
+          'progress-track': 'var(--schoollove-progress-track)',
+          school: 'var(--schoollove-school)',
+          number: 'var(--schoollove-number)',
+          level: 'var(--schoollove-level)',
+          growth: 'var(--schoollove-growth)',
+          system: 'var(--schoollove-system)',
+          warning: 'var(--schoollove-warning)',
+          'system-soft': 'var(--schoollove-system-soft)',
+          'neutral-soft': 'var(--schoollove-neutral-soft)',
+        },
         // 브랜드 컬러를 흑백 모노톤으로 통일 (클래스명 유지 -> 코드 수정 없이 전 페이지 적용)
         brand: {
           blue: '#0a0a0a',
@@ -30,6 +49,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['Pretendard', 'system-ui', 'sans-serif'],
+        status: ['var(--font-schoollove-mono)'],
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],

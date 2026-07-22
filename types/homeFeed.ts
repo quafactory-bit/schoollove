@@ -44,7 +44,7 @@ export type HomeActivityItem = {
 
 // "이번 주 학교 성장 순위" 한 행 — GrowthRankingRow(types/ranking.ts)에 School Hub의
 // 사람 수 성장 helper(calculatePeopleGrowthStage) 결과를 합쳐 화면이 바로 쓸 수 있게 만든 뷰.
-export type WeeklyRankingViewRow = {
+export type CurrentRankingViewRow = {
   rank: number
   schoolId: string
   schoolName: string
@@ -58,3 +58,5 @@ export type WeeklyRankingViewRow = {
   isNearGrowth: boolean
   isComplete: boolean
 }
+
+export type WeeklyRankingViewRow = CurrentRankingViewRow
