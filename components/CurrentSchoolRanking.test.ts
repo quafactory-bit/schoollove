@@ -23,4 +23,12 @@ describe('CurrentSchoolRanking 홈 순위 UI 계약', () => {
     expect(SOURCE).toContain('row.progressPercent')
     expect(SOURCE).not.toMatch(/[▲▼]/)
   })
+
+  it('작은 랭킹 HUD에는 레트로 폰트와 제한된 형광 포인트를 적용한다', () => {
+    expect(SOURCE).toContain('font-retro text-[11px]')
+    expect(SOURCE).toContain('font-retro pt-0.5')
+    expect(SOURCE).toContain('text-schoollove-electric-blue')
+    expect(SOURCE).toContain('bg-schoollove-electric-blue')
+    expect(SOURCE).toContain('bg-schoollove-neon-lime')
+  })
 })

@@ -177,6 +177,29 @@ describe('registerPeople', () => {
   })
 })
 
+describe('registerPeople — 한마디 payload', () => {
+  it('사람별 한마디를 앞뒤 공백 없이 각각의 등록 payload에 보존한다', async () => {
+    fetchMock.mockResolvedValue(fetchResponse(true, 201))
+
+    await registerPeople(
+      [person('첫째', { message: '  첫 번째 한마디  ' }), person('둘째', { message: '두 번째 한마디' })],
+      BASE,
+      getToken
+    )
+
+    const messages = fetchMock.mock.calls.map(([, options]) => JSON.parse(options.body).message)
+    expect(messages).toEqual(['첫 번째 한마디', '두 번째 한마디'])
+  })
+
+  it('공백만 입력한 한마디는 기존 API 계약대로 null로 전송한다', async () => {
+    fetchMock.mockResolvedValue(fetchResponse(true, 201))
+
+    await registerPeople([person('공백', { message: '   ' })], BASE, getToken)
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).message).toBeNull()
+  })
+})
+
 describe('registerPeople — PHASE 9 CAPTCHA 토큰 배급(사람마다 새 토큰 요청)', () => {
   it('사람 수만큼 getCaptchaToken을 호출하고, 각 POST body에 그 시점의 토큰을 담는다', async () => {
     fetchMock.mockResolvedValue(fetchResponse(true, 201))

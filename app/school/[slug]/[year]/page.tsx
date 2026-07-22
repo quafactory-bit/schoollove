@@ -105,7 +105,7 @@ export default async function YearPage({ params }: PageProps) {
             <div className="flex items-center gap-2">
               <p className="font-semibold text-gray-900">이 기수 지금</p>
               {state === 'active' && (
-                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-600">
+                <span className="font-retro rounded-sm bg-schoollove-neon-mint px-2 py-0.5 text-[11px] font-normal text-schoollove-text">
                   활발한 기수
                 </span>
               )}
@@ -142,7 +142,7 @@ export default async function YearPage({ params }: PageProps) {
                       {mostActiveClass &&
                         c.grade === mostActiveClass.grade &&
                         c.classNumber === mostActiveClass.classNumber && (
-                          <span className="ml-1 text-blue-500">· 활발</span>
+                          <span className="ml-1 font-retro text-schoollove-level">· 활발</span>
                         )}
                     </p>
                   </Link>

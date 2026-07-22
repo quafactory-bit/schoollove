@@ -38,10 +38,11 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        <h1 className="mt-10 break-keep text-[32px] font-semibold leading-[1.32] tracking-[-0.035em] text-schoollove-text sm:text-[36px]">
-          <span className="text-schoollove-system">지금</span>, <span className="text-schoollove-school">학교들이</span>
+        <p className="mt-10 font-retro text-[11px] tracking-[0.12em] text-schoollove-electric-blue">GROWTH ONLINE</p>
+        <h1 className="mt-2 break-keep text-[32px] font-semibold leading-[1.32] tracking-normal text-schoollove-text sm:text-[36px]">
+          <span>지금</span>, <span>학교들이</span>
           <br />
-          <span className="text-schoollove-growth">성장하고</span> 있어요.
+          <span>성장하고</span> 있어요.
         </h1>
       </header>
 

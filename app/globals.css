@@ -4,22 +4,34 @@
 :root {
   --schoollove-bg: #ffffff;
   --schoollove-surface: #ffffff;
-  --schoollove-surface-subtle: #fafaf8;
-  --schoollove-surface-pressed: #f7f7f5;
-  --schoollove-text: #292826;
-  --schoollove-text-secondary: #68645f;
-  --schoollove-text-muted: #7a756e;
-  --schoollove-border: #e5e2dd;
-  --schoollove-progress-track: #e8e5e0;
-  --schoollove-school: #58718a;
-  --schoollove-number: #60758a;
-  --schoollove-level: #7d6e90;
-  --schoollove-growth: #637b63;
-  --schoollove-system: #a86552;
-  --schoollove-warning: #8c6d3b;
-  --schoollove-system-soft: #f3e5df;
-  --schoollove-neutral-soft: #eeeae3;
-  --font-schoollove-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --schoollove-surface-subtle: #f7f7f7;
+  --schoollove-surface-pressed: #f1f5f9;
+  --schoollove-text: #111111;
+  --schoollove-text-secondary: #5b5b5b;
+  --schoollove-text-muted: #8a8a8a;
+  --schoollove-border: #e8e8e8;
+  --schoollove-progress-track: #e8e8e8;
+  --schoollove-school: #111111;
+  --schoollove-number: #111827;
+  --schoollove-level: #4f7cff;
+  --schoollove-growth: #32e6b7;
+  --schoollove-system: #ff9f43;
+  --schoollove-warning: #b7f84a;
+  --schoollove-system-soft: #fff4e6;
+  --schoollove-neutral-soft: #f7f7f7;
+  --schoollove-neon-mint: #32e6b7;
+  --schoollove-neon-lime: #b7f84a;
+  --schoollove-electric-blue: #4f7cff;
+  --schoollove-neon-orange: #ff9f43;
+  --font-schoollove-retro: "NeoDunggeunmo", ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-schoollove-mono: var(--font-schoollove-retro);
+}
+@font-face {
+  font-family: "NeoDunggeunmo";
+  src: url("/fonts/neodgm/neodgm.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 @layer base {
   * {
@@ -34,7 +46,7 @@
   body {
     @apply bg-schoollove-bg text-schoollove-text font-sans;
     min-height: 100dvh;
-    letter-spacing: -0.018em;
+    letter-spacing: 0;
   }
   /* 스크롤바 */
   ::-webkit-scrollbar {
@@ -53,7 +65,7 @@
 }
 @layer utilities {
   .schoollove-focus {
-    @apply outline-none focus-visible:ring-2 focus-visible:ring-schoollove-school focus-visible:ring-offset-2 focus-visible:ring-offset-schoollove-bg;
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-schoollove-level focus-visible:ring-offset-2 focus-visible:ring-offset-schoollove-bg;
   }
 }
 @layer components {
@@ -70,7 +82,7 @@
     @apply bg-white text-gray-700 font-medium py-3 px-6 rounded-2xl border border-gray-200 hover:bg-gray-50 transition-colors;
   }
   .input-base {
-    @apply w-full border border-gray-200 rounded-2xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition-all;
+    @apply w-full border border-schoollove-border rounded-2xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-schoollove-level focus:ring-1 focus:ring-schoollove-level/20 transition-all;
   }
   .chip {
     @apply inline-flex items-center px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer;

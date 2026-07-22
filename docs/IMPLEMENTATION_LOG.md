@@ -8,6 +8,59 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 
 ---
 
+## 2026-07-22 — Phase 10G-H
+
+### Implementation
+
+- Restored the optional per-person registration message input so it is visible without waiting for a nickname.
+- Aligned the field label, placeholder, maxlength counter, and per-person state handling with the existing `POST /api/profiles` message contract.
+- Kept payload normalization at the existing boundary: trimmed messages are sent, and blank messages become `null`.
+- Added a self-hosted NeoDunggeunmo webfont for small retro RPG-style HUD labels while keeping large Korean headings and school names black.
+- Replaced remaining large semantic color emphasis on Home with black/deep-navy typography and limited neon accents to small labels, numbers, status chips, and progress bars.
+- Removed the external Pretendard runtime CDN dependency from the root layout.
+
+### Files
+
+- app/globals.css
+- app/layout.tsx
+- app/page.tsx
+- app/retroTypographyColorSystem.test.ts
+- app/submit/page.tsx
+- app/submit/personFormState.ts
+- app/submit/page.test.ts
+- app/submit/personFormState.test.ts
+- app/submit/registerPeople.test.ts
+- components/CurrentSchoolRanking.tsx
+- components/CurrentSchoolRanking.test.ts
+- components/HomeActivityItem.tsx
+- components/HomeActivityItem.test.ts
+- components/RegistrationGrowthRewardCard.tsx
+- components/RegistrationGrowthRewardCard.test.ts
+- components/SearchBar.tsx
+- components/SearchBar.test.ts
+- public/fonts/neodgm/LICENSE.txt
+- public/fonts/neodgm/neodgm.woff2
+- tailwind.config.ts
+
+### Verification
+
+- Targeted submit/profile/home/ranking/search/growth tests passed locally: 15 files, 199 tests.
+- TypeScript passed locally.
+- Full test suite passed locally: 57 files, 796 tests.
+- Production build passed locally.
+- `git diff --check` passed locally.
+- Edge headless responsive rendering checked locally at 360, 390, 412, and desktop widths for Home, and at 360, 390, and 412 widths for the initial Submit screen.
+- Status: LOCAL_VERIFIED
+
+### Notes
+
+- No API route, database schema, migration, RLS, GRANT, CAPTCHA, rate-limit, or remote-service changes.
+- No Production registration retry was performed.
+- NeoDunggeunmo is bundled from the official v1.601 release. License text is included at `public/fonts/neodgm/LICENSE.txt`.
+- Production visual verification has not been performed in this phase.
+
+---
+
 ## 2026-07-22
 
 ### 구현

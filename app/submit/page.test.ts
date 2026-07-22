@@ -39,3 +39,31 @@ describe('app/submit/page.tsx — PHASE 9 CAPTCHA 통합', () => {
     expect(SOURCE).not.toMatch(/sessionStorage/)
   })
 })
+
+describe('app/submit/page.tsx mobile touch targets', () => {
+  it('keeps the selected-school change button at a 44px minimum hit area', () => {
+    expect(SOURCE).toMatch(/min-h-11 min-w-11/)
+  })
+
+  it('keeps person remove buttons and message preset chips at 44px minimum hit areas', () => {
+    expect(SOURCE).toMatch(/inline-flex min-h-11 min-w-11 shrink-0/)
+    expect(SOURCE).toMatch(/inline-flex min-h-11 items-center justify-center rounded-full/)
+  })
+
+  it('makes the instagram self-consent checkbox row a 44px label hit area', () => {
+    expect(SOURCE).toMatch(/<label className="mt-2\.5 flex min-h-11 cursor-pointer/)
+  })
+})
+
+describe('app/submit/page.tsx — 등록 대상별 한마디 입력', () => {
+  it('이름 입력 여부와 관계없이 각 사람 카드에 선택 한마디 입력을 렌더한다', () => {
+    expect(SOURCE).toMatch(/한마디 남기기 \(선택\)/)
+    expect(SOURCE).toMatch(/기억을 도울 짧은 한마디를 남겨보세요/)
+    expect(SOURCE).not.toMatch(/\{p\.nickname\.trim\(\) && \(/)
+  })
+
+  it('API 최대 길이 상수와 연결된 maxlength 및 길이 안내를 사용한다', () => {
+    expect(SOURCE).toMatch(/maxLength=\{PROFILE_MESSAGE_MAX_LENGTH\}/)
+    expect(SOURCE).toMatch(/\{p\.message\.length\}\/\{PROFILE_MESSAGE_MAX_LENGTH\}/)
+  })
+})

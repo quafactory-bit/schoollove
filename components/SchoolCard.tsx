@@ -14,7 +14,7 @@ export default function SchoolCard({ school, variant = 'default' }: SchoolCardPr
     return (
       <Link
         href={`/school/${school.slug}`}
-        className="block p-3 bg-white border border-gray-200 rounded-xl hover:border-brand-blue hover:shadow-card transition-all"
+        className="block p-3 bg-white border border-gray-200 rounded-xl hover:border-schoollove-electric-blue hover:shadow-card transition-all"
       >
         <div className="flex items-start gap-2">
           <SchoolIcon type={school.school_type} size="sm" />
@@ -32,12 +32,12 @@ export default function SchoolCard({ school, variant = 'default' }: SchoolCardPr
   return (
     <Link
       href={`/school/${school.slug}`}
-      className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-brand-blue hover:shadow-card transition-all group"
+      className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-schoollove-electric-blue hover:shadow-card transition-all group"
     >
       <SchoolIcon type={school.school_type} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-gray-900 group-hover:text-brand-blue transition-colors truncate">
+          <span className="text-sm font-semibold text-gray-900 transition-colors truncate">
             {school.school_name}
           </span>
           <span
@@ -61,7 +61,7 @@ export default function SchoolCard({ school, variant = 'default' }: SchoolCardPr
           )}
         </div>
       </div>
-      <span className="text-gray-400 group-hover:text-brand-blue transition-colors text-lg shrink-0">›</span>
+      <span className="text-gray-400 group-hover:text-schoollove-electric-blue transition-colors text-lg shrink-0">›</span>
     </Link>
   )
 }
@@ -82,11 +82,11 @@ export function SchoolIcon({
   }
 
   const bgColor: Record<School['school_type'], string> = {
-    elementary: 'bg-green-50',
-    middle: 'bg-blue-50',
-    high: 'bg-purple-50',
-    university: 'bg-orange-50',
-    college: 'bg-pink-50',
+    elementary: 'bg-schoollove-surface-subtle',
+    middle: 'bg-schoollove-surface-subtle',
+    high: 'bg-schoollove-surface-subtle',
+    university: 'bg-schoollove-surface-subtle',
+    college: 'bg-schoollove-surface-subtle',
   }
 
   return (

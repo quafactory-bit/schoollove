@@ -40,18 +40,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" className={geist.variable}>
-      <head>
-        {/* 한글용 Pretendard (영문은 Geist 유지) */}
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
-        />
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `body{font-family:'Pretendard Variable',Pretendard,var(--font-geist),-apple-system,BlinkMacSystemFont,system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;letter-spacing:-0.018em;}`,
-          }}
-        />
-      </head>
+      <head />
       <body className="antialiased">
         <Providers>
           {/* 하단 탭바에 콘텐츠가 가리지 않게 여백 확보 */}

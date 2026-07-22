@@ -21,14 +21,14 @@ export default function RegistrationGrowthRewardCard({ copy }: Props) {
   const headlineText = renderHeadline(copy.headline)
 
   return (
-    <div className="mt-6 w-full rounded-2xl border border-blue-100 bg-blue-50 px-5 py-5 text-center">
-      {headlineText && <p className="text-lg font-extrabold text-blue-900">{headlineText}</p>}
-      <p className="mt-1 text-sm text-blue-700">{copy.description}</p>
+    <div className="mt-6 w-full border border-schoollove-border bg-schoollove-surface-subtle px-5 py-5 text-center">
+      {headlineText && <p className="font-retro text-lg font-normal text-schoollove-text">{headlineText}</p>}
+      <p className="mt-1 text-sm text-schoollove-secondary">{copy.description}</p>
 
       {copy.progressBar && (
         <div className="mt-3 space-y-1.5">
           <div
-            className="h-2 w-full overflow-hidden rounded-full bg-gray-200"
+            className="h-2 w-full overflow-hidden bg-schoollove-progress-track"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
@@ -36,11 +36,11 @@ export default function RegistrationGrowthRewardCard({ copy }: Props) {
             aria-label="학교 성장 진행률"
           >
             <div
-              className="h-full rounded-full bg-blue-400 transition-[width]"
+              className="h-full bg-schoollove-electric-blue transition-[width]"
               style={{ width: `${copy.progressBar.percent}%` }}
             />
           </div>
-          <p className="text-xs text-blue-600">{copy.progressBar.remainingLabel}</p>
+          <p className="font-retro text-xs text-schoollove-level">{copy.progressBar.remainingLabel}</p>
         </div>
       )}
     </div>

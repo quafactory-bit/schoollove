@@ -11,10 +11,12 @@ describe('HomeActivityItem 구분선 피드 계약', () => {
     expect(SOURCE).not.toContain('shadow')
   })
 
-  it('상태·학교·성장 문장을 의미별 색상과 굵기로 나눈다', () => {
-    expect(SOURCE).toContain('text-schoollove-system')
+  it('본문 문장은 검정 중심으로 유지하고 작은 상태 HUD에만 레트로 포인트를 쓴다', () => {
+    expect(SOURCE).toContain('font-retro text-[10px]')
+    expect(SOURCE).toContain('text-schoollove-neon-orange')
+    expect(SOURCE).toContain('text-schoollove-electric-blue')
     expect(SOURCE).toContain('text-schoollove-school')
-    expect(SOURCE).toContain('text-schoollove-growth')
+    expect(SOURCE).not.toContain('text-schoollove-growth">{action}</span>')
   })
 
   it('피드 링크에 aria-label과 최소 터치 높이가 있다', () => {

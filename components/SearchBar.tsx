@@ -173,8 +173,8 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
             autoComplete="off"
             className={
               variant === 'home'
-                ? 'w-full rounded-full border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-[14px] outline-none transition focus:border-neutral-900'
-                : 'w-full pl-11 pr-4 py-3.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
+                ? 'w-full rounded-full border border-schoollove-border bg-white py-2.5 pl-10 pr-4 text-[14px] outline-none transition focus:border-schoollove-electric-blue focus:ring-2 focus:ring-schoollove-electric-blue/15'
+                : 'w-full rounded-xl border border-schoollove-border bg-white py-3.5 pl-11 pr-4 text-sm focus:border-schoollove-electric-blue focus:outline-none focus:ring-2 focus:ring-schoollove-electric-blue/15'
             }
           />
         </div>
@@ -205,7 +205,7 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => navigateToFullSearch(query)}
-                className="font-medium text-blue-600 hover:underline"
+                className="font-medium text-schoollove-text hover:underline"
               >
                 '{query.trim()}' 전체 검색
               </button>
@@ -225,8 +225,8 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
                   navigateToSchool(school.slug)
                 }}
                 className={
-                  'flex min-w-0 cursor-pointer items-center justify-between gap-3 border-b border-gray-50 px-4 py-3 last:border-0 hover:bg-gray-50 ' +
-                  (index === activeIndex ? 'bg-blue-50' : '')
+                  'flex min-w-0 cursor-pointer items-center justify-between gap-3 border-b border-schoollove-border px-4 py-3 last:border-0 hover:bg-schoollove-surface-subtle ' +
+                  (index === activeIndex ? 'bg-schoollove-surface-pressed' : '')
                 }
               >
                 <div className="min-w-0">

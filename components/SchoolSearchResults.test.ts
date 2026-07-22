@@ -76,3 +76,12 @@ describe('SchoolSearchResults — 실행 단위 로그 dedupe', () => {
     expect(source).toMatch(/executionRef\.current !== executionId/)
   })
 })
+
+describe('SchoolSearchResults — 검색 결과 색상 시스템 계약', () => {
+  it('검색 결과 CTA와 결과 배지는 schoollove 토큰을 사용하고 원색 blue 유틸리티를 쓰지 않는다', () => {
+    expect(source).toContain('bg-schoollove-text')
+    expect(source).toContain('hover:border-schoollove-electric-blue')
+    expect(source).toContain('bg-schoollove-neon-mint')
+    expect(source).not.toMatch(/bg-blue|text-blue|border-blue|hover:border-blue/)
+  })
+})

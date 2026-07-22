@@ -29,3 +29,16 @@ describe('SearchBar — 전체 검색은 sessionStorage로만 검색어를 전�
     expect(source).not.toMatch(/\/search\?q=/)
   })
 })
+
+describe('SearchBar — 레트로 컬러 시스템 검색 UI 계약', () => {
+  it('입력 focus는 Electric Blue 토큰을 쓰고 원색 blue 유틸리티를 쓰지 않는다', () => {
+    expect(source).toContain('focus:border-schoollove-electric-blue')
+    expect(source).toContain('focus:ring-schoollove-electric-blue/15')
+    expect(source).not.toMatch(/focus:border-blue|focus:ring-blue|text-blue|bg-blue/)
+  })
+
+  it('선택 상태는 은은한 surface 토큰으로만 표시한다', () => {
+    expect(source).toContain('bg-schoollove-surface-pressed')
+    expect(source).toContain('hover:bg-schoollove-surface-subtle')
+  })
+})
