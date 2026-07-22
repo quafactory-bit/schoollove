@@ -21,8 +21,8 @@ export default async function HomePage() {
   const ctaVisibility = getFeedCtaVisibility(activityItems.length)
 
   return (
-    <main className="mx-auto w-full max-w-[600px] overflow-x-clip px-5 pb-12 sm:px-6">
-      <header className="pt-7">
+    <main className="mx-auto w-full max-w-[1180px] overflow-x-clip px-5 pb-16 sm:px-6 lg:px-8">
+      <header className="pt-7 lg:pt-12">
         <div className="flex items-start justify-between gap-4">
           <div>
             <Link href="/" className="schoollove-focus inline-flex min-h-11 items-center text-[18px] font-semibold tracking-tight text-schoollove-text">
@@ -38,20 +38,42 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        <p className="mt-10 font-retro text-[11px] tracking-[0.12em] text-schoollove-electric-blue">GROWTH ONLINE</p>
-        <h1 className="mt-2 break-keep text-[32px] font-semibold leading-[1.32] tracking-normal text-schoollove-text sm:text-[36px]">
-          <span>지금</span>, <span>학교들이</span>
-          <br />
-          <span>성장하고</span> 있어요.
-        </h1>
+        <div className="mt-10 grid gap-7 lg:mt-14 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-end">
+          <div>
+            <p className="font-retro text-[12px] tracking-[0.14em] text-schoollove-electric-blue sm:text-[13px]">GROWTH ONLINE</p>
+            <h1 className="mt-3 max-w-[780px] break-keep text-[36px] font-semibold leading-[1.22] tracking-[-0.02em] text-schoollove-text sm:text-[44px] lg:text-[56px]">
+              <span>지금</span>, <span>학교들이</span>
+              <br />
+              <span>성장하고</span> 있어요.
+            </h1>
+          </div>
+          <div className="border border-schoollove-border bg-schoollove-surface-subtle p-5 lg:p-6" aria-label="홈 성장 상태">
+            <p className="font-retro text-[12px] tracking-[0.14em] text-schoollove-neon-mint">GROWTH STATUS</p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div>
+                <p className="font-retro text-[11px] tracking-[0.08em] text-schoollove-secondary">CURRENT RANK</p>
+                <p className="mt-1 text-[12px] text-schoollove-secondary">순위에 오른 학교</p>
+                <p className="mt-1 font-retro text-[24px] leading-none text-schoollove-text">{rankingRows.length}곳</p>
+              </div>
+              <div>
+                <p className="font-retro text-[11px] tracking-[0.08em] text-schoollove-secondary">LIVE FEED</p>
+                <p className="mt-1 text-[12px] text-schoollove-secondary">최근 성장 소식</p>
+                <p className="mt-1 font-retro text-[24px] leading-none text-schoollove-text">{activityItems.length}건</p>
+              </div>
+            </div>
+            <p className="mt-5 text-[13px] leading-5 text-schoollove-secondary">
+              실제 공개 등록과 흔적만 모아 학교 성장 상태를 보여줘요.
+            </p>
+          </div>
+        </div>
       </header>
 
       <CurrentSchoolRanking status={rankingResult.status} rows={rankingRows} />
 
-      <section className="mt-10 border-t border-schoollove-border pt-6" aria-labelledby="live-feed-title">
-        <p className="font-status text-[11px] font-medium tracking-[0.12em] text-schoollove-secondary">LIVE FEED</p>
-        <h2 id="live-feed-title" className="mt-2 text-[20px] font-semibold tracking-tight text-schoollove-text">성장 소식</h2>
-        <div className="mt-3">
+      <section className="mt-12 border-t border-schoollove-border pt-7 lg:mt-16 lg:pt-9" aria-labelledby="live-feed-title">
+        <p className="font-retro text-[12px] font-normal tracking-[0.14em] text-schoollove-neon-orange sm:text-[13px]">LIVE FEED</p>
+        <h2 id="live-feed-title" className="mt-2 text-[24px] font-semibold tracking-[-0.01em] text-schoollove-text lg:text-[28px]">성장 소식</h2>
+        <div className="mt-5">
           <HomeActivityFeed items={activityItems} now={now} />
         </div>
         {activityItems.length === 0 && (

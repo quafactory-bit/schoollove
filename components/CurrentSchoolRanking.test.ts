@@ -19,16 +19,18 @@ describe('CurrentSchoolRanking 홈 순위 UI 계약', () => {
 
   it('마지막 행의 중복 구분선을 제거하고 의미 색상과 진행률을 사용한다', () => {
     expect(SOURCE).toContain('last:border-b-0')
-    expect(SOURCE).toContain('text-schoollove-school')
+    expect(SOURCE).toContain('text-schoollove-text group-hover:underline')
     expect(SOURCE).toContain('row.progressPercent')
     expect(SOURCE).not.toMatch(/[▲▼]/)
   })
 
   it('작은 랭킹 HUD에는 레트로 폰트와 제한된 형광 포인트를 적용한다', () => {
-    expect(SOURCE).toContain('font-retro text-[11px]')
+    expect(SOURCE).toContain('font-retro text-[12px]')
     expect(SOURCE).toContain('font-retro pt-0.5')
+    expect(SOURCE).toContain('lg:text-[30px]')
     expect(SOURCE).toContain('text-schoollove-electric-blue')
     expect(SOURCE).toContain('bg-schoollove-electric-blue')
     expect(SOURCE).toContain('bg-schoollove-neon-lime')
+    expect(SOURCE).toContain('Math.round(row.progressPercent)')
   })
 })

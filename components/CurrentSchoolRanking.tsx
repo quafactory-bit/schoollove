@@ -13,16 +13,16 @@ function levelLabel(level: number) {
 
 export default function CurrentSchoolRanking({ status, rows }: Props) {
   return (
-    <section className="mt-10 border-t border-schoollove-border pt-6" aria-labelledby="current-rank-title">
-      <p className="font-retro text-[11px] font-normal tracking-[0.12em] text-schoollove-electric-blue">CURRENT RANK</p>
-      <h2 id="current-rank-title" className="mt-2 text-[20px] font-semibold tracking-normal text-schoollove-text">
+    <section className="mt-12 border-t border-schoollove-border pt-7 lg:mt-16 lg:pt-9" aria-labelledby="current-rank-title">
+      <p className="font-retro text-[12px] font-normal tracking-[0.14em] text-schoollove-electric-blue sm:text-[13px]">CURRENT RANK</p>
+      <h2 id="current-rank-title" className="mt-2 text-[26px] font-semibold tracking-[-0.01em] text-schoollove-text lg:text-[32px]">
         현재 학교 순위
       </h2>
       <p className="mt-1 text-[13px] leading-5 text-schoollove-secondary">
         지금까지 등록된 공개 프로필을 기준으로 집계했어요
       </p>
 
-      <div className="mt-5 border border-schoollove-border bg-schoollove-surface">
+      <div className="mt-6 border border-schoollove-border bg-schoollove-surface">
         {status === 'error' ? (
           <p className="px-5 py-8 text-center text-[14px] text-schoollove-secondary" role="status">
             지금은 순위를 불러오지 못했어요. 잠시 후 다시 확인해 주세요.
@@ -45,18 +45,18 @@ export default function CurrentSchoolRanking({ status, rows }: Props) {
                   <Link
                     href={`/school/${row.slug}`}
                     aria-label={aria}
-                    className="schoollove-focus group grid min-h-11 grid-cols-[2.25rem_minmax(0,1fr)] gap-3 px-4 py-5 sm:grid-cols-[2.5rem_minmax(0,1fr)]"
+                    className="schoollove-focus group grid min-h-11 grid-cols-[3rem_minmax(0,1fr)] gap-4 border-l-4 border-l-schoollove-electric-blue/70 px-4 py-5 sm:grid-cols-[3.5rem_minmax(0,1fr)] lg:grid-cols-[4.5rem_minmax(0,1fr)_minmax(220px,0.55fr)] lg:items-center lg:gap-6 lg:px-7 lg:py-7"
                   >
-                    <span className="font-retro pt-0.5 text-[17px] font-normal tracking-normal text-schoollove-text">
+                    <span className="font-retro pt-0.5 text-[22px] font-normal leading-none tracking-normal text-schoollove-text lg:text-[30px]">
                       {String(row.rank).padStart(2, '0')}
                     </span>
                     <span className="min-w-0">
-                      <span className="block break-keep text-[16px] font-semibold leading-6 text-schoollove-school group-hover:underline">
+                      <span className="block break-keep text-[17px] font-semibold leading-6 text-schoollove-text group-hover:underline lg:text-[21px] lg:leading-7">
                         {row.schoolName}
                       </span>
-                      <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[12px] leading-5">
+                      <span className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 text-[13px] leading-5 lg:text-[14px]">
                         <span className="font-retro font-normal text-schoollove-number">{formatNumber(row.visibleProfileCount)}명</span>
-                        {level && <span className="font-retro font-normal text-schoollove-level">{level}</span>}
+                        {level && <span className="font-retro rounded-sm bg-schoollove-level/10 px-1.5 py-0.5 font-normal text-schoollove-level">{level}</span>}
                         {row.remainingLabel && (
                           <span className="text-schoollove-secondary">
                             다음 성장 단계까지{' '}
@@ -67,7 +67,20 @@ export default function CurrentSchoolRanking({ status, rows }: Props) {
                         )}
                         {row.isComplete && <span className="font-retro rounded-sm bg-schoollove-neon-mint px-1 py-0.5 font-normal text-schoollove-text">활발</span>}
                       </span>
-                      <span className="mt-3 block h-[3px] overflow-hidden bg-schoollove-progress-track" aria-hidden="true">
+                      <span className="mt-3 flex items-center justify-between gap-3 font-retro text-[11px] text-schoollove-secondary lg:hidden">
+                        <span>PROGRESS</span>
+                        <span className="text-schoollove-electric-blue">{Math.round(row.progressPercent)}%</span>
+                      </span>
+                      <span className="mt-2 block h-[5px] overflow-hidden bg-schoollove-progress-track lg:hidden" aria-hidden="true">
+                        <span className="block h-full bg-schoollove-electric-blue" style={{ width: `${row.progressPercent}%` }} />
+                      </span>
+                    </span>
+                    <span className="hidden min-w-0 lg:block">
+                      <span className="mb-2 flex items-center justify-between gap-3 font-retro text-[12px] text-schoollove-secondary">
+                        <span>PROGRESS</span>
+                        <span className="text-schoollove-electric-blue">{Math.round(row.progressPercent)}%</span>
+                      </span>
+                      <span className="block h-[7px] overflow-hidden bg-schoollove-progress-track" aria-hidden="true">
                         <span className="block h-full bg-schoollove-electric-blue" style={{ width: `${row.progressPercent}%` }} />
                       </span>
                     </span>
