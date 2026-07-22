@@ -44,3 +44,18 @@ describe('app/page.tsx — 레트로 RPG 타이포그래피 색상 계약', () =
     expect(PAGE_SOURCE).toContain('{activityItems.length}건')
   })
 })
+
+describe('app/page.tsx — desktop persistent navigation contract', () => {
+  it('shows search and registration CTAs in the desktop header', () => {
+    expect(PAGE_SOURCE).toContain('hidden items-center gap-2 lg:flex')
+    expect(PAGE_SOURCE).toContain('href="/search"')
+    expect(PAGE_SOURCE).toContain('학교 찾기')
+    expect(PAGE_SOURCE).toContain('href="/submit"')
+    expect(PAGE_SOURCE).toContain('내 이름 남기기')
+  })
+
+  it('keeps the contextual feed CTAs for search and registration', () => {
+    expect(PAGE_SOURCE).toContain('buttonLabel="학교 찾아보기" href="/search"')
+    expect(PAGE_SOURCE).toContain('buttonLabel="내 이름 남기기" href="/submit"')
+  })
+})

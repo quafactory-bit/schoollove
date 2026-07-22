@@ -30,12 +30,20 @@ export default async function HomePage() {
             </Link>
             <p className="mt-1 text-[13px] text-schoollove-secondary">학교와 사람을 다시 발견하는 곳</p>
           </div>
-          <Link
-            href="/search"
-            className="schoollove-focus inline-flex min-h-11 items-center text-[13px] font-medium text-schoollove-secondary"
-          >
-            학교 찾기
-          </Link>
+          <nav className="hidden items-center gap-2 lg:flex" aria-label="빠른 이동">
+            <Link
+              href="/search"
+              className="schoollove-focus inline-flex min-h-11 items-center border border-schoollove-border px-4 text-[14px] font-semibold text-schoollove-text transition-colors hover:bg-schoollove-surface-subtle"
+            >
+              학교 찾기
+            </Link>
+            <Link
+              href="/submit"
+              className="schoollove-focus inline-flex min-h-11 items-center bg-schoollove-text px-4 text-[14px] font-semibold text-schoollove-bg transition-colors hover:bg-schoollove-text-secondary"
+            >
+              내 이름 남기기
+            </Link>
+          </nav>
         </div>
 
         <div className="mt-10 grid gap-7 lg:mt-14 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-end">
