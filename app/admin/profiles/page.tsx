@@ -25,6 +25,7 @@ export default function AdminProfilesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [searchError, setSearchError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
@@ -32,18 +33,24 @@ export default function AdminProfilesPage() {
   }, [])
 
   async function fetchProfiles(query = '') {
-    let q = supabase
-      .from('profiles')
-      .select('*, schools(school_name, school_type)')
-      .order('created_at', { ascending: false })
+    setLoading(true)
+    setSearchError(null)
+    try {
+      const response = await fetch(`/api/admin/profiles?q=${encodeURIComponent(query.trim())}`)
+      if (!response.ok) {
+        setProfiles([])
+        setSearchError('검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+        return
+      }
 
-    if (query) {
-      q = q.or(`nickname.ilike.%${query}%,schools.school_name.ilike.%${query}%`)
+      const data = await response.json() as { profiles?: Profile[] }
+      setProfiles(data.profiles ?? [])
+    } catch {
+      setProfiles([])
+      setSearchError('검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+    } finally {
+      setLoading(false)
     }
-
-    const { data } = await q
-    setProfiles(data || [])
-    setLoading(false)
   }
 
   async function toggleHidden(id: string, current: boolean) {
@@ -129,6 +136,10 @@ export default function AdminProfilesPage() {
             검색
           </button>
         </form>
+
+        {searchError && (
+          <p role="alert" className="mb-4 text-sm text-red-600">{searchError}</p>
+        )}
 
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">

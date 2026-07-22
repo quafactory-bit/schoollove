@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifySessionToken, ADMIN_COOKIE_NAME } from '@/lib/admin-auth';
-import { hideProfile, unhideProfile } from '@/lib/api/admin';
+import { getAdminProfiles, hideProfile, unhideProfile } from '@/lib/api/admin';
 
 const PatchSchema = z.object({
   id: z.string().uuid(),
@@ -14,6 +14,21 @@ async function requireAdmin(request: NextRequest): Promise<boolean> {
   const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
   if (!token) return false;
   return await verifySessionToken(token, adminPassword);
+}
+
+export async function GET(request: NextRequest) {
+  if (!(await requireAdmin(request))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const query = request.nextUrl.searchParams.get('q') ?? '';
+  const result = await getAdminProfiles(1, query, 0);
+
+  if (result.error) {
+    return NextResponse.json({ error: 'Search failed' }, { status: 500 });
+  }
+
+  return NextResponse.json({ profiles: result.profiles, total: result.total });
 }
 
 export async function PATCH(request: NextRequest) {
