@@ -17,3 +17,18 @@ describe('app/page.tsx — 홈 재검증 계약 (Phase 4B, docs/decisions/2026-0
     expect(PAGE_SOURCE).not.toMatch(/export const dynamic = ['"]force-dynamic['"]/)
   })
 })
+
+describe('app/page.tsx — 레트로 RPG 타이포그래피 색상 계약', () => {
+  it('hero 큰 제목은 검정 본문 계열이고 형광 포인트를 직접 적용하지 않는다', () => {
+    const headline = PAGE_SOURCE.match(/<h1[\s\S]*?<\/h1>/)?.[0] ?? ''
+
+    expect(headline).toContain('text-schoollove-text')
+    expect(headline).not.toMatch(/text-schoollove-(neon|electric|level|growth|system|warning)/)
+  })
+
+  it('작은 상태 라벨에만 게임 UI 폰트와 포인트색을 사용한다', () => {
+    expect(PAGE_SOURCE).toContain('font-retro text-[11px]')
+    expect(PAGE_SOURCE).toContain('GROWTH ONLINE')
+    expect(PAGE_SOURCE).toContain('text-schoollove-electric-blue')
+  })
+})

@@ -106,7 +106,7 @@ export default function SchoolSearchResults() {
           <button
             type="button"
             onClick={() => runSearch(query)}
-            className="mt-3 text-sm font-medium text-blue-600 hover:underline"
+            className="mt-3 text-sm font-medium text-schoollove-text hover:underline"
           >
             다시 시도
           </button>
@@ -121,7 +121,7 @@ export default function SchoolSearchResults() {
           </p>
           <Link
             href="/submit"
-            className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm text-white"
+            className="mt-4 inline-block rounded-lg bg-schoollove-text px-4 py-2 text-sm text-white"
           >
             내 인스타 등록하기
           </Link>
@@ -138,7 +138,7 @@ export default function SchoolSearchResults() {
               <Link
                 key={school.id}
                 href={`/school/${school.slug}`}
-                className="flex items-center justify-between rounded-xl border border-gray-100 bg-white px-4 py-3.5 hover:border-blue-300 hover:shadow-sm"
+                className="flex items-center justify-between rounded-xl border border-schoollove-border bg-white px-4 py-3.5 hover:border-schoollove-electric-blue hover:shadow-sm"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🏫</span>
@@ -150,7 +150,7 @@ export default function SchoolSearchResults() {
                   </div>
                 </div>
                 {school.profile_count > 0 ? (
-                  <span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-500">
+                  <span className="font-retro rounded-sm bg-schoollove-neon-mint px-2 py-1 text-xs text-schoollove-text">
                     동문 {school.profile_count}명
                   </span>
                 ) : (

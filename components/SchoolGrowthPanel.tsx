@@ -54,15 +54,15 @@ export default function SchoolGrowthPanel({
     <div className="card overflow-hidden">
       <div className="p-5 space-y-4">
         {/* A. 학교 정체성 — Level은 현재 상태를 나타내는 배지일 뿐, 아래 성장 진행 영역과는
-            별도 트랙이다(시각적으로 분리: indigo 계열 vs 성장 영역의 blue 계열). */}
+            별도 트랙이다. */}
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-black text-gray-900">{schoolName}</h1>
-            <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
+            <span className="font-retro inline-flex items-center rounded-sm bg-schoollove-surface-subtle px-2.5 py-1 text-xs font-normal text-schoollove-level">
               Lv.{snapshot.effectiveLevel}
             </span>
             {snapshot.isNearLevelUp && (
-              <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700">
+              <span className="font-retro inline-flex items-center rounded-sm bg-schoollove-neon-lime px-2 py-0.5 text-[11px] font-normal text-schoollove-text">
                 레벨업 임박
               </span>
             )}
@@ -91,7 +91,7 @@ export default function SchoolGrowthPanel({
           <div className="flex items-center justify-between gap-2 text-sm">
             <span className="font-semibold text-gray-900">학교 성장</span>
             {peopleGrowth.isNearGrowth && (
-              <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-600">
+              <span className="font-retro shrink-0 rounded-sm bg-schoollove-neon-mint px-2 py-0.5 text-[11px] font-normal text-schoollove-text">
                 성장 임박
               </span>
             )}
@@ -106,9 +106,7 @@ export default function SchoolGrowthPanel({
             aria-label={`학교 성장 진행률 ${peopleGrowth.progressPercent}%`}
           >
             <div
-              className={`h-full rounded-full transition-[width] ${
-                peopleGrowth.isNearGrowth ? 'bg-blue-500' : 'bg-blue-400/70'
-              }`}
+              className="h-full rounded-full bg-schoollove-electric-blue transition-[width]"
               style={{ width: `${peopleGrowth.progressPercent}%` }}
             />
           </div>

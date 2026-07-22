@@ -18,13 +18,13 @@ export function schoolTypeLabel(type: string): string {
 
 export function schoolTypeBadgeColor(type: string): string {
   const map: Record<string, string> = {
-    elementary: 'bg-green-100 text-green-700',
-    middle: 'bg-blue-100 text-blue-700',
-    high: 'bg-purple-100 text-purple-700',
-    university: 'bg-orange-100 text-orange-700',
-    college: 'bg-pink-100 text-pink-700',
+    elementary: 'bg-schoollove-surface-subtle text-schoollove-text',
+    middle: 'bg-schoollove-surface-subtle text-schoollove-text',
+    high: 'bg-schoollove-surface-subtle text-schoollove-text',
+    university: 'bg-schoollove-surface-subtle text-schoollove-text',
+    college: 'bg-schoollove-surface-subtle text-schoollove-text',
   }
-  return map[type] || 'bg-gray-100 text-gray-700'
+  return map[type] || 'bg-schoollove-surface-subtle text-schoollove-text'
 }
 
 export function slugify(text: string): string {

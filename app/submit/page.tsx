@@ -7,7 +7,14 @@ import Image from 'next/image'
 import { IMG } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
 import { isAllFailed, resultHeading } from './resultText'
-import { normalizeInsta, registerPeople } from './registerPeople'
+import { normalizeInsta, registerPeople, type PersonInput } from './registerPeople'
+import {
+  addPerson,
+  createPerson,
+  PROFILE_MESSAGE_MAX_LENGTH,
+  removePerson,
+  updatePerson,
+} from './personFormState'
 import { getGrowthRewardCopy } from './growthRewardCopy'
 import RegistrationGrowthRewardCard from '@/components/RegistrationGrowthRewardCard'
 import CaptchaWidget, { type CaptchaStatus, type CaptchaWidgetHandle } from '@/components/CaptchaWidget'
@@ -27,9 +34,6 @@ type SchoolLite = {
   slug: string
 }
 
-// message: 이 친구에게 한마디 (등록 사유/인사). 본인이 보면 연결 동기가 됨.
-type Person = { nickname: string; instagram: string; isSelf: boolean; message: string }
-
 const TYPE_LABEL: Record<string, string> = {
   elementary: '초등학교',
   middle: '중학교',
@@ -40,15 +44,9 @@ const TYPE_LABEL: Record<string, string> = {
 
 const YEARS = Array.from({ length: 2032 - 1970 + 1 }, (_, i) => 2032 - i)
 
-const INITIAL_PEOPLE: Person[] = [
-  { nickname: '', instagram: '', isSelf: false, message: '' },
-  { nickname: '', instagram: '', isSelf: false, message: '' },
-  { nickname: '', instagram: '', isSelf: false, message: '' },
-]
+const INITIAL_PEOPLE: PersonInput[] = [createPerson(), createPerson(), createPerson()]
+const INITIAL_SELF: PersonInput[] = [createPerson(true)]
 
-const INITIAL_SELF: Person[] = [{ nickname: '', instagram: '', isSelf: true, message: '' }]
-
-// 따뜻한 프리셋 (악용 방지: 부정 표현 대신 긍정 프레임 유도)
 const MSG_PRESETS = ['보고싶다', '잘 지내?', '그때 고마웠어', '연락하고 지내자']
 
 function SubmitInner() {
@@ -67,7 +65,7 @@ function SubmitInner() {
   const [department, setDepartment] = useState('')
   const [studentYear, setStudentYear] = useState('')
 
-  const [people, setPeople] = useState<Person[]>(selfMode ? INITIAL_SELF : INITIAL_PEOPLE)
+  const [people, setPeople] = useState<PersonInput[]>(selfMode ? INITIAL_SELF : INITIAL_PEOPLE)
 
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState('')
@@ -136,16 +134,6 @@ function SubmitInner() {
     setClassNumber('')
     setDepartment('')
     setStudentYear('')
-  }
-
-  function addPerson() {
-    setPeople((p) => [...p, { nickname: '', instagram: '', isSelf: false, message: '' }])
-  }
-  function removePerson(i: number) {
-    setPeople((p) => (p.length === 1 ? p : p.filter((_, idx) => idx !== i)))
-  }
-  function updatePerson(i: number, key: keyof Person, val: string | boolean) {
-    setPeople((p) => p.map((row, idx) => (idx === i ? { ...row, [key]: val } : row)))
   }
 
   async function handleSubmit() {
@@ -301,7 +289,10 @@ function SubmitInner() {
                 {school.sigungu ? ` ${school.sigungu}` : ''}
               </p>
             </div>
-            <button onClick={() => setSchool(null)} className="ml-3 shrink-0 text-xs text-neutral-500 underline">
+            <button
+              onClick={() => setSchool(null)}
+              className="ml-3 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-xs text-neutral-500 underline"
+            >
               변경
             </button>
           </div>
@@ -417,7 +408,7 @@ function SubmitInner() {
                 <div className="flex gap-2">
                   <input
                     value={p.nickname}
-                    onChange={(e) => updatePerson(i, 'nickname', e.target.value)}
+                    onChange={(e) => setPeople((people) => updatePerson(people, i, 'nickname', e.target.value))}
                     placeholder={selfMode ? '내 이름 또는 별명' : '이름 또는 별명'}
                     className="w-2/5 rounded-2xl border border-neutral-200 px-3 py-3.5 text-sm outline-none focus:border-neutral-900"
                   />
@@ -425,15 +416,15 @@ function SubmitInner() {
                     <span className="text-sm text-neutral-400">@</span>
                     <input
                       value={p.instagram}
-                      onChange={(e) => updatePerson(i, 'instagram', e.target.value)}
+                      onChange={(e) => setPeople((people) => updatePerson(people, i, 'instagram', e.target.value))}
                       placeholder={selfMode ? '내 인스타 ID' : '인스타 ID (선택)'}
                       className="w-full bg-transparent px-1 py-3.5 text-sm outline-none"
                     />
                   </div>
                   {!selfMode && people.length > 1 && (
                     <button
-                      onClick={() => removePerson(i)}
-                      className="shrink-0 rounded-2xl px-2 text-neutral-300 hover:text-red-400"
+                      onClick={() => setPeople((people) => removePerson(people, i))}
+                      className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-2xl px-2 text-neutral-300 hover:text-red-400"
                       aria-label="삭제"
                     >
                       ✕
@@ -441,40 +432,46 @@ function SubmitInner() {
                   )}
                 </div>
 
-                {/* 이름을 입력하면 "이 친구에게 한마디" 노출 (본인모드면 "나를 한마디로") */}
-                {p.nickname.trim() && (
-                  <div className="mt-2.5">
-                    <input
-                      value={p.message}
-                      onChange={(e) => updatePerson(i, 'message', e.target.value.slice(0, 30))}
-                      placeholder={selfMode ? '나를 한마디로 소개 (선택)' : '이 친구에게 한마디 (선택)'}
-                      maxLength={30}
-                      className="w-full rounded-2xl border border-neutral-200 bg-white px-3 py-3 text-sm outline-none focus:border-neutral-900"
-                    />
-                    {!selfMode && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {MSG_PRESETS.map((m) => (
-                          <button
-                            key={m}
-                            type="button"
-                            onClick={() => updatePerson(i, 'message', m)}
-                            className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs text-neutral-500 hover:border-neutral-400 hover:text-neutral-900"
-                          >
-                            {m}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                <div className="mt-2.5">
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <label htmlFor={`person-message-${i}`} className="font-retro text-xs font-normal text-schoollove-secondary">
+                      한마디 남기기 (선택)
+                    </label>
+                    <span className="font-retro shrink-0 text-xs text-schoollove-muted">
+                      {p.message.length}/{PROFILE_MESSAGE_MAX_LENGTH}
+                    </span>
                   </div>
-                )}
+                  <input
+                    id={`person-message-${i}`}
+                    value={p.message}
+                    onChange={(e) => setPeople((people) => updatePerson(people, i, 'message', e.target.value))}
+                    placeholder="기억을 도울 짧은 한마디를 남겨보세요"
+                    maxLength={PROFILE_MESSAGE_MAX_LENGTH}
+                    className="w-full rounded-2xl border border-schoollove-border bg-white px-3 py-3 text-sm outline-none focus:border-schoollove-electric-blue focus:ring-2 focus:ring-schoollove-electric-blue/15"
+                  />
+                  {!selfMode && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {MSG_PRESETS.map((message) => (
+                        <button
+                          key={message}
+                          type="button"
+                          onClick={() => setPeople((people) => updatePerson(people, i, 'message', message))}
+                          className="inline-flex min-h-11 items-center justify-center rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-500 hover:border-neutral-400 hover:text-neutral-900"
+                        >
+                          {message}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* 인스타를 입력한 행에만 본인 동의 체크 노출 */}
                 {p.instagram.trim() && (
-                  <label className="mt-2.5 flex items-center gap-2 pl-1 text-xs text-neutral-500">
+                  <label className="mt-2.5 flex min-h-11 cursor-pointer items-center gap-2 pl-1 text-xs text-neutral-500">
                     <input
                       type="checkbox"
                       checked={p.isSelf}
-                      onChange={(e) => updatePerson(i, 'isSelf', e.target.checked)}
+                      onChange={(e) => setPeople((people) => updatePerson(people, i, 'isSelf', e.target.checked))}
                       className="h-3.5 w-3.5 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-400"
                     />
                     내 인스타예요 (공개 노출에 동의)
@@ -485,7 +482,7 @@ function SubmitInner() {
           </div>
           {!selfMode && (
             <button
-              onClick={addPerson}
+              onClick={() => setPeople((people) => addPerson(people))}
               className="mt-3 w-full rounded-2xl border border-dashed border-neutral-300 py-3 text-sm font-medium text-neutral-500 hover:bg-neutral-50"
             >
               ＋ 친구 추가

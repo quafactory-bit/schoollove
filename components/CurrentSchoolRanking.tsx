@@ -14,8 +14,8 @@ function levelLabel(level: number) {
 export default function CurrentSchoolRanking({ status, rows }: Props) {
   return (
     <section className="mt-10 border-t border-schoollove-border pt-6" aria-labelledby="current-rank-title">
-      <p className="font-status text-[11px] font-medium tracking-[0.12em] text-schoollove-secondary">CURRENT RANK</p>
-      <h2 id="current-rank-title" className="mt-2 text-[20px] font-semibold tracking-tight text-schoollove-text">
+      <p className="font-retro text-[11px] font-normal tracking-[0.12em] text-schoollove-electric-blue">CURRENT RANK</p>
+      <h2 id="current-rank-title" className="mt-2 text-[20px] font-semibold tracking-normal text-schoollove-text">
         현재 학교 순위
       </h2>
       <p className="mt-1 text-[13px] leading-5 text-schoollove-secondary">
@@ -47,7 +47,7 @@ export default function CurrentSchoolRanking({ status, rows }: Props) {
                     aria-label={aria}
                     className="schoollove-focus group grid min-h-11 grid-cols-[2.25rem_minmax(0,1fr)] gap-3 px-4 py-5 sm:grid-cols-[2.5rem_minmax(0,1fr)]"
                   >
-                    <span className="font-status pt-0.5 text-[17px] font-semibold tracking-[0.06em] text-schoollove-text">
+                    <span className="font-retro pt-0.5 text-[17px] font-normal tracking-normal text-schoollove-text">
                       {String(row.rank).padStart(2, '0')}
                     </span>
                     <span className="min-w-0">
@@ -55,20 +55,20 @@ export default function CurrentSchoolRanking({ status, rows }: Props) {
                         {row.schoolName}
                       </span>
                       <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[12px] leading-5">
-                        <span className="font-status font-medium text-schoollove-number">{formatNumber(row.visibleProfileCount)}명</span>
-                        {level && <span className="font-status font-medium text-schoollove-level">{level}</span>}
+                        <span className="font-retro font-normal text-schoollove-number">{formatNumber(row.visibleProfileCount)}명</span>
+                        {level && <span className="font-retro font-normal text-schoollove-level">{level}</span>}
                         {row.remainingLabel && (
                           <span className="text-schoollove-secondary">
                             다음 성장 단계까지{' '}
-                            <strong className="font-status font-medium text-schoollove-warning">
+                            <strong className="font-retro rounded-sm bg-schoollove-neon-lime px-1 py-0.5 font-normal text-schoollove-text">
                               {row.remainingLabel.match(/\d+/)?.[0]}명
                             </strong>
                           </span>
                         )}
-                        {row.isComplete && <span className="font-medium text-schoollove-growth">활발하게 이어지는 학교</span>}
+                        {row.isComplete && <span className="font-retro rounded-sm bg-schoollove-neon-mint px-1 py-0.5 font-normal text-schoollove-text">활발</span>}
                       </span>
                       <span className="mt-3 block h-[3px] overflow-hidden bg-schoollove-progress-track" aria-hidden="true">
-                        <span className="block h-full bg-schoollove-school" style={{ width: `${row.progressPercent}%` }} />
+                        <span className="block h-full bg-schoollove-electric-blue" style={{ width: `${row.progressPercent}%` }} />
                       </span>
                     </span>
                   </Link>
