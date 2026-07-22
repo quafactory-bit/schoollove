@@ -14,7 +14,7 @@ export default function TabBar() {
   if (pathname.startsWith('/admin')) return null
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-schoollove-border bg-schoollove-surface/95 backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-schoollove-border bg-schoollove-surface/95 backdrop-blur lg:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="mx-auto flex w-full max-w-[420px] sm:max-w-[320px]">
