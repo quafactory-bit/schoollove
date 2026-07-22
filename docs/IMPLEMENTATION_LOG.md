@@ -12,6 +12,35 @@ Implementation Log는 "실제로 무엇을 구현했는가"를 기록합니다.
 
 ### 구현
 
+- 관리자 프로필 목록이 API의 단수 `school` 관계를 사용하도록 타입·학교 열 렌더링을 정정
+- 전체 목록·nickname 검색·학교명 검색·중복 제거 후 학교 관계 보존 회귀 테스트 추가
+
+### 관련 파일
+
+- app/admin/profiles/page.tsx
+- app/admin/profiles/page.test.ts
+- app/api/admin/profiles/route.test.ts
+- lib/api/admin.test.ts
+
+### 검증
+
+- 관련 테스트 3개 파일·29개 통과
+- TypeScript 통과
+- 전체 테스트 53개 파일·773개 통과
+- production build 및 `git diff --check` 통과
+- 상태: LOCAL_VERIFIED
+
+### 비고
+
+- 관리자 인증·검색 로직·숨김/복원/삭제 mutation·원격 DB는 변경하지 않음
+- Production 관리자 화면 재검증 및 Production profile registration retry는 실행하지 않음
+
+---
+
+## 2026-07-22
+
+### 구현
+
 - Home 저채도 아이보리 시각 체계와 의미 기반 타이포그래피 적용
 - Home 공통 배경 토큰을 흰색으로 전환하고 흰색 배경 AA 대비에 맞춰 보조·성장·경고 색상 명도 조정
 - 누적 공개 프로필 기준 현재 학교 순위 TOP 3 적용
