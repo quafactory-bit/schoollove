@@ -1,12 +1,13 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search } from 'lucide-react'
+import { Home, Plus, Search } from 'lucide-react'
 // Home Final Design v1.1 — 2축 구조 (docs/decisions/2026-07-15-home-final-design-v1.md)
 // 이름 남기기/친구 공유는 Home과 School 페이지의 문맥형 CTA로 제공한다.
 const TABS = [
   { href: '/', label: '홈', icon: Home },
   { href: '/search', label: '학교 찾기', icon: Search },
+  { href: '/submit', label: '내 이름 남기기', icon: Plus },
 ]
 export default function TabBar() {
   const pathname = usePathname()

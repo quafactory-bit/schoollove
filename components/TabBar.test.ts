@@ -18,4 +18,15 @@ describe('TabBar responsive navigation contract', () => {
   it('keeps page content clear of the fixed mobile navigation', () => {
     expect(LAYOUT_SOURCE).toContain('className="pb-16"')
   })
+
+  it('keeps home, school search, and registration routes available on mobile', () => {
+    expect(SOURCE).toContain("{ href: '/', label: '홈', icon: Home }")
+    expect(SOURCE).toContain("{ href: '/search', label: '학교 찾기', icon: Search }")
+    expect(SOURCE).toContain("{ href: '/submit', label: '내 이름 남기기', icon: Plus }")
+  })
+
+  it('keeps every mobile tab at a 44px minimum touch height with route-aware active state', () => {
+    expect(SOURCE).toContain('min-h-11 flex-1')
+    expect(SOURCE).toContain("pathname.startsWith(href)")
+  })
 })
