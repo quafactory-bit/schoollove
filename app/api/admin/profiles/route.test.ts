@@ -44,13 +44,17 @@ describe('GET /api/admin/profiles', () => {
   })
 
   it('검색 성공 시 서버 조회 결과만 반환한다', async () => {
-    getAdminProfilesMock.mockResolvedValue({ profiles: [{ id: 'profile-1' }], total: 1, error: false })
+    const profile = {
+      id: 'profile-1',
+      school: { id: 'school-1', school_name: '한글고등학교', slug: 'hangul-high', school_type: 'high' },
+    }
+    getAdminProfilesMock.mockResolvedValue({ profiles: [profile], total: 1, error: false })
 
     const response = await GET(request('http://localhost/api/admin/profiles?q=%ED%95%9C%EA%B8%80'))
 
     expect(response.status).toBe(200)
     expect(getAdminProfilesMock).toHaveBeenCalledWith(1, '한글', 0)
-    await expect(response.json()).resolves.toEqual({ profiles: [{ id: 'profile-1' }], total: 1 })
+    await expect(response.json()).resolves.toEqual({ profiles: [profile], total: 1 })
   })
 
   it('조회 오류는 0건 성공 응답이 아니라 일반 500 오류로 반환한다', async () => {

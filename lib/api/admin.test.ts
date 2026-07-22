@@ -347,7 +347,7 @@ describe('getDashboardStats — profiles는 anon, reports는 admin client로 분
 describe('getAdminProfiles — admin client 사용(숨김 프로필도 조회 가능해야 함)', () => {
   it('18. admin client로 profiles를 조회한다(anon RLS의 is_hidden=false 제한을 받지 않기 위함)', async () => {
     const { from: adminFrom } = createChainableFrom([
-      { data: [{ id: PROFILE_ID, nickname: '테스트', instagram_id: null, graduation_year: 2020, grade: null, class_number: null, department: null, report_count: 3, is_hidden: true, created_at: '2026-01-01T00:00:00.000Z', school: null }], error: null, count: 1 },
+      { data: [{ id: PROFILE_ID, nickname: '테스트', instagram_id: null, graduation_year: 2020, grade: null, class_number: null, department: null, report_count: 3, is_hidden: true, created_at: '2026-01-01T00:00:00.000Z', school: { id: 'school-1', school_name: '전체목록고등학교', slug: 'all-high', school_type: 'high' } }], error: null, count: 1 },
     ])
     const getSupabaseAdmin = vi.fn(() => ({ from: adminFrom }))
     const anonClient = anonDeniedClient()
@@ -359,12 +359,13 @@ describe('getAdminProfiles — admin client 사용(숨김 프로필도 조회 �
     expect(result.total).toBe(1)
     expect(result.error).toBe(false)
     expect(result.profiles[0].is_hidden).toBe(true)
+    expect(result.profiles[0].school?.school_name).toBe('전체목록고등학교')
     expect(adminFrom).toHaveBeenCalledWith('profiles')
     expect(anonClient.from).not.toHaveBeenCalled()
   })
 
   it('19. 닉네임 부분 일치 검색은 관리자 서버에서 수행하고 created_at 내림차순 결과를 유지한다', async () => {
-    const older = { id: 'profile-old', nickname: '운영검증', instagram_id: null, graduation_year: 2020, grade: null, class_number: null, department: null, report_count: 0, is_hidden: false, created_at: '2026-01-01T00:00:00.000Z', school: null }
+    const older = { id: 'profile-old', nickname: '운영검증', instagram_id: null, graduation_year: 2020, grade: null, class_number: null, department: null, report_count: 0, is_hidden: false, created_at: '2026-01-01T00:00:00.000Z', school: { id: 'school-1', school_name: '닉네임고등학교', slug: 'nickname-high', school_type: 'high' } }
     const newer = { ...older, id: 'profile-new', created_at: '2026-01-02T00:00:00.000Z' }
     const { from: adminFrom, calls } = createChainableFrom([
       { data: [], error: null },
@@ -378,6 +379,7 @@ describe('getAdminProfiles — admin client 사용(숨김 프로필도 조회 �
 
     expect(result).toMatchObject({ total: 2, error: false })
     expect(result.profiles.map((profile) => profile.id)).toEqual(['profile-new', 'profile-old'])
+    expect(result.profiles.every((profile) => profile.school?.school_name === '닉네임고등학교')).toBe(true)
     expect(adminFrom).toHaveBeenNthCalledWith(1, 'schools')
     expect(adminFrom).toHaveBeenNthCalledWith(2, 'profiles')
     expect(findCall(calls[0], 'ilike')?.args).toEqual(['school_name', '%운영검증%'])
@@ -421,6 +423,7 @@ describe('getAdminProfiles — admin client 사용(숨김 프로필도 조회 �
 
     expect(result).toMatchObject({ total: 1, error: false })
     expect(result.profiles).toHaveLength(1)
+    expect(result.profiles[0].school?.school_name).toBe('한글고등학교')
   })
 
   it('22. %, _, 쉼표, 괄호와 따옴표가 포함된 검색어도 filter 문법을 조합하지 않고 안전하게 전달한다', async () => {

@@ -3,26 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-
-interface Profile {
-  id: string
-  nickname: string
-  instagram_id: string | null
-  graduation_year: number
-  grade: number | null
-  class_number: number | null
-  report_count: number
-  is_hidden: boolean
-  created_at: string
-  schools: {
-    school_name: string
-    school_type: string
-  }
-}
+import type { AdminProfile } from '@/lib/api/admin'
 
 export default function AdminProfilesPage() {
   const router = useRouter()
-  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [profiles, setProfiles] = useState<AdminProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [searchError, setSearchError] = useState<string | null>(null)
@@ -43,7 +28,7 @@ export default function AdminProfilesPage() {
         return
       }
 
-      const data = await response.json() as { profiles?: Profile[] }
+      const data = await response.json() as { profiles?: AdminProfile[] }
       setProfiles(data.profiles ?? [])
     } catch {
       setProfiles([])
@@ -161,9 +146,9 @@ export default function AdminProfilesPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">{p.nickname}</td>
                   <td className="px-4 py-3 text-gray-600">
                     <span className="text-xs text-gray-400 mr-1">
-                      {schoolTypeLabel[p.schools?.school_type] || ''}
+                      {schoolTypeLabel[p.school?.school_type ?? ''] || ''}
                     </span>
-                    {p.schools?.school_name}
+                    {p.school?.school_name ?? '-'}
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {p.graduation_year}년
