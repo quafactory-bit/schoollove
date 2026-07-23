@@ -17,4 +17,10 @@ describe('HomeActivityFeed desktop hierarchy contract', () => {
     expect(SOURCE).toContain('성장 소식 더 보기')
     expect(SOURCE).not.toContain('HOME_ACTIVITY_FEED_LIMIT')
   })
+
+  it('renders a single divided surface with an interactive disclosure', () => {
+    expect(SOURCE).toContain('overflow-hidden border border-schoollove-border bg-schoollove-surface')
+    expect(SOURCE).toContain('group-open:text-schoollove-electric-blue')
+    expect(SOURCE).toContain('min-h-11')
+  })
 })

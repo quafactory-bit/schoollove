@@ -17,15 +17,15 @@ export default function HomeActivityFeed({ items, now }: Props) {
   const hiddenItems = items.slice(HOME_ACTIVITY_INITIAL_VISIBLE_COUNT)
 
   return (
-    <div>
+    <div className="overflow-hidden border border-schoollove-border bg-schoollove-surface">
       {visibleItems.map((item) => (
         <HomeActivityItem key={item.id} item={item} now={now} />
       ))}
       {hiddenItems.length > 0 && (
         <details className="group border-t border-schoollove-border">
-          <summary className="schoollove-focus flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-4 text-[14px] font-semibold text-schoollove-text marker:hidden">
-            <span>성장 소식 더 보기</span>
-            <span className="font-retro text-[12px] font-normal text-schoollove-electric-blue">
+          <summary className="schoollove-focus flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-[14px] font-semibold text-schoollove-text transition-colors hover:bg-schoollove-surface-subtle marker:hidden sm:px-5 lg:px-6">
+            <span className="group-open:text-schoollove-electric-blue">성장 소식 더 보기</span>
+            <span className="font-retro text-[12px] font-normal text-schoollove-electric-blue transition-transform group-open:rotate-45">
               +{hiddenItems.length}
             </span>
           </summary>
