@@ -21,7 +21,7 @@ function SemanticSentence({ item }: { item: HomeActivityItemType }) {
   return (
     <>
       <span className="text-schoollove-text">{before}</span>
-      <strong className="font-semibold text-schoollove-school">{item.schoolName}</strong>
+      <strong className="font-semibold text-schoollove-text">{item.schoolName}</strong>
       <span className="font-medium text-schoollove-text">{action}</span>
       {note && <span className="text-schoollove-text"> · “{note}”</span>}
     </>
@@ -37,26 +37,26 @@ export default function HomeActivityItem({ item, now }: Props) {
     <Link
       href={`/school/${item.slug}`}
       aria-label={`${label}, ${item.schoolName}, ${formatRelativeTime(item.createdAt, now)}`}
-      className="schoollove-focus group grid min-h-11 grid-cols-[2.75rem_minmax(0,1fr)] gap-4 border-b border-schoollove-border py-5 last:border-b-0 lg:grid-cols-[3.25rem_minmax(0,1fr)] lg:py-6"
+      className="schoollove-focus group grid min-h-11 grid-cols-[2.25rem_minmax(0,1fr)] gap-3 border-b border-schoollove-border px-4 py-4 transition-colors hover:bg-schoollove-surface-subtle last:border-b-0 sm:px-5 lg:grid-cols-[2.5rem_minmax(0,1fr)] lg:gap-4 lg:px-6 lg:py-5"
     >
       <span
-        className={`flex h-11 w-11 items-center justify-center rounded-full ${
+        className={`flex h-9 w-9 items-center justify-center rounded-full ${
           isRegister ? 'bg-schoollove-system-soft text-schoollove-neon-orange' : 'bg-schoollove-neutral-soft text-schoollove-electric-blue'
         }`}
         aria-hidden="true"
       >
-        <Icon className="h-5 w-5" strokeWidth={1.7} />
+        <Icon className="h-4 w-4" strokeWidth={1.7} />
       </span>
       <span className="min-w-0">
         <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <span className={`font-retro text-[11px] font-normal tracking-[0.1em] lg:text-[12px] ${isRegister ? 'text-schoollove-neon-orange' : 'text-schoollove-electric-blue'}`}>
             {label}
           </span>
-          <time className="font-retro text-[11px] text-schoollove-muted lg:text-[12px]" dateTime={item.createdAt}>
+          <time className="font-retro text-[12px] text-schoollove-muted lg:text-[13px]" dateTime={item.createdAt}>
             {formatRelativeTime(item.createdAt, now)}
           </time>
         </span>
-        <span className="mt-2 block break-keep text-[16px] leading-7 text-schoollove-text group-hover:underline lg:text-[17px]">
+        <span className="mt-2 block break-keep text-[15px] leading-7 text-schoollove-text group-hover:underline sm:text-[16px] lg:text-[17px]">
           <SemanticSentence item={item} />
         </span>
         <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-retro text-[12px] text-schoollove-secondary">

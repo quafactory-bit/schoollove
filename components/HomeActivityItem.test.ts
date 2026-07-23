@@ -16,13 +16,15 @@ describe('HomeActivityItem 구분선 피드 계약', () => {
     expect(SOURCE).toContain('lg:text-[12px]')
     expect(SOURCE).toContain('text-schoollove-neon-orange')
     expect(SOURCE).toContain('text-schoollove-electric-blue')
-    expect(SOURCE).toContain('text-schoollove-school')
+    expect(SOURCE).toContain('font-semibold text-schoollove-text')
     expect(SOURCE).not.toContain('text-schoollove-growth">{action}</span>')
   })
 
   it('피드 링크에 aria-label과 최소 터치 높이가 있다', () => {
     expect(SOURCE).toContain('aria-label=')
     expect(SOURCE).toContain('min-h-11')
-    expect(SOURCE).toContain('h-11 w-11')
+    expect(SOURCE).toContain('h-9 w-9')
+    expect(SOURCE).toContain('hover:bg-schoollove-surface-subtle')
+    expect(SOURCE).toContain('px-4 py-4')
   })
 })
