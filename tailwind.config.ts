@@ -52,9 +52,11 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-geist)', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Apple SD Gothic Neo"', '"Malgun Gothic"', 'sans-serif'],
-        status: ['var(--font-schoollove-mono)'],
-        retro: ['var(--font-schoollove-retro)'],
+        sans: ['var(--font-schoollove)'],
+        mono: ['var(--font-schoollove)'],
+        status: ['var(--font-schoollove)'],
+        retro: ['var(--font-schoollove)'],
+        game: ['var(--font-schoollove)'],
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],

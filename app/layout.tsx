@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import Footer from '@/components/Footer';
 import TabBar from '@/components/TabBar';
-const geist = Geist({ subsets: ['latin'], variable: '--font-geist', display: 'swap' });
 export const viewport: Viewport = {
   themeColor: '#FFFFFF',
   width: 'device-width',
@@ -39,7 +37,7 @@ export const metadata: Metadata = {
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" className={geist.variable}>
+    <html lang="ko">
       <head />
       <body className="antialiased">
         <Providers>

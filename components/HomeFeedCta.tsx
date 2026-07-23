@@ -14,7 +14,7 @@ export default function HomeFeedCta({ title, buttonLabel, href }: Props) {
       <p className="text-[16px] font-semibold leading-relaxed text-schoollove-text lg:text-[18px]">{title}</p>
       <Link
         href={href}
-        className="schoollove-focus mt-5 inline-flex min-h-12 min-w-[160px] items-center justify-center border border-schoollove-text px-7 text-[15px] font-semibold text-schoollove-text transition-colors hover:bg-schoollove-text hover:text-schoollove-bg"
+        className="schoollove-focus mt-5 inline-flex min-h-12 min-w-[160px] items-center justify-center border border-schoollove-text px-7 text-[15px] text-schoollove-text transition-colors hover:bg-schoollove-text hover:text-schoollove-bg"
       >
         {buttonLabel}
       </Link>
