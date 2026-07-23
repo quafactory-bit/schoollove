@@ -4,27 +4,24 @@ import { join } from 'node:path'
 
 const SOURCE = readFileSync(join(__dirname, 'HomeActivityItem.tsx'), 'utf8')
 
-describe('HomeActivityItem 구분선 피드 계약', () => {
-  it('외곽 카드 없이 항목 구분선이 이어지고 마지막 구분선은 제거된다', () => {
+describe('HomeActivityItem presentation contract', () => {
+  it('uses a divided continuous feed row rather than a repeated card', () => {
     expect(SOURCE).toContain('border-b border-schoollove-border')
     expect(SOURCE).toContain('last:border-b-0')
     expect(SOURCE).not.toContain('shadow')
   })
 
-  it('본문 문장은 검정 중심으로 유지하고 작은 상태 HUD에만 레트로 포인트를 쓴다', () => {
-    expect(SOURCE).toContain('font-retro text-[11px]')
-    expect(SOURCE).toContain('lg:text-[12px]')
+  it('keeps body and metadata hierarchy without a local font override', () => {
+    expect(SOURCE).not.toContain('font-game')
+    expect(SOURCE).toContain('text-[11px] tracking-[0.1em]')
     expect(SOURCE).toContain('text-schoollove-neon-orange')
     expect(SOURCE).toContain('text-schoollove-electric-blue')
-    expect(SOURCE).toContain('font-semibold text-schoollove-text')
-    expect(SOURCE).not.toContain('text-schoollove-growth">{action}</span>')
+    expect(SOURCE).toContain('break-keep text-[15px] leading-7 text-schoollove-text')
   })
 
-  it('피드 링크에 aria-label과 최소 터치 높이가 있다', () => {
+  it('retains its accessible school link and touch target', () => {
     expect(SOURCE).toContain('aria-label=')
     expect(SOURCE).toContain('min-h-11')
     expect(SOURCE).toContain('h-9 w-9')
-    expect(SOURCE).toContain('hover:bg-schoollove-surface-subtle')
-    expect(SOURCE).toContain('px-4 py-4')
   })
 })

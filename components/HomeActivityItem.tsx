@@ -21,7 +21,7 @@ function SemanticSentence({ item }: { item: HomeActivityItemType }) {
   return (
     <>
       <span className="text-schoollove-text">{before}</span>
-      <strong className="font-semibold text-schoollove-text">{item.schoolName}</strong>
+      <strong className="text-schoollove-text">{item.schoolName}</strong>
       <span className="font-medium text-schoollove-text">{action}</span>
       {note && <span className="text-schoollove-text"> · “{note}”</span>}
     </>
@@ -49,19 +49,19 @@ export default function HomeActivityItem({ item, now }: Props) {
       </span>
       <span className="min-w-0">
         <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <span className={`font-retro text-[11px] font-normal tracking-[0.1em] lg:text-[12px] ${isRegister ? 'text-schoollove-neon-orange' : 'text-schoollove-electric-blue'}`}>
+          <span className={`text-[11px] tracking-[0.1em] lg:text-[12px] ${isRegister ? 'text-schoollove-neon-orange' : 'text-schoollove-electric-blue'}`}>
             {label}
           </span>
-          <time className="font-retro text-[12px] text-schoollove-muted lg:text-[13px]" dateTime={item.createdAt}>
+          <time className="text-[12px] text-schoollove-muted lg:text-[13px]" dateTime={item.createdAt}>
             {formatRelativeTime(item.createdAt, now)}
           </time>
         </span>
         <span className="mt-2 block break-keep text-[15px] leading-7 text-schoollove-text group-hover:underline sm:text-[16px] lg:text-[17px]">
           <SemanticSentence item={item} />
         </span>
-        <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-retro text-[12px] text-schoollove-secondary">
-          {item.currentLevel !== null && <span className="font-normal text-schoollove-level">LV.{String(item.currentLevel).padStart(2, '0')}</span>}
-          {item.count > 1 && <span className="font-normal text-schoollove-number">등록 {item.count}명</span>}
+        <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-schoollove-secondary">
+          {item.currentLevel !== null && <span className="text-schoollove-level">LV.{String(item.currentLevel).padStart(2, '0')}</span>}
+          {item.count > 1 && <span className="text-schoollove-number">등록 {item.count}명</span>}
         </span>
       </span>
     </Link>

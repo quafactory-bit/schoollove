@@ -23,13 +23,16 @@
   --schoollove-neon-lime: #b7f84a;
   --schoollove-electric-blue: #4f7cff;
   --schoollove-neon-orange: #ff9f43;
-  --font-schoollove-retro: "NeoDunggeunmo", ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --font-schoollove-mono: var(--font-schoollove-retro);
+  --font-schoollove: "SchoolLove Classic RPG", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  /* Legacy utility aliases remain so existing markup cannot select another font. */
+  --font-schoollove-retro: var(--font-schoollove);
+  --font-schoollove-mono: var(--font-schoollove);
+  --font-schoollove-game: var(--font-schoollove);
 }
 @font-face {
-  font-family: "NeoDunggeunmo";
-  src: url("/fonts/neodgm/neodgm.woff2") format("woff2");
-  font-weight: 400;
+  font-family: "SchoolLove Classic RPG";
+  src: url("/fonts/schoollove-classic-rpg/SchoolLoveClassicRPG-Regular.woff2") format("woff2");
+  font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
@@ -39,6 +42,10 @@
     box-sizing: border-box;
   }
   html {
+    font-family: var(--font-schoollove);
+    font-weight: 500;
+    font-style: normal;
+    font-synthesis: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
@@ -47,6 +54,30 @@
     @apply bg-schoollove-bg text-schoollove-text font-sans;
     min-height: 100dvh;
     letter-spacing: 0;
+  }
+  body,
+  button,
+  input,
+  textarea,
+  select,
+  option,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  a,
+  label,
+  table,
+  dialog,
+  summary,
+  time {
+    font-family: var(--font-schoollove) !important;
+    font-weight: 500 !important;
+    font-style: normal;
+    font-synthesis: none;
   }
   /* 스크롤바 */
   ::-webkit-scrollbar {
