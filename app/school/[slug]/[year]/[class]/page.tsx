@@ -9,6 +9,7 @@ import { getClassPageMetadata } from '@/lib/seo'
 import { isClassPageIndexable } from '@/lib/policy/seoIndexing'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { parseClassFromUrl, formatNumber } from '@/lib/utils'
+import { buildSubmitContextHref } from '@/app/submit/prefill'
 
 interface PageProps {
   params: Promise<{ slug: string; year: string; class: string }>
@@ -55,6 +56,12 @@ export default async function ClassPage({ params, searchParams }: PageProps) {
   )
 
   const totalPages = Math.ceil(count / 20)
+  const submitHref = buildSubmitContextHref({
+    school: slug,
+    year,
+    grade,
+    classNumber,
+  })
 
   return (
     <div className="page-container space-y-5">
@@ -77,12 +84,10 @@ export default async function ClassPage({ params, searchParams }: PageProps) {
         <p className="text-base font-bold text-brand-blue">
           {year}년 {grade}학년 {classNumber}반
         </p>
-        <p className="text-sm text-gray-500">
-          {SCHOOL_TYPE_LABELS[school.school_type]} · 총 {formatNumber(count)}명
+        <p className="text-sm text-gray-500">{SCHOOL_TYPE_LABELS[school.school_type]}</p>
+        <p className="text-base font-semibold text-gray-900">
+          이 반에 {formatNumber(count)}명이 등록했어요
         </p>
-        <Link href={`/submit?school=${slug}&year=${year}&grade=${grade}&class=${classNumber}`} className="btn-primary inline-block text-sm">
-          같은 반 친구 등록하기
-        </Link>
       </div>
 
       {/* 프로필 리스트 */}
@@ -99,9 +104,6 @@ export default async function ClassPage({ params, searchParams }: PageProps) {
             아직 등록된 사람이 없어요
           </p>
           <p className="text-sm text-gray-500">첫 번째로 등록해보세요!</p>
-          <Link href="/submit" className="btn-primary inline-block text-sm mt-2">
-            지금 등록하기
-          </Link>
         </div>
       )}
 
@@ -117,6 +119,17 @@ export default async function ClassPage({ params, searchParams }: PageProps) {
           )}
         </div>
       )}
+
+      {/* 등록은 현재 사람 목록 또는 빈 상태를 확인한 뒤 이어지는 기여 행동이다. */}
+      <section className="space-y-3 border-t border-gray-200 pt-5">
+        <div>
+          <h2 className="section-title">같은 반 친구가 더 있나요?</h2>
+          <p className="mt-1 text-sm text-gray-500">이 반의 사람을 남겨 발견을 이어주세요.</p>
+        </div>
+        <Link href={submitHref} className="btn-primary inline-flex min-h-11 items-center text-sm">
+          {count === 0 ? '이 반의 첫 번째 이름 남기기' : '같은 반 친구 등록하기'}
+        </Link>
+      </section>
 
       {/* 다른 반 바로가기 */}
       <div className="flex items-center gap-3 text-sm">

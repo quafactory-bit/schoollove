@@ -8,6 +8,13 @@ import { join } from 'node:path'
 // 확인한다. 실제 필터링 로직 자체는 lib/policy/yearHub.test.ts가 이미 전수 검증한다.
 const SOURCE = readFileSync(join(process.cwd(), 'components', 'YearPeopleSearch.tsx'), 'utf-8')
 
+describe('YearPeopleSearch touch targets', () => {
+  it('keeps the search clear control at least 44 by 44 pixels', () => {
+    expect(SOURCE).toContain('min-h-11 min-w-11')
+    expect(SOURCE).toContain('pr-12')
+  })
+})
+
 describe('YearPeopleSearch.tsx — 검색어 비서버·비URL 계약', () => {
   it('fetch/axios 등 네트워크 호출이 전혀 없다(검색이 순수 클라이언트 state로만 동작)', () => {
     expect(SOURCE).not.toMatch(/fetch\(/)
@@ -38,6 +45,11 @@ describe('YearPeopleSearch.tsx — 검색어 비서버·비URL 계약', () => {
   it('기존 ProfileCard를 재사용한다(전용 신규 카드로 중복 구현하지 않음)', () => {
     expect(SOURCE).toMatch(/import ProfileCard from '\.\/ProfileCard'/)
     expect(SOURCE).toMatch(/<ProfileCard key=\{profile\.id\} profile=\{profile\} \/>/)
+  })
+
+  it('실제 기수 등록 인원을 동기 발견 제목에 표시하되 전체 표시를 단정하지 않는다', () => {
+    expect(SOURCE).toMatch(/동기 \{formatNumber\(totalCount\)\}명 찾기/)
+    expect(SOURCE).not.toMatch(/모두 표시|전체를 모두/)
   })
 
   it('검색어를 서버 로그·검색 로그에 남기는 어떤 호출도 하지 않는다(logSearch 등 import 없음)', () => {

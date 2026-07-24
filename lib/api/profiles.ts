@@ -3,14 +3,29 @@ import type { Profile, ProfileInsert } from '@/types/profile';
 
 const PAGE_SIZE = 20;
 
+const PUBLIC_PROFILE_CARD_COLUMNS =
+  'id, nickname, instagram_id, graduation_year, grade, class_number, department, message, created_at';
+
+export type PublicProfileCard = {
+  id: string;
+  nickname: string;
+  instagram_id: string | null;
+  graduation_year: number;
+  grade: number | null;
+  class_number: number | null;
+  department: string | null;
+  message: string | null;
+  created_at: string;
+};
+
 export async function getProfilesBySchool(
   schoolId: string,
   page = 1,
   year?: number
-): Promise<{ data: Profile[]; count: number }> {
+): Promise<{ data: PublicProfileCard[]; count: number }> {
   let query = supabaseServer
     .from('profiles')
-    .select('*', { count: 'exact' })
+    .select(PUBLIC_PROFILE_CARD_COLUMNS, { count: 'exact' })
     .eq('school_id', schoolId)
     .eq('is_hidden', false)
     .order('created_at', { ascending: false });
@@ -26,7 +41,7 @@ export async function getProfilesBySchool(
     console.error('getProfilesBySchool error:', error);
     return { data: [], count: 0 };
   }
-  return { data: data || [], count: count || 0 };
+  return { data: (data as PublicProfileCard[]) || [], count: count || 0 };
 }
 
 // PHASE 7B — Year Hub 전용: 학교+졸업연도의 공개 프로필 전체를 한 번에 로드한다.
@@ -43,17 +58,7 @@ const YEAR_HUB_PROFILE_LIMIT = 500;
 // 필드는 이 함수가 Server Component → Client Component 경계를 넘길 때부터 아예 포함하지
 // 않는다(그 경계를 넘으면 RSC payload에 실려 브라우저로 전달되므로, 화면이 안 쓴다는
 // 이유만으로 넘기지 않는 것이 안전하다).
-export type YearHubPersonProfile = {
-  id: string;
-  nickname: string;
-  instagram_id: string | null;
-  graduation_year: number;
-  grade: number | null;
-  class_number: number | null;
-  department: string | null;
-  message: string | null;
-  created_at: string;
-};
+export type YearHubPersonProfile = PublicProfileCard;
 
 export async function getAllProfilesBySchoolYear(
   schoolId: string,
@@ -62,7 +67,7 @@ export async function getAllProfilesBySchoolYear(
 ): Promise<YearHubPersonProfile[]> {
   const { data, error } = await supabaseServer
     .from('profiles')
-    .select('id, nickname, instagram_id, graduation_year, grade, class_number, department, message, created_at')
+    .select(PUBLIC_PROFILE_CARD_COLUMNS)
     .eq('school_id', schoolId)
     .eq('graduation_year', year)
     .eq('is_hidden', false)
@@ -82,12 +87,12 @@ export async function getProfilesByClass(
   grade: number,
   classNum: number,
   page = 1
-): Promise<{ data: Profile[]; count: number }> {
+): Promise<{ data: PublicProfileCard[]; count: number }> {
   const from = (page - 1) * PAGE_SIZE;
 
   const { data, error, count } = await supabaseServer
     .from('profiles')
-    .select('*', { count: 'exact' })
+    .select(PUBLIC_PROFILE_CARD_COLUMNS, { count: 'exact' })
     .eq('school_id', schoolId)
     .eq('graduation_year', year)
     .eq('grade', grade)
@@ -100,7 +105,7 @@ export async function getProfilesByClass(
     console.error('getProfilesByClass error:', error);
     return { data: [], count: 0 };
   }
-  return { data: data || [], count: count || 0 };
+  return { data: (data as PublicProfileCard[]) || [], count: count || 0 };
 }
 
 export async function getRecentProfiles(limit = 10): Promise<Profile[]> {
@@ -116,7 +121,7 @@ export async function getRecentProfiles(limit = 10): Promise<Profile[]> {
     console.error('getRecentProfiles error:', error);
     return [];
   }
-  return data || [];
+  return (data as Profile[]) || [];
 }
 
 export async function searchProfiles(query: string, limit = 10): Promise<Profile[]> {
@@ -134,7 +139,7 @@ export async function searchProfiles(query: string, limit = 10): Promise<Profile
     console.error('searchProfiles error:', error);
     return [];
   }
-  return data || [];
+  return (data as Profile[]) || [];
 }
 
 export async function checkDuplicate(

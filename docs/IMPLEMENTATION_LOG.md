@@ -1,5 +1,33 @@
 # SchoolLoveI Implementation Log
 
+## 2026-07-24 — Year Hub People Discovery
+
+### Implementation
+
+- Reordered Year Hub so the complete same-year people list and local nickname search appear before class navigation.
+- Added real total-person context while preserving the existing 500-profile Year Hub cap and client-only partial nickname matching without URL query exposure.
+- Reordered Class Hub around its people list or empty state, followed by one context-preserving registration CTA and the existing year navigation.
+- Added validated `/submit` prefill handling for school, year, grade, and class without auto-submission.
+- Replaced public profile-card `select('*')` queries with an explicit minimal public field contract while preserving filters, ordering, and Class Hub pagination.
+- Kept Instagram, edit/delete, and report actions and ensured primary profile-card and search-clear controls have at least 44 by 44 pixel hit areas.
+
+### Verification
+
+- Targeted Year, Class, Submit, profile-card, and public-profile API tests passed locally: 8 files, 98 tests.
+- TypeScript passed locally.
+- Full test suite passed locally: 62 files, 844 tests.
+- Production build and `git diff --check` passed locally.
+- Actual Next.js pages were checked with isolated Edge profiles at 1440, 1024, 412, 390, and 360 pixels, including populated, filtered, zero-result, empty-state, and submit-prefill flows.
+- No horizontal overflow or clipped elements were found; fixed mobile navigation did not cover page content at the document bottom.
+- Status: LOCAL_VERIFIED
+
+### Notes
+
+- No database, migration, Supabase policy, API mutation, authentication, ranking, growth, font, color, or remote-service changes.
+- No Production access or write was performed.
+
+---
+
 개발 구현 진행 상황을 기록합니다.
 
 Decisions는 "왜 이렇게 결정했는가"를 기록합니다.

@@ -67,3 +67,26 @@ describe('app/submit/page.tsx — 등록 대상별 한마디 입력', () => {
     expect(SOURCE).toMatch(/\{p\.message\.length\}\/\{PROFILE_MESSAGE_MAX_LENGTH\}/)
   })
 })
+
+describe('app/submit/page.tsx — Year/Class context prefill', () => {
+  it('순수 prefill helper를 사용하고 기존 self 계약을 helper 결과로 유지한다', () => {
+    expect(SOURCE).toMatch(/parseSubmitPrefill\(searchParams\)/)
+    expect(SOURCE).toMatch(/const selfMode = prefill\.selfMode/)
+  })
+
+  it('검증된 year/grade/class를 실제 form state 초기값에 사용한다', () => {
+    expect(SOURCE).toMatch(/useState\(prefill\.graduationYear\)/)
+    expect(SOURCE).toMatch(/useState\(prefill\.grade\)/)
+    expect(SOURCE).toMatch(/useState\(prefill\.classNumber\)/)
+  })
+
+  it('학교 유형이 확인된 뒤 지원하지 않는 grade/class context를 제거한다', () => {
+    expect(SOURCE).toMatch(/gradeForSchoolType\(prefill\.grade, selected\.school_type\)/)
+    expect(SOURCE).toMatch(/selected\.school_type === 'university'/)
+  })
+
+  it('query 진입만으로 등록 요청을 실행하지 않는다', () => {
+    const prefillEffect = SOURCE.match(/useEffect\(\(\) => \{[\s\S]*?prefill\.schoolSlug[\s\S]*?\}, \[\]\)/)?.[0] ?? ''
+    expect(prefillEffect).not.toMatch(/registerPeople|POST \/api\/profiles|handleSubmit\(/)
+  })
+})
