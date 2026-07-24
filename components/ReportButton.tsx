@@ -35,7 +35,11 @@ export default function ReportButton({ profileId }: { profileId: string }) {
   }
 
   if (!open) return (
-    <button onClick={() => setOpen(true)} className="text-xs text-gray-400 hover:text-red-400 transition">
+    <button
+      onClick={() => setOpen(true)}
+      aria-label="프로필 신고"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center text-xs text-gray-400 transition hover:text-red-400"
+    >
       신고
     </button>
   )

@@ -19,6 +19,12 @@ import { getGrowthRewardCopy } from './growthRewardCopy'
 import RegistrationGrowthRewardCard from '@/components/RegistrationGrowthRewardCard'
 import CaptchaWidget, { type CaptchaStatus, type CaptchaWidgetHandle } from '@/components/CaptchaWidget'
 import type { RegistrationGrowthReward } from '@/types/registration'
+import {
+  gradeForSchoolType,
+  parseSubmitPrefill,
+  SUBMIT_MAX_GRADUATION_YEAR,
+  SUBMIT_MIN_GRADUATION_YEAR,
+} from './prefill'
 
 // PHASE 9 — 공개 site key만 client에서 참조한다(비밀 키는 서버 전용
 // lib/security/captcha.ts에서만 읽음). 빌드 시점에 값이 없으면 등록 폼 자체를 막는다
@@ -42,7 +48,10 @@ const TYPE_LABEL: Record<string, string> = {
   college: '전문대학',
 }
 
-const YEARS = Array.from({ length: 2032 - 1970 + 1 }, (_, i) => 2032 - i)
+const YEARS = Array.from(
+  { length: SUBMIT_MAX_GRADUATION_YEAR - SUBMIT_MIN_GRADUATION_YEAR + 1 },
+  (_, i) => SUBMIT_MAX_GRADUATION_YEAR - i
+)
 
 const INITIAL_PEOPLE: PersonInput[] = [createPerson(), createPerson(), createPerson()]
 const INITIAL_SELF: PersonInput[] = [createPerson(true)]
@@ -51,7 +60,8 @@ const MSG_PRESETS = ['보고싶다', '잘 지내?', '그때 고마웠어', '연�
 
 function SubmitInner() {
   const searchParams = useSearchParams()
-  const selfMode = searchParams.get('self') === '1'
+  const prefill = parseSubmitPrefill(searchParams)
+  const selfMode = prefill.selfMode
 
   const [school, setSchool] = useState<SchoolLite | null>(null)
   const [query, setQuery] = useState('')
@@ -59,9 +69,9 @@ function SubmitInner() {
   const [searching, setSearching] = useState(false)
   const [open, setOpen] = useState(false)
 
-  const [gradYear, setGradYear] = useState('')
-  const [grade, setGrade] = useState('')
-  const [classNumber, setClassNumber] = useState('')
+  const [gradYear, setGradYear] = useState(prefill.graduationYear)
+  const [grade, setGrade] = useState(prefill.grade)
+  const [classNumber, setClassNumber] = useState(prefill.classNumber)
   const [department, setDepartment] = useState('')
   const [studentYear, setStudentYear] = useState('')
 
@@ -87,7 +97,7 @@ function SubmitInner() {
   const gradeMax = school?.school_type === 'elementary' ? 6 : 3
 
   useEffect(() => {
-    const slug = searchParams.get('school')
+    const slug = prefill.schoolSlug
     if (!slug) return
     ;(async () => {
       const { data } = await supabase
@@ -95,7 +105,16 @@ function SubmitInner() {
         .select('id, school_name, school_type, sido, sigungu, slug')
         .eq('slug', slug)
         .maybeSingle()
-      if (data) setSchool(data as SchoolLite)
+      if (data) {
+        const selected = data as SchoolLite
+        setSchool(selected)
+        setGrade(gradeForSchoolType(prefill.grade, selected.school_type))
+        setClassNumber(
+          selected.school_type === 'university' || selected.school_type === 'college'
+            ? ''
+            : prefill.classNumber
+        )
+      }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

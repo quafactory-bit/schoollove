@@ -8,18 +8,24 @@ import { useMemo, useState } from 'react'
 import ProfileCard from './ProfileCard'
 import { filterProfilesByNickname } from '@/lib/policy/yearHub'
 import type { YearHubPersonProfile } from '@/lib/api/profiles'
+import { formatNumber } from '@/lib/utils'
 
 interface Props {
   profiles: YearHubPersonProfile[]
+  totalCount: number
 }
 
-export default function YearPeopleSearch({ profiles }: Props) {
+export default function YearPeopleSearch({ profiles, totalCount }: Props) {
   const [query, setQuery] = useState('')
 
   const filtered = useMemo(() => filterProfilesByNickname(profiles, query), [profiles, query])
 
   return (
     <section className="space-y-3">
+      <div>
+        <h2 className="section-title">동기 {formatNumber(totalCount)}명 찾기</h2>
+        <p className="mt-1 text-sm text-gray-500">이름으로 찾거나 등록된 동기를 둘러보세요.</p>
+      </div>
       <div>
         <label htmlFor="year-people-search" className="mb-2 block text-sm font-semibold text-gray-800">
           동기 이름으로 찾기
@@ -33,14 +39,14 @@ export default function YearPeopleSearch({ profiles }: Props) {
             placeholder="이름을 입력하세요"
             aria-label="동기 이름으로 찾기"
             autoComplete="off"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 pr-10 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 pr-12 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
               aria-label="검색어 지우기"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+              className="absolute right-0 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-gray-400 hover:text-gray-700"
             >
               ✕
             </button>

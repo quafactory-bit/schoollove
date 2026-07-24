@@ -2,25 +2,16 @@
 import { useState } from 'react'
 import EditDeleteModal from './EditDeleteModal'
 import ReportButton from './ReportButton'
-interface Profile {
-  id: string
-  nickname: string
-  instagram_id: string | null
-  graduation_year: number
-  grade: number | null
-  class_number: number | null
-  department: string | null
-  message?: string | null
-  created_at: string
-}
-export default function ProfileCard({ profile }: { profile: Profile }) {
+import type { PublicProfileCard } from '@/lib/api/profiles'
+
+export default function ProfileCard({ profile }: { profile: PublicProfileCard }) {
   const [showModal, setShowModal] = useState(false)
   const meta = profile.grade
     ? `${profile.graduation_year}년 ${profile.grade}학년 ${profile.class_number}반`
     : `${profile.graduation_year}년 졸업${profile.department ? ' · ' + profile.department : ''}`
   return (
     <>
-      <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-schoollove-text font-bold text-sm shrink-0">
             {profile.nickname[0]}
@@ -32,11 +23,16 @@ export default function ProfileCard({ profile }: { profile: Profile }) {
             </div>
             {profile.instagram_id ? (
               <a href={`https://instagram.com/${profile.instagram_id}`} target="_blank" rel="noopener noreferrer"
-                className="text-gray-900 text-sm font-medium hover:underline">
+                aria-label={`인스타그램에서 ${profile.nickname} 보기`}
+                className="inline-flex min-h-11 items-center text-sm font-medium text-gray-900 hover:underline">
                 @{profile.instagram_id}
               </a>
             ) : (
-              <button onClick={() => setShowModal(true)} className="text-xs text-gray-400 hover:text-gray-900">
+              <button
+                onClick={() => setShowModal(true)}
+                aria-label={`${profile.nickname} 인스타그램 추가 요청`}
+                className="inline-flex min-h-11 items-center text-xs text-gray-400 hover:text-gray-900"
+              >
                 + 인스타 추가
               </button>
             )}
@@ -48,8 +44,14 @@ export default function ProfileCard({ profile }: { profile: Profile }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => setShowModal(true)} className="text-xs text-gray-400 hover:text-gray-600">수정·삭제</button>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <button
+            onClick={() => setShowModal(true)}
+            aria-label={`${profile.nickname} 정보 수정 또는 삭제 요청`}
+            className="inline-flex min-h-11 items-center text-xs text-gray-400 hover:text-gray-600"
+          >
+            수정·삭제
+          </button>
           <ReportButton profileId={profile.id} />
         </div>
       </div>

@@ -140,6 +140,11 @@ describe('getProfilesBySchool — School Hub 상단 "N명 등록" 헤더의 실�
     ])
     // year 파라미터를 주지 않으면 graduation_year eq가 추가되지 않아야 함 (학교 총원 표시와 연도별 표시가 섞이지 않도록)
     expect(eqCalls.some((c) => c.args[0] === 'graduation_year')).toBe(false)
+    const selectedColumns = String(findCall(calls[0], 'select')?.args[0])
+    expect(selectedColumns).not.toBe('*')
+    for (const forbidden of ['report_count', 'is_hidden', 'school_id', 'student_year', 'description', 'is_self']) {
+      expect(selectedColumns).not.toMatch(new RegExp(`\\b${forbidden}\\b`))
+    }
   })
 
   it('year 필터를 주면 graduation_year eq가 추가되어 그 연도만의 count를 반환 (학교 총원과 다른 값일 수 있음을 명시)', async () => {
@@ -166,6 +171,39 @@ describe('getProfilesBySchool — School Hub 상단 "N명 등록" 헤더의 실�
     const result = await getProfilesBySchool('school-1', 1)
 
     expect(result).toEqual({ data: [], count: 0 })
+  })
+})
+
+describe('getProfilesByClass — 공개 ProfileCard 최소 shape와 pagination', () => {
+  it('공개 컬럼만 선택하고 class 필터·hidden 제외·최신순·20개 range를 유지한다', async () => {
+    const rows = [{ id: 'p1', nickname: '테스트' }]
+    const { supabase, supabaseServer, calls } = createMockSupabase([
+      { data: rows, count: 21, error: null },
+    ])
+    vi.doMock('@/lib/supabase', () => ({ supabase, supabaseServer }))
+    const { getProfilesByClass } = await import('./profiles')
+
+    const result = await getProfilesByClass('school-1', 2020, 3, 2, 2)
+
+    expect(result).toEqual({ data: rows, count: 21 })
+    expect(calls[0].filter((c) => c.method === 'eq')).toEqual([
+      { method: 'eq', args: ['school_id', 'school-1'] },
+      { method: 'eq', args: ['graduation_year', 2020] },
+      { method: 'eq', args: ['grade', 3] },
+      { method: 'eq', args: ['class_number', 2] },
+      { method: 'eq', args: ['is_hidden', false] },
+    ])
+    expect(findCall(calls[0], 'order')?.args).toEqual(['created_at', { ascending: false }])
+    expect(findCall(calls[0], 'range')?.args).toEqual([20, 39])
+
+    const selectedColumns = String(findCall(calls[0], 'select')?.args[0])
+    expect(selectedColumns).not.toBe('*')
+    for (const required of ['id', 'nickname', 'instagram_id', 'graduation_year', 'grade', 'class_number', 'department', 'message', 'created_at']) {
+      expect(selectedColumns).toMatch(new RegExp(`\\b${required}\\b`))
+    }
+    for (const forbidden of ['report_count', 'is_hidden', 'school_id', 'student_year', 'description', 'is_self']) {
+      expect(selectedColumns).not.toMatch(new RegExp(`\\b${forbidden}\\b`))
+    }
   })
 })
 

@@ -26,7 +26,7 @@ describe('app/school/[slug]/[year]/page.tsx — PHASE 7B People Discovery 계약
     expect(SOURCE).toMatch(/aggregateClassCounts\(profiles\)/)
     expect(SOURCE).toMatch(/pickMostActiveClass\(classes\)/)
     expect(SOURCE).toMatch(/pickMostRecentRegistration\(profiles\)/)
-    expect(SOURCE).toMatch(/classifyYearState\(profiles\.length\)/)
+    expect(SOURCE).toMatch(/classifyYearState\(totalProfileCount\)/)
   })
 
   it("state === 'empty'일 때 YearPeopleSearch(이름 검색)를 렌더하지 않는다", () => {
@@ -36,18 +36,30 @@ describe('app/school/[slug]/[year]/page.tsx — PHASE 7B People Discovery 계약
   })
 
   it('empty가 아닌 상태에서는 YearPeopleSearch를 렌더한다', () => {
-    expect(SOURCE).toMatch(/<YearPeopleSearch profiles=\{profiles\} \/>/)
+    expect(SOURCE).toMatch(/<YearPeopleSearch profiles=\{profiles\} totalCount=\{totalProfileCount\} \/>/)
   })
 
   it('School Hub로 돌아가는 링크를 유지한다', () => {
     expect(SOURCE).toMatch(/href=\{`\/school\/\$\{slug\}`\}/)
   })
 
-  it('등록 CTA를 유지한다', () => {
-    expect(SOURCE).toMatch(/href="\/submit"/)
+  it('동기 검색·명단을 반 navigation보다 먼저 렌더링한다', () => {
+    expect(SOURCE.indexOf('<YearPeopleSearch')).toBeGreaterThan(-1)
+    expect(SOURCE.indexOf('<YearPeopleSearch')).toBeLessThan(SOURCE.indexOf('반별 보기'))
+  })
+
+  it('등록 CTA를 발견 콘텐츠와 반 navigation 뒤에 두고 school/year context를 사용한다', () => {
+    expect(SOURCE).toMatch(/buildSubmitContextHref\(\{ school: slug, year \}\)/)
+    expect(SOURCE.indexOf('href={submitHref}')).toBeGreaterThan(SOURCE.indexOf('반별 보기'))
   })
 
   it('Class Hub 링크 형식(/school/[slug]/[year]/[grade]-[class])을 그대로 유지한다', () => {
     expect(SOURCE).toMatch(/href=\{`\/school\/\$\{slug\}\/\$\{year\}\/\$\{c\.grade\}-\$\{c\.classNumber\}`\}/)
+  })
+
+  it('실제 year count를 헤더·context·동기 발견 제목에 재사용한다', () => {
+    expect(SOURCE).toMatch(/getYearProfileCount\(school\.id, year\)/)
+    expect(SOURCE).toMatch(/총 \{formatNumber\(totalProfileCount\)\}명/)
+    expect(SOURCE).toMatch(/totalCount=\{totalProfileCount\}/)
   })
 })

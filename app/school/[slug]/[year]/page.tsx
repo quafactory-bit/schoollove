@@ -16,6 +16,7 @@ import { getYearPageMetadata } from '@/lib/seo'
 import { isYearPageIndexable } from '@/lib/policy/seoIndexing'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { formatNumber } from '@/lib/utils'
+import { buildSubmitContextHref } from '@/app/submit/prefill'
 
 // PHASE 8: noindex 임계값은 lib/policy/seoIndexing.ts(SEO_INDEX_THRESHOLD)로 일원화됐다 —
 // sitemap도 동일 함수를 쓰므로 이 페이지의 noindex와 sitemap 포함 여부가 항상 일치한다.
@@ -53,16 +54,20 @@ export default async function YearPage({ params }: PageProps) {
   if (!school) notFound()
 
   // PHASE 7B — docs/design-package-v1.0/06-people-discovery.md §E: 기수 전체 명단을
-  // 한 번에 로드한다(페이지네이션 없음). 반별 집계·가장 활발한 반·최근 등록·기수 상태는
-  // 전부 이 한 번의 조회 결과로부터 순수 함수(lib/policy/yearHub.ts)가 계산한다 —
-  // 추가 DB 왕복이 없다.
-  const profiles = await getAllProfilesBySchoolYear(school.id, year)
+  // 한 번에 로드한다(페이지네이션 없음). 반별 집계·가장 활발한 반·최근 등록은 이 조회
+  // 결과에서 계산하고, 500명 상한과 무관한 실제 총원·기수 상태는 기존 count 함수를
+  // 재사용한다. 새 query 정책이나 집계식을 페이지에 복제하지 않는다.
+  const [profiles, totalProfileCount] = await Promise.all([
+    getAllProfilesBySchoolYear(school.id, year),
+    getYearProfileCount(school.id, year),
+  ])
 
   const classes = aggregateClassCounts(profiles)
   const mostActiveClass = pickMostActiveClass(classes)
   const mostRecent = pickMostRecentRegistration(profiles)
-  const state = classifyYearState(profiles.length)
+  const state = classifyYearState(totalProfileCount)
   const now = new Date()
+  const submitHref = buildSubmitContextHref({ school: slug, year })
 
   return (
     <div className="page-container space-y-5">
@@ -82,11 +87,8 @@ export default async function YearPage({ params }: PageProps) {
           <span className="text-brand-blue ml-2">{year}년</span>
         </h1>
         <p className="text-sm text-gray-500">
-          {SCHOOL_TYPE_LABELS[school.school_type]} · 졸업(예정) · 총 {formatNumber(profiles.length)}명
+          {SCHOOL_TYPE_LABELS[school.school_type]} · 졸업(예정) · 총 {formatNumber(totalProfileCount)}명
         </p>
-        <Link href="/submit" className="btn-primary inline-block text-sm">
-          등록하기
-        </Link>
       </div>
 
       {state === 'empty' ? (
@@ -94,9 +96,6 @@ export default async function YearPage({ params }: PageProps) {
         <div className="card p-10 text-center space-y-2">
           <p className="text-2xl">📭</p>
           <p className="font-semibold text-gray-700">{year}년 등록된 사람이 없어요</p>
-          <Link href="/submit" className="btn-primary inline-block text-sm mt-2">
-            첫 번째로 등록하기
-          </Link>
         </div>
       ) : (
         <>
@@ -110,7 +109,7 @@ export default async function YearPage({ params }: PageProps) {
                 </span>
               )}
             </div>
-            <p>등록 인원 {formatNumber(profiles.length)}명 · 등록 반 {classes.length}개</p>
+            <p>등록 인원 {formatNumber(totalProfileCount)}명 · 등록 반 {classes.length}개</p>
             {mostActiveClass && (
               <p>
                 가장 활발한 반 ·{' '}
@@ -122,6 +121,9 @@ export default async function YearPage({ params }: PageProps) {
             )}
             {mostRecent && <p>최근 등록 · <span className="text-schoollove-date">{formatRelativeTime(mostRecent.created_at, now)}</span></p>}
           </section>
+
+          {/* C+D. 동기 발견 Hook — 반 navigation보다 먼저 노출한다. */}
+          <YearPeopleSearch profiles={profiles} totalCount={totalProfileCount} />
 
           {/* E. 반 탐색 (초/중/고만 — grade/class_number가 있는 프로필만 집계됨) */}
           {classes.length > 0 && (
@@ -150,11 +152,21 @@ export default async function YearPage({ params }: PageProps) {
               </div>
             </section>
           )}
-
-          {/* C+D. 이름 검색 + 전체 명단(검색어 없을 때) */}
-          <YearPeopleSearch profiles={profiles} />
         </>
       )}
+
+      {/* 등록은 발견과 반 navigation 뒤의 기여 행동이다. */}
+      <section className="space-y-3 border-t border-gray-200 pt-5">
+        <div>
+          <h2 className="section-title">우리 반이 여기 없어요?</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            이름을 남기면 {year}년 동기들이 서로를 찾는 데 도움이 돼요.
+          </p>
+        </div>
+        <Link href={submitHref} className="btn-primary inline-flex min-h-11 items-center text-sm">
+          {state === 'empty' ? '첫 번째 이름 남기기' : '우리 반 친구 등록하기'}
+        </Link>
+      </section>
     </div>
   )
 }
