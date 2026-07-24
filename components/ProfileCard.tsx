@@ -22,7 +22,7 @@ export default function ProfileCard({ profile }: { profile: Profile }) {
     <>
       <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-sm shrink-0">
+          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-schoollove-text font-bold text-sm shrink-0">
             {profile.nickname[0]}
           </div>
           <div className="min-w-0">

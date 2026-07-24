@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -115,7 +115,7 @@ export function ReportsList({ reports, emptyMessage = '아직 신고가 없습�
                 <td className="px-4 py-3 text-gray-700">
                   {getReasonLabel(report.reason)}
                 </td>
-                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                <td className="px-4 py-3 text-schoollove-date whitespace-nowrap">
                   {formatDate(report.created_at)}
                 </td>
                 <td className="px-4 py-3">
@@ -172,7 +172,7 @@ export function ReportsList({ reports, emptyMessage = '아직 신고가 없습�
               )}
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600">
+              <span className="text-schoollove-date">
                 사유: {getReasonLabel(report.reason)} · {formatDate(report.created_at)}
               </span>
               <button

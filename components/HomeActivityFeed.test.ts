@@ -16,7 +16,7 @@ describe('HomeActivityFeed presentation contract', () => {
     expect(SOURCE).toContain('<summary')
     expect(SOURCE).toContain('overflow-hidden border border-schoollove-border bg-schoollove-surface')
     expect(SOURCE).toContain('min-h-11')
-    expect(SOURCE).toContain('group-open:text-schoollove-electric-blue')
+    expect(SOURCE).toContain('group-open:text-schoollove-text')
   })
 
   it('inherits the global font instead of applying a local font override', () => {

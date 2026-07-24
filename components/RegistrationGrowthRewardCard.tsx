@@ -40,7 +40,7 @@ export default function RegistrationGrowthRewardCard({ copy }: Props) {
               style={{ width: `${copy.progressBar.percent}%` }}
             />
           </div>
-          <p className="font-retro text-xs text-schoollove-level">{copy.progressBar.remainingLabel}</p>
+          <p className="font-retro text-xs text-schoollove-text">{copy.progressBar.remainingLabel}</p>
         </div>
       )}
     </div>

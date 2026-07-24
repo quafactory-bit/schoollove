@@ -110,7 +110,7 @@ export function DeleteRequestsList({ requests }: Props) {
                     <span className="text-gray-400">미확인</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                <td className="px-4 py-3 text-schoollove-date whitespace-nowrap">
                   {formatDate(req.created_at)}
                 </td>
                 <td className="px-4 py-3">

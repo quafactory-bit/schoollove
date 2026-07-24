@@ -20,7 +20,7 @@ describe('CurrentSchoolRanking presentation contract', () => {
 
   it('uses visual hierarchy without a component-local font override', () => {
     expect(SOURCE).not.toContain('font-game')
-    expect(SOURCE).toContain('text-[12px] tracking-[0.14em]')
+    expect(SOURCE).toContain('text-[12px] tracking-[0.14em] text-schoollove-hud-red')
     expect(SOURCE).toContain('pt-0.5 text-[22px]')
     expect(SOURCE).toContain('break-keep text-[17px] leading-6')
     expect(SOURCE).toContain('rounded-sm bg-schoollove-level/10')

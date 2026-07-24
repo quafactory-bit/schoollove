@@ -162,7 +162,7 @@ export default function AdminProfilesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{p.report_count}</td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="px-4 py-3 text-schoollove-date">
                     {new Date(p.created_at).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-4 py-3">

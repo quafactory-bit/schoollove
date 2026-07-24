@@ -120,7 +120,7 @@ export default async function YearPage({ params }: PageProps) {
                 ({mostActiveClass.count}명)
               </p>
             )}
-            {mostRecent && <p>최근 등록 · {formatRelativeTime(mostRecent.created_at, now)}</p>}
+            {mostRecent && <p>최근 등록 · <span className="text-schoollove-date">{formatRelativeTime(mostRecent.created_at, now)}</span></p>}
           </section>
 
           {/* E. 반 탐색 (초/중/고만 — grade/class_number가 있는 프로필만 집계됨) */}

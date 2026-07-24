@@ -57,8 +57,8 @@ export default function SchoolGrowthPanel({
             별도 트랙이다. */}
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-black text-gray-900">{schoolName}</h1>
-            <span className="font-retro inline-flex items-center rounded-sm bg-schoollove-surface-subtle px-2.5 py-1 text-xs font-normal text-schoollove-level">
+            <h1 className="text-xl font-black text-schoollove-text">{schoolName}</h1>
+            <span className="font-retro inline-flex items-center rounded-sm bg-schoollove-surface-subtle px-2.5 py-1 text-xs font-normal text-schoollove-text">
               Lv.{snapshot.effectiveLevel}
             </span>
             {snapshot.isNearLevelUp && (
@@ -81,7 +81,7 @@ export default function SchoolGrowthPanel({
 
         {/* B. 성장 메시지 */}
         <div>
-          <p className="font-bold text-gray-900">{content.title}</p>
+          <p className="font-bold text-schoollove-text">{content.title}</p>
           {description && <p className="mt-0.5 text-sm text-gray-500">{description}</p>}
         </div>
 
@@ -89,7 +89,7 @@ export default function SchoolGrowthPanel({
             Lv.N→Lv.N+1, XP progressPercent, XP remainingToNext는 여기서 표시하지 않는다. */}
         <div className="space-y-2 rounded-xl bg-gray-50 p-3.5">
           <div className="flex items-center justify-between gap-2 text-sm">
-            <span className="font-semibold text-gray-900">학교 성장</span>
+            <span className="font-semibold text-schoollove-text">학교 성장</span>
             {peopleGrowth.isNearGrowth && (
               <span className="font-retro shrink-0 rounded-sm bg-schoollove-neon-mint px-2 py-0.5 text-[11px] font-normal text-schoollove-text">
                 성장 임박

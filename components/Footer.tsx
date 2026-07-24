@@ -4,26 +4,26 @@ export default function Footer() {
     <footer className="mt-16 border-t border-schoollove-border bg-schoollove-surface">
       <div className="mx-auto max-w-[600px] px-5 py-8">
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <div className="text-sm text-neutral-500">
-            <span className="font-bold text-neutral-900">스쿨러브아이</span>
+          <div className="text-sm text-schoollove-text">
+            <span className="font-bold text-schoollove-text">스쿨러브아이</span>
             <span className="mx-2">·</span>
             <span>학교 동창 인스타 찾기</span>
           </div>
-          <div className="flex items-center gap-4 text-sm text-neutral-500">
-            <Link href="/contact" className="inline-flex min-h-11 items-center transition-colors hover:text-neutral-900">
+          <div className="flex items-center gap-4 text-sm text-schoollove-text">
+            <Link href="/contact" className="inline-flex min-h-11 items-center text-schoollove-text">
               문의 및 제휴
             </Link>
             <span>·</span>
-            <Link href="/terms" className="inline-flex min-h-11 items-center transition-colors hover:text-neutral-900">
+            <Link href="/terms" className="inline-flex min-h-11 items-center text-schoollove-text">
               이용약관
             </Link>
             <span>·</span>
-            <Link href="/privacy" className="inline-flex min-h-11 items-center transition-colors hover:text-neutral-900">
+            <Link href="/privacy" className="inline-flex min-h-11 items-center text-schoollove-text">
               개인정보처리방침
             </Link>
           </div>
         </div>
-        <div className="mt-4 text-center text-xs text-neutral-400">
+        <div className="mt-4 text-center text-xs text-schoollove-text">
           © 2026 스쿨러브아이. All rights reserved.
         </div>
       </div>
