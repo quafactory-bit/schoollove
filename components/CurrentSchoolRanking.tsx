@@ -14,7 +14,7 @@ function levelLabel(level: number) {
 export default function CurrentSchoolRanking({ status, rows }: Props) {
   return (
     <section className="mt-12 border-t border-schoollove-border pt-7 lg:mt-16 lg:pt-9" aria-labelledby="current-rank-title">
-      <p className="text-[12px] tracking-[0.14em] text-schoollove-electric-blue sm:text-[13px]">CURRENT RANK</p>
+      <p className="text-[12px] tracking-[0.14em] text-schoollove-hud-red sm:text-[13px]">CURRENT RANK</p>
       <h2 id="current-rank-title" className="mt-2 text-[26px] tracking-[-0.01em] text-schoollove-text lg:text-[32px]">
         현재 학교 순위
       </h2>
@@ -56,7 +56,7 @@ export default function CurrentSchoolRanking({ status, rows }: Props) {
                       </span>
                       <span className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 text-[13px] leading-5 lg:text-[14px]">
                         <span className="text-schoollove-number">{formatNumber(row.visibleProfileCount)}명</span>
-                        {level && <span className="rounded-sm bg-schoollove-level/10 px-1.5 py-0.5 text-schoollove-level">{level}</span>}
+                        {level && <span className="rounded-sm bg-schoollove-level/10 px-1.5 py-0.5 text-schoollove-text">{level}</span>}
                         {row.remainingLabel && (
                           <span className="text-schoollove-secondary">
                             다음 성장 단계까지{' '}
@@ -69,7 +69,7 @@ export default function CurrentSchoolRanking({ status, rows }: Props) {
                       </span>
                       <span className="mt-3 flex items-center justify-between gap-3 text-[11px] text-schoollove-secondary lg:hidden">
                         <span>PROGRESS</span>
-                        <span className="text-schoollove-electric-blue">{Math.round(row.progressPercent)}%</span>
+                        <span className="text-schoollove-text">{Math.round(row.progressPercent)}%</span>
                       </span>
                       <span className="mt-2 block h-[5px] overflow-hidden bg-schoollove-progress-track lg:hidden" aria-hidden="true">
                         <span className="block h-full bg-schoollove-electric-blue" style={{ width: `${row.progressPercent}%` }} />
@@ -78,7 +78,7 @@ export default function CurrentSchoolRanking({ status, rows }: Props) {
                     <span className="hidden min-w-0 lg:block">
                       <span className="mb-2 flex items-center justify-between gap-3 text-[12px] text-schoollove-secondary">
                         <span>PROGRESS</span>
-                        <span className="text-schoollove-electric-blue">{Math.round(row.progressPercent)}%</span>
+                        <span className="text-schoollove-text">{Math.round(row.progressPercent)}%</span>
                       </span>
                       <span className="block h-[7px] overflow-hidden bg-schoollove-progress-track" aria-hidden="true">
                         <span className="block h-full bg-schoollove-electric-blue" style={{ width: `${row.progressPercent}%` }} />

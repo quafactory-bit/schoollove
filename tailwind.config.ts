@@ -15,6 +15,8 @@ const config: Config = {
           'surface-subtle': 'var(--schoollove-surface-subtle)',
           'surface-pressed': 'var(--schoollove-surface-pressed)',
           text: 'var(--schoollove-text)',
+          date: 'var(--color-schoollove-date)',
+          'hud-red': 'var(--color-schoollove-hud-red)',
           secondary: 'var(--schoollove-text-secondary)',
           muted: 'var(--schoollove-text-muted)',
           border: 'var(--schoollove-border)',

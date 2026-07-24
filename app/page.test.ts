@@ -27,10 +27,11 @@ describe('home global typography contract', () => {
 
     expect(headline).toContain('text-schoollove-text')
     expect(headline).toContain('lg:text-[56px]')
-    expect(headline).not.toMatch(/text-schoollove-(neon|electric|level|growth|system|warning)/)
+    expect(headline).not.toMatch(/text-schoollove-(neon|electric|level|growth|system|warning|hud-red)/)
     expect(PAGE_SOURCE).toContain('GROWTH ONLINE')
     expect(PAGE_SOURCE).toContain('GROWTH STATUS')
-    expect(PAGE_SOURCE).toContain('text-schoollove-electric-blue')
+    expect(PAGE_SOURCE).toContain('text-schoollove-hud-red')
+    expect(PAGE_SOURCE).toContain('text-schoollove-text">GROWTH STATUS')
   })
 
   it('keeps the status panel connected to existing ranking and activity arrays', () => {

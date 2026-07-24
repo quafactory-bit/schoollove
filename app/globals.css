@@ -6,13 +6,16 @@
   --schoollove-surface: #ffffff;
   --schoollove-surface-subtle: #f7f7f7;
   --schoollove-surface-pressed: #f1f5f9;
-  --schoollove-text: #111111;
-  --schoollove-text-secondary: #5b5b5b;
-  --schoollove-text-muted: #8a8a8a;
+  --color-schoollove-text: #000000;
+  --color-schoollove-date: #4b5563;
+  --color-schoollove-hud-red: #c62828;
+  --schoollove-text: var(--color-schoollove-text);
+  --schoollove-text-secondary: var(--color-schoollove-text);
+  --schoollove-text-muted: var(--color-schoollove-date);
   --schoollove-border: #e8e8e8;
   --schoollove-progress-track: #e8e8e8;
-  --schoollove-school: #111111;
-  --schoollove-number: #111827;
+  --schoollove-school: var(--color-schoollove-text);
+  --schoollove-number: var(--color-schoollove-text);
   --schoollove-level: #4f7cff;
   --schoollove-growth: #32e6b7;
   --schoollove-system: #ff9f43;
@@ -23,16 +26,16 @@
   --schoollove-neon-lime: #b7f84a;
   --schoollove-electric-blue: #4f7cff;
   --schoollove-neon-orange: #ff9f43;
-  --font-schoollove: "SchoolLove Classic RPG", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-schoollove: "DNFBitBitv2", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   /* Legacy utility aliases remain so existing markup cannot select another font. */
   --font-schoollove-retro: var(--font-schoollove);
   --font-schoollove-mono: var(--font-schoollove);
   --font-schoollove-game: var(--font-schoollove);
 }
 @font-face {
-  font-family: "SchoolLove Classic RPG";
-  src: url("/fonts/schoollove-classic-rpg/SchoolLoveClassicRPG-Regular.woff2") format("woff2");
-  font-weight: 500;
+  font-family: "DNFBitBitv2";
+  src: url("/fonts/dnf-bitbit-v2/DNFBitBitv2.otf") format("opentype");
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
@@ -43,7 +46,7 @@
   }
   html {
     font-family: var(--font-schoollove);
-    font-weight: 500;
+    font-weight: 400;
     font-style: normal;
     font-synthesis: none;
     -webkit-font-smoothing: antialiased;
@@ -75,9 +78,13 @@
   summary,
   time {
     font-family: var(--font-schoollove) !important;
-    font-weight: 500 !important;
+    font-weight: 400 !important;
     font-style: normal;
     font-synthesis: none;
+  }
+  ::placeholder {
+    color: var(--schoollove-text);
+    opacity: 1;
   }
   /* 스크롤바 */
   ::-webkit-scrollbar {
@@ -110,24 +117,59 @@
     @apply bg-brand-blue text-white font-bold py-3 px-6 rounded-2xl hover:bg-brand-blue-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-secondary {
-    @apply bg-white text-gray-700 font-medium py-3 px-6 rounded-2xl border border-gray-200 hover:bg-gray-50 transition-colors;
+    @apply bg-white text-schoollove-text font-medium py-3 px-6 rounded-2xl border border-gray-200 hover:bg-gray-50 transition-colors;
   }
   .input-base {
-    @apply w-full border border-schoollove-border rounded-2xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-schoollove-level focus:ring-1 focus:ring-schoollove-level/20 transition-all;
+    @apply w-full border border-schoollove-border rounded-2xl px-3.5 py-2.5 text-sm text-schoollove-text placeholder-schoollove-text outline-none focus:border-schoollove-level focus:ring-1 focus:ring-schoollove-level/20 transition-all;
   }
   .chip {
     @apply inline-flex items-center px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer;
   }
   .chip-active {
-    @apply bg-brand-blue text-white;
+    @apply bg-brand-blue text-schoollove-bg;
   }
   .chip-inactive {
-    @apply bg-white text-gray-600 border border-gray-200 hover:border-gray-400 hover:text-gray-900;
+    @apply bg-white text-schoollove-text border border-gray-200 hover:border-gray-400 hover:text-schoollove-text;
   }
   .section-title {
-    @apply text-sm font-semibold text-gray-500 uppercase tracking-wide;
+    @apply text-sm font-semibold text-schoollove-text uppercase tracking-wide;
   }
   .divider {
     @apply border-t border-gray-100 my-4;
   }
+}
+
+body :where(h1, h2, h3, h4, h5, h6, p, a, button, label, input, textarea, select, option, td, th, dt, dd, li, summary, figcaption, caption, span, strong, b, small, em):not([aria-hidden="true"]):not(.text-schoollove-date):not(.text-schoollove-hud-red):not(.text-white):not(.text-schoollove-bg) {
+  color: var(--schoollove-text);
+}
+
+body :where(time, .text-schoollove-date) {
+  color: var(--color-schoollove-date);
+}
+
+body .text-schoollove-hud-red {
+  color: var(--color-schoollove-hud-red);
+}
+
+body input:not(:disabled)::placeholder,
+body textarea:not(:disabled)::placeholder {
+  color: var(--schoollove-text) !important;
+  opacity: 1 !important;
+}
+
+body .btn-primary,
+body .chip-active,
+body .schoollove-dark-action,
+body .schoollove-dark-action:visited,
+body .schoollove-dark-action:hover,
+body .schoollove-dark-action:focus-visible,
+body .schoollove-dark-action:active,
+body .schoollove-dark-action :where(span, strong, small) {
+  color: #ffffff !important;
+}
+
+body .schoollove-dark-action-hover:hover,
+body .schoollove-dark-action-hover:focus-visible,
+body .schoollove-dark-action-hover:active {
+  color: #ffffff !important;
 }

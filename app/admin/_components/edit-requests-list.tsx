@@ -101,7 +101,7 @@ export function EditRequestsList({ requests }: Props) {
                 <td className="px-4 py-3 text-gray-600 text-xs">{getSchoolLabel(req.profile)}</td>
                 <td className="px-4 py-3 text-gray-500">{getCurrentInstagramLabel(req.profile)}</td>
                 <td className="px-4 py-3 text-gray-900 font-medium">{getRequestedInstagramLabel(req)}</td>
-                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                <td className="px-4 py-3 text-schoollove-date whitespace-nowrap">
                   {formatDate(req.created_at)}
                 </td>
                 <td className="px-4 py-3">
@@ -157,7 +157,7 @@ export function EditRequestsList({ requests }: Props) {
               {getCurrentInstagramLabel(req.profile)} → {getRequestedInstagramLabel(req)}
             </p>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600">{formatDate(req.created_at)}</span>
+              <span className="text-schoollove-date">{formatDate(req.created_at)}</span>
               <button
                 onClick={() => handleToggle(req.id, req.status)}
                 disabled={loadingId === req.id || !req.profile}

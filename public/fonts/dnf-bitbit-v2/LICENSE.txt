@@ -1,0 +1,28 @@
+DNF BitBit v2 Font License Notice
+
+Source:
+https://df.nexon.com/data/font/dnfbitbitv2
+
+Copyright (c) 2023, NEOPLE Inc. (https://www.neople.co.kr),
+with Reserved Font Name ForgedBlade_TTF.ttf, ForgedBlade_OTF.otf,
+DNFBitBit_ver2_TTF.ttf, DNFBitBit_ver2_OTF.otf.
+
+All rights, including intellectual property rights in the provided font,
+belong to NEOPLE Inc.
+
+The font is provided free of charge to all users, including individuals and
+companies. It may be freely used and distributed, including for commercial
+purposes.
+
+The font may not be arbitrarily modified or edited, and must be used in the
+form in which it is distributed.
+
+Selling the font itself for a fee is prohibited.
+
+The font may be bundled with other software or used as an embedded font if
+this copyright notice is included.
+
+Attribution of the font source is recommended.
+
+Printed materials and advertisements, including online advertisements, using
+the font may be used for NEOPLE Inc. promotions.

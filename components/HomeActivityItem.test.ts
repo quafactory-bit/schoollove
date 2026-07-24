@@ -14,8 +14,8 @@ describe('HomeActivityItem presentation contract', () => {
   it('keeps body and metadata hierarchy without a local font override', () => {
     expect(SOURCE).not.toContain('font-game')
     expect(SOURCE).toContain('text-[11px] tracking-[0.1em]')
-    expect(SOURCE).toContain('text-schoollove-neon-orange')
-    expect(SOURCE).toContain('text-schoollove-electric-blue')
+    expect(SOURCE).toContain('text-schoollove-text lg:text-[12px]')
+    expect(SOURCE).toContain('text-schoollove-date')
     expect(SOURCE).toContain('break-keep text-[15px] leading-7 text-schoollove-text')
   })
 

@@ -133,7 +133,7 @@ export default function SchoolWarmth({
           {traces.map((t) => (
             <div
               key={t.id}
-              className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2"
+              className="text-sm text-schoollove-text bg-gray-50 rounded-lg px-3 py-2"
             >
               {t.message}
             </div>

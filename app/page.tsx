@@ -39,7 +39,7 @@ export default async function HomePage() {
             </Link>
             <Link
               href="/submit"
-              className="schoollove-focus inline-flex min-h-11 items-center bg-schoollove-text px-4 text-[14px] text-schoollove-bg transition-colors hover:bg-schoollove-text-secondary"
+              className="schoollove-dark-action schoollove-focus inline-flex min-h-11 items-center bg-schoollove-text px-4 text-[14px] transition-colors hover:bg-schoollove-text-secondary"
             >
               내 이름 남기기
             </Link>
@@ -48,7 +48,7 @@ export default async function HomePage() {
 
         <div className="mt-10 grid gap-7 lg:mt-14 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-end">
           <div>
-            <p className="text-[12px] tracking-[0.14em] text-schoollove-electric-blue sm:text-[13px]">GROWTH ONLINE</p>
+            <p className="text-[12px] tracking-[0.14em] text-schoollove-hud-red sm:text-[13px]">GROWTH ONLINE</p>
             <h1 className="mt-3 max-w-[780px] break-keep text-[36px] font-semibold leading-[1.22] tracking-[-0.02em] text-schoollove-text sm:text-[44px] lg:text-[56px]">
               <span>지금</span>, <span>학교들이</span>
               <br />
@@ -56,15 +56,15 @@ export default async function HomePage() {
             </h1>
           </div>
           <div className="border border-schoollove-border bg-schoollove-surface-subtle p-5 lg:p-6" aria-label="홈 성장 상태">
-            <p className="text-[12px] tracking-[0.14em] text-schoollove-neon-mint">GROWTH STATUS</p>
+            <p className="text-[12px] tracking-[0.14em] text-schoollove-text">GROWTH STATUS</p>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[11px] tracking-[0.08em] text-schoollove-secondary">CURRENT RANK</p>
+                <p className="text-[11px] tracking-[0.08em] text-schoollove-hud-red">CURRENT RANK</p>
                 <p className="mt-1 text-[12px] text-schoollove-secondary">순위에 오른 학교</p>
                 <p className="mt-1 text-[24px] leading-none text-schoollove-text">{rankingRows.length}곳</p>
               </div>
               <div>
-                <p className="text-[11px] tracking-[0.08em] text-schoollove-secondary">LIVE FEED</p>
+                <p className="text-[11px] tracking-[0.08em] text-schoollove-hud-red">LIVE FEED</p>
                 <p className="mt-1 text-[12px] text-schoollove-secondary">최근 성장 소식</p>
                 <p className="mt-1 text-[24px] leading-none text-schoollove-text">{activityItems.length}건</p>
               </div>
@@ -79,7 +79,7 @@ export default async function HomePage() {
       <CurrentSchoolRanking status={rankingResult.status} rows={rankingRows} />
 
       <section className="mt-12 border-t border-schoollove-border pt-7 lg:mt-16 lg:pt-9" aria-labelledby="live-feed-title">
-        <p className="text-[12px] tracking-[0.14em] text-schoollove-neon-orange sm:text-[13px]">LIVE FEED</p>
+        <p className="text-[12px] tracking-[0.14em] text-schoollove-hud-red sm:text-[13px]">LIVE FEED</p>
         <h2 id="live-feed-title" className="mt-2 text-[24px] tracking-[-0.01em] text-schoollove-text lg:text-[28px]">성장 소식</h2>
         <div className="mt-5">
           <HomeActivityFeed items={activityItems} now={now} />

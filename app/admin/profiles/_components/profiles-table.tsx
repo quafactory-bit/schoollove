@@ -68,7 +68,7 @@ export function ProfilesTable({ profiles }: Props) {
                     ? <span className='text-orange-600 font-medium'>{p.report_count}건</span>
                     : <span className='text-gray-400'>0</span>}
                 </td>
-                <td className='px-4 py-3 text-gray-600 whitespace-nowrap'>{fmt(p.created_at)}</td>
+                <td className='px-4 py-3 text-schoollove-date whitespace-nowrap'>{fmt(p.created_at)}</td>
                 <td className='px-4 py-3'>
                   {p.is_hidden
                     ? <span className='inline-flex px-2 py-1 text-xs rounded bg-gray-100 text-gray-500'>숨김</span>
