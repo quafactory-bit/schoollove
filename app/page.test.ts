@@ -38,7 +38,7 @@ describe('home typography contract', () => {
     expect(headline).not.toMatch(/text-schoollove-(neon|electric|level|growth|system|warning|hud-red)/)
     expect(PAGE_SOURCE).toContain('GROWTH ONLINE')
     expect(PAGE_SOURCE).toContain('GROWTH STATUS')
-    expect(PAGE_SOURCE).toContain('text-schoollove-hud-red')
+    expect(PAGE_SOURCE).toContain('schoollove-hud-label')
     expect(PAGE_SOURCE).toContain('text-schoollove-text">GROWTH STATUS')
   })
 
@@ -48,13 +48,17 @@ describe('home typography contract', () => {
   })
 
 
-  it('uses black text for current-rank and live-feed labels', () => {
-    const currentRank = PAGE_SOURCE.match(/<p[^>]*>CURRENT RANK<\/p>/)?.[0] ?? ''
-    const liveFeedLabels = PAGE_SOURCE.match(/<p[^>]*>LIVE FEED<\/p>/g) ?? []
+  it('uses the shared red bold HUD label on the hero and status panel', () => {
+    expect((PAGE_SOURCE.match(/schoollove-hud-label/g) ?? []).length).toBe(4)
+    expect(PAGE_SOURCE).toContain('schoollove-hud-label text-[12px] tracking-[0.14em] sm:text-[13px]">GROWTH ONLINE')
+    expect(PAGE_SOURCE).toContain('schoollove-hud-label text-[11px] tracking-[0.08em]">CURRENT RANK')
+    expect(PAGE_SOURCE).toContain('schoollove-hud-label text-[11px] tracking-[0.08em]">LIVE FEED')
+  })
 
-    expect(currentRank).toContain('text-schoollove-text')
-    expect(liveFeedLabels).toHaveLength(2)
-    expect(liveFeedLabels.every((label) => label.includes('text-schoollove-text'))).toBe(true)
+  it('animates only the main live-feed label and keeps its dot decorative', () => {
+    expect((PAGE_SOURCE.match(/schoollove-live-label/g) ?? []).length).toBe(1)
+    expect((PAGE_SOURCE.match(/schoollove-live-dot/g) ?? []).length).toBe(1)
+    expect(PAGE_SOURCE).toContain('className="schoollove-live-dot" aria-hidden="true"')
   })
 })
 

@@ -14,7 +14,7 @@ function levelLabel(level: number) {
 export default function CurrentSchoolRanking({ status, rows }: Props) {
   return (
     <section className="mt-12 border-t border-schoollove-border pt-7 lg:mt-16 lg:pt-9" aria-labelledby="current-rank-title">
-      <p className="text-[12px] tracking-[0.14em] text-schoollove-text sm:text-[13px]">CURRENT RANK</p>
+      <p className="schoollove-hud-label text-[12px] tracking-[0.14em] sm:text-[13px]">CURRENT RANK</p>
       <h2 id="current-rank-title" className="mt-2 text-[26px] tracking-[-0.01em] text-schoollove-text lg:text-[32px]">
         현재 학교 순위
       </h2>

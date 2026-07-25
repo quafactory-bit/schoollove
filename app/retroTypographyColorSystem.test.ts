@@ -96,6 +96,14 @@ describe('public social typography and text color system', () => {
     }
   })
 
+  it('styles shared home HUD labels in bold red and disables live motion when requested', () => {
+    expect(GLOBALS).toMatch(/\.schoollove-hud-label \{[\s\S]*color: var\(--color-schoollove-hud-red\) !important;[\s\S]*font-family: var\(--font-schoollove\) !important;[\s\S]*font-weight: 700;/)
+    expect(GLOBALS).toContain('animation: schoollove-live-label-pulse 1.4s ease-in-out infinite')
+    expect(GLOBALS).toContain('opacity: 0.45')
+    expect(GLOBALS).toContain('@media (prefers-reduced-motion: reduce)')
+    expect(GLOBALS).toMatch(/\.schoollove-live-label,[\s\S]*\.schoollove-live-dot \{\s*animation: none;/)
+  })
+
   it('keeps black as the default text while explicitly preserving white text on dark actions', () => {
     expect(GLOBALS).toContain('body .btn-primary,')
     expect(GLOBALS).toContain('body .chip-active,')
