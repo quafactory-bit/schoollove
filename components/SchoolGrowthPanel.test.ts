@@ -6,7 +6,7 @@ const SOURCE = readFileSync(join(__dirname, 'SchoolGrowthPanel.tsx'), 'utf-8')
 
 describe('SchoolGrowthPanel — retro growth HUD contract', () => {
   it('keeps school title black while level and growth badges use the small retro HUD style', () => {
-    expect(SOURCE).toContain('text-xl font-black text-schoollove-text')
+    expect(SOURCE).toContain('text-xl font-bold text-schoollove-text')
     expect(SOURCE).toContain('font-retro inline-flex')
     expect(SOURCE).toContain('text-schoollove-text')
     expect(SOURCE).toContain('bg-schoollove-neon-mint')

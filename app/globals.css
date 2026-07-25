@@ -26,8 +26,8 @@
   --schoollove-neon-lime: #b7f84a;
   --schoollove-electric-blue: #4f7cff;
   --schoollove-neon-orange: #ff9f43;
-  --font-schoollove: "DNFBitBitv2", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --font-home-social: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-schoollove: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-admin-game: "DNFBitBitv2", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   /* Legacy utility aliases remain so existing markup cannot select another font. */
   --font-schoollove-retro: var(--font-schoollove);
   --font-schoollove-mono: var(--font-schoollove);
@@ -86,9 +86,37 @@
   summary,
   time {
     font-family: var(--font-schoollove) !important;
-    font-weight: 400 !important;
     font-style: normal;
     font-synthesis: none;
+  }
+  body,
+  input,
+  textarea,
+  select,
+  option,
+  p,
+  a,
+  table,
+  dialog,
+  summary,
+  time {
+    font-weight: 400;
+  }
+  button,
+  label {
+    font-weight: 500;
+  }
+  h1 {
+    font-weight: 700;
+  }
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  strong,
+  b {
+    font-weight: 600;
   }
   ::placeholder {
     color: var(--schoollove-text);
@@ -122,7 +150,7 @@
     @apply bg-white border border-gray-200 rounded-2xl shadow-card;
   }
   .btn-primary {
-    @apply bg-brand-blue text-white font-bold py-3 px-6 rounded-2xl hover:bg-brand-blue-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-brand-blue text-white font-medium py-3 px-6 rounded-2xl hover:bg-brand-blue-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-secondary {
     @apply bg-white text-schoollove-text font-medium py-3 px-6 rounded-2xl border border-gray-200 hover:bg-gray-50 transition-colors;
@@ -182,18 +210,12 @@ body .schoollove-dark-action-hover:active {
   color: #ffffff !important;
 }
 
-body:has(.home-social-ui),
-body:has(.home-social-ui) :where(h1, h2, h3, h4, h5, h6, p, a, button, label, input, textarea, select, option, time, span, strong, small, summary) {
-  font-family: var(--font-home-social) !important;
+body:has(.admin-game-ui),
+.admin-game-ui,
+body:has(.admin-game-ui) :where(h1, h2, h3, h4, h5, h6, p, a, button, label, input, textarea, select, option, time, span, strong, small, summary, table, th, td),
+.admin-game-ui :where(h1, h2, h3, h4, h5, h6, p, a, button, label, input, textarea, select, option, time, span, strong, small, summary, table, th, td) {
+  font-family: var(--font-admin-game) !important;
+  font-weight: 400 !important;
   font-style: normal;
   font-synthesis: none;
-}
-
-body:has(.home-social-ui) .font-medium {
-  font-weight: 500 !important;
-}
-
-body:has(.home-social-ui) .font-semibold,
-body:has(.home-social-ui) strong {
-  font-weight: 600 !important;
 }
