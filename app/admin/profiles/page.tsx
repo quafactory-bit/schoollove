@@ -90,10 +90,10 @@ export default function AdminProfilesPage() {
     college: '전',
   }
 
-  if (loading) return <div className="p-8 text-center">로딩 중...</div>
+  if (loading) return <div className="admin-game-ui p-8 text-center">로딩 중...</div>
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="admin-game-ui min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
           <button

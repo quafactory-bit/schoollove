@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <div className="page-container text-center py-20 space-y-4">
       <p className="text-5xl">🏫</p>
-      <h1 className="text-2xl font-black text-gray-900">페이지를 찾을 수 없어요</h1>
+      <h1 className="text-2xl font-bold text-gray-900">페이지를 찾을 수 없어요</h1>
       <p className="text-sm text-gray-500">
         요청하신 페이지가 존재하지 않거나 삭제되었습니다.
       </p>

@@ -78,7 +78,7 @@ export default async function ClassPage({ params, searchParams }: PageProps) {
 
       {/* 헤더 */}
       <div className="card p-5 space-y-2">
-        <h1 className="text-xl font-black text-gray-900">
+        <h1 className="text-xl font-bold text-gray-900">
           {school.school_name}
         </h1>
         <p className="text-base font-bold text-brand-blue">

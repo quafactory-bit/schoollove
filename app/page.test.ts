@@ -21,12 +21,13 @@ describe('home registration growth feedback target', () => {
 })
 
 describe('home typography contract', () => {
-  it('uses the home-scoped social font without changing its layout', () => {
+  it('inherits the public social font without a page-local font scope', () => {
     expect(PAGE_SOURCE).toContain('max-w-[1180px]')
     expect(PAGE_SOURCE).not.toContain('max-w-[600px]')
-    expect(PAGE_SOURCE).toContain('home-social-ui')
+    expect(PAGE_SOURCE).not.toContain('home-social-ui')
     expect(PAGE_SOURCE).not.toContain('font-game')
     expect(PAGE_SOURCE).not.toContain('font-retro')
+    expect(PAGE_SOURCE).toContain('text-[36px] font-bold')
   })
 
   it('keeps a dark hero and restrained status accents', () => {

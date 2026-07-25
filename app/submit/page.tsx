@@ -273,7 +273,7 @@ function SubmitInner() {
   // ── 등록 폼 ─────────────────────────────────────────────
   return (
     <main className="mx-auto w-full max-w-[600px] px-5 pb-28">
-      <h1 className="mx-auto max-w-[280px] text-center text-[22px] font-extrabold leading-[1.35] tracking-tight text-neutral-900 [text-wrap:balance] sm:max-w-none sm:text-2xl">
+      <h1 className="mx-auto max-w-[280px] text-center text-[22px] font-bold leading-[1.35] tracking-tight text-neutral-900 [text-wrap:balance] sm:max-w-none sm:text-2xl">
         {selfMode ? (
           '내 인스타를 연결해요'
         ) : (

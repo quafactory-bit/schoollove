@@ -41,7 +41,7 @@ export default function InvitePage() {
         <Image src={IMG.completeSchool} alt="" width={1536} height={1024} className="h-auto w-full" />
       </div>
 
-      <h1 className="text-center text-2xl font-extrabold leading-tight text-neutral-900">
+      <h1 className="text-center text-2xl font-bold leading-tight text-neutral-900">
         함께 모일수록
         <br />
         연결될 확률이 높아져요

@@ -57,7 +57,7 @@ export default function SchoolGrowthPanel({
             별도 트랙이다. */}
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-black text-schoollove-text">{schoolName}</h1>
+            <h1 className="text-xl font-bold text-schoollove-text">{schoolName}</h1>
             <span className="font-retro inline-flex items-center rounded-sm bg-schoollove-surface-subtle px-2.5 py-1 text-xs font-normal text-schoollove-text">
               Lv.{snapshot.effectiveLevel}
             </span>

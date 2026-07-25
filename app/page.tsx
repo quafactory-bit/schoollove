@@ -21,7 +21,7 @@ export default async function HomePage() {
   const ctaVisibility = getFeedCtaVisibility(activityItems.length)
 
   return (
-    <main className="home-social-ui mx-auto w-full max-w-[1180px] overflow-x-clip px-5 pb-16 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-[1180px] overflow-x-clip px-5 pb-16 sm:px-6 lg:px-8">
       <header className="pt-7 lg:pt-12">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -49,7 +49,7 @@ export default async function HomePage() {
         <div className="mt-10 grid gap-7 lg:mt-14 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-end">
           <div>
             <p className="text-[12px] tracking-[0.14em] text-schoollove-hud-red sm:text-[13px]">GROWTH ONLINE</p>
-            <h1 className="mt-3 max-w-[780px] break-keep text-[36px] font-semibold leading-[1.22] tracking-[-0.02em] text-schoollove-text sm:text-[44px] lg:text-[56px]">
+            <h1 className="mt-3 max-w-[780px] break-keep text-[36px] font-bold leading-[1.22] tracking-[-0.02em] text-schoollove-text sm:text-[44px] lg:text-[56px]">
               <span>지금</span>, <span>학교들이</span>
               <br />
               <span>성장하고</span> 있어요.

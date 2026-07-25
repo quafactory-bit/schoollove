@@ -12,20 +12,33 @@ const SUBMIT = readFileSync(join(ROOT, 'app', 'submit', 'page.tsx'), 'utf-8')
 const FOOTER = readFileSync(join(ROOT, 'components', 'Footer.tsx'), 'utf-8')
 const SCHOOL_WARMTH = readFileSync(join(ROOT, 'components', 'SchoolWarmth.tsx'), 'utf-8')
 const PROFILE_CARD = readFileSync(join(ROOT, 'components', 'ProfileCard.tsx'), 'utf-8')
+const ADMIN_PAGES = [
+  readFileSync(join(ROOT, 'app', 'admin', 'page.tsx'), 'utf-8'),
+  readFileSync(join(ROOT, 'app', 'admin', 'login', 'page.tsx'), 'utf-8'),
+  readFileSync(join(ROOT, 'app', 'admin', 'profiles', 'page.tsx'), 'utf-8'),
+  readFileSync(join(ROOT, 'app', 'admin', 'tools', 'level-sync', 'page.tsx'), 'utf-8'),
+]
 
-describe('sitewide DNF BitBit v2 typography and text color system', () => {
-  it('ships the approved official OpenType font and required notices', () => {
-    const fontDir = join(ROOT, 'public', 'fonts', 'dnf-bitbit-v2')
-    const otfPath = join(fontDir, 'DNFBitBitv2.otf')
+describe('public social typography and text color system', () => {
+  it('ships Pretendard Variable for public pages and retains the admin DNF assets', () => {
+    const pretendardDir = join(ROOT, 'public', 'fonts', 'pretendard')
+    const dnfDir = join(ROOT, 'public', 'fonts', 'dnf-bitbit-v2')
+    const otfPath = join(dnfDir, 'DNFBitBitv2.otf')
 
+    expect(existsSync(join(pretendardDir, 'PretendardVariable.woff2'))).toBe(true)
+    expect(existsSync(join(pretendardDir, 'LICENSE.txt'))).toBe(true)
     expect(existsSync(otfPath)).toBe(true)
-    expect(existsSync(join(fontDir, 'LICENSE.txt'))).toBe(true)
-    expect(existsSync(join(fontDir, 'THIRD_PARTY_NOTICES.md'))).toBe(true)
+    expect(existsSync(join(dnfDir, 'LICENSE.txt'))).toBe(true)
+    expect(existsSync(join(dnfDir, 'THIRD_PARTY_NOTICES.md'))).toBe(true)
     expect(existsSync(join(ROOT, 'public', 'fonts', 'schoollove-classic-rpg', 'SchoolLoveClassicRPG-Regular.woff2'))).toBe(false)
     expect(statSync(otfPath).size).toBe(1836812)
   })
 
-  it('defines one local face and applies it to document text and native controls', () => {
+  it('uses Pretendard Variable as the public default and DNF only as the admin family', () => {
+    expect(GLOBALS).toContain('--font-schoollove: "Pretendard Variable"')
+    expect(GLOBALS).toContain('/fonts/pretendard/PretendardVariable.woff2')
+    expect(GLOBALS).toContain('font-weight: 45 920')
+    expect(GLOBALS).toContain('--font-admin-game: "DNFBitBitv2"')
     expect(GLOBALS).toContain('font-family: "DNFBitBitv2"')
     expect(GLOBALS).toContain('/fonts/dnf-bitbit-v2/DNFBitBitv2.otf')
     expect(GLOBALS).toContain('format("opentype")')
@@ -52,16 +65,26 @@ describe('sitewide DNF BitBit v2 typography and text color system', () => {
     expect(GLOBALS).not.toContain('--font-geist')
   })
 
-  it('scopes the self-hosted Pretendard Variable face to the home experience', () => {
-    const fontDir = join(ROOT, 'public', 'fonts', 'pretendard')
-
-    expect(existsSync(join(fontDir, 'PretendardVariable.woff2'))).toBe(true)
-    expect(existsSync(join(fontDir, 'LICENSE.txt'))).toBe(true)
-    expect(GLOBALS).toContain('font-family: "Pretendard Variable"')
-    expect(GLOBALS).toContain('/fonts/pretendard/PretendardVariable.woff2')
-    expect(GLOBALS).toContain('body:has(.home-social-ui)')
-    expect(HOME).toContain('home-social-ui')
+  it('removes the Home-only selector and keeps the admin family behind an explicit route class', () => {
+    expect(GLOBALS).not.toContain('body:has(.home-social-ui)')
+    expect(GLOBALS).not.toContain('--font-home-social')
+    expect(HOME).not.toContain('home-social-ui')
+    expect(GLOBALS).toContain('.admin-game-ui')
+    expect(ADMIN_PAGES.every((source) => source.includes('admin-game-ui'))).toBe(true)
     expect(GLOBALS).not.toContain('Instagram Sans')
+  })
+
+  it('restores the approved public weight hierarchy without synthetic styles', () => {
+    expect(GLOBALS).toContain('font-synthesis: none')
+    expect(GLOBALS).not.toMatch(
+      /font-family:\s*var\(--font-schoollove\)\s*!important;\s*font-weight:\s*400\s*!important/,
+    )
+    expect(GLOBALS).toMatch(
+      /\.admin-game-ui[\s\S]*font-family:\s*var\(--font-admin-game\)\s*!important;[\s\S]*font-weight:\s*400\s*!important/,
+    )
+    expect(GLOBALS).toMatch(/button,\s*\n\s*label \{\s*\n\s*font-weight: 500;/)
+    expect(GLOBALS).toMatch(/h1 \{\s*\n\s*font-weight: 700;/)
+    expect(GLOBALS).toMatch(/strong,\s*\n\s*b \{\s*\n\s*font-weight: 600;/)
   })
 
   it('uses the approved text color tokens without changing non-text accent tokens', () => {

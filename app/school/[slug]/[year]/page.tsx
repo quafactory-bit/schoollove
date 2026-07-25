@@ -82,7 +82,7 @@ export default async function YearPage({ params }: PageProps) {
 
       {/* A. 기수 헤더 */}
       <div className="card p-5 space-y-2">
-        <h1 className="text-xl font-black text-gray-900">
+        <h1 className="text-xl font-bold text-gray-900">
           {school.school_name}
           <span className="text-brand-blue ml-2">{year}년</span>
         </h1>
