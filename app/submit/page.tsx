@@ -3,10 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
-import { IMG } from '@/lib/images'
 import { supabase } from '@/lib/supabase'
-import { isAllFailed, resultHeading } from './resultText'
 import { normalizeInsta, registerPeople, type PersonInput } from './registerPeople'
 import {
   addPerson,
@@ -16,7 +13,9 @@ import {
   updatePerson,
 } from './personFormState'
 import { getGrowthRewardCopy } from './growthRewardCopy'
-import RegistrationGrowthRewardCard from '@/components/RegistrationGrowthRewardCard'
+import RegistrationSuccessFeedback, {
+  type RegistrationSuccessContext,
+} from '@/components/RegistrationSuccessFeedback'
 import CaptchaWidget, { type CaptchaStatus, type CaptchaWidgetHandle } from '@/components/CaptchaWidget'
 import type { RegistrationGrowthReward } from '@/types/registration'
 import {
@@ -78,6 +77,7 @@ function SubmitInner() {
   const [people, setPeople] = useState<PersonInput[]>(selfMode ? INITIAL_SELF : INITIAL_PEOPLE)
 
   const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
   const [err, setErr] = useState('')
   const captchaRef = useRef<CaptchaWidgetHandle>(null)
   const [captchaStatus, setCaptchaStatus] = useState<CaptchaStatus>('loading')
@@ -86,8 +86,9 @@ function SubmitInner() {
         success: number
         dup: number
         fail: number
-        totalAtSchool: number
-        // PHASE 6A — 데이터만 보관한다. 6B 전까지는 아래 렌더링에서 읽지 않는다.
+        createdNames: string[]
+        totalAtSchool: number | null
+        context: RegistrationSuccessContext
         growthReward?: RegistrationGrowthReward
       }
     | null
@@ -156,6 +157,7 @@ function SubmitInner() {
   }
 
   async function handleSubmit() {
+    if (submittingRef.current) return
     setErr('')
     if (!school) return setErr('학교를 선택해주세요.')
     if (!gradYear) return setErr('졸업(예정) 년도를 선택해주세요.')
@@ -168,6 +170,7 @@ function SubmitInner() {
     if (!TURNSTILE_SITE_KEY) return setErr('지금은 등록 기능을 사용할 수 없어요. 잠시 후 다시 시도해주세요.')
     if (captchaStatus !== 'ready') return setErr('보안 확인을 먼저 완료해주세요.')
 
+    submittingRef.current = true
     setSubmitting(true)
     const base = {
       school_id: school.id,
@@ -178,21 +181,54 @@ function SubmitInner() {
       student_year: isUni && studentYear ? Number(studentYear) : null,
     }
 
-    const { success, dup, fail, growthReward } = await registerPeople(valid, base, () => {
-      if (!captchaRef.current) return Promise.reject(new Error('captcha-not-ready'))
-      return captchaRef.current.requestNextToken()
-    })
+    try {
+      const { success, dup, fail, createdNames, rateLimited, growthReward } = await registerPeople(
+        valid,
+        base,
+        () => {
+          if (!captchaRef.current) return Promise.reject(new Error('captcha-not-ready'))
+          return captchaRef.current.requestNextToken()
+        }
+      )
 
-    let totalAtSchool = success
-    const { count: schoolTotal } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('school_id', school.id)
-      .eq('is_hidden', false)
-    if (typeof schoolTotal === 'number') totalAtSchool = schoolTotal
+      if (success === 0) {
+        if (rateLimited) setErr('요청이 많아요. 잠시 후 다시 등록해주세요.')
+        else if (dup > 0 && fail === 0) setErr('입력한 이름은 이미 등록되어 있어요.')
+        else setErr('등록하지 못했어요. 입력한 내용을 확인하고 다시 시도해주세요.')
+        return
+      }
 
-    setSubmitting(false)
-    setDone({ success, dup, fail, totalAtSchool, growthReward })
+      let totalAtSchool: number | null = growthReward?.after.visibleProfileCount ?? null
+      if (!growthReward) {
+        const { count: schoolTotal } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('school_id', school.id)
+          .eq('is_hidden', false)
+        if (typeof schoolTotal === 'number') totalAtSchool = schoolTotal
+      }
+
+      setDone({
+        success,
+        dup,
+        fail,
+        createdNames: createdNames ?? [],
+        totalAtSchool,
+        context: {
+          schoolName: school.school_name,
+          schoolSlug: school.slug,
+          graduationYear: base.graduation_year,
+          grade: base.grade,
+          classNumber: base.class_number,
+          department: base.department,
+          studentYear: base.student_year,
+        },
+        growthReward,
+      })
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
+    }
   }
 
   function shareSchool(text?: string) {
@@ -208,78 +244,29 @@ function SubmitInner() {
     }
   }
 
-  function resetAll() {
+  function registerMore() {
     setDone(null)
     setPeople(selfMode ? INITIAL_SELF : INITIAL_PEOPLE)
-    setGrade('')
-    setClassNumber('')
-    setDepartment('')
-    setStudentYear('')
-    setGradYear('')
-    setSchool(null)
+    setErr('')
   }
 
   // ── 등록 완료 화면 ──────────────────────────────────────
   if (done) {
-    const othersAtSchool = Math.max(done.totalAtSchool - done.success, 0)
-    const allFailed = isAllFailed(done)
-    const growthCopy =
-      done && school ? getGrowthRewardCopy(done.growthReward, school.school_name) : null
+    const growthCopy = getGrowthRewardCopy(done.growthReward, done.context.schoolName)
     return (
-      <main className="mx-auto w-full max-w-[600px] px-5 pb-24 pt-10 text-center">
-<div className="mx-auto mb-6 w-full max-w-xs overflow-hidden rounded-2xl">
-          <Image src={IMG.completeGraduation} alt="졸업 축하" width={1000} height={750} className="h-auto w-full" />
-        </div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-neutral-900">
-          {growthCopy ? growthCopy.title : resultHeading(selfMode, done)}
-        </h1>
-
-        {growthCopy && <RegistrationGrowthRewardCard copy={growthCopy} />}
-
-        <p className="mt-3 text-sm text-neutral-600">
-          {!allFailed && (
-            <>
-              {school?.school_name}에 <b className="text-neutral-900">{done.success}명</b>{' '}
-              {selfMode ? '연결됐어요.' : '등록됐어요.'}
-            </>
-          )}
-          {done.dup > 0 && <span className="block text-neutral-400">{done.dup}명은 이미 등록되어 있었어요.</span>}
-          {done.fail > 0 && <span className="block text-red-400">{done.fail}명은 등록에 실패했어요.</span>}
-        </p>
-
-        {!growthCopy && othersAtSchool > 0 && (
-          <div className="mx-auto mt-6 max-w-xs rounded-2xl bg-neutral-100 px-4 py-4">
-            <p className="text-sm font-bold text-neutral-900">혼자가 아니에요 👋</p>
-            <p className="mt-1 text-sm text-neutral-600">
-              이 학교엔 이미 <b className="text-neutral-900">{done.totalAtSchool}명</b>이 함께 있어요.
-            </p>
-          </div>
-        )}
-
-        <div className="mt-8 space-y-2.5">
-          {school && (
-            <Link
-              href={`/school/${school.slug}`}
-              className="block w-full rounded-2xl bg-neutral-900 px-5 py-4 text-sm font-bold text-white transition active:scale-95"
-            >
-              우리 학교 페이지에서 확인하기
-            </Link>
-          )}
-          <button
-            onClick={() => shareSchool(growthCopy?.shareText)}
-            className="block w-full rounded-2xl border border-neutral-200 px-5 py-4 text-sm font-bold text-neutral-700 transition hover:bg-neutral-50"
-          >
-            {growthCopy?.shareLabel ?? '단톡방에 공유하기'}
-          </button>
-          <button onClick={resetAll} className="block w-full px-5 py-3 text-sm text-neutral-400">
-            계속 등록하기
-          </button>
-        </div>
-
-        <p className="mt-4 text-xs text-neutral-400">
-          단톡방에 공유하면 친구들이 자기 인스타를 직접 연결해요.
-        </p>
-      </main>
+      <RegistrationSuccessFeedback
+        context={done.context}
+        success={done.success}
+        dup={done.dup}
+        fail={done.fail}
+        createdNames={done.createdNames}
+        totalAtSchool={done.totalAtSchool}
+        growthReward={done.growthReward}
+        growthCopy={growthCopy}
+        selfMode={selfMode}
+        onShare={() => shareSchool(growthCopy?.shareText)}
+        onRegisterMore={registerMore}
+      />
     )
   }
 
@@ -534,7 +521,16 @@ function SubmitInner() {
               지금은 등록 기능을 사용할 수 없어요. 잠시 후 다시 시도해주세요.
             </p>
           )}
-          {err && <p className="mb-3 text-center text-sm text-red-500">{err}</p>}
+          {submitting && (
+            <p className="mb-3 text-center text-sm text-schoollove-text" role="status" aria-live="polite">
+              등록 내용을 안전하게 확인하고 있어요.
+            </p>
+          )}
+          {err && (
+            <p className="mb-3 text-center text-sm text-red-500" role="alert" aria-live="polite">
+              {err}
+            </p>
+          )}
           <button
             onClick={handleSubmit}
             disabled={submitting || !TURNSTILE_SITE_KEY || captchaStatus !== 'ready'}

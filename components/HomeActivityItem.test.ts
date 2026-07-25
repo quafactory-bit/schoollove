@@ -24,4 +24,11 @@ describe('HomeActivityItem presentation contract', () => {
     expect(SOURCE).toContain('min-h-11')
     expect(SOURCE).toContain('h-9 w-9')
   })
+
+  it('uses black icons on a quiet neutral circle while keeping dates dark gray', () => {
+    expect(SOURCE).toContain('bg-schoollove-neutral-soft text-schoollove-text')
+    expect(SOURCE).not.toContain('text-schoollove-neon-orange')
+    expect(SOURCE).not.toContain('text-schoollove-electric-blue')
+    expect(SOURCE).toContain('text-schoollove-date')
+  })
 })

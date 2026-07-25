@@ -39,6 +39,14 @@ vi.mock('@/lib/api/levels', () => ({
   getSchoolLevelSnapshot: vi.fn(),
 }))
 
+const { getSchoolByIdMock } = vi.hoisted(() => ({
+  getSchoolByIdMock: vi.fn(),
+}))
+
+vi.mock('@/lib/api/schools', () => ({
+  getSchoolById: getSchoolByIdMock,
+}))
+
 const { revalidatePathMock } = vi.hoisted(() => ({
   revalidatePathMock: vi.fn(),
 }))
@@ -106,6 +114,7 @@ beforeEach(() => {
   allowRateLimit()
   // 기본값: CAPTCHA 검증 성공. 개별 테스트에서 필요할 때만 실패로 덮어쓴다.
   verifyCaptchaTokenMock.mockResolvedValue({ verified: true })
+  getSchoolByIdMock.mockResolvedValue(null)
 })
 
 afterEach(() => {
@@ -420,6 +429,23 @@ describe('POST /api/profiles — 홈 피드 재검증 계약 (Phase 4B, docs/dec
     expect(response.status).toBe(201)
     expect(revalidatePathMock).toHaveBeenCalledTimes(1)
     expect(revalidatePathMock).toHaveBeenCalledWith('/')
+  })
+
+  it('3. 정상 등록 성공 → 서버에서 확인한 School/Year/Class 경로만 함께 재검증', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+    getSchoolByIdMock.mockResolvedValue({ slug: 'duru-high' })
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(201)
+    expect(revalidatePathMock.mock.calls.map(([path]) => path)).toEqual([
+      '/',
+      '/school/duru-high',
+      '/school/duru-high/2015',
+      '/school/duru-high/2015/3-2',
+    ])
   })
 
   it('4. validation 실패(school_id UUID 아님) → 재검증 호출 안 함', async () => {

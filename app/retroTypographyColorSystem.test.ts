@@ -52,6 +52,18 @@ describe('sitewide DNF BitBit v2 typography and text color system', () => {
     expect(GLOBALS).not.toContain('--font-geist')
   })
 
+  it('scopes the self-hosted Pretendard Variable face to the home experience', () => {
+    const fontDir = join(ROOT, 'public', 'fonts', 'pretendard')
+
+    expect(existsSync(join(fontDir, 'PretendardVariable.woff2'))).toBe(true)
+    expect(existsSync(join(fontDir, 'LICENSE.txt'))).toBe(true)
+    expect(GLOBALS).toContain('font-family: "Pretendard Variable"')
+    expect(GLOBALS).toContain('/fonts/pretendard/PretendardVariable.woff2')
+    expect(GLOBALS).toContain('body:has(.home-social-ui)')
+    expect(HOME).toContain('home-social-ui')
+    expect(GLOBALS).not.toContain('Instagram Sans')
+  })
+
   it('uses the approved text color tokens without changing non-text accent tokens', () => {
     for (const color of ['#000000', '#4b5563', '#c62828']) {
       expect(GLOBALS).toContain(color)

@@ -20,16 +20,17 @@ describe('CurrentSchoolRanking presentation contract', () => {
 
   it('uses visual hierarchy without a component-local font override', () => {
     expect(SOURCE).not.toContain('font-game')
-    expect(SOURCE).toContain('text-[12px] tracking-[0.14em] text-schoollove-hud-red')
+    expect(SOURCE).toContain('text-[12px] tracking-[0.14em] text-schoollove-text')
     expect(SOURCE).toContain('pt-0.5 text-[22px]')
     expect(SOURCE).toContain('break-keep text-[17px] leading-6')
     expect(SOURCE).toContain('rounded-sm bg-schoollove-level/10')
-    expect(SOURCE).toContain('bg-schoollove-electric-blue')
+    expect(SOURCE).toContain('bg-schoollove-text')
   })
 
   it('retains progress, completion, and divider contracts', () => {
     expect(SOURCE).toContain('Math.round(row.progressPercent)')
-    expect(SOURCE).toContain('bg-schoollove-neon-lime')
+    expect(SOURCE).toContain('다음 성장 단계까지')
+    expect(SOURCE).not.toContain('bg-schoollove-neon-lime')
     expect(SOURCE).toContain('text-schoollove-text group-hover:underline')
   })
 })

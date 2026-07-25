@@ -21,7 +21,7 @@ export default async function HomePage() {
   const ctaVisibility = getFeedCtaVisibility(activityItems.length)
 
   return (
-    <main className="mx-auto w-full max-w-[1180px] overflow-x-clip px-5 pb-16 sm:px-6 lg:px-8">
+    <main className="home-social-ui mx-auto w-full max-w-[1180px] overflow-x-clip px-5 pb-16 sm:px-6 lg:px-8">
       <header className="pt-7 lg:pt-12">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -59,12 +59,12 @@ export default async function HomePage() {
             <p className="text-[12px] tracking-[0.14em] text-schoollove-text">GROWTH STATUS</p>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[11px] tracking-[0.08em] text-schoollove-hud-red">CURRENT RANK</p>
+                <p className="text-[11px] tracking-[0.08em] text-schoollove-text">CURRENT RANK</p>
                 <p className="mt-1 text-[12px] text-schoollove-secondary">순위에 오른 학교</p>
                 <p className="mt-1 text-[24px] leading-none text-schoollove-text">{rankingRows.length}곳</p>
               </div>
               <div>
-                <p className="text-[11px] tracking-[0.08em] text-schoollove-hud-red">LIVE FEED</p>
+                <p className="text-[11px] tracking-[0.08em] text-schoollove-text">LIVE FEED</p>
                 <p className="mt-1 text-[12px] text-schoollove-secondary">최근 성장 소식</p>
                 <p className="mt-1 text-[24px] leading-none text-schoollove-text">{activityItems.length}건</p>
               </div>
@@ -78,8 +78,8 @@ export default async function HomePage() {
 
       <CurrentSchoolRanking status={rankingResult.status} rows={rankingRows} />
 
-      <section className="mt-12 border-t border-schoollove-border pt-7 lg:mt-16 lg:pt-9" aria-labelledby="live-feed-title">
-        <p className="text-[12px] tracking-[0.14em] text-schoollove-hud-red sm:text-[13px]">LIVE FEED</p>
+      <section id="growth-feed" className="mt-12 border-t border-schoollove-border pt-7 lg:mt-16 lg:pt-9" aria-labelledby="live-feed-title">
+        <p className="text-[12px] tracking-[0.14em] text-schoollove-text sm:text-[13px]">LIVE FEED</p>
         <h2 id="live-feed-title" className="mt-2 text-[24px] tracking-[-0.01em] text-schoollove-text lg:text-[28px]">성장 소식</h2>
         <div className="mt-5">
           <HomeActivityFeed items={activityItems} now={now} />

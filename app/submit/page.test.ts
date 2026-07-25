@@ -26,7 +26,7 @@ describe('app/submit/page.tsx — PHASE 9 CAPTCHA 통합', () => {
   })
 
   it('handleSubmit은 registerPeople에 토큰 getter(captchaRef.requestNextToken)를 넘긴다', () => {
-    expect(SOURCE).toMatch(/registerPeople\(valid, base, \(\) => \{/)
+    expect(SOURCE).toMatch(/registerPeople\(\s*valid,\s*base,\s*\(\) => \{/)
     expect(SOURCE).toMatch(/captchaRef\.current\.requestNextToken\(\)/)
   })
 
@@ -88,5 +88,42 @@ describe('app/submit/page.tsx — Year/Class context prefill', () => {
   it('query 진입만으로 등록 요청을 실행하지 않는다', () => {
     const prefillEffect = SOURCE.match(/useEffect\(\(\) => \{[\s\S]*?prefill\.schoolSlug[\s\S]*?\}, \[\]\)/)?.[0] ?? ''
     expect(prefillEffect).not.toMatch(/registerPeople|POST \/api\/profiles|handleSubmit\(/)
+  })
+})
+
+describe('app/submit/page.tsx — registration growth feedback', () => {
+  it('guards against a second submit before issuing profile requests', () => {
+    expect(SOURCE).toMatch(/if \(submittingRef\.current\) return/)
+    expect(SOURCE).toMatch(/submittingRef\.current = true/)
+    expect(SOURCE).toMatch(/submittingRef\.current = false/)
+  })
+
+  it('keeps the form and inputs when every request fails or is a duplicate', () => {
+    const noSuccessBlock = SOURCE.match(/if \(success === 0\) \{[\s\S]*?\n      \}/)?.[0] ?? ''
+    expect(noSuccessBlock).toContain('setErr(')
+    expect(noSuccessBlock).not.toContain('setDone(')
+    expect(noSuccessBlock).not.toContain('setPeople(')
+    expect(noSuccessBlock).not.toContain('setSchool(')
+  })
+
+  it('uses the server growth snapshot for the school total before any safe fallback query', () => {
+    expect(SOURCE).toContain('growthReward?.after.visibleProfileCount ?? null')
+    expect(SOURCE).toMatch(/if \(!growthReward\) \{[\s\S]*?from\('profiles'\)/)
+  })
+
+  it('snapshots the final submitted context and delegates to one success component', () => {
+    expect(SOURCE).toContain('context: {')
+    expect(SOURCE).toContain('schoolSlug: school.slug')
+    expect(SOURCE).toContain('graduationYear: base.graduation_year')
+    expect(SOURCE).toContain('<RegistrationSuccessFeedback')
+    expect(SOURCE).not.toContain('우리 학교 페이지에서 확인하기')
+  })
+
+  it('announces submission status and errors without automatic retry', () => {
+    const submitFunction =
+      SOURCE.match(/async function handleSubmit\(\) \{[\s\S]*?\n  \}\n\n  function shareSchool/)?.[0] ?? ''
+    expect(SOURCE).toContain('role="status" aria-live="polite"')
+    expect(SOURCE).toContain('role="alert" aria-live="polite"')
+    expect(submitFunction).not.toContain('setTimeout(')
   })
 })

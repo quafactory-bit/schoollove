@@ -29,6 +29,8 @@ export type RegisterResult = {
   success: number
   dup: number
   fail: number
+  createdNames?: string[]
+  rateLimited?: boolean
   growthReward?: RegistrationGrowthReward
 }
 
@@ -66,6 +68,8 @@ export async function registerPeople(
   let success = 0
   let dup = 0
   let fail = 0
+  const createdNames: string[] = []
+  let rateLimited = false
   let firstReward: RegistrationGrowthReward | undefined
   let lastReward: RegistrationGrowthReward | undefined
 
@@ -87,33 +91,59 @@ export async function registerPeople(
       })
       if (res.ok) {
         success++
-        const reward = await readGrowthReward(res)
+        const successResponse = await readSuccessResponse(res)
+        if (successResponse.createdName) createdNames.push(successResponse.createdName)
+        const reward = successResponse.growthReward
         if (reward) {
           if (!firstReward) firstReward = reward
           lastReward = reward
         }
       } else if (res.status === 409) dup++
-      else fail++
+      else {
+        if (res.status === 429) rateLimited = true
+        fail++
+      }
     } catch {
       fail++
     }
   }
 
-  return { success, dup, fail, growthReward: buildBatchGrowthReward(firstReward, lastReward) }
+  return {
+    success,
+    dup,
+    fail,
+    ...(createdNames.length > 0 ? { createdNames } : {}),
+    ...(rateLimited ? { rateLimited: true } : {}),
+    growthReward: buildBatchGrowthReward(firstReward, lastReward),
+  }
 }
 
 // 성공 응답 body를 안전하게 읽어 growthReward만 추린다. body가 비어 있거나 JSON이 아니거나,
 // growthReward의 shape이 기대와 다르면 예외를 던지지 않고 undefined를 반환한다 — 서버 JSON을
 // 타입 캐스팅만으로 신뢰하지 않고, 이미 success로 집계된 카운트에도 영향을 주지 않기 위함이다.
-async function readGrowthReward(res: Response): Promise<RegistrationGrowthReward | undefined> {
+async function readSuccessResponse(
+  res: Response
+): Promise<{ createdName?: string; growthReward?: RegistrationGrowthReward }> {
   try {
     const json: unknown = await res.json()
-    if (typeof json !== 'object' || json === null || !('growthReward' in json)) return undefined
+    if (typeof json !== 'object' || json === null) return {}
 
-    const reward = (json as { growthReward?: unknown }).growthReward
-    return isRegistrationGrowthReward(reward) ? reward : undefined
+    const payload = json as { data?: unknown; growthReward?: unknown }
+    const data = payload.data
+    const createdName =
+      typeof data === 'object' && data !== null && 'nickname' in data &&
+      typeof (data as { nickname?: unknown }).nickname === 'string'
+        ? (data as { nickname: string }).nickname
+        : undefined
+
+    return {
+      ...(createdName ? { createdName } : {}),
+      ...(isRegistrationGrowthReward(payload.growthReward)
+        ? { growthReward: payload.growthReward }
+        : {}),
+    }
   } catch {
-    return undefined
+    return {}
   }
 }
 
