@@ -1494,3 +1494,17 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - 감성은 세계관, 게임은 참여 엔진, 사람 발견은 보상이라는 구조
 - 첫 시즌: "우리 학교 깨우기"
 - 핵심 메시지: "우리 학교, 지금 몇 레벨일까?" / "한 명만 더 오면 레벨업"
+
+---
+
+## Registration Growth Feedback (2026-07-24)
+
+- 등록 성공 화면을 기존 `growthReward` 계약에 연결해, 성공한 이름과 최종 제출 School/Year/Class context를 한 화면에서 확인할 수 있게 했다.
+- 학교 공개 등록 인원, 현재 레벨, 다음 성장까지 남은 인원, 진행률은 클라이언트가 추정하지 않고 서버가 반환한 성장 스냅샷을 우선 사용한다. 성장 응답이 없는 이전 응답에 한해서만 기존 공개 프로필 count 조회를 안전한 fallback으로 유지한다.
+- 여러 명 등록은 서버가 실제 생성해 반환한 nickname만 성공 이름으로 보존하며, 성공·중복·실패 수를 분리한다. 성공이 0명이면 성공 화면으로 이동하지 않고 입력값을 유지해 사용자가 직접 다시 시도할 수 있다.
+- 즉시 ref 잠금과 disabled 상태로 중복 제출을 막고 자동 재시도는 추가하지 않았다. 제출 상태와 오류는 `aria-live`로 안내한다.
+- 등록 성공 직후 Home과 최종 제출 context의 School/Year/Class 경로만 재검증한다. 학교 slug는 client payload가 아닌 서버 조회 결과를 사용하며, 기존 Home activity 생성 계약은 변경하지 않았다.
+- DB schema, migration, RLS, API 인증, Turnstile, Upstash, 등록 데이터 구조, 레벨·성장 정책은 변경하지 않았다.
+- 상태: `LOCAL_VERIFIED` — TypeScript, 관련 테스트, 전체 테스트, production build,
+  `git diff --check` 및 1440/1024/412/390/360px 실제 브라우저 검증을 완료했다. 실제
+  production 등록 write와 production UI 재검증은 실행하지 않았다.

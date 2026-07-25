@@ -8,7 +8,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: revalidatePathMock,
 }))
 
-import { revalidateHomeFeed } from './homeFeedCache'
+import { revalidateHomeFeed, revalidateRegistrationContext } from './homeFeedCache'
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -32,5 +32,45 @@ describe('revalidateHomeFeed', () => {
     expect(consoleErrorSpy).toHaveBeenCalled()
 
     consoleErrorSpy.mockRestore()
+  })
+})
+
+describe('revalidateRegistrationContext', () => {
+  it('revalidates Home and the exact School/Year/Class context once each', () => {
+    revalidateRegistrationContext({
+      schoolSlug: 'duru-high',
+      graduationYear: 2020,
+      grade: 3,
+      classNumber: 2,
+    })
+
+    expect(revalidatePathMock.mock.calls.map(([path]) => path)).toEqual([
+      '/',
+      '/school/duru-high',
+      '/school/duru-high/2020',
+      '/school/duru-high/2020/3-2',
+    ])
+  })
+
+  it('omits the class path when class context is absent', () => {
+    revalidateRegistrationContext({
+      schoolSlug: 'duru-university',
+      graduationYear: 2024,
+      grade: null,
+      classNumber: null,
+    })
+
+    expect(revalidatePathMock.mock.calls.map(([path]) => path)).toEqual([
+      '/',
+      '/school/duru-university',
+      '/school/duru-university/2024',
+    ])
+  })
+
+  it('falls back to Home only when the server cannot resolve a school slug', () => {
+    revalidateRegistrationContext({ graduationYear: 2024 })
+
+    expect(revalidatePathMock).toHaveBeenCalledTimes(1)
+    expect(revalidatePathMock).toHaveBeenCalledWith('/')
   })
 })

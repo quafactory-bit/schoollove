@@ -14,10 +14,17 @@ describe('home data freshness contract', () => {
   })
 })
 
-describe('home global typography contract', () => {
-  it('uses layout and color hierarchy without a local font override', () => {
+describe('home registration growth feedback target', () => {
+  it('keeps a stable anchor for the registration success growth-news link', () => {
+    expect(PAGE_SOURCE).toContain('id="growth-feed"')
+  })
+})
+
+describe('home typography contract', () => {
+  it('uses the home-scoped social font without changing its layout', () => {
     expect(PAGE_SOURCE).toContain('max-w-[1180px]')
     expect(PAGE_SOURCE).not.toContain('max-w-[600px]')
+    expect(PAGE_SOURCE).toContain('home-social-ui')
     expect(PAGE_SOURCE).not.toContain('font-game')
     expect(PAGE_SOURCE).not.toContain('font-retro')
   })
@@ -37,6 +44,16 @@ describe('home global typography contract', () => {
   it('keeps the status panel connected to existing ranking and activity arrays', () => {
     expect(PAGE_SOURCE).toContain('{rankingRows.length}')
     expect(PAGE_SOURCE).toContain('{activityItems.length}')
+  })
+
+
+  it('uses black text for current-rank and live-feed labels', () => {
+    const currentRank = PAGE_SOURCE.match(/<p[^>]*>CURRENT RANK<\/p>/)?.[0] ?? ''
+    const liveFeedLabels = PAGE_SOURCE.match(/<p[^>]*>LIVE FEED<\/p>/g) ?? []
+
+    expect(currentRank).toContain('text-schoollove-text')
+    expect(liveFeedLabels).toHaveLength(2)
+    expect(liveFeedLabels.every((label) => label.includes('text-schoollove-text'))).toBe(true)
   })
 })
 

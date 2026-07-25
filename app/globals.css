@@ -27,6 +27,7 @@
   --schoollove-electric-blue: #4f7cff;
   --schoollove-neon-orange: #ff9f43;
   --font-schoollove: "DNFBitBitv2", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-home-social: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   /* Legacy utility aliases remain so existing markup cannot select another font. */
   --font-schoollove-retro: var(--font-schoollove);
   --font-schoollove-mono: var(--font-schoollove);
@@ -36,6 +37,13 @@
   font-family: "DNFBitBitv2";
   src: url("/fonts/dnf-bitbit-v2/DNFBitBitv2.otf") format("opentype");
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard Variable";
+  src: url("/fonts/pretendard/PretendardVariable.woff2") format("woff2-variations");
+  font-weight: 45 920;
   font-style: normal;
   font-display: swap;
 }
@@ -172,4 +180,20 @@ body .schoollove-dark-action-hover:hover,
 body .schoollove-dark-action-hover:focus-visible,
 body .schoollove-dark-action-hover:active {
   color: #ffffff !important;
+}
+
+body:has(.home-social-ui),
+body:has(.home-social-ui) :where(h1, h2, h3, h4, h5, h6, p, a, button, label, input, textarea, select, option, time, span, strong, small, summary) {
+  font-family: var(--font-home-social) !important;
+  font-style: normal;
+  font-synthesis: none;
+}
+
+body:has(.home-social-ui) .font-medium {
+  font-weight: 500 !important;
+}
+
+body:has(.home-social-ui) .font-semibold,
+body:has(.home-social-ui) strong {
+  font-weight: 600 !important;
 }

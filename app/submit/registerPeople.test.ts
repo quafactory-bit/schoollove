@@ -486,6 +486,51 @@ describe('registerPeople — PHASE 6A P1 수정: malformed growthReward 런타�
   })
 })
 
+describe('registerPeople — 등록 성공 피드백 계약', () => {
+  it('서버가 실제 생성해 반환한 정규화 nickname만 성공 이름으로 보존한다', async () => {
+    fetchMock.mockResolvedValue(
+      fetchResponseWithBody(201, { data: { id: 'p1', nickname: '홍 길동' } })
+    )
+
+    const result = await registerPeople([person('  홍   길동  ')], BASE, getToken)
+
+    expect(result).toMatchObject({ success: 1, dup: 0, fail: 0 })
+    expect(result.createdNames).toEqual(['홍 길동'])
+  })
+
+  it('여러 명의 부분 성공에서도 성공 응답의 이름만 입력 순서대로 보존한다', async () => {
+    fetchMock
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p1', nickname: '첫째' } }))
+      .mockResolvedValueOnce(fetchResponse(false, 409))
+      .mockResolvedValueOnce(fetchResponseWithBody(201, { data: { id: 'p3', nickname: '셋째' } }))
+      .mockResolvedValueOnce(fetchResponse(false, 500))
+
+    const result = await registerPeople(
+      [person('첫째'), person('둘째'), person('셋째'), person('넷째')],
+      BASE,
+      getToken
+    )
+
+    expect(result).toMatchObject({ success: 2, dup: 1, fail: 1 })
+    expect(result.createdNames).toEqual(['첫째', '셋째'])
+  })
+
+  it('429는 자동 재시도하지 않고 rateLimited 실패로 한 번만 반환한다', async () => {
+    fetchMock.mockResolvedValue(fetchResponse(false, 429))
+
+    const result = await registerPeople([person('한도초과')], BASE, getToken)
+
+    expect(result).toEqual({
+      success: 0,
+      dup: 0,
+      fail: 1,
+      rateLimited: true,
+      growthReward: undefined,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('normalizeInsta', () => {
   it('URL, @ 접두사, 쿼리스트링을 제거하고 순수 아이디만 남김', () => {
     expect(normalizeInsta('https://instagram.com/gildong?hl=ko')).toBe('gildong')

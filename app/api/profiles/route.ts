@@ -4,7 +4,8 @@ import { Redis } from '@upstash/redis';
 import { supabaseServer } from '@/lib/supabase';
 import { getSchoolProfileCount } from '@/lib/api/profiles';
 import { syncSchoolLevel, getSchoolLevelSnapshot } from '@/lib/api/levels';
-import { revalidateHomeFeed } from '@/lib/api/homeFeedCache';
+import { revalidateRegistrationContext } from '@/lib/api/homeFeedCache';
+import { getSchoolById } from '@/lib/api/schools';
 import { calculateSchoolGrowthSnapshot } from '@/lib/policy/schoolGrowth';
 import { classifyRegistrationGrowthOutcome } from '@/lib/policy/registrationGrowthReward';
 import { verifyCaptchaToken } from '@/lib/security/captcha';
@@ -207,9 +208,24 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Phase 4B(docs/decisions/2026-07-17-home-feed-freshness.md) — 등록이 이미 성공했으므로
-  // 최종 성공 응답을 반환하기 직전에만 홈을 재검증한다. 성장 보상 계산 성공/실패와 무관하게 실행한다.
-  revalidateHomeFeed();
+  // 등록이 이미 성공했으므로 최종 응답 직전에만 실제 제출 context의 캐시를 갱신한다.
+  // school slug는 client payload가 아니라 서버의 school row에서 읽는다. 조회 실패 시에도
+  // Home activity freshness는 유지되며, 이미 성공한 등록 응답은 실패로 바뀌지 않는다.
+  let schoolSlug: string | undefined;
+  try {
+    schoolSlug = (await getSchoolById(profile.school_id))?.slug;
+  } catch (schoolLookupError) {
+    console.error('POST /api/profiles school lookup threw:', {
+      schoolId: profile.school_id,
+      error: schoolLookupError,
+    });
+  }
+  revalidateRegistrationContext({
+    schoolSlug,
+    graduationYear: profile.graduation_year,
+    grade: profile.grade,
+    classNumber: profile.class_number,
+  });
 
   return NextResponse.json({ data, growthReward }, { status: 201 });
 }

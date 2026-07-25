@@ -40,9 +40,7 @@ export default function HomeActivityItem({ item, now }: Props) {
       className="schoollove-focus group grid min-h-11 grid-cols-[2.25rem_minmax(0,1fr)] gap-3 border-b border-schoollove-border px-4 py-4 transition-colors hover:bg-schoollove-surface-subtle last:border-b-0 sm:px-5 lg:grid-cols-[2.5rem_minmax(0,1fr)] lg:gap-4 lg:px-6 lg:py-5"
     >
       <span
-        className={`flex h-9 w-9 items-center justify-center rounded-full ${
-          isRegister ? 'bg-schoollove-system-soft text-schoollove-neon-orange' : 'bg-schoollove-neutral-soft text-schoollove-electric-blue'
-        }`}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-schoollove-neutral-soft text-schoollove-text"
         aria-hidden="true"
       >
         <Icon className="h-4 w-4" strokeWidth={1.7} />
