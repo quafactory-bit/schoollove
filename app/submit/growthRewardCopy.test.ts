@@ -112,6 +112,24 @@ describe('getGrowthRewardCopy', () => {
     expect(typeof copy?.progressBar?.remainingLabel).toBe('string')
   })
 
+  it('단기 성장 단계 안내는 레벨 진행 잔여 인원과 독립적으로 유지된다', () => {
+    const r = reward(
+      { visibleProfileCount: 6 },
+      {
+        visibleProfileCount: 7,
+        nextLevel: 2,
+        remainingToNext: 134,
+        isNearLevelUp: false,
+        progressPercent: 4,
+      },
+      'progress'
+    )
+    const copy = getGrowthRewardCopy(r, SCHOOL_NAME)
+
+    expect(copy?.description).toBe('다음 성장 단계까지 4명')
+    expect(copy?.progressBar?.remainingLabel).toBe('다음 성장 단계까지 4명')
+  })
+
   it('8. 일반 progress percent 값 검증(clamp 포함)', () => {
     const normal = reward(
       { visibleProfileCount: 3 },

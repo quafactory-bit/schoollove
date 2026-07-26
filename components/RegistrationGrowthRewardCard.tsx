@@ -1,6 +1,7 @@
 // PHASE 6B — 등록 완료 화면에서 growthRewardCopy.ts가 계산한 카피를 그대로 렌더링만 한다.
 // 상태 분기는 여기서 하지 않는다(getGrowthRewardCopy가 이미 끝낸 계산 결과만 받는다).
 import type { GrowthRewardCopy, GrowthRewardHeadline } from '@/app/submit/growthRewardCopy'
+import { formatNextLevelRemainingLabel } from '@/app/submit/successFeedback'
 import type { RegistrationGrowthReward } from '@/types/registration'
 
 type Props = {
@@ -43,9 +44,9 @@ export default function RegistrationGrowthRewardCard({ copy, reward, totalAtScho
             <dd className="mt-1 text-base text-schoollove-text">LV.{snapshot?.effectiveLevel ?? '-'}</dd>
           </div>
           <div className="px-2">
-            <dt className="text-xs text-schoollove-text">다음 성장</dt>
+            <dt className="text-xs text-schoollove-text">다음 레벨</dt>
             <dd className="mt-1 text-base text-schoollove-text">
-              {snapshot ? `${snapshot.remainingToNext}명` : '-'}
+              {snapshot ? `LV.${snapshot.nextLevel}` : '-'}
             </dd>
           </div>
         </dl>
@@ -68,7 +69,7 @@ export default function RegistrationGrowthRewardCard({ copy, reward, totalAtScho
           </div>
           <p className="font-retro text-xs text-schoollove-text">
             {snapshot
-              ? `다음 성장까지 ${snapshot.remainingToNext}명`
+              ? formatNextLevelRemainingLabel(snapshot)
               : copy.progressBar?.remainingLabel}
           </p>
         </div>
