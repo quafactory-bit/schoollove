@@ -27,18 +27,10 @@
   --schoollove-electric-blue: #4f7cff;
   --schoollove-neon-orange: #ff9f43;
   --font-schoollove: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --font-admin-game: "DNFBitBitv2", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   /* Legacy utility aliases remain so existing markup cannot select another font. */
   --font-schoollove-retro: var(--font-schoollove);
   --font-schoollove-mono: var(--font-schoollove);
   --font-schoollove-game: var(--font-schoollove);
-}
-@font-face {
-  font-family: "DNFBitBitv2";
-  src: url("/fonts/dnf-bitbit-v2/DNFBitBitv2.otf") format("opentype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
 }
 @font-face {
   font-family: "Pretendard Variable";
@@ -259,12 +251,13 @@ body .schoollove-dark-action-hover:active {
   color: #ffffff !important;
 }
 
-body:has(.admin-game-ui),
-.admin-game-ui,
-body:has(.admin-game-ui) :where(h1, h2, h3, h4, h5, h6, p, a, button, label, input, textarea, select, option, time, span, strong, small, summary, table, th, td),
-.admin-game-ui :where(h1, h2, h3, h4, h5, h6, p, a, button, label, input, textarea, select, option, time, span, strong, small, summary, table, th, td) {
-  font-family: var(--font-admin-game) !important;
-  font-weight: 400 !important;
+.admin-ui,
+.admin-ui :where(h1, h2, h3, h4, h5, h6, p, a, button, label, input, textarea, select, option, time, span, strong, small, summary, table, th, td) {
+  font-family: var(--font-schoollove) !important;
   font-style: normal;
   font-synthesis: none;
+}
+
+.admin-ui :where(th) {
+  font-weight: 600;
 }

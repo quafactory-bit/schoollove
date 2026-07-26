@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const ROOT = process.cwd()
@@ -20,29 +20,25 @@ const ADMIN_PAGES = [
 ]
 
 describe('public social typography and text color system', () => {
-  it('ships Pretendard Variable for public pages and retains the admin DNF assets', () => {
+  it('ships Pretendard Variable as the only runtime font asset', () => {
     const pretendardDir = join(ROOT, 'public', 'fonts', 'pretendard')
     const dnfDir = join(ROOT, 'public', 'fonts', 'dnf-bitbit-v2')
-    const otfPath = join(dnfDir, 'DNFBitBitv2.otf')
 
     expect(existsSync(join(pretendardDir, 'PretendardVariable.woff2'))).toBe(true)
     expect(existsSync(join(pretendardDir, 'LICENSE.txt'))).toBe(true)
-    expect(existsSync(otfPath)).toBe(true)
-    expect(existsSync(join(dnfDir, 'LICENSE.txt'))).toBe(true)
-    expect(existsSync(join(dnfDir, 'THIRD_PARTY_NOTICES.md'))).toBe(true)
+    expect(existsSync(join(dnfDir, 'DNFBitBitv2.otf'))).toBe(false)
+    expect(existsSync(join(dnfDir, 'LICENSE.txt'))).toBe(false)
+    expect(existsSync(join(dnfDir, 'THIRD_PARTY_NOTICES.md'))).toBe(false)
     expect(existsSync(join(ROOT, 'public', 'fonts', 'schoollove-classic-rpg', 'SchoolLoveClassicRPG-Regular.woff2'))).toBe(false)
-    expect(statSync(otfPath).size).toBe(1836812)
   })
 
-  it('uses Pretendard Variable as the public default and DNF only as the admin family', () => {
+  it('uses Pretendard Variable as the sitewide default including admin pages', () => {
     expect(GLOBALS).toContain('--font-schoollove: "Pretendard Variable"')
     expect(GLOBALS).toContain('/fonts/pretendard/PretendardVariable.woff2')
     expect(GLOBALS).toContain('font-weight: 45 920')
-    expect(GLOBALS).toContain('--font-admin-game: "DNFBitBitv2"')
-    expect(GLOBALS).toContain('font-family: "DNFBitBitv2"')
-    expect(GLOBALS).toContain('/fonts/dnf-bitbit-v2/DNFBitBitv2.otf')
-    expect(GLOBALS).toContain('format("opentype")')
-    expect(GLOBALS).toContain('font-weight: 400')
+    expect(GLOBALS).not.toContain('DNFBitBit')
+    expect(GLOBALS).not.toContain('--font-admin-game')
+    expect(GLOBALS).not.toContain('/fonts/dnf-bitbit-v2/')
     expect(GLOBALS).toContain('font-display: swap')
     expect(GLOBALS).toContain('font-synthesis: none')
 
@@ -65,12 +61,14 @@ describe('public social typography and text color system', () => {
     expect(GLOBALS).not.toContain('--font-geist')
   })
 
-  it('removes the Home-only selector and keeps the admin family behind an explicit route class', () => {
+  it('removes the Home-only selector and applies the shared family through an admin route class', () => {
     expect(GLOBALS).not.toContain('body:has(.home-social-ui)')
     expect(GLOBALS).not.toContain('--font-home-social')
     expect(HOME).not.toContain('home-social-ui')
-    expect(GLOBALS).toContain('.admin-game-ui')
-    expect(ADMIN_PAGES.every((source) => source.includes('admin-game-ui'))).toBe(true)
+    expect(GLOBALS).toContain('.admin-ui')
+    expect(GLOBALS).not.toContain('.admin-game-ui')
+    expect(ADMIN_PAGES.every((source) => source.includes('admin-ui'))).toBe(true)
+    expect(ADMIN_PAGES.every((source) => !source.includes('admin-game-ui'))).toBe(true)
     expect(GLOBALS).not.toContain('Instagram Sans')
   })
 
@@ -79,9 +77,9 @@ describe('public social typography and text color system', () => {
     expect(GLOBALS).not.toMatch(
       /font-family:\s*var\(--font-schoollove\)\s*!important;\s*font-weight:\s*400\s*!important/,
     )
-    expect(GLOBALS).toMatch(
-      /\.admin-game-ui[\s\S]*font-family:\s*var\(--font-admin-game\)\s*!important;[\s\S]*font-weight:\s*400\s*!important/,
-    )
+    expect(GLOBALS).toMatch(/\.admin-ui[\s\S]*font-family:\s*var\(--font-schoollove\)\s*!important;/)
+    expect(GLOBALS).not.toMatch(/\.admin-ui[\s\S]*font-weight:\s*400\s*!important/)
+    expect(GLOBALS).toMatch(/\.admin-ui :where\(th\) \{\s*font-weight: 600;/)
     expect(GLOBALS).toMatch(/button,\s*\n\s*label \{\s*\n\s*font-weight: 500;/)
     expect(GLOBALS).toMatch(/h1 \{\s*\n\s*font-weight: 700;/)
     expect(GLOBALS).toMatch(/strong,\s*\n\s*b \{\s*\n\s*font-weight: 600;/)

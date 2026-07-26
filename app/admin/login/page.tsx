@@ -38,7 +38,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="admin-game-ui min-h-screen flex items-center justify-center bg-white px-4">
+    <div className="admin-ui min-h-screen flex items-center justify-center bg-white px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-black">관리자 로그인</h1>

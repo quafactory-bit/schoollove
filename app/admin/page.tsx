@@ -27,7 +27,7 @@ export default async function AdminDashboardPage() {
   ]);
 
   return (
-    <div className="admin-game-ui min-h-screen bg-gray-50">
+    <div className="admin-ui min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-black">관리자 대시보드</h1>
