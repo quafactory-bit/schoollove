@@ -5,12 +5,13 @@ const { ratelimitLimitMock } = vi.hoisted(() => ({
   ratelimitLimitMock: vi.fn(),
 }))
 
-const { fromMock, insertMock, selectMock, singleMock } = vi.hoisted(() => {
+const { getSupabaseAdminMock, fromMock, insertMock, selectMock, singleMock } = vi.hoisted(() => {
   const singleMock = vi.fn()
   const selectMock = vi.fn(() => ({ single: singleMock }))
   const insertMock = vi.fn(() => ({ select: selectMock }))
   const fromMock = vi.fn(() => ({ insert: insertMock }))
-  return { fromMock, insertMock, selectMock, singleMock }
+  const getSupabaseAdminMock = vi.fn(() => ({ from: fromMock }))
+  return { getSupabaseAdminMock, fromMock, insertMock, selectMock, singleMock }
 })
 
 vi.mock('@upstash/ratelimit', () => ({
@@ -27,7 +28,7 @@ vi.mock('@upstash/redis', () => ({
 }))
 
 vi.mock('@/lib/supabase', () => ({
-  supabaseServer: { from: fromMock },
+  getSupabaseAdmin: getSupabaseAdminMock,
 }))
 
 vi.mock('@/lib/api/profiles', () => ({
@@ -123,6 +124,18 @@ afterEach(() => {
 })
 
 describe('POST /api/profiles', () => {
+  it('0. profiles INSERT는 anon client가 아니라 서버 전용 service-role client를 사용한다', async () => {
+    singleMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+    vi.mocked(getSchoolProfileCount).mockResolvedValue(1)
+    vi.mocked(syncSchoolLevel).mockResolvedValue(null)
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(201)
+    expect(getSupabaseAdminMock).toHaveBeenCalledTimes(1)
+    expect(fromMock).toHaveBeenCalledWith('profiles')
+  })
+
   it('1. rate limit 초과 → 429, insert/Level Sync 호출 안 함 (기존 rate limit 동작 유지)', async () => {
     ratelimitLimitMock.mockResolvedValue({ success: false, limit: 20, remaining: 0, reset: 60 })
     const request = createRequest({ body: VALID_BODY })

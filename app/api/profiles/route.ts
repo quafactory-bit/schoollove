@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
-import { supabaseServer } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { getSchoolProfileCount } from '@/lib/api/profiles';
 import { syncSchoolLevel, getSchoolLevelSnapshot } from '@/lib/api/levels';
 import { revalidateRegistrationContext } from '@/lib/api/homeFeedCache';
@@ -48,7 +48,6 @@ async function checkRateLimit(ip: string): Promise<RateLimitCheck> {
   const ratelimit = new Ratelimit({
     redis: Redis.fromEnv(),
     limiter: Ratelimit.slidingWindow(20, '60 s'),
-    analytics: true,
     prefix: 'schoollove:submit',
   });
 
@@ -129,7 +128,15 @@ export async function POST(request: NextRequest) {
 
   const nickname = profile.nickname.trim().replace(/\s+/g, ' ');
 
-  const { data, error } = await supabaseServer
+  let admin;
+  try {
+    admin = getSupabaseAdmin();
+  } catch {
+    console.error('POST /api/profiles: service-role client is unavailable.');
+    return NextResponse.json({ error: '등록 중 오류가 발생했습니다.' }, { status: 500 });
+  }
+
+  const { data, error } = await admin
     .from('profiles')
     .insert({
       ...profile,
