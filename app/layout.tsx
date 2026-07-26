@@ -3,6 +3,7 @@ import './globals.css';
 import { Providers } from './providers';
 import Footer from '@/components/Footer';
 import TabBar from '@/components/TabBar';
+import { Analytics } from "@vercel/analytics/next";
 export const viewport: Viewport = {
   themeColor: '#FFFFFF',
   width: 'device-width',
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <TabBar />
         </Providers>
+        <Analytics />
       </body>
     </html>
   );

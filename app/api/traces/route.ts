@@ -11,7 +11,6 @@ const redis = Redis.fromEnv();
 const ratelimit = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(5, '60 s'),
-  analytics: true,
   prefix: 'schoollove:trace',
 });
 

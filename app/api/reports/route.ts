@@ -107,13 +107,11 @@ async function checkReportsRateLimit(
     const actorLimiter = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(ACTOR_LIMIT, ACTOR_WINDOW),
-      analytics: true,
       prefix: 'schoollove:reports:actor',
     });
     const targetLimiter = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(TARGET_LIMIT, TARGET_WINDOW),
-      analytics: true,
       prefix: 'schoollove:reports:target',
     });
 
