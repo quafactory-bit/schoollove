@@ -28,6 +28,17 @@ describe('RegistrationSuccessFeedback', () => {
     expect(SOURCE).toContain('다른 이름 더 남기기')
   })
 
+  it('keeps the visible REGISTRATION COMPLETE label between the image and heading', () => {
+    const imageIndex = SOURCE.indexOf('alt="졸업 축하"')
+    const labelIndex = SOURCE.indexOf('REGISTRATION COMPLETE')
+    const headingIndex = SOURCE.indexOf('<h1')
+
+    expect(imageIndex).toBeGreaterThanOrEqual(0)
+    expect(labelIndex).toBeGreaterThan(imageIndex)
+    expect(headingIndex).toBeGreaterThan(labelIndex)
+    expect(SOURCE).not.toMatch(/REGISTRATION COMPLETE[\s\S]{0,120}(?:hidden|opacity-0|aria-hidden)/)
+  })
+
   it('keeps every next-step action at least 44px high', () => {
     expect(SOURCE.match(/min-h-11/g)?.length).toBeGreaterThanOrEqual(6)
   })

@@ -534,7 +534,7 @@ function SubmitInner() {
           <button
             onClick={handleSubmit}
             disabled={submitting || !TURNSTILE_SITE_KEY || captchaStatus !== 'ready'}
-            className="w-full rounded-2xl bg-neutral-900 py-4 text-base font-bold text-white transition active:scale-95 disabled:opacity-50"
+            className="schoollove-dark-action w-full rounded-2xl bg-neutral-900 py-4 text-base font-bold text-white transition active:scale-95 disabled:opacity-50"
           >
             {submitting ? '등록 중…' : selfMode ? '내 인스타 연결하기' : '등록하기'}
           </button>

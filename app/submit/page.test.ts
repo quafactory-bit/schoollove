@@ -25,6 +25,16 @@ describe('app/submit/page.tsx — PHASE 9 CAPTCHA 통합', () => {
     expect(SOURCE).toMatch(/disabled={submitting \|\| !TURNSTILE_SITE_KEY \|\| captchaStatus !== 'ready'}/)
   })
 
+  it('제출 버튼은 기존 dark action의 흰색 글자 계약을 재사용한다', () => {
+    const submitButton = SOURCE.match(/<button\s+onClick={handleSubmit}[\s\S]*?<\/button>/)?.[0] ?? ''
+
+    expect(submitButton).toContain('schoollove-dark-action')
+    expect(submitButton).toContain('bg-neutral-900')
+    expect(submitButton).toContain('text-white')
+    expect(submitButton).toContain('disabled:opacity-50')
+    expect(submitButton).toContain("'등록하기'")
+  })
+
   it('handleSubmit은 registerPeople에 토큰 getter(captchaRef.requestNextToken)를 넘긴다', () => {
     expect(SOURCE).toMatch(/registerPeople\(\s*valid,\s*base,\s*\(\) => \{/)
     expect(SOURCE).toMatch(/captchaRef\.current\.requestNextToken\(\)/)
