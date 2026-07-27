@@ -1508,3 +1508,61 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - 상태: `LOCAL_VERIFIED` — TypeScript, 관련 테스트, 전체 테스트, production build,
   `git diff --check` 및 1440/1024/412/390/360px 실제 브라우저 검증을 완료했다. 실제
   production 등록 write와 production UI 재검증은 실행하지 않았다.
+
+---
+
+## 2026-07-27 (Launch Measurement Minimum 병합 후 상태 동기화)
+
+### 병합된 구현
+
+- `da3aa68` (`feat: secure profile writes and add launch analytics (#19)`):
+  `docs/decisions/2026-07-26-launch-measurement-minimum.md`에서 승인된 최소 측정·보안
+  범위를 구현했다.
+- Vercel Web Analytics는 root layout에 기본 page view 수집기 하나만 추가했다. custom
+  event, 사용자 식별자, 검색어·nickname·Instagram ID 전송은 추가하지 않았다.
+- 공개 등록 write는 `/api/profiles`의 Turnstile → 서버 검증 → service-role INSERT 경로로
+  한정했다. 브라우저의 `profiles` 직접 접근은 공개 count/read 용도만 남아 있고 직접
+  INSERT 호출은 존재하지 않는다.
+- 신규 migration
+  `supabase/migrations/20260726120000_profiles_api_only_write.sql`은
+  `anon`/`authenticated`의 테이블·컬럼 `INSERT` 권한과 `profiles_insert` 정책만
+  회수한다. 기존 migration 파일, 공개 SELECT, 데이터 행, service-role 권한은 변경하지
+  않는다.
+- 공개 write rate limiter의 기존 window·prefix·TTL·429 계약은 유지하고 Upstash
+  `analytics: true`만 제거했다.
+- `6c1165c` (`fix: restore submit button text contrast (#20)`): 등록 CTA와 성공 화면의
+  버튼 텍스트 대비 회귀를 복구하고 계약 테스트를 추가했다.
+
+### 2026-07-27 로컬 재검증
+
+- 관련 테스트:
+  `npx vitest run lib/security/launchMeasurementMinimum.test.ts supabase/migrations/20260726120000_profiles_api_only_write.test.ts app/api/profiles/route.test.ts app/submit/page.test.ts components/RegistrationSuccessFeedback.test.ts`
+  → 5 test files / 84 tests 통과.
+- `npm run typecheck` → 오류 없음.
+- `npm test` → 65 test files / 884 tests 통과.
+- `npm run build` → Next.js 15.3.8 production build 성공, 23개 static page 생성 완료.
+  로컬 Upstash 환경변수 미설정 경고는 있었지만 production build 결과에는 영향을 주지
+  않았다. 환경변수 값은 읽거나 출력하지 않았다.
+- 작업 시작 시 수정 표시된 14개 TS/TSX 파일은 normalized Git hash가 모두 HEAD와
+  동일하고 `git diff`도 비어 있어 실제 내용 변경이 아닌 worktree stat/줄바꿈 표시임을
+  확인했다. 해당 파일은 수정·복원하지 않았다.
+
+### 현재 상태와 원격 경계
+
+- 코드와 migration: `LOCAL_VERIFIED`.
+- Supabase production: `PRODUCTION_VERIFIED`. Database Migrations에서
+  `20260726120000 profiles_api_only_write` 적용 이력과 원격 SQL이 로컬 migration과
+  일치함을 확인했다. 이미 적용된 상태여서 migration을 중복 실행하지 않았다.
+- Supabase 읽기 전용 권한 검증 결과: `anon`/`authenticated`의 테이블 INSERT와
+  `nickname` 컬럼 INSERT는 모두 `false`, 공개 SELECT는 모두 `true`, `service_role`
+  INSERT는 `true`였다. `profiles_insert` 정책은 없고 `profiles_read`와 RLS는 유지됐다.
+- Vercel production: `PRODUCTION_VERIFIED`. 최신 production deployment는 `main`
+  `6c1165c`로 `Ready`였고 `www.schoollove.kr`에 연결돼 있었다.
+- Vercel Web Analytics Hobby 플랜을 활성화했다. production에서
+  `@vercel/analytics/next` v2.0.1 스크립트와 first-party view endpoint 로드를 확인했고,
+  검증 방문이 Visitors 1 / Page Views 2로 집계되며 `/`와 `/search`가 각각 1회 표시됨을
+  확인했다. custom event는 추가하거나 전송하지 않았다.
+- 실제 production 등록 write는 운영 데이터와 학교 Level을 변경하므로 실행하지 않았다.
+- 원격 변경은 Vercel Web Analytics 활성화 1건뿐이다. Supabase에서는 권한·정책 SELECT만
+  실행했고 migration·데이터 mutation은 수행하지 않았다.
+- commit, push, deploy, 환경변수 변경은 수행하지 않았다.
