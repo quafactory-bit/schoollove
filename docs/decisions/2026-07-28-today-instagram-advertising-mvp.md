@@ -1,8 +1,8 @@
 # PHASE 10D — 오늘의 Instagram 광고·수익화 MVP
 
-- 상태: **APPROVED / LOCAL IMPLEMENTATION**
+- 상태: **APPROVED / PRODUCTION APPLIED**
 - 승인일: 2026-07-28
-- Production 적용: **금지 (Draft PR까지만)**
+- Production 적용: **2026-07-28 완료**
 
 ## 제품 분리
 
@@ -37,6 +37,6 @@ MVP 결제는 외부 결제 안내 또는 계좌이체 후 운영자 수동 확�
 
 PHASE 10E에는 토스페이먼츠/PG 카드 결제, 자동 영수증·세금계산서·환불, 쿠폰·구독·반복 캠페인, 광고주 self-serve 자동 예약과 Meta 공식 API 연동을 남긴다.
 
-## 배포 경계
+## 배포 상태
 
-PHASE 10D는 로컬·격리 DB·Vercel Preview 검증, commit, push, Draft PR까지만 진행한다. migration Production 적용, PR merge, Production 배포와 실제 결제 청구는 별도 승인 전까지 금지한다.
+별도 사용자 승인 후 migration, PR squash merge와 Vercel Production 배포를 완료했다. 실제 광고 신청·결제·프로모션 row는 생성하지 않았다. 실제 결제 청구와 자동 PG는 계속 금지한다.

@@ -70,6 +70,7 @@ export default function PromoteClient({ initialState }: { initialState: State })
       <p className="text-xs font-bold tracking-[0.14em] text-gray-500">TODAY INSTAGRAM · MVP</p>
       <h1 className="mt-3 text-3xl font-bold text-gray-950">오늘의 Instagram 신청</h1>
       <p className="mt-3 text-sm leading-6 text-gray-600">만 19세 이상 본인 소유 계정만 신청할 수 있습니다. 자동 승인은 없으며, 검수와 수동 결제 확인 뒤에만 스폰서드로 노출됩니다.</p>
+      <a href="/promote/operations" className="mt-5 inline-flex min-h-11 items-center border px-4 text-sm font-semibold">견적·주문·성과 대시보드</a>
       {message ? <div role="status" className="mt-5 border border-gray-300 bg-gray-50 p-4 text-sm">{message}</div> : null}
 
       <section className="mt-9 border border-gray-200 p-5">

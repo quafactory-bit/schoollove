@@ -88,7 +88,6 @@ export const PromotionReportSchema = z.object({
 export const PromotionAdminActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('verify_account'), verification_id: z.string().uuid(), verification_code: z.string().min(6).max(40) }).strict(),
   z.object({ action: z.enum(['changes_requested', 'rejected']), request_id: z.string().uuid(), reason_code: z.enum(['creative', 'ownership', 'business', 'safety', 'minor_risk', 'impersonation', 'illegal', 'other']), note: z.string().max(500).optional() }).strict(),
-  z.object({ action: z.literal('approved'), request_id: z.string().uuid(), amount_krw: z.number().int().min(1000).max(100000000) }).strict(),
   z.object({ action: z.literal('payment_confirmed'), request_id: z.string().uuid(), internal_reference: z.string().min(1).max(100) }).strict(),
   z.object({ action: z.literal('scheduled'), request_id: z.string().uuid(), starts_at: z.string().datetime(), ends_at: z.string().datetime() }).strict(),
   z.object({ action: z.enum(['activate', 'pause', 'resume', 'complete', 'cancel', 'refund']), placement_id: z.string().uuid() }).strict(),
