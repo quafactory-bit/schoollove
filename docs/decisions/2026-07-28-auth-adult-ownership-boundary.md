@@ -25,13 +25,20 @@ Status: **APPROVED / PHASE 10B LOCAL IMPLEMENTATION**
 ## 기존 데이터
 
 - 기존 `profiles` 행을 삭제하거나 임의 사용자에게 연결하지 않는다.
-- 기존 행의 기본 ownership 상태는 `quarantined`, owner는 `NULL`, 공개 상태는 `private`다.
+- 기존 행은 migration 적용 시 owner·ownership·visibility를 재기록하지 않는다. 새 컬럼은 `NULL`로 남고, 이후 별도 검토 흐름에서만 상태를 부여한다. 기본값 `quarantined`/`private`는 향후 쓰기에만 적용한다.
 - `unclaimed`, `claimed_pending_review`, `claimed`, `deletion_requested` 상태는 관리자 검토 흐름을 위한 기반만 마련한다.
 - 이름·학교를 안다는 이유만으로 claim할 수 있는 공개 API나 UI를 만들지 않는다.
 
 ## Production 경계
 
-PHASE 10B migration과 애플리케이션은 이번 작업에서 Production에 적용하지 않는다. 로컬 검증, 원격 브랜치, Draft PR까지만 진행한다. PHASE 10A의 공개 차단은 Production에서 계속 유지한다.
+PHASE 10B-R 감사와 PR merge가 통과한 뒤 승인된 운영 절차에서 migration과 애플리케이션을 Production에 적용한다. PHASE 10A의 공개 차단은 적용 전후 모두 유지한다.
+
+## 배포 및 롤백 경계
+
+- migration은 단일 트랜잭션으로 적용하고 migration history를 기록한다.
+- 애플리케이션 장애 시 먼저 PHASE 10A 안전 애플리케이션으로 되돌린다. 공개 profiles 권한은 다시 열지 않는다.
+- DB 롤백이 필요하면 신규 함수의 EXECUTE와 authenticated 신규 테이블 grant를 먼저 회수한다. 신규 테이블이나 기록을 자동 삭제하지 않고 보존한 채 별도 승인 후 처리한다.
+- 기존 profiles row를 되돌리기 위해 UPDATE·DELETE하는 롤백은 사용하지 않는다.
 
 ## 법률 검토
 

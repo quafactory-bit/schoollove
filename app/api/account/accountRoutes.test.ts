@@ -36,7 +36,8 @@ describe('PHASE 10B account API boundaries', () => {
     expect(profile).toContain('Any user_id supplied in the request body is ignored')
     expect(profile).toContain('owner_user_id: auth.user.id')
     expect(memberships).toContain('owner_user_id: auth.user.id')
-    expect(deletion).toContain('user_id: auth.user.id')
+    expect(deletion).toContain("rpc('request_own_account_deletion'")
+    expect(deletion).not.toMatch(/user_id\s*:/)
   })
 
   it('다른 사용자의 row ID만으로 수정·삭제할 수 없다', () => {

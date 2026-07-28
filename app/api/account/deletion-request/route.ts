@@ -14,18 +14,14 @@ export async function POST(request: NextRequest) {
   const parsed = DeletionSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: '요청 내용을 확인해 주세요.' }, { status: 400 })
 
-  const { error } = await auth.client.from('account_deletion_requests').insert({
-    user_id: auth.user.id,
-    reason: parsed.data.reason || null,
-    status: 'pending',
+  // The authenticated RPC derives auth.uid() itself and atomically records the request
+  // plus the private-profile state transition. Body user IDs are never accepted.
+  const { data: requested, error } = await auth.client.rpc('request_own_account_deletion', {
+    request_reason: parsed.data.reason || null,
   })
-  if (error?.code === '23505') return NextResponse.json({ requested: true })
-  if (error) return NextResponse.json({ error: '탈퇴 요청을 접수할 수 없습니다.' }, { status: 500 })
-
-  await auth.client.from('private_profiles').update({
-    status: 'deletion_requested',
-    updated_at: new Date().toISOString(),
-  }).eq('owner_user_id', auth.user.id)
+  if (error || requested !== true) {
+    return NextResponse.json({ error: '탈퇴 요청을 접수할 수 없습니다.' }, { status: 500 })
+  }
 
   return NextResponse.json({ requested: true }, { status: 201 })
 }

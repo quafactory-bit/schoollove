@@ -15,6 +15,11 @@ describe('user auth server boundary', () => {
     expect(source).not.toContain('getSession()')
   })
 
+  it('logout은 access/refresh session을 복원한 뒤 provider global sign-out을 요청한다', () => {
+    expect(source).toMatch(/revokeUserSession[\s\S]*auth\.setSession\([\s\S]*access_token[\s\S]*refresh_token/)
+    expect(source).toContain("auth.signOut({ scope: 'global' })")
+  })
+
   it('service-role client를 사용하지 않는다', () => {
     expect(source).not.toMatch(/SUPABASE_SERVICE_ROLE_KEY|getSupabaseAdmin/)
   })

@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   try {
     admin = getSupabaseAdmin()
   } catch {
-    return NextResponse.json({ error: '?깆씤 ?뺤씤????ν븷 ???놁뒿?덈떎.' }, { status: 503 })
+    return NextResponse.json({ error: '성인 확인을 저장할 수 없습니다.' }, { status: 503 })
   }
 
   const { error } = await admin.from('adult_eligibility_records').insert({

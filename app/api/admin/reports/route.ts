@@ -4,11 +4,7 @@ import {
   verifySessionToken,
   ADMIN_COOKIE_NAME,
 } from '@/lib/admin-auth';
-import {
-  markRequestAsDone,
-  markRequestAsPending,
-  recordAdminAuditLog,
-} from '@/lib/api/admin';
+import { applyAdminModerationAction } from '@/lib/api/admin';
 
 const PatchSchema = z.object({
   id: z.string().uuid(),
@@ -56,10 +52,10 @@ export async function PATCH(request: NextRequest) {
   }
 
   const { id, status } = parsed.data;
-  const success =
-    status === 'done'
-      ? await markRequestAsDone(id)
-      : await markRequestAsPending(id);
+  const success = await applyAdminModerationAction(
+    status === 'done' ? 'report_done' : 'report_pending',
+    id
+  );
 
   if (!success) {
     return NextResponse.json(
@@ -67,16 +63,5 @@ export async function PATCH(request: NextRequest) {
       { status: 500 }
     );
   }
-
-
-  if (!(await recordAdminAuditLog({
-    action: 'report_status_change',
-    targetTable: 'reports',
-    targetId: id,
-    metadata: { status },
-  }))) {
-    return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
-  }
-
   return NextResponse.json({ success: true });
 }

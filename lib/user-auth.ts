@@ -75,3 +75,17 @@ export function clearUserSessionCookies(response: NextResponse): void {
   response.cookies.set(USER_ACCESS_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 })
   response.cookies.set(USER_REFRESH_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 })
 }
+
+export async function revokeUserSession(
+  accessToken: string | undefined,
+  refreshToken: string | undefined
+): Promise<void> {
+  if (!accessToken || !refreshToken) return
+  const client = createPublicAuthClient()
+  const { error } = await client.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  })
+  if (error) return
+  await client.auth.signOut({ scope: 'global' })
+}

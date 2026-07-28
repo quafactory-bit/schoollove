@@ -2,11 +2,7 @@
 import { z } from 'zod';
 import { verifySessionToken, ADMIN_COOKIE_NAME } from '@/lib/admin-auth';
 import {
-  markRequestAsDone,
-  markRequestAsPending,
-  hideProfile,
-  unhideProfile,
-  recordAdminAuditLog,
+  applyAdminModerationAction,
 } from '@/lib/api/admin';
 
 const PatchSchema = z.object({
@@ -43,43 +39,18 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 
-  const { id, profileId, status } = parsed.data;
-
-  if (status === 'done') {
-    // 삭제 요청 처리: report를 done으로 + 프로필 숨김
-    const [reportDone, profileHidden] = await Promise.all([
-      markRequestAsDone(id),
-      hideProfile(profileId),
-    ]);
-
-    if (!reportDone || !profileHidden) {
-      return NextResponse.json(
-        { error: 'Processing failed' },
-        { status: 500 }
-      );
-    }
-  } else {
-    // 되돌리기: report를 pending으로 + 프로필 숨김 해제
-    const [reportPending, profileUnhidden] = await Promise.all([
-      markRequestAsPending(id),
-      unhideProfile(profileId),
-    ]);
-
-    if (!reportPending || !profileUnhidden) {
-      return NextResponse.json(
-        { error: 'Revert failed' },
-        { status: 500 }
-      );
-    }
-  }
-
-  if (!(await recordAdminAuditLog({
-    action: status === 'done' ? 'deletion_request_complete' : 'deletion_request_reopen',
-    targetTable: 'reports',
-    targetId: id,
-    metadata: { profile_id: profileId, status },
-  }))) {
-    return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
+  const { id, status } = parsed.data;
+  // profileId remains accepted for backward-compatible clients but is never trusted. The
+  // transaction RPC derives the linked profile from the authenticated admin's report row.
+  const success = await applyAdminModerationAction(
+    status === 'done' ? 'deletion_request_complete' : 'deletion_request_reopen',
+    id
+  );
+  if (!success) {
+    return NextResponse.json(
+      { error: status === 'done' ? 'Processing failed' : 'Revert failed' },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ success: true });

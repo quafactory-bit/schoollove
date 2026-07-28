@@ -1614,7 +1614,7 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 
 ### 구현
 
-- 일반 사용자 인증은 Supabase Auth 이메일 OTP로 분리하고, 검증된 access token을 httpOnly·SameSite 쿠키로 보관한다. OTP 요청과 검증은 각각 별도의 IP rate limit을 적용하며 Production에서 Upstash 설정이 없으면 fail-closed 한다.
+- 일반 사용자 인증은 Supabase Auth 이메일 OTP로 분리하고, 검증된 access/refresh token을 httpOnly·SameSite 쿠키로 보관한다. OTP 요청과 검증은 각각 별도의 IP·이메일 hash rate limit을 적용하며 Production에서 Upstash 설정이 없으면 fail-closed 한다.
 - KST 기준 만 19세 이상 여부를 서버에서 계산한다. 원본 생년월일은 저장하거나 로그로 남기지 않으며, 성인 확인 레코드는 service-role 서버 경계에서만 생성해 authenticated REST 직접 INSERT 우회를 막는다.
 - 필수 약관 동의는 정책 버전별 append-only 레코드로 저장한다. 현재 성인 확인과 필수 동의가 모두 존재할 때만 private profile 및 학교 이력 생성·수정이 허용된다.
 - 신규 `private_profiles`와 `profile_school_memberships`는 검증된 Supabase session user ID를 소유자로 사용한다. RLS는 본인 row의 SELECT/INSERT/UPDATE/DELETE만 허용하고 공개 읽기 정책은 만들지 않는다.
@@ -1629,3 +1629,15 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - 관련 보안·RLS·API·관리자 회귀 테스트 5 files / 44 tests를 통과했다.
 - 전체 테스트 77 files / 833 tests, TypeScript, Next.js 15.3.8 Production build(32 routes), `git diff --check`를 통과했다.
 - PHASE 10B 상태: `LOCAL_VERIFIED`; Production 적용은 별도 승인 단계다.
+
+### PHASE 10B-R 감사 보완
+
+- 기존 `profiles`에 owner 상태와 visibility 기본값을 즉시 채우던 migration을 수정했다. 새 컬럼은 기존 row에서 NULL로 유지되고 기본값은 향후 쓰기에만 적용되므로 기존 개인정보 row를 재분류하거나 소유권과 연결하지 않는다.
+- 신규 개인정보 테이블 6개에 `FORCE ROW LEVEL SECURITY`를 추가했다.
+- 계정 탈퇴 요청과 private profile 상태 전환을 본인 전용 SECURITY DEFINER RPC 한 트랜잭션으로 묶었다. auth user 자체는 자동 삭제하지 않는다.
+- 기존 관리자 profile/report moderation과 audit insert를 service-role 전용 명시적 action RPC 한 트랜잭션으로 묶었다. 삭제 요청에 포함된 client profile ID는 더 이상 신뢰하지 않고 report row 연결을 사용한다.
+- 학교 level sync는 기존 동시성 재시도 알고리즘 때문에 route 단계에서 안전하게 되돌릴 수 없다. audit 실패를 500으로 반환하고 내부 school UUID만 포함한 수동 reconciliation 로그를 남기는 실패 보상 테스트를 추가했다.
+- 로그아웃은 access/refresh session을 복원한 뒤 Supabase global sign-out을 요청하고, 성공 여부와 무관하게 로컬 httpOnly 쿠키를 제거한다.
+- OTP 요청·검증은 서로 분리된 limit에 더해 IP와 정규화된 이메일의 SHA-256 key를 각각 사용한다. 원본 IP·이메일은 rate-limit key나 로그에 저장하지 않는다.
+- 사용자에게 노출될 수 있던 성인 확인·OTP 오류 문구의 깨진 문자열을 정상 한국어로 수정했다.
+- PHASE 10B-R 관련 감사 테스트 10 files / 84 tests, 전체 77 files / 836 tests, TypeScript, Production build(32 routes), `git diff --check`를 통과했다.

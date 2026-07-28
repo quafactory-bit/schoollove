@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifySessionToken, ADMIN_COOKIE_NAME } from '@/lib/admin-auth';
 import {
-  markRequestAsDone,
-  markRequestAsPending,
-  getEditRequestDetail,
-  applyProfileInstagramEdit,
-  recordAdminAuditLog,
+  applyAdminModerationAction,
 } from '@/lib/api/admin';
 
 // PHASE 7A COMPLETION PATCH — type='edit' 요청을 실제로 조회·처리할 수 있는 관리자 API.
@@ -47,53 +43,12 @@ export async function PATCH(request: NextRequest) {
 
   const { id, status } = parsed.data;
 
-  if (status === 'done') {
-    const detail = await getEditRequestDetail(id);
-    if (!detail) {
-      return NextResponse.json({ error: 'Request not found' }, { status: 404 });
-    }
-
-    // PHASE 7A ADMIN MUTATION AUTHORITY PATCH — 두 UPDATE(profiles.instagram_id,
-    // reports.status)에 새 RPC/migration 없이는 완전한 트랜잭션을 만들 수 없다(범위 밖).
-    // 대신 순서를 명확히 해 잘못된 'done' 상태를 방지한다: profiles 반영이 먼저
-    // 성공해야만 reports를 done으로 표시한다. profiles 반영 자체가 실패하면 reports는
-    // 절대 done으로 바뀌지 않는다(재시도 시 다시 반영을 시도할 수 있음). profiles
-    // 반영은 성공했는데 reports.status 갱신만 실패하면, 실제 인스타그램은 이미
-    // 바뀌었지만 요청은 여전히 'pending'으로 남는 "부분 성공" 상태가 된다 — 이 경우
-    // 클라이언트에는 내부 DB 내용을 노출하지 않는 일반 500만 반환하고, 서버 로그에는
-    // 어느 단계까지 성공했는지 명확히 남겨 관리자가 reports.status만 수동으로 다시
-    // 'done' 처리하면 되는 상태임을 알 수 있게 한다(profiles를 다시 UPDATE할 필요는
-    // 없음 — 이미 반영됐으므로 재적용은 안전하지만 필수는 아니다).
-    const applied = await applyProfileInstagramEdit(detail.profileId, detail.requestedInstagramId);
-    if (!applied) {
-      console.error('PATCH /api/admin/edit-requests: profiles 반영 실패, reports는 done 처리하지 않음', {
-        reportId: id,
-      });
-      return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
-    }
-
-    const reportDone = await markRequestAsDone(id);
-    if (!reportDone) {
-      console.error(
-        'PATCH /api/admin/edit-requests: profiles 반영은 성공했지만 reports.status=done 갱신 실패(부분 성공) — 수동 확인 필요',
-        { reportId: id, profileId: detail.profileId }
-      );
-      return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
-    }
-  } else {
-    const reportPending = await markRequestAsPending(id);
-    if (!reportPending) {
-      return NextResponse.json({ error: 'Revert failed' }, { status: 500 });
-    }
-  }
-
-  if (!(await recordAdminAuditLog({
-    action: status === 'done' ? 'edit_request_complete' : 'edit_request_reopen',
-    targetTable: 'reports',
-    targetId: id,
-    metadata: { status },
-  }))) {
-    return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
+  const success = await applyAdminModerationAction(
+    status === 'done' ? 'edit_request_complete' : 'edit_request_reopen',
+    id
+  );
+  if (!success) {
+    return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

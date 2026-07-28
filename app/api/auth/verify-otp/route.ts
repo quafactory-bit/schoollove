@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createPublicAuthClient, setUserSessionCookies } from '@/lib/user-auth'
-import { checkAuthRateLimit } from '@/lib/security/authRateLimit'
+import { checkAuthRateLimit, getAuthRateLimitKey } from '@/lib/security/authRateLimit'
 
 const VerifyOtpSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -12,10 +12,10 @@ export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     ?? request.headers.get('x-real-ip')
     ?? '127.0.0.1'
-  const limited = await checkAuthRateLimit(ip, 'verify')
+  const limited = await checkAuthRateLimit(getAuthRateLimitKey('ip', ip), 'verify')
   if (!limited.allowed) {
     return NextResponse.json(
-      { error: limited.status === 429 ? '?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??' : '?몄쬆???좎떆 ?ъ슜?????놁뒿?덈떎.' },
+      { error: limited.status === 429 ? '잠시 후 다시 시도해 주세요.' : '인증을 잠시 사용할 수 없습니다.' },
       {
         status: limited.status,
         headers: limited.retryAfter ? { 'Retry-After': String(limited.retryAfter) } : undefined,
@@ -33,6 +33,17 @@ export async function POST(request: NextRequest) {
   const parsed = VerifyOtpSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: '이메일과 6자리 인증번호를 확인해 주세요.' }, { status: 400 })
+  }
+
+  const emailLimited = await checkAuthRateLimit(
+    getAuthRateLimitKey('email', parsed.data.email),
+    'verify'
+  )
+  if (!emailLimited.allowed) {
+    return NextResponse.json(
+      { error: emailLimited.status === 429 ? '잠시 후 다시 시도해 주세요.' : '인증을 잠시 사용할 수 없습니다.' },
+      { status: emailLimited.status }
+    )
   }
 
   try {

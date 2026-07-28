@@ -4,19 +4,25 @@
 
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS owner_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS ownership_status text NOT NULL DEFAULT 'quarantined',
-  ADD COLUMN IF NOT EXISTS profile_visibility text NOT NULL DEFAULT 'private',
+  ADD COLUMN IF NOT EXISTS ownership_status text,
+  ADD COLUMN IF NOT EXISTS profile_visibility text,
   ADD COLUMN IF NOT EXISTS ownership_reviewed_at timestamptz;
+
+-- Defaults are installed only for future legacy-table writes. Existing rows stay NULL and
+-- are not rewritten, claimed, or reclassified by this migration.
+ALTER TABLE public.profiles
+  ALTER COLUMN ownership_status SET DEFAULT 'quarantined',
+  ALTER COLUMN profile_visibility SET DEFAULT 'private';
 
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_ownership_status_check') THEN
     ALTER TABLE public.profiles ADD CONSTRAINT profiles_ownership_status_check
-      CHECK (ownership_status IN ('unclaimed', 'quarantined', 'claimed_pending_review', 'claimed', 'deletion_requested'));
+      CHECK (ownership_status IS NULL OR ownership_status IN ('unclaimed', 'quarantined', 'claimed_pending_review', 'claimed', 'deletion_requested'));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_visibility_private_check') THEN
     ALTER TABLE public.profiles ADD CONSTRAINT profiles_visibility_private_check
-      CHECK (profile_visibility = 'private');
+      CHECK (profile_visibility IS NULL OR profile_visibility = 'private');
   END IF;
 END $$;
 
@@ -128,12 +134,141 @@ $$;
 REVOKE ALL ON FUNCTION public.has_current_adult_access(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.has_current_adult_access(uuid) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.request_own_account_deletion(request_reason text DEFAULT NULL)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  requester uuid := auth.uid();
+BEGIN
+  IF requester IS NULL OR request_reason IS NOT NULL AND char_length(request_reason) > 500 THEN
+    RETURN false;
+  END IF;
+
+  BEGIN
+    INSERT INTO public.account_deletion_requests (user_id, reason, status)
+    VALUES (requester, NULLIF(btrim(request_reason), ''), 'pending');
+  EXCEPTION WHEN unique_violation THEN
+    NULL;
+  END;
+
+  UPDATE public.private_profiles
+  SET status = 'deletion_requested', updated_at = now()
+  WHERE owner_user_id = requester;
+
+  RETURN true;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.request_own_account_deletion(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.request_own_account_deletion(text) TO authenticated;
+
+-- Explicit service-role-only transaction boundary for legacy admin moderation. Every
+-- supported mutation and its audit row commit or roll back together. Client-supplied
+-- profile IDs are not accepted for request processing; the linked report row is authoritative.
+CREATE OR REPLACE FUNCTION public.admin_apply_moderation_action(
+  requested_action text,
+  target_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  affected integer := 0;
+  linked_profile_id uuid;
+  requested_instagram text;
+  target_table_name text := 'reports';
+BEGIN
+  CASE requested_action
+    WHEN 'profile_hide' THEN
+      UPDATE public.profiles SET is_hidden = true WHERE id = target_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+      target_table_name := 'profiles';
+    WHEN 'profile_unhide' THEN
+      UPDATE public.profiles SET is_hidden = false WHERE id = target_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+      target_table_name := 'profiles';
+    WHEN 'profile_delete' THEN
+      DELETE FROM public.reports WHERE profile_id = target_id;
+      DELETE FROM public.profiles WHERE id = target_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+      target_table_name := 'profiles';
+    WHEN 'report_done' THEN
+      UPDATE public.reports SET status = 'done' WHERE id = target_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+    WHEN 'report_pending' THEN
+      UPDATE public.reports SET status = 'pending' WHERE id = target_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+    WHEN 'edit_request_complete' THEN
+      SELECT profile_id, requested_instagram_id
+      INTO linked_profile_id, requested_instagram
+      FROM public.reports
+      WHERE id = target_id AND type = 'edit'
+      FOR UPDATE;
+      IF linked_profile_id IS NULL OR requested_instagram IS NULL THEN RETURN false; END IF;
+      UPDATE public.profiles SET instagram_id = requested_instagram WHERE id = linked_profile_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+      IF affected <> 1 THEN RETURN false; END IF;
+      UPDATE public.reports SET status = 'done' WHERE id = target_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+    WHEN 'edit_request_reopen' THEN
+      UPDATE public.reports SET status = 'pending' WHERE id = target_id AND type = 'edit';
+      GET DIAGNOSTICS affected = ROW_COUNT;
+    WHEN 'deletion_request_complete' THEN
+      SELECT profile_id INTO linked_profile_id
+      FROM public.reports
+      WHERE id = target_id AND type = 'delete'
+      FOR UPDATE;
+      IF linked_profile_id IS NULL THEN RETURN false; END IF;
+      UPDATE public.profiles SET is_hidden = true WHERE id = linked_profile_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+      IF affected <> 1 THEN RETURN false; END IF;
+      UPDATE public.reports SET status = 'done' WHERE id = target_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+    WHEN 'deletion_request_reopen' THEN
+      SELECT profile_id INTO linked_profile_id
+      FROM public.reports
+      WHERE id = target_id AND type = 'delete'
+      FOR UPDATE;
+      IF linked_profile_id IS NULL THEN RETURN false; END IF;
+      UPDATE public.profiles SET is_hidden = false WHERE id = linked_profile_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+      IF affected <> 1 THEN RETURN false; END IF;
+      UPDATE public.reports SET status = 'pending' WHERE id = target_id;
+      GET DIAGNOSTICS affected = ROW_COUNT;
+    ELSE
+      RETURN false;
+  END CASE;
+
+  IF affected <> 1 THEN RETURN false; END IF;
+
+  INSERT INTO public.admin_audit_logs (actor_type, action, target_table, target_id)
+  VALUES ('admin', requested_action, target_table_name, target_id);
+  RETURN true;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_apply_moderation_action(text, uuid)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_apply_moderation_action(text, uuid) TO service_role;
+
 ALTER TABLE public.adult_eligibility_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.consent_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.private_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profile_school_memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.account_deletion_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_audit_logs ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.adult_eligibility_records FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.consent_records FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.private_profiles FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.profile_school_memberships FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.account_deletion_requests FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_audit_logs FORCE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE public.adult_eligibility_records, public.consent_records,
   public.private_profiles, public.profile_school_memberships,

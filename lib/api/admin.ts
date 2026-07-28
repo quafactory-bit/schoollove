@@ -46,6 +46,40 @@ export async function recordAdminAuditLog(input: {
   return true;
 }
 
+export type AdminModerationAction =
+  | 'profile_hide'
+  | 'profile_unhide'
+  | 'profile_delete'
+  | 'report_done'
+  | 'report_pending'
+  | 'edit_request_complete'
+  | 'edit_request_reopen'
+  | 'deletion_request_complete'
+  | 'deletion_request_reopen';
+
+/**
+ * Executes one explicit legacy moderation action and its audit insert in a single database
+ * transaction. The RPC is executable only by service_role and validates the action against
+ * its own closed CASE list; routes never receive a generic SQL/table mutation primitive.
+ */
+export async function applyAdminModerationAction(
+  action: AdminModerationAction,
+  targetId: string
+): Promise<boolean> {
+  const admin = tryGetAdminClient();
+  if (!admin) return false;
+
+  const { data, error } = await admin.rpc('admin_apply_moderation_action', {
+    requested_action: action,
+    target_id: targetId,
+  });
+  if (error || data !== true) {
+    console.error('applyAdminModerationAction failed:', { action, targetId });
+    return false;
+  }
+  return true;
+}
+
 export type DashboardStats = {
   totalProfiles: number;
   todayProfiles: number;

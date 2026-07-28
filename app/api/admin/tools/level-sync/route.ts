@@ -56,6 +56,10 @@ export async function POST(request: NextRequest) {
     targetId: schoolId,
     metadata: { cumulative_xp: cumulativeXp },
   }))) {
+    // The concurrency-safe level persistence loop cannot be rolled back here without risking
+    // overwriting a newer concurrent level. Fail loudly and leave a non-PII reconciliation
+    // marker in server logs; the API never reports this as success.
+    console.error('Level sync audit failed; manual audit reconciliation required.', { schoolId })
     return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
   }
 
