@@ -2,64 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Year Hub는 React Server Component라 app/page.test.ts와 동일한 이유로 직접 렌더링
-// 테스트를 할 수 없다(JSX 트랜스폼 미설치). 소스 텍스트로 PHASE 7B 핵심 계약을 확인한다.
-// 집계·상태 판단 로직 자체는 lib/policy/yearHub.test.ts가 전수 검증한다.
-const SOURCE = readFileSync(join(__dirname, 'page.tsx'), 'utf-8')
+const SOURCE = readFileSync(join(__dirname, 'page.tsx'), 'utf8')
 
-describe('app/school/[slug]/[year]/page.tsx — PHASE 7B People Discovery 계약', () => {
-  it('페이지네이션 searchParams(?page=)를 더 이상 사용하지 않는다(전체 명단 로드로 전환)', () => {
-    expect(SOURCE).not.toMatch(/searchParams/)
+describe('Year route emergency privacy boundary', () => {
+  it('개인 행·기수 집계·사람 검색을 조회하거나 렌더하지 않는다', () => {
+    expect(SOURCE).not.toMatch(/getAllProfilesBySchoolYear|getYearProfileCount|YearPeopleSearch|ProfileCard|instagram|nickname/)
+    expect(SOURCE).toContain('<PrivacyTransitionNotice')
   })
 
-  it('getAllProfilesBySchoolYear로 기수 전체 명단을 한 번에 로드한다', () => {
-    expect(SOURCE).toMatch(/getAllProfilesBySchoolYear\(school\.id, year\)/)
-  })
-
-  it('noindex 판단은 공통 정책 함수(isYearPageIndexable)만 쓰고 로컬 임계값 상수를 두지 않는다(PHASE 8)', () => {
-    expect(SOURCE).toMatch(/getYearProfileCount/)
-    expect(SOURCE).toMatch(/isYearPageIndexable\(count\)/)
-    expect(SOURCE).not.toMatch(/const INDEX_THRESHOLD/)
-  })
-
-  it('반별 집계·가장 활발한 반·최근 등록·기수 상태를 정책 함수로 계산한다(컴포넌트에 로직을 두지 않음)', () => {
-    expect(SOURCE).toMatch(/aggregateClassCounts\(profiles\)/)
-    expect(SOURCE).toMatch(/pickMostActiveClass\(classes\)/)
-    expect(SOURCE).toMatch(/pickMostRecentRegistration\(profiles\)/)
-    expect(SOURCE).toMatch(/classifyYearState\(totalProfileCount\)/)
-  })
-
-  it("state === 'empty'일 때 YearPeopleSearch(이름 검색)를 렌더하지 않는다", () => {
-    const emptyBranchMatch = SOURCE.match(/state === 'empty' \? \(([\s\S]*?)\) : \(/)
-    expect(emptyBranchMatch).not.toBeNull()
-    expect(emptyBranchMatch![1]).not.toMatch(/YearPeopleSearch/)
-  })
-
-  it('empty가 아닌 상태에서는 YearPeopleSearch를 렌더한다', () => {
-    expect(SOURCE).toMatch(/<YearPeopleSearch profiles=\{profiles\} totalCount=\{totalProfileCount\} \/>/)
-  })
-
-  it('School Hub로 돌아가는 링크를 유지한다', () => {
-    expect(SOURCE).toMatch(/href=\{`\/school\/\$\{slug\}`\}/)
-  })
-
-  it('동기 검색·명단을 반 navigation보다 먼저 렌더링한다', () => {
-    expect(SOURCE.indexOf('<YearPeopleSearch')).toBeGreaterThan(-1)
-    expect(SOURCE.indexOf('<YearPeopleSearch')).toBeLessThan(SOURCE.indexOf('반별 보기'))
-  })
-
-  it('등록 CTA를 발견 콘텐츠와 반 navigation 뒤에 두고 school/year context를 사용한다', () => {
-    expect(SOURCE).toMatch(/buildSubmitContextHref\(\{ school: slug, year \}\)/)
-    expect(SOURCE.indexOf('href={submitHref}')).toBeGreaterThan(SOURCE.indexOf('반별 보기'))
-  })
-
-  it('Class Hub 링크 형식(/school/[slug]/[year]/[grade]-[class])을 그대로 유지한다', () => {
-    expect(SOURCE).toMatch(/href=\{`\/school\/\$\{slug\}\/\$\{year\}\/\$\{c\.grade\}-\$\{c\.classNumber\}`\}/)
-  })
-
-  it('실제 year count를 헤더·context·동기 발견 제목에 재사용한다', () => {
-    expect(SOURCE).toMatch(/getYearProfileCount\(school\.id, year\)/)
-    expect(SOURCE).toMatch(/총 \{formatNumber\(totalProfileCount\)\}명/)
-    expect(SOURCE).toMatch(/totalCount=\{totalProfileCount\}/)
+  it('noindex/nofollow/noarchive 공통 정책을 사용한다', () => {
+    expect(SOURCE).toContain("robots: getPublicRouteRobots('year')")
   })
 })

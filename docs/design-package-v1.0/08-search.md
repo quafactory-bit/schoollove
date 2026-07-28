@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> **PHASE 10A SAFETY OVERRIDE (2026-07-28):** 공개 Search는 학교명·지역·학교 유형의 기본 정보만 조회한다. profile rows, nickname/name, 졸업연도·반, Instagram, profile count를 검색하거나 응답하지 않는다. 사람 검색은 성인 본인 인증 기반 전환이 끝날 때까지 중단한다.
+
 ## 0. 정의
 
 Search의 목적은 검색 기능 최적화가 아니다.

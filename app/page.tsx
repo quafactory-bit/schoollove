@@ -1,25 +1,9 @@
 import Link from 'next/link'
-import { getCurrentSchoolRankingWithStatus } from '@/lib/api/schools'
-import { getRecentRegisterActivity, getRecentTraceActivity, HOME_ACTIVITY_FEED_LIMIT } from '@/lib/api/homeFeed'
-import { buildCurrentRankingViewRow, buildHomeActivityFeed, getFeedCtaVisibility } from '@/lib/policy/homeFeed'
-import CurrentSchoolRanking from '@/components/CurrentSchoolRanking'
-import HomeActivityFeed from '@/components/HomeActivityFeed'
-import HomeFeedCta from '@/components/HomeFeedCta'
+import { Search, ShieldCheck } from 'lucide-react'
 
 export const revalidate = 60
 
-export default async function HomePage() {
-  const now = new Date()
-  const [rankingResult, registerActivity, traceActivity] = await Promise.all([
-    getCurrentSchoolRankingWithStatus(),
-    getRecentRegisterActivity(),
-    getRecentTraceActivity(),
-  ])
-
-  const activityItems = buildHomeActivityFeed(registerActivity, traceActivity, HOME_ACTIVITY_FEED_LIMIT)
-  const rankingRows = rankingResult.status === 'ok' ? rankingResult.rows.map(buildCurrentRankingViewRow) : []
-  const ctaVisibility = getFeedCtaVisibility(activityItems.length)
-
+export default function HomePage() {
   return (
     <main className="mx-auto w-full max-w-[1180px] overflow-x-clip px-5 pb-16 sm:px-6 lg:px-8">
       <header className="pt-7 lg:pt-12">
@@ -28,79 +12,49 @@ export default async function HomePage() {
             <Link href="/" className="schoollove-focus inline-flex min-h-11 items-center text-[18px] font-semibold tracking-tight text-schoollove-text">
               스쿨러브아이
             </Link>
-            <p className="mt-1 text-[13px] text-schoollove-secondary">학교와 사람을 다시 발견하는 곳</p>
+            <p className="mt-1 text-[13px] text-schoollove-secondary">학교에서 시작하는 안전한 사람 연결</p>
           </div>
-          <nav className="hidden items-center gap-2 lg:flex" aria-label="빠른 이동">
-            <Link
-              href="/search"
-              className="schoollove-focus inline-flex min-h-11 items-center border border-schoollove-border px-4 text-[14px] text-schoollove-text transition-colors hover:bg-schoollove-surface-subtle"
-            >
-              학교 찾기
-            </Link>
-            <Link
-              href="/submit"
-              className="schoollove-dark-action schoollove-focus inline-flex min-h-11 items-center bg-schoollove-text px-4 text-[14px] transition-colors hover:bg-schoollove-text-secondary"
-            >
-              내 이름 남기기
-            </Link>
-          </nav>
+          <Link href="/search" className="schoollove-focus hidden min-h-11 items-center border border-schoollove-border px-4 text-[14px] text-schoollove-text lg:inline-flex">
+            학교 찾기
+          </Link>
         </div>
 
-        <div className="mt-10 grid gap-7 lg:mt-14 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-end">
-          <div>
-            <p className="schoollove-hud-label text-[12px] tracking-[0.14em] sm:text-[13px]">GROWTH ONLINE</p>
-            <h1 className="mt-3 max-w-[780px] break-keep text-[36px] font-bold leading-[1.22] tracking-[-0.02em] text-schoollove-text sm:text-[44px] lg:text-[56px]">
-              <span>지금</span>, <span>학교들이</span>
-              <br />
-              <span>성장하고</span> 있어요.
-            </h1>
-          </div>
-          <div className="border border-schoollove-border bg-schoollove-surface-subtle p-5 lg:p-6" aria-label="홈 성장 상태">
-            <p className="text-[12px] tracking-[0.14em] text-schoollove-text">GROWTH STATUS</p>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div>
-                <p className="schoollove-hud-label text-[11px] tracking-[0.08em]">CURRENT RANK</p>
-                <p className="mt-1 text-[12px] text-schoollove-secondary">순위에 오른 학교</p>
-                <p className="mt-1 text-[24px] leading-none text-schoollove-text">{rankingRows.length}곳</p>
-              </div>
-              <div>
-                <p className="schoollove-hud-label text-[11px] tracking-[0.08em]">LIVE FEED</p>
-                <p className="mt-1 text-[12px] text-schoollove-secondary">최근 성장 소식</p>
-                <p className="mt-1 text-[24px] leading-none text-schoollove-text">{activityItems.length}건</p>
-              </div>
-            </div>
-            <p className="mt-5 text-[13px] leading-5 text-schoollove-secondary">
-              실제 공개 등록과 흔적만 모아 학교 성장 상태를 보여줘요.
-            </p>
-          </div>
+        <div className="mt-12 max-w-3xl lg:mt-20">
+          <p className="schoollove-hud-label text-[12px] tracking-[0.14em] sm:text-[13px]">PRIVACY SAFETY UPDATE</p>
+          <h1 className="mt-4 break-keep text-[36px] font-bold leading-[1.22] tracking-[-0.02em] text-schoollove-text sm:text-[44px] lg:text-[56px]">
+            학교는 그대로,<br />개인 정보는 안전하게.
+          </h1>
+          <p className="mt-6 max-w-2xl break-keep text-[15px] leading-7 text-schoollove-secondary sm:text-[17px]">
+            공개 개인 명단과 Instagram 노출을 중단했습니다. 만 19세 이상 본인 인증과 상호 승인 기반 연결 구조를 준비하고 있습니다.
+          </p>
+          <Link href="/search" className="schoollove-dark-action schoollove-focus mt-8 inline-flex min-h-12 items-center gap-2 bg-schoollove-text px-6 text-[15px] text-white">
+            <Search className="h-4 w-4" aria-hidden="true" />
+            학교 검색하기
+          </Link>
         </div>
       </header>
 
-      <CurrentSchoolRanking status={rankingResult.status} rows={rankingRows} />
-
-      <section id="growth-feed" className="mt-12 border-t border-schoollove-border pt-7 lg:mt-16 lg:pt-9" aria-labelledby="live-feed-title">
-        <p className="schoollove-hud-label schoollove-live-label text-[12px] tracking-[0.14em] sm:text-[13px]">
-          <span className="schoollove-live-dot" aria-hidden="true" />
-          LIVE FEED
-        </p>
-        <h2 id="live-feed-title" className="mt-2 text-[24px] tracking-[-0.01em] text-schoollove-text lg:text-[28px]">성장 소식</h2>
-        <div className="mt-5">
-          <HomeActivityFeed items={activityItems} now={now} />
-        </div>
-        {activityItems.length === 0 && (
-          <div className="border-t border-schoollove-border py-8 text-center">
-            <p className="text-[14px] font-medium text-schoollove-text">아직 새로운 소식이 없어요.</p>
-            <p className="mt-1 text-[13px] text-schoollove-secondary">학교를 찾아 첫 흔적을 남겨보세요.</p>
+      <section className="mt-14 grid gap-4 border-t border-schoollove-border pt-8 sm:grid-cols-3 lg:mt-20 lg:pt-10" aria-label="개인정보 안전 전환 현황">
+        {[
+          ['개인 명단', '공개 중단'],
+          ['신규 등록', '일시 중단'],
+          ['다음 단계', '성인 본인 인증'],
+        ].map(([label, value]) => (
+          <div key={label} className="border border-schoollove-border bg-schoollove-surface p-5">
+            <ShieldCheck className="h-5 w-5 text-schoollove-text" aria-hidden="true" />
+            <p className="mt-4 text-xs text-schoollove-secondary">{label}</p>
+            <p className="mt-1 text-lg font-semibold text-schoollove-text">{value}</p>
           </div>
-        )}
+        ))}
       </section>
 
-      {ctaVisibility.showSearchCta && (
-        <HomeFeedCta title="우리 학교는 지금 얼마나 이어지고 있을까요?" buttonLabel="학교 찾아보기" href="/search" />
-      )}
-      {ctaVisibility.showSubmitCta && (
-        <HomeFeedCta title="내 이름 하나가 학교의 다음 성장을 만듭니다." buttonLabel="내 이름 남기기" href="/submit" />
-      )}
+      <section className="mt-10 border border-schoollove-border bg-schoollove-surface-subtle p-6">
+        <h2 className="text-lg font-semibold text-schoollove-text">기존 정보의 삭제·비공개가 필요하신가요?</h2>
+        <p className="mt-2 text-sm leading-6 text-schoollove-secondary">운영자 문의로 요청해 주세요. 기존 데이터는 공개 화면에서 제거했으며 관리자 검토 경계는 유지합니다.</p>
+        <Link href="/contact" className="schoollove-focus mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline underline-offset-4">
+          운영자 문의하기
+        </Link>
+      </section>
     </main>
   )
 }

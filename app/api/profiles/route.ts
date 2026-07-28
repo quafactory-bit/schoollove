@@ -12,6 +12,11 @@ import { verifyCaptchaToken } from '@/lib/security/captcha';
 import { z } from 'zod';
 import type { SchoolGrowthSnapshot } from '@/types/schoolGrowth';
 import type { RegistrationGrowthReward, RegistrationGrowthSnapshot } from '@/types/registration';
+import { isPublicProfileRegistrationEnabled } from '@/lib/policy/privacySafety';
+
+const PROFILE_REGISTRATION_DISABLED_CODE = 'PROFILE_REGISTRATION_TEMPORARILY_DISABLED';
+const PROFILE_REGISTRATION_DISABLED_MESSAGE =
+  '성인 본인 인증 기반 등록으로 개편 중입니다. 현재 신규 등록은 잠시 중단되었습니다.';
 
 // Upstash rate limit 설정 누락 처리.
 // - production: 설정 누락을 우회하지 않고 명확한 500으로 fail-closed한다
@@ -89,6 +94,19 @@ const Schema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // PHASE 10A emergency boundary. This check must remain before IP parsing,
+  // rate limiting, request parsing, CAPTCHA, service-role access and writes.
+  // The central policy is hard-locked until PHASE 10B auth/ownership is ready.
+  if (!isPublicProfileRegistrationEnabled(process.env.PUBLIC_PROFILE_REGISTRATION_ENABLED)) {
+    return NextResponse.json(
+      {
+        error: PROFILE_REGISTRATION_DISABLED_MESSAGE,
+        code: PROFILE_REGISTRATION_DISABLED_CODE,
+      },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
+
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
     request.headers.get('x-real-ip') ??

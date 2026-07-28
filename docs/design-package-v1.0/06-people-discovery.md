@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> **PHASE 10A SAFETY OVERRIDE (2026-07-28):** 공개 Year/Class/Profile 사람 발견 흐름, 이름 검색, 개인 카드와 Instagram 링크를 전면 중단한다. 해당 URL은 개인 행을 조회·렌더링하지 않는 비공개 안내와 noindex/nofollow/noarchive만 제공한다. 사람 발견은 PHASE 10B의 만 19세 이상 본인 인증·소유권·상호 승인 구조 이후 재정의한다.
+
 ## 0. 이 문서의 역할
 
 이 문서는 사용자 여정의 뒷단, 즉 **사람을 발견하는 세 화면**(Year Hub · Class Hub · Profile)을 하나의 흐름으로 정의한다.

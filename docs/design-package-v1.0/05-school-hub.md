@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> **PHASE 10A SAFETY OVERRIDE (2026-07-28):** School Hub는 학교명·지역·학교 유형 등 학교 기본 정보만 공개한다. 프로필 수·Year/Class 개인 명단·개인 Instagram·등록 및 성장 CTA는 PHASE 10B의 성인 본인 인증·소유권·승인 경계가 완성될 때까지 중단한다. 이 안전 경계는 아래 기존 성장 UX와 충돌할 때 우선한다.
+
 ## 0. 정의
 
 School Hub는 학교 정보 페이지가 아니다.
