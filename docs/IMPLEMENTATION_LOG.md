@@ -1711,3 +1711,9 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - 관련 테스트 4 files / 18 tests, 전체 87 files / 910 tests, TypeScript, Production build(43 pages), `git diff --check`를 통과했다.
 - Production과 분리된 일회성 PostgreSQL에서 PHASE 10A→10B→10C→10D 순차 migration과 합성 사용자 전체 수명주기를 다시 통과했고 컨테이너를 제거했다.
 - 최종 검증: TypeScript 통과, 87 files / 910 tests 통과, Production build 43 pages 통과, `git diff --check` 통과. 로컬 비로그인 `/promote`→`/login` 전환, private robots, API 401, 360/390/412 폭을 확인했다.
+
+## 2026-07-28 — PHASE 10D Production 검증 hotfix
+
+- PHASE 10D migration과 merge commit의 Production 배포 후 실제 정책 페이지에 남아 있던 시행 예정·적용 전 문구를 2026년 7월 28일 시행 및 현재 Production 운영 경계 문구로 정정했다.
+- middleware가 인증 전 `/admin/login`으로 redirect할 때 최종 로그인 페이지에 robots metadata가 없던 공백을 보완해 `noindex`, `nofollow`, `nocache`, `noarchive`를 명시했다.
+- DB migration, 환경변수, 프로모션 데이터, 기존 사용자·프로필 데이터는 변경하지 않았다.
