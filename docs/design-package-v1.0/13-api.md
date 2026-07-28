@@ -213,3 +213,6 @@ Upstash rate limit 구조를 사용한다.
 - 독립 Profile API/page
 - P2 인기 검색 API
 - 클라이언트만 믿는 write validation
+# PHASE 10D supersession note (2026-07-28)
+
+프로모션 신청 API는 로그인·성인·소유권 경계를 서버에서 검증한다. 공개 노출은 승인·결제 확인·예약·기간을 통과한 최소 필드만 반환하고, mutation RPC는 service role에만 허용한다.

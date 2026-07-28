@@ -1,5 +1,7 @@
 # SchoolLoveI 작업 규칙
 
+> PHASE 10D 승인 결정: `docs/decisions/2026-07-28-today-instagram-advertising-mvp.md`에 따라 무료 편집 추천과 유료 스폰서드를 분리하고, 만 19세 이상 본인 소유 Instagram 검증·운영자 수동 검수·수동 결제 확인·집계형 성과만 허용한다. PHASE 10D migration의 Production 적용·PR merge·Production 배포는 별도 승인 전까지 금지한다.
+
 ## A0. PHASE 10A/10B/10C 개인정보 안전 전환 — 최우선 계약
 
 - 이 절은 아래의 기존 제품·FROZEN 계약과 충돌할 때 우선한다.

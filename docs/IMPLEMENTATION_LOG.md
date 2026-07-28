@@ -1694,3 +1694,20 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 
 - PHASE 10C 첫 Production 배포 스모크에서 `/login`, `/account`, `/people/search`, `/connections`, `/notifications` 계열 metadata가 `noindex, nofollow, nocache`만 출력하고 승인 계약의 `noarchive`를 빠뜨린 것을 확인했다.
 - 인증·RLS·개인정보 노출 결함은 아니지만 검색엔진 archive 금지 계약을 정확히 지키기 위해 모든 일반 사용자 private route에 `noarchive: true`를 추가하고 정적 회귀 테스트를 보강했다.
+# 2026-07-28 — PHASE 10D Today Instagram MVP (LOCAL/DRAFT)
+
+- 무료 편집 추천 `editorial_features`와 유료 `sponsored` 신청·자산·검수·수동 결제·배치·집계·신고·감사 테이블을 분리했다.
+- 신청자는 PHASE 10B 로그인·KST 만 19세 이상·필수 동의 경계를 통과하고, Instagram 프로필 임시 코드의 SHA-256 hash를 운영자가 수동 검증한 뒤에만 신청할 수 있다.
+- 자동 승인과 자동 PG는 구현하지 않았다. 결제 확인, 배치 예약, 활성화·중단·환불 상태 변경은 service-role 관리자 RPC와 감사 기록을 사용한다.
+- 공개 카드는 승인된 자산과 결제 확인·활성 기간을 통과한 최소 필드만 렌더링하며 유료 항목은 `스폰서드`로 표시한다.
+- 측정은 원시 IP·사용자 ID를 저장하지 않고 일자별 HMAC session hash로 중복을 제한한다. 광고주는 노출·클릭 집계만 보며 raw event row와 개인별 방문 목록은 볼 수 없다.
+- PHASE 10D migration은 Production 미적용이며 PR은 Draft 상태까지만 진행한다. 자동 결제·영수증·세금계산서·쿠폰·반복 캠페인·Meta API는 PHASE 10E다.
+- 격리 Supabase-compatible PostgreSQL에서 PHASE 10A→10B→10C→10D를 순차 적용하고 소유 확인·수정·취소·검수·수동 결제·KST 슬롯 충돌·활성화·중복 제거 지표·긴급 중단·계정 삭제 cascade·RLS/grant를 통과했다.
+
+## 2026-07-28 — PHASE 10D-R 최종 감사 보강
+
+- 광고 소재 수정 API도 최초 신청과 동일한 이미지 호스트 allowlist를 적용해 API와 DB 검증 계약을 일치시켰다.
+- Instagram 소유권 확인 코드 재발급 때도 현재 만 19세 이상·필수 동의 상태를 다시 검증하도록 보강했다.
+- 관련 테스트 4 files / 18 tests, 전체 87 files / 910 tests, TypeScript, Production build(43 pages), `git diff --check`를 통과했다.
+- Production과 분리된 일회성 PostgreSQL에서 PHASE 10A→10B→10C→10D 순차 migration과 합성 사용자 전체 수명주기를 다시 통과했고 컨테이너를 제거했다.
+- 최종 검증: TypeScript 통과, 87 files / 910 tests 통과, Production build 43 pages 통과, `git diff --check` 통과. 로컬 비로그인 `/promote`→`/login` 전환, private robots, API 401, 360/390/412 폭을 확인했다.

@@ -161,3 +161,6 @@ SEO가 다음을 결정하지 않는다.
 - URL hierarchy 평탄화
 - empty/thin Year/Class sitemap 포함
 - SEO 때문에 Product Principles 변경
+# PHASE 10D supersession note (2026-07-28)
+
+`/promote`, 신청·결제 상태, 광고주 성과 및 `/admin/promotions`는 noindex/nofollow/noarchive이고 sitemap에서 제외한다. 공개 카드가 있는 기존 Home/School 문서의 SEO 경계는 유지한다.
