@@ -10,6 +10,11 @@ SET search_path = ''
 AS $$
   SELECT input_text IS NOT NULL
     AND char_length(btrim(input_text)) BETWEEN 1 AND max_length
+    AND position(chr(8203) in input_text) = 0
+    AND position(chr(8204) in input_text) = 0
+    AND position(chr(8205) in input_text) = 0
+    AND position(chr(8288) in input_text) = 0
+    AND position(chr(65279) in input_text) = 0
     AND input_text !~* '(https?://|www\.)[^[:space:]]+'
     AND input_text !~* '([A-Za-z0-9-]+\.)+(com|net|org|kr|io|me|co|app|dev)(/[^[:space:]]*)?'
     AND input_text !~* '[[:alnum:]._%+-]+@[[:alnum:].-]+\.[A-Za-z]{2,}'
@@ -22,6 +27,7 @@ REVOKE ALL ON FUNCTION public.connection_text_is_safe(text, integer) FROM PUBLIC
 
 CREATE TABLE public.connection_match_tokens (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  token_hash text NOT NULL UNIQUE CHECK (token_hash ~ '^[0-9a-f]{64}$'),
   requester_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   receiver_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   target_school_membership_id uuid NOT NULL REFERENCES public.profile_school_memberships(id) ON DELETE CASCADE,
@@ -35,7 +41,7 @@ CREATE TABLE public.connection_requests (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   sender_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   receiver_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  target_school_membership_id uuid NOT NULL REFERENCES public.profile_school_memberships(id) ON DELETE RESTRICT,
+  target_school_membership_id uuid REFERENCES public.profile_school_memberships(id) ON DELETE SET NULL,
   relationship_type text NOT NULL CHECK (relationship_type IN ('same_class','same_school','senior_junior','club','other')),
   message text NOT NULL CHECK (public.connection_text_is_safe(message, 200)),
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','declined','not_the_person','blocked','reported','cancelled','expired')),
@@ -47,11 +53,13 @@ CREATE TABLE public.connection_requests (
   cancelled_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
+  pair_low_id uuid GENERATED ALWAYS AS (LEAST(sender_user_id, receiver_user_id)) STORED,
+  pair_high_id uuid GENERATED ALWAYS AS (GREATEST(sender_user_id, receiver_user_id)) STORED,
   CHECK (sender_user_id <> receiver_user_id)
 );
 
 CREATE UNIQUE INDEX connection_requests_one_active_pair
-  ON public.connection_requests (sender_user_id, receiver_user_id)
+  ON public.connection_requests (pair_low_id, pair_high_id)
   WHERE status IN ('pending', 'accepted');
 CREATE INDEX connection_requests_receiver_status_idx
   ON public.connection_requests (receiver_user_id, status, sent_at DESC);
@@ -60,7 +68,7 @@ CREATE INDEX connection_requests_sender_status_idx
 
 CREATE TABLE public.connections (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  request_id uuid NOT NULL UNIQUE REFERENCES public.connection_requests(id) ON DELETE RESTRICT,
+  request_id uuid NOT NULL UNIQUE REFERENCES public.connection_requests(id) ON DELETE CASCADE,
   user_low_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   user_high_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','disconnected','blocked','reported')),
@@ -108,6 +116,15 @@ CREATE TABLE public.safety_reports (
   reviewed_at timestamptz
 );
 CREATE INDEX safety_reports_status_created_idx ON public.safety_reports (status, created_at DESC);
+CREATE UNIQUE INDEX safety_reports_request_once
+  ON public.safety_reports (reporter_user_id, request_id)
+  WHERE request_id IS NOT NULL AND connection_id IS NULL;
+CREATE UNIQUE INDEX safety_reports_connection_once
+  ON public.safety_reports (reporter_user_id, connection_id)
+  WHERE connection_id IS NOT NULL AND message_id IS NULL;
+CREATE UNIQUE INDEX safety_reports_message_once
+  ON public.safety_reports (reporter_user_id, message_id)
+  WHERE message_id IS NOT NULL;
 
 CREATE TABLE public.connection_instagram_permissions (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -164,6 +181,115 @@ CREATE TRIGGER connection_requests_immutable_content
 BEFORE UPDATE ON public.connection_requests
 FOR EACH ROW EXECUTE FUNCTION public.connection_request_immutable_fields();
 
+CREATE OR REPLACE FUNCTION public.connection_request_status_transition_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF OLD.status <> 'pending' AND NEW.status <> OLD.status THEN
+    RAISE EXCEPTION 'terminal connection request status is immutable';
+  END IF;
+  IF OLD.status = 'pending' AND NEW.status NOT IN (
+    'pending','accepted','declined','not_the_person','blocked','reported','cancelled','expired'
+  ) THEN
+    RAISE EXCEPTION 'invalid connection request status transition';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER connection_requests_status_guard
+BEFORE UPDATE ON public.connection_requests
+FOR EACH ROW EXECUTE FUNCTION public.connection_request_status_transition_guard();
+
+CREATE OR REPLACE FUNCTION public.connection_row_integrity_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE req public.connection_requests%ROWTYPE;
+BEGIN
+  SELECT * INTO req FROM public.connection_requests WHERE id = NEW.request_id;
+  IF NOT FOUND OR req.status <> 'accepted'
+    OR NEW.user_low_id <> LEAST(req.sender_user_id, req.receiver_user_id)
+    OR NEW.user_high_id <> GREATEST(req.sender_user_id, req.receiver_user_id) THEN
+    RAISE EXCEPTION 'connection must match an accepted request';
+  END IF;
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.request_id <> OLD.request_id OR NEW.user_low_id <> OLD.user_low_id
+      OR NEW.user_high_id <> OLD.user_high_id OR NEW.connected_at <> OLD.connected_at THEN
+      RAISE EXCEPTION 'connection identity is immutable';
+    END IF;
+    IF OLD.status <> 'active' AND NEW.status <> OLD.status THEN
+      RAISE EXCEPTION 'terminal connection status is immutable';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER connections_integrity_guard
+BEFORE INSERT OR UPDATE ON public.connections
+FOR EACH ROW EXECUTE FUNCTION public.connection_row_integrity_guard();
+
+CREATE OR REPLACE FUNCTION public.connection_message_integrity_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' AND NOT EXISTS (
+    SELECT 1 FROM public.connections c
+    WHERE c.id = NEW.connection_id AND c.status = 'active'
+      AND NEW.sender_user_id IN (c.user_low_id, c.user_high_id)
+  ) THEN
+    RAISE EXCEPTION 'message sender is not an active connection participant';
+  END IF;
+  IF TG_OP = 'UPDATE' AND (
+    NEW.id <> OLD.id OR NEW.connection_id <> OLD.connection_id
+    OR NEW.sender_user_id <> OLD.sender_user_id OR NEW.message <> OLD.message
+    OR NEW.sent_at <> OLD.sent_at OR NEW.created_at <> OLD.created_at
+  ) THEN
+    RAISE EXCEPTION 'message content is immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER connection_messages_integrity_guard
+BEFORE INSERT OR UPDATE ON public.connection_messages
+FOR EACH ROW EXECUTE FUNCTION public.connection_message_integrity_guard();
+
+CREATE OR REPLACE FUNCTION public.connection_instagram_permission_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.connections c
+    WHERE c.id = NEW.connection_id
+      AND NEW.grantor_user_id IN (c.user_low_id, c.user_high_id)
+      AND NEW.grantee_user_id IN (c.user_low_id, c.user_high_id)
+  ) THEN
+    RAISE EXCEPTION 'Instagram permission users must be connection participants';
+  END IF;
+  IF TG_OP = 'UPDATE' AND (
+    NEW.id <> OLD.id OR NEW.connection_id <> OLD.connection_id
+    OR NEW.grantor_user_id <> OLD.grantor_user_id
+    OR NEW.grantee_user_id <> OLD.grantee_user_id
+  ) THEN
+    RAISE EXCEPTION 'Instagram permission identity is immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER connection_instagram_permissions_guard
+BEFORE INSERT OR UPDATE ON public.connection_instagram_permissions
+FOR EACH ROW EXECUTE FUNCTION public.connection_instagram_permission_guard();
+
 CREATE OR REPLACE FUNCTION public.is_current_adult_account(target_user_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -214,9 +340,13 @@ DECLARE
   matched_count integer;
   matched_user uuid;
   matched_membership uuid;
-  token_id uuid;
+  opaque_token uuid;
 BEGIN
   IF NOT public.is_current_adult_account(actor_user_id)
+    OR NOT EXISTS (
+      SELECT 1 FROM public.profile_school_memberships actor_membership
+      WHERE actor_membership.owner_user_id = actor_user_id
+    )
     OR target_graduation_year NOT BETWEEN 1900 AND 2200
     OR char_length(btrim(exact_display_name)) NOT BETWEEN 2 AND 50
     OR exact_display_name ~ '^[ᄀ-ᇿ㄰-㆏[:space:]]+$' THEN
@@ -275,7 +405,8 @@ BEGIN
 
   IF EXISTS (
     SELECT 1 FROM public.connection_requests r
-    WHERE r.sender_user_id = actor_user_id AND r.receiver_user_id = matched_user
+    WHERE r.pair_low_id = LEAST(actor_user_id, matched_user)
+      AND r.pair_high_id = GREATEST(actor_user_id, matched_user)
       AND r.status IN ('pending','accepted')
   ) THEN
     RETURN QUERY SELECT 'already_requested'::text, NULL::uuid;
@@ -284,19 +415,23 @@ BEGIN
 
   IF EXISTS (
     SELECT 1 FROM public.connection_requests r
-    WHERE r.sender_user_id = actor_user_id AND r.receiver_user_id = matched_user
+    WHERE r.pair_low_id = LEAST(actor_user_id, matched_user)
+      AND r.pair_high_id = GREATEST(actor_user_id, matched_user)
       AND r.status IN ('declined','not_the_person','blocked','reported','cancelled','expired')
   ) THEN
     RETURN QUERY SELECT 'request_unavailable'::text, NULL::uuid;
     RETURN;
   END IF;
 
+  opaque_token := extensions.uuid_generate_v4();
   INSERT INTO public.connection_match_tokens (
-    requester_user_id, receiver_user_id, target_school_membership_id
-  ) VALUES (actor_user_id, matched_user, matched_membership)
-  RETURNING id INTO token_id;
+    token_hash, requester_user_id, receiver_user_id, target_school_membership_id
+  ) VALUES (
+    encode(extensions.digest(convert_to(opaque_token::text, 'UTF8'), 'sha256'), 'hex'),
+    actor_user_id, matched_user, matched_membership
+  );
 
-  RETURN QUERY SELECT 'match_available'::text, token_id;
+  RETURN QUERY SELECT 'match_available'::text, opaque_token;
 END;
 $$;
 
@@ -323,7 +458,9 @@ BEGIN
   END IF;
 
   SELECT * INTO token_row FROM public.connection_match_tokens
-  WHERE id = opaque_match_token FOR UPDATE;
+  WHERE token_hash = encode(
+    extensions.digest(convert_to(opaque_match_token::text, 'UTF8'), 'sha256'), 'hex'
+  ) FOR UPDATE;
   IF NOT FOUND OR token_row.requester_user_id <> actor_user_id
     OR token_row.used_at IS NOT NULL OR token_row.expires_at <= now() THEN
     RETURN QUERY SELECT false, NULL::uuid, 'unavailable'::text;
@@ -338,7 +475,8 @@ BEGIN
     )
     OR EXISTS (
       SELECT 1 FROM public.connection_requests r
-      WHERE r.sender_user_id = actor_user_id AND r.receiver_user_id = token_row.receiver_user_id
+      WHERE r.pair_low_id = LEAST(actor_user_id, token_row.receiver_user_id)
+        AND r.pair_high_id = GREATEST(actor_user_id, token_row.receiver_user_id)
     ) THEN
     UPDATE public.connection_match_tokens SET used_at = now() WHERE id = token_row.id;
     RETURN QUERY SELECT false, NULL::uuid, 'unavailable'::text;
@@ -563,7 +701,8 @@ BEGIN
   IF NOT FOUND OR actor_user_id NOT IN (conn.user_low_id,conn.user_high_id) THEN RETURN false; END IF;
   other_user := CASE WHEN actor_user_id=conn.user_low_id THEN conn.user_high_id ELSE conn.user_low_id END;
   IF target_message_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM public.connection_messages m WHERE m.id=target_message_id AND m.connection_id=conn.id
+    SELECT 1 FROM public.connection_messages m
+    WHERE m.id=target_message_id AND m.connection_id=conn.id AND m.sender_user_id=other_user
   ) THEN RETURN false; END IF;
   INSERT INTO public.safety_reports (reporter_user_id,reported_user_id,request_id,connection_id,message_id,reason_code)
   VALUES (actor_user_id,other_user,conn.request_id,conn.id,target_message_id,report_reason_code) RETURNING id INTO report_id;
@@ -619,6 +758,7 @@ BEGIN
   ELSE
     UPDATE public.connection_instagram_permissions SET status='revoked',revoked_at=now(),updated_at=now()
     WHERE connection_id=conn.id AND grantor_user_id=actor_user_id AND grantee_user_id=other_user AND status='active';
+    IF NOT FOUND THEN RETURN false; END IF;
     INSERT INTO public.notifications (user_id,kind,connection_id) VALUES (other_user,'instagram_revoked',conn.id);
   END IF;
   RETURN true;
@@ -687,7 +827,6 @@ GRANT ALL ON TABLE public.connection_match_tokens, public.connection_requests, p
   public.connection_messages, public.user_blocks, public.safety_reports,
   public.connection_instagram_permissions, public.notifications,
   public.safety_account_restrictions TO service_role;
-GRANT SELECT, UPDATE ON public.notifications TO authenticated;
 
 CREATE POLICY connection_requests_participant_select ON public.connection_requests
   FOR SELECT TO authenticated USING (auth.uid() IN (sender_user_id, receiver_user_id));
@@ -705,8 +844,6 @@ CREATE POLICY instagram_permissions_participant_select ON public.connection_inst
   FOR SELECT TO authenticated USING (auth.uid() IN (grantor_user_id,grantee_user_id));
 CREATE POLICY notifications_owner_select ON public.notifications
   FOR SELECT TO authenticated USING (user_id=auth.uid());
-CREATE POLICY notifications_owner_update ON public.notifications
-  FOR UPDATE TO authenticated USING (user_id=auth.uid()) WITH CHECK (user_id=auth.uid());
 
 REVOKE ALL ON FUNCTION public.is_current_adult_account(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.find_exact_private_profile_match(uuid,uuid,integer,text) FROM PUBLIC, anon, authenticated;

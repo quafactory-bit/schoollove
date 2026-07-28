@@ -2,6 +2,7 @@
 
 ## 2026-07-28
 
+- PHASE 10C-R 감사 보강: hashed opaque token, 양방향 pair 중복 방지, terminal/message/participant DB trigger, 탈퇴 FK 정리, zero-width 연락처 우회 차단, 중복 신고 제한, 격리 PostgreSQL migration·RPC 실행 검증.
 - PHASE 10C 안전 연결 로컬 구현 승인: 학교·졸업연도·정확한 이름 exact match, opaque match token, 최초 안부 1회, 7일 후 동일 안부 재알림 1회, 수락·거절·아닌 사람·차단·신고, 수락 후 기본 텍스트 대화, 상대별 Instagram 공개 승인.
 - 검색·요청·대화 mutation은 IP/account 이중 rate limit과 service-role 전용 원자 RPC를 사용하며 개인 화면은 noindex, 개인 테이블은 RLS/FORCE RLS를 사용한다. PHASE 10C migration·PR은 Draft이며 Production 미적용.
 - Today Instagram 광고·결제는 개인 연결별 Instagram 승인과 분리해 PHASE 10D로 유지.

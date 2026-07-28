@@ -25,6 +25,7 @@ describe('PHASE 10C connection safety policy', () => {
     '카톡 아이디 friend123',
     'Kakao ID friend123',
     'Instagram: friend.name',
+    'https:\u200b//example.com',
   ])('외부 연락처 패턴을 거부한다: %s', (value) => {
     expect(containsExternalContact(value)).toBe(true)
     expect(ConnectionMessageSchema.safeParse({ message: `안녕 ${value}` }).success).toBe(false)

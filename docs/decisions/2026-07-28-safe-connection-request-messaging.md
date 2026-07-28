@@ -33,6 +33,16 @@ Instagram은 연결 성립과 무관하게 상대별 개별 승인 후에만 공
 - 이메일 알림 전송(안전한 별도 전송 경계가 아직 없음)
 - Today Instagram 광고, 유료 노출, 결제(PHASE 10D)
 
+## PHASE 10C-R 감사 보강
+
+- opaque match token은 원문 UUID를 DB에 저장하지 않고 SHA-256 hash만 10분 동안 보관한다.
+- 정방향·역방향 요청을 동일한 사용자 pair로 정규화해 동시 pending/accepted 요청을 하나만 허용한다.
+- terminal request/connection 상태, 메시지 원문, 연결 참가자와 Instagram 승인 참가자 일치를 DB trigger로 고정한다.
+- 계정·private profile 삭제가 기존 연결 FK 때문에 막히지 않도록 membership은 `SET NULL`, request→connection은 `CASCADE` 경계로 정리한다.
+- zero-width format 문자로 URL·연락처 필터를 분리하는 우회를 서버와 DB에서 거부한다.
+- 신고 대상 메시지는 상대방이 해당 연결에 보낸 메시지로 제한하고 동일 request/connection/message 신고 중복을 DB index로 막는다.
+- Production 적용 전 Supabase-compatible PostgreSQL 격리 컨테이너에서 PHASE 10A→10B→10C migration과 3개 합성 계정 RPC를 실제 실행한다.
+
 ## 배포 경계
 
-이 결정의 migration과 런타임 코드는 PHASE 10C Draft PR까지만 진행한다. Production migration, PR merge, Production 배포는 별도 승인 전까지 실행하지 않는다.
+최초 Draft 구현 당시에는 Production 적용을 금지했다. 2026-07-28 PHASE 10C-R 연속 작업 승인으로 감사·격리 DB 검증·PR merge·Production migration·배포·비파괴 smoke가 명시적으로 승인됐다. 실제 적용 결과는 구현 로그에 별도로 기록한다.

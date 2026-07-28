@@ -92,7 +92,7 @@ type RequestRow = {
   id: string
   sender_user_id: string
   receiver_user_id: string
-  target_school_membership_id: string
+  target_school_membership_id: string | null
   relationship_type: string
   message: string
   status: string
@@ -113,7 +113,9 @@ export async function getConnectionRequests(userId: string) {
   const rows = (data ?? []) as RequestRow[]
   const incoming = rows.filter((row) => row.receiver_user_id === userId)
   const senderIds = [...new Set(incoming.map((row) => row.sender_user_id))]
-  const membershipIds = [...new Set(incoming.map((row) => row.target_school_membership_id))]
+  const membershipIds = [...new Set(incoming
+    .map((row) => row.target_school_membership_id)
+    .filter((id): id is string => typeof id === 'string'))]
 
   const [profilesResult, membershipsResult] = await Promise.all([
     senderIds.length ? admin.from('private_profiles').select('owner_user_id,display_name').in('owner_user_id', senderIds) : Promise.resolve({ data: [], error: null }),
@@ -136,7 +138,9 @@ export async function getConnectionRequests(userId: string) {
       status: row.status,
       sentAt: row.sent_at,
       reminder: row.reminder_count === 1,
-      school: memberships.get(row.target_school_membership_id) ?? null,
+      school: row.target_school_membership_id
+        ? memberships.get(row.target_school_membership_id) ?? null
+        : null,
     })),
     sent: rows.filter((row) => row.sender_user_id === userId).map((row) => ({
       id: row.id,

@@ -1669,3 +1669,23 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - OTP 요청·검증은 서로 분리된 limit에 더해 IP와 정규화된 이메일의 SHA-256 key를 각각 사용한다. 원본 IP·이메일은 rate-limit key나 로그에 저장하지 않는다.
 - 사용자에게 노출될 수 있던 성인 확인·OTP 오류 문구의 깨진 문자열을 정상 한국어로 수정했다.
 - PHASE 10B-R 관련 감사 테스트 10 files / 84 tests, 전체 77 files / 836 tests, TypeScript, Production build(32 routes), `git diff --check`를 통과했다.
+
+## 2026-07-28 (PHASE 10C-R 안전 연결 감사·격리 DB 검증)
+
+### 감사 수정
+
+- 사용자 pair를 정규화한 partial unique index로 반대 방향 동시 pending/accepted 요청도 DB에서 차단한다.
+- opaque match token 원문 대신 SHA-256 hash만 저장하고, service-role RPC는 제출된 token을 hash해 잠금·만료·단일 사용을 검증한다.
+- terminal request/connection 상태, 연결 pair와 accepted request 일치, 메시지 원문 불변, 메시지 sender와 Instagram grantor/grantee의 참가자 일치를 trigger로 강제한다.
+- private membership 삭제는 request의 참조를 `SET NULL`로 정리하고 request 삭제는 연결과 하위 메시지를 cascade해 계정 삭제가 RESTRICT FK에 막히지 않게 했다.
+- zero-width format 문자를 연락처 우회로 거부하고 본인 메시지를 신고 대상으로 제출하지 못하게 했으며 request/connection/message 단위 중복 신고 index를 추가했다.
+- authenticated notification 직접 UPDATE grant를 제거했다. 알림 읽음은 검증된 session user를 사용하는 서버 service-role 경계에서만 처리한다.
+- PHASE 10B profile 이름 입력도 NFKC 정규화해 exact match 입력과 저장 표현의 불필요한 차이를 줄였다.
+
+### 격리 DB 검증
+
+- Production과 분리된 `public.ecr.aws/supabase/postgres:17.6.1.143` 일회성 컨테이너를 사용했다.
+- 최소 base schema 위에 PHASE 10A `20260728120000`, PHASE 10B `20260728150000`, PHASE 10C `20260728180000` migration을 순서대로 실제 적용했다.
+- `TEST_A`, `TEST_B`, `TEST_C` 합성 UUID만 사용해 exact search, hashed opaque token, 정·역방향 중복 요청, 7일 전/후 재알림, 수락, 연결 전/후 메시지, 읽음, zero-width 필터, Instagram 승인/취소, 신고·차단·종료 후 메시지, transaction rollback, FK 사용자 삭제, anon/authenticated grant 경계를 검증했다.
+- 첫 시도는 Supabase 이미지의 `auth` schema owner 차이로 bootstrap 전에 중단됐다. 두 번째 시도에서 SECURITY DEFINER의 빈 search_path 아래 unqualified `uuid_generate_v4()`가 실제 실패하는 결함을 발견해 `extensions.uuid_generate_v4()`로 수정했다. 세 번째 깨끗한 실행은 모든 assertion을 통과했다.
+- Production row, 실제 이메일, 개인정보 원문, 실제 사용자 메시지는 사용하지 않았다.

@@ -15,9 +15,10 @@ const emailPattern = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[A-Za-z]{2,}/iu
 const phonePattern = /(?:\+?82[- .]?)?(?:0\d{1,2}[- .]?)?\d{3,4}[- .]?\d{4}/u
 const bareHandlePattern = /(^|\s)@[A-Za-z0-9._-]{2,30}(?=\s|$)/u
 const externalIdPattern = /(?:카카오(?:톡)?|카톡|kakao|인스타(?:그램)?|instagram|텔레그램|telegram|라인|line)\s*(?:아이디|id)?\s*[:：]?\s*[A-Za-z0-9@._-]{2,}/iu
+const invisibleFormatPattern = /[\u200B-\u200D\u2060\uFEFF]/u
 
 export function containsExternalContact(value: string): boolean {
-  return [urlPattern, emailPattern, phonePattern, bareHandlePattern, externalIdPattern]
+  return invisibleFormatPattern.test(value) || [urlPattern, emailPattern, phonePattern, bareHandlePattern, externalIdPattern]
     .some((pattern) => pattern.test(value))
 }
 

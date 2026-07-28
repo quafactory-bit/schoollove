@@ -24,6 +24,9 @@ describe('PHASE 10C safe connection migration', () => {
     expect(sql).toContain('CREATE OR REPLACE FUNCTION public.find_exact_private_profile_match')
     expect(sql).toContain('lower(btrim(p.display_name)) = lower(btrim(exact_display_name))')
     expect(sql).toContain('connection_match_tokens')
+    expect(sql).toContain('token_hash text NOT NULL UNIQUE')
+    expect(sql).toContain("extensions.digest(convert_to(opaque_token::text, 'UTF8'), 'sha256')")
+    expect(sql).not.toMatch(/WHERE id = opaque_match_token/)
     expect(sql).not.toMatch(/ILIKE|SIMILAR TO/i)
   })
 
@@ -31,6 +34,8 @@ describe('PHASE 10C safe connection migration', () => {
     expect(sql).toContain('CHECK (public.connection_text_is_safe(message, 200))')
     expect(sql).toContain('CHECK (public.connection_text_is_safe(message, 500))')
     expect(sql).toContain('connection_requests_immutable_content')
+    expect(sql).toContain('connection_messages_integrity_guard')
+    expect(sql).toContain('position(chr(8203) in input_text) = 0')
     expect(sql).toMatch(/https\?\:\/\//i)
   })
 
@@ -45,7 +50,7 @@ describe('PHASE 10C safe connection migration', () => {
     const createStart = sql.indexOf('CREATE OR REPLACE FUNCTION public.create_connection_request')
     const createEnd = sql.indexOf('CREATE OR REPLACE FUNCTION public.remind_connection_request')
     const createRpc = sql.slice(createStart, createEnd)
-    expect(createRpc).toMatch(/EXISTS \([\s\S]*connection_requests[\s\S]*sender_user_id = actor_user_id[\s\S]*receiver_user_id = token_row.receiver_user_id/)
+    expect(createRpc).toMatch(/EXISTS \([\s\S]*connection_requests[\s\S]*pair_low_id = LEAST\(actor_user_id, token_row\.receiver_user_id\)[\s\S]*pair_high_id = GREATEST\(actor_user_id, token_row\.receiver_user_id\)/)
     expect(createRpc).toContain('EXCEPTION WHEN unique_violation')
   })
 
@@ -93,6 +98,17 @@ describe('PHASE 10C safe connection migration', () => {
   it('사용자 탈퇴 시 private 연결 FK가 정리되고 기존 public profiles는 건드리지 않는다', () => {
     expect(sql).toMatch(/REFERENCES auth\.users\(id\) ON DELETE (?:CASCADE|SET NULL)/)
     expect(sql).not.toMatch(/(?:UPDATE|DELETE FROM) public\.profiles/i)
+    expect(sql).toContain('target_school_membership_id uuid REFERENCES public.profile_school_memberships(id) ON DELETE SET NULL')
+    expect(sql).toContain('request_id uuid NOT NULL UNIQUE REFERENCES public.connection_requests(id) ON DELETE CASCADE')
+  })
+
+  it('terminal 상태, 연결 참가자와 Instagram 참가자 무결성을 DB trigger로 고정한다', () => {
+    expect(sql).toContain('connection_requests_status_guard')
+    expect(sql).toContain('terminal connection request status is immutable')
+    expect(sql).toContain('connections_integrity_guard')
+    expect(sql).toContain('connection must match an accepted request')
+    expect(sql).toContain('connection_instagram_permissions_guard')
+    expect(sql).toContain('Instagram permission users must be connection participants')
   })
 
   it('참여자 RLS 정책이 있어도 authenticated table write grant는 열지 않는다', () => {
