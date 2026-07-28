@@ -1,7 +1,7 @@
 # Adult-only Privacy Safety Boundary
 
 Date: 2026-07-28
-Status: **APPROVED / PHASE 10A IMPLEMENTED LOCALLY**
+Status: **APPROVED / PHASE 10A PRODUCTION DATABASE VERIFIED / APPLICATION DEPLOYMENT PENDING**
 
 ## 문제
 
@@ -25,7 +25,7 @@ Status: **APPROVED / PHASE 10A IMPLEMENTED LOCALLY**
 - `POST /api/profiles`를 CAPTCHA, rate limit, DB 접근보다 먼저 503으로 거부
 - 개인 관련 경로의 noindex/nofollow/noarchive와 sitemap 제거
 - 현재 동작에 맞는 Privacy/Terms 고지
-- 공개 DB 역할의 profile 권한 회수 migration 작성(로컬 전용, 원격 미적용)
+- 공개 DB 역할의 profile 권한 회수 migration 작성 및 Production 적용·검증
 
 ## 공개 가능 정보
 
@@ -58,7 +58,7 @@ Status: **APPROVED / PHASE 10A IMPLEMENTED LOCALLY**
 
 기존 profile 행을 수정하거나 삭제하지 않는다. 관리자 신고·삭제·검토를 위한 service-role 경계는 유지한다. 신규 migration은 `anon`/`authenticated`의 profile 권한과 profile 기반 ranking RPC 실행 권한만 회수한다.
 
-해당 migration은 이 변경에 포함되지만 Production에는 적용하지 않는다. 원격 적용 전까지 Supabase REST를 통한 기존 공개 SELECT 권한은 Production에 남아 있을 수 있으므로, 코드 배포만으로 원격 데이터 경계가 완성됐다고 판정하지 않는다.
+해당 migration은 2026-07-28 사용자 승인 후 Production 프로젝트 `ucnybhzpbatzcipwqtox`에 적용했다. `profiles`의 RLS 활성화, 공개 정책 0개, `anon`/`authenticated`의 테이블·컬럼 권한 없음, profile 기반 ranking RPC 실행 권한 없음, `service_role`의 기존 테이블 권한 유지를 개인정보 원문 조회 없이 재검증했다. 애플리케이션 배포와 공개 경로 검증이 끝나기 전에는 PHASE 10A 전체를 `PRODUCTION_VERIFIED`로 판정하지 않는다.
 
 ## 운영 복구 절차
 

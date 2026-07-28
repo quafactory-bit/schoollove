@@ -1602,3 +1602,11 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - 초기 안전 패치에서 크게 축소됐던 `/api/profiles` 회귀 테스트를 원래 보안 계약 기준으로 복구했다. rate limit fail-closed, 입력 검증, CAPTCHA, service-role INSERT, 중복·오류 응답, level sync, revalidation 검증은 유지하고 모든 실행보다 앞선 PHASE 10A 503 hard lock 테스트를 추가했다.
 - sitemap은 profile 기반 테스트를 복구하지 않고 새 계약에 맞춰 학교-only, 민감 URL 제외, 중복 제거, DB 오류 fail-safe, 연속 호출 freshness, dynamic route를 검증하도록 보강했다. 제거된 전체 테스트는 공개 profile/Year/Class/등록 UI라는 폐기된 동작을 검증하던 항목이며 관리자·보안 경계 테스트를 삭제해 수를 줄이지 않았다.
 - FROZEN 본문은 개작하지 않고 각 관련 문서의 상단 supersession note만 추가된 상태를 재확인했다.
+
+### PHASE 10A Production DB 적용
+
+- 사용자 승인 후 Supabase Production 프로젝트 `ucnybhzpbatzcipwqtox`에 `20260728120000_profiles_private_safety_boundary.sql`을 단일 트랜잭션으로 적용하고 migration history를 기록했다.
+- 적용 전에는 `profiles_read` 정책과 `anon`/`authenticated` SELECT, profile 기반 ranking RPC 실행 권한이 존재함을 확인했다. 개인 profile 행과 원문은 조회하지 않았다.
+- 적용 후 `profiles` RLS 활성화, 공개 정책 0개, `anon`/`authenticated` SELECT/INSERT/UPDATE/DELETE 모두 false, 공개 역할의 컬럼 grant 0개, ranking RPC 실행 권한 false를 확인했다.
+- `service_role`의 `profiles` SELECT/INSERT/UPDATE/DELETE는 모두 true로 유지됐다. 기존 행의 수정·삭제·추가 및 환경변수 변경은 없었다.
+- 이 시점의 상태는 DB 경계 `PRODUCTION_VERIFIED`, 애플리케이션 배포 `PENDING`이다.
