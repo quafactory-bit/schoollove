@@ -20,7 +20,7 @@ function createChainableFrom(script: MockResult[]) {
     cursor++
 
     const chain: any = {}
-    for (const method of ['select', 'eq', 'update', 'delete', 'order', 'range', 'or', 'limit', 'ilike', 'in']) {
+    for (const method of ['select', 'eq', 'gte', 'update', 'delete', 'order', 'range', 'or', 'limit', 'ilike', 'in']) {
       chain[method] = (...args: unknown[]) => {
         record.push({ method, args })
         return chain
@@ -299,6 +299,8 @@ describe('getDashboardStats — profiles는 anon, reports는 admin client로 분
       return chain
     })
     const { from: adminFrom } = createChainableFrom([
+      { data: null, error: null, count: 5 },
+      { data: null, error: null, count: 4 },
       { data: null, error: null, count: 2 },
       { data: null, error: null, count: 1 },
     ])
@@ -310,11 +312,12 @@ describe('getDashboardStats — profiles는 anon, reports는 admin client로 분
 
     expect(stats).toEqual({
       totalProfiles: 5,
-      todayProfiles: 5,
+      todayProfiles: 4,
       pendingReports: 2,
       pendingDeleteRequests: 1,
     })
-    expect(anonFrom).toHaveBeenCalledWith('profiles')
+    expect(anonFrom).not.toHaveBeenCalled()
+    expect(adminFrom).toHaveBeenCalledWith('profiles')
     expect(adminFrom).toHaveBeenCalledWith('reports')
   })
 
@@ -336,10 +339,11 @@ describe('getDashboardStats — profiles는 anon, reports는 admin client로 분
 
     const stats = await getDashboardStats()
 
-    expect(stats.totalProfiles).toBe(3)
-    expect(stats.todayProfiles).toBe(3)
+    expect(stats.totalProfiles).toBe(0)
+    expect(stats.todayProfiles).toBe(0)
     expect(stats.pendingReports).toBe(0)
     expect(stats.pendingDeleteRequests).toBe(0)
+    expect(anonFrom).not.toHaveBeenCalled()
     consoleErrorSpy.mockRestore()
   })
 })

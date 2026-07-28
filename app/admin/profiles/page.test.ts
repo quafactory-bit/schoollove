@@ -22,4 +22,11 @@ describe('admin profiles page search boundary', () => {
     expect(source).toMatch(/p\.school\?\.school_name \?\? '-'/)
     expect(source).not.toMatch(/p\.schools\?\./)
   })
+
+  it('hide/unhide mutation uses the authenticated admin API instead of the public Supabase client', () => {
+    expect(source).toContain("fetch('/api/admin/profiles'")
+    expect(source).toContain("method: 'PATCH'")
+    expect(source).not.toContain("from('profiles')")
+    expect(source).not.toContain("import { supabase } from '@/lib/supabase'")
+  })
 })

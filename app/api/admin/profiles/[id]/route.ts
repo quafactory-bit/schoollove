@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifySessionToken, ADMIN_COOKIE_NAME } from '@/lib/admin-auth';
-import { deleteProfileCompletely } from '@/lib/api/admin';
+import { applyAdminModerationAction } from '@/lib/api/admin';
 
 const IdSchema = z.string().uuid();
 
@@ -33,13 +33,14 @@ export async function DELETE(
     );
   }
 
-  const success = await deleteProfileCompletely(parsed.data);
+  const success = await applyAdminModerationAction('profile_delete', parsed.data);
   if (!success) {
     return NextResponse.json(
       { error: 'Delete failed' },
       { status: 500 }
     );
   }
+
 
   return NextResponse.json({ success: true });
 }

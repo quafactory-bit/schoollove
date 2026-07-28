@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import type { AdminProfile } from '@/lib/api/admin'
 
 export default function AdminProfilesPage() {
@@ -40,11 +39,13 @@ export default function AdminProfilesPage() {
 
   async function toggleHidden(id: string, current: boolean) {
     setActionLoading(id + '-hide')
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_hidden: !current })
-      .eq('id', id)
-    if (error) {
+    const response = await fetch('/api/admin/profiles', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, is_hidden: !current }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText })) as { message?: string }
       alert('숨김 처리 실패: ' + error.message)
       setActionLoading(null)
       return

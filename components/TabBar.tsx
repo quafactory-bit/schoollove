@@ -2,12 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, ShieldCheck } from 'lucide-react'
+import { Home, Search, UserRound } from 'lucide-react'
 
 const TABS = [
   { href: '/', label: '홈', icon: Home },
   { href: '/search', label: '학교 찾기', icon: Search },
-  { href: '/submit', label: '등록 안내', icon: ShieldCheck },
+  { href: '/account', label: '내 계정', icon: UserRound },
 ]
 
 export default function TabBar() {

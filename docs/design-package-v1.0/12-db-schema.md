@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> **PHASE 10B APPROVED SUPERSESSION (2026-07-28):** 신규 개인 데이터는 Supabase Auth user와 연결된 owner-only `private_profiles`·학교 이력, KST 만 19세 자기진술 결과, append-only 동의 기록으로 분리한다. 기존 `profiles`는 자동 claim 없이 quarantined/unclaimed 및 기본 private 상태를 유지한다. 세부 결정은 `docs/decisions/2026-07-28-auth-adult-ownership-boundary.md`가 우선한다.
+
 ## 0. 원칙
 
 DB는 제품 정책을 소유하지 않는다.

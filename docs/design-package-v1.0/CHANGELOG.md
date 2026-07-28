@@ -2,6 +2,8 @@
 
 ## 2026-07-28
 
+- PHASE 10B 인증·성인 제한·본인 소유권 기반 승인: 이메일 OTP, KST 만 19세 자기진술, append-only 동의, owner-only private profile/RLS/API, `/account` 관리 화면.
+- 기존 profile은 자동 claim 없이 quarantined/unclaimed 및 기본 private로 유지하고, 사람 검색·메시지·Instagram 승인 공개는 PHASE 10C로 보류.
 - PHASE 10A 개인정보 긴급 안전 전환 승인: 공개 개인 명단·이름 검색·Instagram 연결·신규 개인 등록 중단.
 - Home의 profile 기반 성장 피드·랭킹·타인 등록 CTA 중단, 학교 기본 정보 검색과 School 기본 페이지만 유지.
 - 민감 경로 noindex/nofollow/noarchive 및 sitemap 개인 경로 제거.

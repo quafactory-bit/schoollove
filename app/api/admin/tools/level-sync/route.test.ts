@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 import { POST } from './route'
 import { verifySessionToken } from '@/lib/admin-auth'
 import { getSchoolLevelSnapshot, syncSchoolLevel } from '@/lib/api/levels'
+import { recordAdminAuditLog } from '@/lib/api/admin'
 import type { SchoolLevelPersistenceRow } from '@/types/level'
 
 vi.mock('@/lib/admin-auth', () => ({
@@ -13,6 +14,10 @@ vi.mock('@/lib/admin-auth', () => ({
 vi.mock('@/lib/api/levels', () => ({
   getSchoolLevelSnapshot: vi.fn(),
   syncSchoolLevel: vi.fn(),
+}))
+
+vi.mock('@/lib/api/admin', () => ({
+  recordAdminAuditLog: vi.fn().mockResolvedValue(true),
 }))
 
 const SCHOOL_ID = '11111111-1111-1111-1111-111111111111'
@@ -233,5 +238,26 @@ describe('POST /api/admin/tools/level-sync', () => {
 
     expect(getSchoolLevelSnapshot).toHaveBeenCalledWith(SCHOOL_ID)
     expect(syncSchoolLevel).toHaveBeenCalledWith(SCHOOL_ID, 141)
+  })
+
+  it('13. level 반영 후 audit 실패는 성공으로 숨기지 않고 500과 reconciliation log를 남긴다', async () => {
+    vi.mocked(verifySessionToken).mockResolvedValue(true)
+    vi.mocked(getSchoolLevelSnapshot).mockResolvedValue(schoolLevelRow(1))
+    vi.mocked(syncSchoolLevel).mockResolvedValue(schoolLevelRow(2))
+    vi.mocked(recordAdminAuditLog).mockResolvedValue(false)
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const response = await POST(createRequest({
+      cookie: 'valid-token',
+      body: { schoolId: SCHOOL_ID, cumulativeXp: 141 },
+    }))
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ error: 'Audit log failed' })
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('manual audit reconciliation required'),
+      { schoolId: SCHOOL_ID }
+    )
+    consoleErrorSpy.mockRestore()
   })
 })
