@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: '내 계정',
   description: '성인 본인 인증과 기본 비공개 프로필을 관리합니다.',
-  robots: { index: false, follow: false, nocache: true },
+  robots: { index: false, follow: false, nocache: true, noarchive: true },
 }
 
 export default async function AccountPage() {
