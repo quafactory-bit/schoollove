@@ -1689,3 +1689,8 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - `TEST_A`, `TEST_B`, `TEST_C` 합성 UUID만 사용해 exact search, hashed opaque token, 정·역방향 중복 요청, 7일 전/후 재알림, 수락, 연결 전/후 메시지, 읽음, zero-width 필터, Instagram 승인/취소, 신고·차단·종료 후 메시지, transaction rollback, FK 사용자 삭제, anon/authenticated grant 경계를 검증했다.
 - 첫 시도는 Supabase 이미지의 `auth` schema owner 차이로 bootstrap 전에 중단됐다. 두 번째 시도에서 SECURITY DEFINER의 빈 search_path 아래 unqualified `uuid_generate_v4()`가 실제 실패하는 결함을 발견해 `extensions.uuid_generate_v4()`로 수정했다. 세 번째 깨끗한 실행은 모든 assertion을 통과했다.
 - Production row, 실제 이메일, 개인정보 원문, 실제 사용자 메시지는 사용하지 않았다.
+
+### Production smoke hotfix
+
+- PHASE 10C 첫 Production 배포 스모크에서 `/login`, `/account`, `/people/search`, `/connections`, `/notifications` 계열 metadata가 `noindex, nofollow, nocache`만 출력하고 승인 계약의 `noarchive`를 빠뜨린 것을 확인했다.
+- 인증·RLS·개인정보 노출 결함은 아니지만 검색엔진 archive 금지 계약을 정확히 지키기 위해 모든 일반 사용자 private route에 `noarchive: true`를 추가하고 정적 회귀 테스트를 보강했다.

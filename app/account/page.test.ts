@@ -9,7 +9,7 @@ describe('/account private management UI', () => {
   it('서버가 검증된 auth context 없이는 login으로 보낸다', () => {
     expect(page).toContain('getAuthenticatedServerContext()')
     expect(page).toContain("if (!auth) redirect('/login')")
-    expect(page).toContain("robots: { index: false, follow: false, nocache: true }")
+    expect(page).toContain("robots: { index: false, follow: false, nocache: true, noarchive: true }")
   })
 
   it('성인 확인, 필수 동의, 내 프로필, 학교 이력, 삭제·탈퇴를 제공한다', () => {

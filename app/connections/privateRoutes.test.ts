@@ -9,9 +9,9 @@ const pages = [
 ]
 
 describe('PHASE 10C private route SEO and auth boundaries', () => {
-  it.each(pages)('%s는 noindex/nofollow/nocache다', (path) => {
+  it.each(pages)('%s는 noindex/nofollow/nocache/noarchive다', (path) => {
     const source = readFileSync(join(process.cwd(), path), 'utf8')
-    expect(source).toContain('robots: { index: false, follow: false, nocache: true }')
+    expect(source).toContain('robots: { index: false, follow: false, nocache: true, noarchive: true }')
   })
 
   it.each(pages.filter((path) => !path.includes('/admin/')))('%s는 서버 인증 없이 렌더링하지 않는다', (path) => {

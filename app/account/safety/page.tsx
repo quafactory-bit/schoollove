@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getAuthenticatedServerContext } from '@/lib/user-auth'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: '내 안전 설정', robots: { index: false, follow: false, nocache: true } }
+export const metadata: Metadata = { title: '내 안전 설정', robots: { index: false, follow: false, nocache: true, noarchive: true } }
 
 export default async function AccountSafetyPage() {
   const auth = await getAuthenticatedServerContext()
