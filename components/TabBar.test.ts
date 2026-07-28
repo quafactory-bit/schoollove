@@ -19,10 +19,10 @@ describe('TabBar responsive navigation contract', () => {
     expect(LAYOUT_SOURCE).toContain('className="pb-16"')
   })
 
-  it('keeps home, school search, and the disabled-registration notice available on mobile', () => {
+  it('keeps home, school search, and the private account available on mobile', () => {
     expect(SOURCE).toContain("{ href: '/', label: '홈', icon: Home }")
     expect(SOURCE).toContain("{ href: '/search', label: '학교 찾기', icon: Search }")
-    expect(SOURCE).toContain("{ href: '/submit', label: '등록 안내', icon: ShieldCheck }")
+    expect(SOURCE).toContain("{ href: '/account', label: '내 계정', icon: UserRound }")
   })
 
   it('keeps every mobile tab at a 44px minimum touch height with route-aware active state', () => {

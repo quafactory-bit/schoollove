@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifySessionToken, ADMIN_COOKIE_NAME } from '@/lib/admin-auth';
-import { deleteProfileCompletely } from '@/lib/api/admin';
+import { deleteProfileCompletely, recordAdminAuditLog } from '@/lib/api/admin';
 
 const IdSchema = z.string().uuid();
 
@@ -39,6 +39,15 @@ export async function DELETE(
       { error: 'Delete failed' },
       { status: 500 }
     );
+  }
+
+
+  if (!(await recordAdminAuditLog({
+    action: 'profile_delete',
+    targetTable: 'profiles',
+    targetId: parsed.data,
+  }))) {
+    return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

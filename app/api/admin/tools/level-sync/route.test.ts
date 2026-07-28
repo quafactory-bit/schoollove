@@ -15,6 +15,10 @@ vi.mock('@/lib/api/levels', () => ({
   syncSchoolLevel: vi.fn(),
 }))
 
+vi.mock('@/lib/api/admin', () => ({
+  recordAdminAuditLog: vi.fn().mockResolvedValue(true),
+}))
+
 const SCHOOL_ID = '11111111-1111-1111-1111-111111111111'
 
 function schoolLevelRow(

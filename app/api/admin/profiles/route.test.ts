@@ -15,6 +15,7 @@ vi.mock('@/lib/api/admin', () => ({
   getAdminProfiles: getAdminProfilesMock,
   hideProfile: vi.fn(),
   unhideProfile: vi.fn(),
+  recordAdminAuditLog: vi.fn().mockResolvedValue(true),
 }))
 
 import { GET } from './route'

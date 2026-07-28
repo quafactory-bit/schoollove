@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifySessionToken, ADMIN_COOKIE_NAME } from '@/lib/admin-auth';
 import { getSchoolLevelSnapshot, syncSchoolLevel } from '@/lib/api/levels';
+import { recordAdminAuditLog } from '@/lib/api/admin';
 
 const LevelSyncSchema = z.object({
   schoolId: z.string().uuid(),
@@ -47,6 +48,15 @@ export async function POST(request: NextRequest) {
   const after = await syncSchoolLevel(schoolId, cumulativeXp);
   if (!after) {
     return NextResponse.json({ error: 'Sync failed' }, { status: 500 });
+  }
+
+  if (!(await recordAdminAuditLog({
+    action: 'school_level_sync',
+    targetTable: 'schools',
+    targetId: schoolId,
+    metadata: { cumulative_xp: cumulativeXp },
+  }))) {
+    return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
   }
 
   return NextResponse.json({

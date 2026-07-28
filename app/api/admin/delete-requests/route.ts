@@ -6,6 +6,7 @@ import {
   markRequestAsPending,
   hideProfile,
   unhideProfile,
+  recordAdminAuditLog,
 } from '@/lib/api/admin';
 
 const PatchSchema = z.object({
@@ -70,6 +71,15 @@ export async function PATCH(request: NextRequest) {
         { status: 500 }
       );
     }
+  }
+
+  if (!(await recordAdminAuditLog({
+    action: status === 'done' ? 'deletion_request_complete' : 'deletion_request_reopen',
+    targetTable: 'reports',
+    targetId: id,
+    metadata: { profile_id: profileId, status },
+  }))) {
+    return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

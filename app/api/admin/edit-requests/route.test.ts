@@ -11,6 +11,7 @@ vi.mock('@/lib/api/admin', () => ({
   markRequestAsPending: vi.fn(),
   getEditRequestDetail: vi.fn(),
   applyProfileInstagramEdit: vi.fn(),
+  recordAdminAuditLog: vi.fn().mockResolvedValue(true),
 }))
 
 import { PATCH } from './route'

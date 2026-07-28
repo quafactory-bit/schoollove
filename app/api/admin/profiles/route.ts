@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifySessionToken, ADMIN_COOKIE_NAME } from '@/lib/admin-auth';
-import { getAdminProfiles, hideProfile, unhideProfile } from '@/lib/api/admin';
+import { getAdminProfiles, hideProfile, unhideProfile, recordAdminAuditLog } from '@/lib/api/admin';
 
 const PatchSchema = z.object({
   id: z.string().uuid(),
@@ -55,6 +55,15 @@ export async function PATCH(request: NextRequest) {
 
   if (!success) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
+  }
+
+  if (!(await recordAdminAuditLog({
+    action: is_hidden ? 'profile_hide' : 'profile_unhide',
+    targetTable: 'profiles',
+    targetId: id,
+    metadata: { is_hidden },
+  }))) {
+    return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

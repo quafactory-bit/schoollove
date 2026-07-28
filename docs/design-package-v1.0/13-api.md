@@ -4,6 +4,8 @@ Status: **FROZEN**
 
 > **PHASE 10A SAFETY OVERRIDE (2026-07-28):** 공개 API는 profile 행 또는 nickname·졸업연도·반·Instagram 조합을 반환하지 않는다. `POST /api/profiles`는 503과 안정적인 error code로 항상 차단하며, `anon`/`authenticated`의 profiles SELECT/INSERT/UPDATE/DELETE와 profile 기반 ranking RPC 실행 권한을 회수하는 신규 migration을 사용한다. 관리자 service-role 경계는 보존한다.
 
+> **PHASE 10B APPROVED SUPERSESSION (2026-07-28):** 개인 API는 검증된 이메일 OTP session user ID만 사용하며 request body의 user ID를 신뢰하지 않는다. 성인 확인·필수 동의 뒤 owner-only private profile과 학교 이력만 생성·수정·삭제할 수 있고, 다른 사용자의 raw row는 반환하지 않는다.
+
 ## 0. 원칙
 
 API는 제품 정책의 통로다.

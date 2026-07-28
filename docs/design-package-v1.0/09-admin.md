@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> **PHASE 10B APPROVED SUPERSESSION (2026-07-28):** 기존 관리자 HMAC session 경계는 일반 사용자 Supabase Auth와 분리해 유지하며, 성공한 관리자 mutation은 service-role 전용 `admin_audit_logs`에 최소 action·대상 ID를 기록한다.
+
 ## 0. 정의
 
 Admin은 운영 편의 도구가 아니다.

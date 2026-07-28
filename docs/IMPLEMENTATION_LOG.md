@@ -1610,3 +1610,22 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - 적용 후 `profiles` RLS 활성화, 공개 정책 0개, `anon`/`authenticated` SELECT/INSERT/UPDATE/DELETE 모두 false, 공개 역할의 컬럼 grant 0개, ranking RPC 실행 권한 false를 확인했다.
 - `service_role`의 `profiles` SELECT/INSERT/UPDATE/DELETE는 모두 true로 유지됐다. 기존 행의 수정·삭제·추가 및 환경변수 변경은 없었다.
 - 이 시점의 상태는 DB 경계 `PRODUCTION_VERIFIED`, 애플리케이션 배포 `PENDING`이다.
+## 2026-07-28 (PHASE 10B 인증·성인 제한·프로필 소유권 기반)
+
+### 구현
+
+- 일반 사용자 인증은 Supabase Auth 이메일 OTP로 분리하고, 검증된 access token을 httpOnly·SameSite 쿠키로 보관한다. OTP 요청과 검증은 각각 별도의 IP rate limit을 적용하며 Production에서 Upstash 설정이 없으면 fail-closed 한다.
+- KST 기준 만 19세 이상 여부를 서버에서 계산한다. 원본 생년월일은 저장하거나 로그로 남기지 않으며, 성인 확인 레코드는 service-role 서버 경계에서만 생성해 authenticated REST 직접 INSERT 우회를 막는다.
+- 필수 약관 동의는 정책 버전별 append-only 레코드로 저장한다. 현재 성인 확인과 필수 동의가 모두 존재할 때만 private profile 및 학교 이력 생성·수정이 허용된다.
+- 신규 `private_profiles`와 `profile_school_memberships`는 검증된 Supabase session user ID를 소유자로 사용한다. RLS는 본인 row의 SELECT/INSERT/UPDATE/DELETE만 허용하고 공개 읽기 정책은 만들지 않는다.
+- 기존 `profiles` row는 삭제하거나 임의 소유권을 부여하지 않는다. owner는 NULL, ownership은 quarantined, visibility는 private 경계로 유지하고 claim UI/API는 만들지 않는다.
+- `/account`에서 성인 확인, 필수 동의, 기본 비공개 프로필, 학교 이력, 본인 삭제 및 계정 삭제 요청을 제공한다. 사람 검색·메시지·공개 승격·오늘의 Instagram 노출은 이번 단계에서 제공하지 않는다.
+- 관리자 mutation은 기존 인증 route 안에서 service-role로 수행하고 `admin_audit_logs`에 행위 유형과 대상 UUID를 기록한다. PHASE 10A 이후 공개 profiles SELECT가 제거된 상태에 맞춰 관리자 통계와 숨김 처리도 공개 Supabase 클라이언트 우회를 제거했다.
+- 기존 공개 프로필·Production 데이터의 삭제, 기존 row 소유권 자동 부여, Production PHASE 10B migration 적용은 수행하지 않았다.
+
+### 검증 상태
+
+- 결정 문서와 FROZEN supersession note를 갱신했다.
+- 관련 보안·RLS·API·관리자 회귀 테스트 5 files / 44 tests를 통과했다.
+- 전체 테스트 77 files / 833 tests, TypeScript, Next.js 15.3.8 Production build(32 routes), `git diff --check`를 통과했다.
+- PHASE 10B 상태: `LOCAL_VERIFIED`; Production 적용은 별도 승인 단계다.

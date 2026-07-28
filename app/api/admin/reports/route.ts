@@ -7,6 +7,7 @@ import {
 import {
   markRequestAsDone,
   markRequestAsPending,
+  recordAdminAuditLog,
 } from '@/lib/api/admin';
 
 const PatchSchema = z.object({
@@ -65,6 +66,16 @@ export async function PATCH(request: NextRequest) {
       { error: '처리 중 오류가 발생했습니다.' },
       { status: 500 }
     );
+  }
+
+
+  if (!(await recordAdminAuditLog({
+    action: 'report_status_change',
+    targetTable: 'reports',
+    targetId: id,
+    metadata: { status },
+  }))) {
+    return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

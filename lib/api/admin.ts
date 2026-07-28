@@ -1,4 +1,4 @@
-﻿import { supabaseServer, getSupabaseAdmin } from '@/lib/supabase';
+﻿import { getSupabaseAdmin } from '@/lib/supabase';
 
 // PHASE 7A ADMIN MUTATION AUTHORITY PATCH — 이 모듈의 mutation 함수와 일부 조회 함수는
 // service-role 클라이언트(getSupabaseAdmin())를 사용한다. 원격 권한 조회로 확인한 사실:
@@ -21,6 +21,29 @@ function tryGetAdminClient(): ReturnType<typeof getSupabaseAdmin> | null {
     console.error('getSupabaseAdmin() failed:', error);
     return null;
   }
+}
+
+export async function recordAdminAuditLog(input: {
+  action: string;
+  targetTable?: string;
+  targetId?: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}): Promise<boolean> {
+  const admin = tryGetAdminClient();
+  if (!admin) return false;
+
+  const { error } = await admin.from('admin_audit_logs').insert({
+    actor_type: 'admin',
+    action: input.action,
+    target_table: input.targetTable ?? null,
+    target_id: input.targetId ?? null,
+    metadata: input.metadata ?? {},
+  });
+  if (error) {
+    console.error('recordAdminAuditLog failed:', { action: input.action });
+    return false;
+  }
+  return true;
 }
 
 export type DashboardStats = {
@@ -55,9 +78,9 @@ export type AdminReport = {
 
 /**
  * 관리자 대시보드용 통계 4종 집계.
- * profiles 집계 2종은 공개 RLS(is_hidden=false)와 동일한 조건이라 anon 키(supabaseServer)로
- * 충분하다. reports 집계 2종은 anon/authenticated에 reports 테이블 권한 자체가 없어
- * (SELECT 포함 어떤 권한도 GRANT되지 않음, 원격 확인) service-role이 필요하다.
+ * PHASE 10A에서 profiles 공개 SELECT가 제거됐으므로 모든 관리자 집계는 인증된 관리자
+ * route 내부의 service-role 클라이언트만 사용한다. 관리자 클라이언트를 만들 수 없으면
+ * 공개 클라이언트로 우회하지 않고 0으로 fail-closed 한다.
  */
 export async function getDashboardStats(): Promise<DashboardStats> {
   const now = new Date();
@@ -79,33 +102,40 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const admin = tryGetAdminClient();
 
+  if (!admin) {
+    return {
+      totalProfiles: 0,
+      todayProfiles: 0,
+      pendingReports: 0,
+      pendingDeleteRequests: 0,
+    };
+  }
+
   const [totalResult, todayResult, reportsResult, deleteRequestsResult] =
     await Promise.all([
-      supabaseServer
+      admin
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('is_hidden', false),
-      supabaseServer
+      admin
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('is_hidden', false)
         .gte('created_at', todayStartUtc),
       admin
-        ? admin
-            .from('reports')
-            .select('*', { count: 'exact', head: true })
-            .eq('type', 'report')
-            .eq('status', 'pending')
-        : Promise.resolve({ count: null, error: new Error('admin client unavailable') }),
+        .from('reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('type', 'report')
+        .eq('status', 'pending'),
       admin
-        ? admin
-            .from('reports')
-            .select('*', { count: 'exact', head: true })
-            .eq('type', 'delete')
-            .eq('status', 'pending')
-        : Promise.resolve({ count: null, error: new Error('admin client unavailable') }),
+        .from('reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('type', 'delete')
+        .eq('status', 'pending'),
     ]);
 
+  if (totalResult.error) console.error('getDashboardStats (profiles) error:', totalResult.error);
+  if (todayResult.error) console.error('getDashboardStats (today profiles) error:', todayResult.error);
   if (reportsResult.error) console.error('getDashboardStats (reports) error:', reportsResult.error);
   if (deleteRequestsResult.error)
     console.error('getDashboardStats (delete requests) error:', deleteRequestsResult.error);

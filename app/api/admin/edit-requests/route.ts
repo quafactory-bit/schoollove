@@ -6,6 +6,7 @@ import {
   markRequestAsPending,
   getEditRequestDetail,
   applyProfileInstagramEdit,
+  recordAdminAuditLog,
 } from '@/lib/api/admin';
 
 // PHASE 7A COMPLETION PATCH — type='edit' 요청을 실제로 조회·처리할 수 있는 관리자 API.
@@ -84,6 +85,15 @@ export async function PATCH(request: NextRequest) {
     if (!reportPending) {
       return NextResponse.json({ error: 'Revert failed' }, { status: 500 });
     }
+  }
+
+  if (!(await recordAdminAuditLog({
+    action: status === 'done' ? 'edit_request_complete' : 'edit_request_reopen',
+    targetTable: 'reports',
+    targetId: id,
+    metadata: { status },
+  }))) {
+    return NextResponse.json({ error: 'Audit log failed' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
