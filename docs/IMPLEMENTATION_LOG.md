@@ -1,5 +1,33 @@
 # SchoolLoveI Implementation Log
 
+## 2026-07-28 — PHASE 10C Safe Connection Messaging (Local/Draft)
+
+### Implementation
+
+- Added exact school + graduation year + display-name matching through a service-only RPC that returns only a minimal state and short-lived opaque match token.
+- Added immutable first greetings (200 characters), a single atomic reminder after seven days, receiver accept/decline/not-the-person/block/report actions, and atomic connection creation.
+- Added accepted-connection text messaging (500 characters), read state, disconnect/block/report boundaries, and per-counterparty Instagram visibility approval and revocation.
+- Centralized URL, email, phone and external contact-pattern rejection in client/server policy and DB checks.
+- Added IP/account hashed fail-closed rate limits for discovery and all connection mutations.
+- Added generic in-app notifications without message/name/school/Instagram payloads and a minimal admin safety list with atomic audit RPC actions.
+- Added RLS/FORCE RLS to all nine PHASE 10C private tables and kept every mutation RPC service-role only.
+- Added noindex private pages and kept every new private route out of the sitemap.
+
+### Deployment boundary
+
+- PHASE 10C migration has not been applied to Production.
+- PHASE 10C PR must remain Draft and must not be merged or deployed without a separate approval.
+- Email notifications, attachments, realtime sockets, Today Instagram advertising and payment remain out of scope.
+
+### Verification
+
+- PHASE 10C targeted verification passed: 6 files, 54 tests.
+- Full local test suite passed: 83 files, 890 tests.
+- TypeScript (`tsc --noEmit`) passed.
+- Next.js 15.3.8 Production build passed with 37 generated pages and all PHASE 10C routes present.
+- Local build emitted only the known missing-local-Upstash warnings; the Production runtime path remains fail-closed when those variables are absent.
+- Final diff and `git diff --check` are recorded before the Draft PR is opened.
+
 ## 2026-07-24 — Year Hub People Discovery
 
 ### Implementation

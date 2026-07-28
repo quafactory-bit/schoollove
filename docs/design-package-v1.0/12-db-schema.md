@@ -4,6 +4,8 @@ Status: **FROZEN**
 
 > **PHASE 10B APPROVED SUPERSESSION (2026-07-28):** 신규 개인 데이터는 Supabase Auth user와 연결된 owner-only `private_profiles`·학교 이력, KST 만 19세 자기진술 결과, append-only 동의 기록으로 분리한다. 기존 `profiles`는 자동 claim 없이 quarantined/unclaimed 및 기본 private 상태를 유지한다. 세부 결정은 `docs/decisions/2026-07-28-auth-adult-ownership-boundary.md`가 우선한다.
 
+> **PHASE 10C APPROVED SUPERSESSION (2026-07-28):** 연결 요청, 수락된 연결, 텍스트 대화, 차단·신고, 일반 알림과 상대별 Instagram 공개 승인은 별도 private 테이블과 service-role 전용 원자 RPC로 관리한다. 모든 PHASE 10C 개인 테이블은 RLS와 FORCE RLS를 사용하며 Production 적용 전 별도 검토가 필요하다.
+
 ## 0. 원칙
 
 DB는 제품 정책을 소유하지 않는다.

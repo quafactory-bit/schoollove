@@ -6,6 +6,8 @@ Status: **FROZEN**
 
 > **PHASE 10B APPROVED SUPERSESSION (2026-07-28):** 개인 API는 검증된 이메일 OTP session user ID만 사용하며 request body의 user ID를 신뢰하지 않는다. 성인 확인·필수 동의 뒤 owner-only private profile과 학교 이력만 생성·수정·삭제할 수 있고, 다른 사용자의 raw row는 반환하지 않는다.
 
+> **PHASE 10C APPROVED SUPERSESSION (2026-07-28):** 사람 검색 API는 exact match 최소 상태와 짧게 만료되는 opaque token만 반환한다. 안부·재알림·응답·대화·Instagram 공개는 검증된 session user를 actor로 전달하는 service-role 전용 RPC를 사용하고, Production rate-limit 설정이 없으면 503으로 fail-closed 한다. body의 sender/receiver user ID는 받지 않는다.
+
 ## 0. 원칙
 
 API는 제품 정책의 통로다.
