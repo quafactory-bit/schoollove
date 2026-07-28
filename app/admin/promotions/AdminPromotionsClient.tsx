@@ -73,7 +73,7 @@ export default function AdminPromotionsClient() {
                 {['pending_review', 'changes_requested'].includes(String(request.status)) ? <>
                   <button onClick={() => action({ action: 'changes_requested', request_id: request.id, reason_code: 'creative', note: '문구 또는 이미지를 수정해 주세요.' })} className="min-h-10 border px-3">수정 요청</button>
                   <button onClick={() => action({ action: 'rejected', request_id: request.id, reason_code: 'safety' })} className="min-h-10 border px-3">거절</button>
-                  <button onClick={() => action({ action: 'approved', request_id: request.id, amount_krw: 10000 })} className="min-h-10 bg-gray-950 px-3 text-white">검수 승인·가격 확정</button>
+                  <a href="/admin/promotion-operations" className="inline-flex min-h-10 items-center bg-gray-950 px-3 text-white">상품 선택·견적 발행</a>
                 </> : null}
                 {request.status === 'payment_pending' ? <button onClick={() => confirmPayment(request)} className="min-h-10 bg-gray-950 px-3 text-white">수동 결제 확인</button> : null}
                 {request.status === 'payment_confirmed' ? <button onClick={() => schedule(request)} className="min-h-10 bg-gray-950 px-3 text-white">KST 배치 예약</button> : null}

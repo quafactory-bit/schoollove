@@ -247,8 +247,8 @@ export async function applyAdminPromotionAction(action: Record<string, unknown>)
   switch (action.action) {
     case 'verify_account':
       call = await admin.rpc('admin_verify_promotion_account', { target_verification_id: action.verification_id, submitted_code_hash: hashVerificationCode(String(action.verification_code)), admin_actor: 'admin-session' }); break
-    case 'changes_requested': case 'rejected': case 'approved':
-      call = await admin.rpc('admin_review_promotion_request', { target_request_id: action.request_id, review_action: action.action, review_reason: action.action === 'approved' ? 'approved' : action.reason_code ?? 'other', review_note: action.note ?? null, admin_actor: 'admin-session', approved_amount_krw: action.amount_krw ?? null }); break
+    case 'changes_requested': case 'rejected':
+      call = await admin.rpc('admin_review_promotion_request', { target_request_id: action.request_id, review_action: action.action, review_reason: action.reason_code ?? 'other', review_note: action.note ?? null, admin_actor: 'admin-session', approved_amount_krw: null }); break
     case 'payment_confirmed':
       call = await admin.rpc('admin_confirm_promotion_payment', { target_request_id: action.request_id, payment_reference: action.internal_reference, admin_actor: 'admin-session' }); break
     case 'scheduled':

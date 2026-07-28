@@ -1717,3 +1717,38 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - PHASE 10D migration과 merge commit의 Production 배포 후 실제 정책 페이지에 남아 있던 시행 예정·적용 전 문구를 2026년 7월 28일 시행 및 현재 Production 운영 경계 문구로 정정했다.
 - middleware가 인증 전 `/admin/login`으로 redirect할 때 최종 로그인 페이지에 robots metadata가 없던 공백을 보완해 `noindex`, `nofollow`, `nocache`, `noarchive`를 명시했다.
 - DB migration, 환경변수, 프로모션 데이터, 기존 사용자·프로필 데이터는 변경하지 않았다.
+
+## 2026-07-28 — PHASE 10D Production 최종 검증
+
+- PR #27 hotfix를 squash merge한 뒤 Vercel Production merge commit 배포를 확인했다.
+- `/advertising-policy`의 실제 시행일·현재 Production 운영 경계와 `/admin/login`의 `noindex`, `nofollow`, `nocache`, `noarchive`가 공식 도메인에서 반영됐음을 확인했다.
+- PHASE 10D Production DB는 신규 promotion domain row 0건, 기존 공개 profile 25건과 기존 private/connection/message count 보존, anon/authenticated 직접 권한 0건, service-role table·RPC 권한 유지 상태다.
+- 최종 상태: `PHASE_10D_PRODUCTION_APPLIED`.
+
+## 2026-07-28 — PHASE 10E 프로모션 반복 운영 자동화
+
+### 상품·견적·주문
+
+- 관리자 상품 카탈로그에 placement, 기간, 이미지 규격, 문구 제한, 기본 가격, VAT 표시, 학교·지역 타기팅 허용, 판매 상태, 가격 정책 version과 catalog version을 추가했다.
+- 승인된 신청에만 만료 견적을 발행하고, VAT 계산과 상품 설정을 quote/order snapshot으로 보존한다. 애플리케이션의 기존 고정 10,000원 승인 버튼은 제거했다.
+- 광고주 견적 수락·거절과 단일 주문 생성, 주문번호, 결제 기한, append-only 상태 이력과 audit를 service-role RPC transaction으로 묶었다.
+
+### 수동 결제·취소·환불
+
+- `PaymentProvider` interface와 webhook을 항상 거부하는 `manual` adapter를 추가했다. 실제 계좌·카드·PG secret은 저장하지 않는다.
+- 광고주 입금 완료 표시와 관리자 정확·부족·부분·초과 누적 확인, hash idempotency key, 중복 pending notice 방지를 추가했다.
+- 취소 요청, 승인·거절, 환불 대기·부분·완료·불가를 분리하고 실제 외부 환불 후 관리자 확인만 상태에 반영하도록 했다.
+
+### 일정·알림·보고
+
+- KST placement/context 겹침을 advisory transaction lock과 시간 범위 충돌 검사로 차단하고 예약·활성·중단·재개·종료를 주문 상태와 함께 변경한다.
+- 개인정보·금융정보 원문 없는 내부 알림 outbox에 idempotency, attempts, retry, safe error code를 추가했다.
+- raw metric row 대신 기간·placement·학교/지역 context, 노출·클릭·CTR·일별 합계만 보존·제공하고 owner/admin 인증 CSV에 spreadsheet formula injection 방어를 적용했다.
+- 광고주 대시보드와 관리자 상품·견적·입금 queue·취소/환불·캘린더·outbox·성과 운영 화면은 모두 private robots 계약을 사용하며 sitemap에 포함하지 않는다.
+
+### 격리 DB 검증
+
+- Supabase PostgreSQL 17.6.1 일회성 컨테이너에서 PHASE 10A→10B→10C→10D→10E migration을 순차 적용했다.
+- 합성 성인 사용자만 사용해 상품 생성, 승인·견적, 타 광고주 접근 차단, 견적 수락·중복 주문 차단, 부분·누적 입금, KST 예약·활성, 집계 metric·보고, 종료, 취소·부분 환불·완료, 계정 삭제 cascade와 신규 10개 table RLS/FORCE RLS·grant를 검증했다.
+- 집계 함수의 `day` SQL 별칭 충돌을 실제 실행에서 발견해 `metric_day`로 수정했고, 최종 깨끗한 실행은 `PHASE10E_ISOLATED_VERIFICATION_OK`를 반환했다. 일회성 컨테이너는 제거했다.
+- PHASE 10E migration은 Production에 적용하지 않았다.
