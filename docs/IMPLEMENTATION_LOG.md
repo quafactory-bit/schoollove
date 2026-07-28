@@ -1566,3 +1566,47 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - 원격 변경은 Vercel Web Analytics 활성화 1건뿐이다. Supabase에서는 권한·정책 SELECT만
   실행했고 migration·데이터 mutation은 수행하지 않았다.
 - commit, push, deploy, 환경변수 변경은 수행하지 않았다.
+
+---
+
+## 2026-07-28 (PHASE 10A 개인정보 긴급 안전 전환)
+
+### 구현
+
+- 중앙 개인정보 정책 `lib/policy/privacySafety.ts`를 추가했다. 공개 프로필 등록은 환경변수 값과 무관하게 항상 차단하며, KST 기준 미래 졸업연도, 신뢰 가능한 `school_type`, 개인 관련 route의 noindex/nofollow/noarchive를 한 경계에서 판정한다.
+- `POST /api/profiles`는 request body, CAPTCHA, rate limit, DB, level sync, revalidation보다 먼저 503과 `PROFILE_REGISTRATION_TEMPORARILY_DISABLED`를 반환한다. `/submit`과 `/invite`는 등록 폼·초대 동작 대신 정비 안내만 제공한다.
+- Home의 profile 기반 피드·순위·등록 CTA를 제거했다. School은 학교명·지역·유형만 제공하고, Year/Class는 profile 행을 조회하지 않는 비공개 안내로 전환했다.
+- 공개 Search는 학교 RPC만 사용하며 profiles 조회와 profile count 표시를 제거했다. 공개 개인 명단, 이름 검색, 개인 Instagram 링크는 활성 공개 경로에서 제거했다.
+- sitemap은 Home과 School 기본 URL만 생성한다. search, submit, invite, Year, Class는 noindex/nofollow/noarchive이며 admin X-Robots-Tag에도 noarchive를 추가했다. robots.txt는 해당 경로를 차단하지 않아 meta robots 전달을 방해하지 않는다.
+- 개인정보처리방침과 이용약관을 현재 실제 동작에 맞춰 갱신하고, 신규 등록 중단·만 19세 이상 본인 등록 전환·타인 정보 등록 금지·공개 명단/Instagram 중단·삭제 요청 경로를 명시했다.
+- 신규 migration `20260728120000_profiles_private_safety_boundary.sql`을 작성했다. 기존 행을 삭제·수정하지 않고 `anon`/`authenticated`의 profiles SELECT/INSERT/UPDATE/DELETE, 알려진 공개 RLS 정책과 profile 기반 ranking RPC 실행 권한을 회수한다. service-role 관리자 경계는 변경하지 않는다.
+- 새 결정 문서, FROZEN 안전 override, CHANGELOG와 AGENTS.md 최상위 계약에 PHASE 10A/10B 경계를 기록했다.
+
+### 로컬 검증
+
+- 변경 관련 테스트: 16 files / 112 tests 통과.
+- `npm run typecheck` → 오류 없음.
+- `npm test` → 68 files / 795 tests 통과. 관리자 API·인증·신고·삭제 관련 기존 테스트 포함.
+- `npm run build` → Next.js 15.3.8 production build 성공, static page 23개 생성. 로컬 Upstash 환경변수 미설정 경고만 있었고 빌드 결과에는 영향을 주지 않았다. 환경변수 값은 읽거나 출력하지 않았다.
+- `git diff --check` → 통과.
+
+### 상태와 원격 경계
+
+- 로컬 코드와 migration: `LOCAL_VERIFIED`.
+- 원격 Supabase migration, 원격 데이터 mutation, Vercel 배포, 환경변수 변경, commit, push, PR은 실행하지 않았다.
+- 따라서 Production의 기존 `profiles_read`/공개 SELECT는 신규 migration이 명시적으로 승인·적용되기 전까지 남아 있을 수 있다. 로컬 UI/API 차단만으로 원격 Supabase REST 직접 조회 위험이 제거됐다고 판정하지 않는다.
+- PHASE 10B 시작점은 Supabase Auth, 만 19세 이상 자격, 본인 profile 소유권, 본인 전용 RLS/API, 승인 전 개인정보·Instagram 비공개, 기존 데이터 소유권 주장·삭제 절차다.
+
+### PHASE 10A-R 감사 보완
+
+- 초기 안전 패치에서 크게 축소됐던 `/api/profiles` 회귀 테스트를 원래 보안 계약 기준으로 복구했다. rate limit fail-closed, 입력 검증, CAPTCHA, service-role INSERT, 중복·오류 응답, level sync, revalidation 검증은 유지하고 모든 실행보다 앞선 PHASE 10A 503 hard lock 테스트를 추가했다.
+- sitemap은 profile 기반 테스트를 복구하지 않고 새 계약에 맞춰 학교-only, 민감 URL 제외, 중복 제거, DB 오류 fail-safe, 연속 호출 freshness, dynamic route를 검증하도록 보강했다. 제거된 전체 테스트는 공개 profile/Year/Class/등록 UI라는 폐기된 동작을 검증하던 항목이며 관리자·보안 경계 테스트를 삭제해 수를 줄이지 않았다.
+- FROZEN 본문은 개작하지 않고 각 관련 문서의 상단 supersession note만 추가된 상태를 재확인했다.
+
+### PHASE 10A Production DB 적용
+
+- 사용자 승인 후 Supabase Production 프로젝트 `ucnybhzpbatzcipwqtox`에 `20260728120000_profiles_private_safety_boundary.sql`을 단일 트랜잭션으로 적용하고 migration history를 기록했다.
+- 적용 전에는 `profiles_read` 정책과 `anon`/`authenticated` SELECT, profile 기반 ranking RPC 실행 권한이 존재함을 확인했다. 개인 profile 행과 원문은 조회하지 않았다.
+- 적용 후 `profiles` RLS 활성화, 공개 정책 0개, `anon`/`authenticated` SELECT/INSERT/UPDATE/DELETE 모두 false, 공개 역할의 컬럼 grant 0개, ranking RPC 실행 권한 false를 확인했다.
+- `service_role`의 `profiles` SELECT/INSERT/UPDATE/DELETE는 모두 true로 유지됐다. 기존 행의 수정·삭제·추가 및 환경변수 변경은 없었다.
+- 이 시점의 상태는 DB 경계 `PRODUCTION_VERIFIED`, 애플리케이션 배포 `PENDING`이다.

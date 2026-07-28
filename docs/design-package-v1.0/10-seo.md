@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> **PHASE 10A SAFETY OVERRIDE (2026-07-28):** sitemap은 Home과 개인 데이터가 제거된 School 기본 URL만 포함한다. search, submit, invite, Year, Class, Profile/연결 성격의 경로는 noindex/nofollow/noarchive이며 robots.txt에서 해당 경로를 막아 meta 전달을 방해하지 않는다. 개인 발견·Instagram 중심 메타 문구는 사용하지 않는다.
+
 ## 0. 정의
 
 SEO의 목적은 페이지 수를 늘리는 것이 아니다.

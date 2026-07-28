@@ -132,13 +132,11 @@ describe('public social typography and text color system', () => {
     expect(PROFILE_CARD).not.toContain('justify-center text-gray-700 font-bold text-sm')
   })
 
-  it('keeps the mobile registration title readable without clipping or width transforms', () => {
-    const title = SUBMIT.match(/<h1 className="[^"]*\[text-wrap:balance\][^"]*">[\s\S]*?<\/h1>/)?.[0] ?? ''
-    expect(title).toContain('max-w-[280px]')
-    expect(title).toContain('text-[22px]')
-    expect(title).toContain('[text-wrap:balance]')
-    expect(title).toContain('block whitespace-nowrap">기억나는 친구 이름을')
-    expect(title).toContain('block whitespace-nowrap">남겨보세요')
+  it('replaces the mobile registration title with a readable privacy maintenance notice', () => {
+    const title = SUBMIT.match(/<h1[^>]*>[\s\S]*?<\/h1>/)?.[0] ?? ''
+    expect(title).toContain('신규 개인 등록을 잠시 중단했습니다')
+    expect(title).toContain('break-keep')
     expect(title).not.toMatch(/overflow-hidden|truncate|scale-|transform/)
+    expect(SUBMIT).not.toContain('기억나는 친구 이름을')
   })
 })

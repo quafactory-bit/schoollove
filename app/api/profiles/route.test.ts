@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NextRequest } from 'next/server'
 
+const { registrationPolicyMock } = vi.hoisted(() => ({
+  registrationPolicyMock: vi.fn(() => true),
+}))
+
+vi.mock('@/lib/policy/privacySafety', () => ({
+  isPublicProfileRegistrationEnabled: registrationPolicyMock,
+}))
+
 const { ratelimitLimitMock } = vi.hoisted(() => ({
   ratelimitLimitMock: vi.fn(),
 }))
@@ -109,6 +117,7 @@ function createRequest(options: { body?: unknown; invalidJson?: boolean }): Next
 }
 
 beforeEach(() => {
+  registrationPolicyMock.mockReturnValue(true)
   // 기본값: Upstash가 설정된 상태(configured)로 두어 기존 rate limit 동작을 그대로 검증한다.
   vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://example.upstash.io')
   vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'test-token')
@@ -121,6 +130,46 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs()
   vi.clearAllMocks()
+})
+
+describe('POST /api/profiles — PHASE 10A emergency boundary', () => {
+  it('503과 안정적인 code를 반환하고 모든 후속 처리를 건너뛴다', async () => {
+    registrationPolicyMock.mockReturnValue(false)
+    const request = {
+      get headers(): never {
+        throw new Error('headers must not be read while disabled')
+      },
+      json: vi.fn(() => {
+        throw new Error('body must not be parsed while disabled')
+      }),
+    } as unknown as NextRequest
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({
+      error: '성인 본인 인증 기반 등록으로 개편 중입니다. 현재 신규 등록은 잠시 중단되었습니다.',
+      code: 'PROFILE_REGISTRATION_TEMPORARILY_DISABLED',
+    })
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(ratelimitLimitMock).not.toHaveBeenCalled()
+    expect(verifyCaptchaTokenMock).not.toHaveBeenCalled()
+    expect(getSupabaseAdminMock).not.toHaveBeenCalled()
+    expect(getSchoolProfileCount).not.toHaveBeenCalled()
+    expect(syncSchoolLevel).not.toHaveBeenCalled()
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+
+  it('PUBLIC_PROFILE_REGISTRATION_ENABLED=true도 현재 hard lock을 우회하지 못한다', async () => {
+    registrationPolicyMock.mockReturnValue(false)
+    vi.stubEnv('PUBLIC_PROFILE_REGISTRATION_ENABLED', 'true')
+
+    const response = await POST(createRequest({ body: VALID_BODY }))
+
+    expect(response.status).toBe(503)
+    expect(registrationPolicyMock).toHaveBeenCalledWith('true')
+    expect(getSupabaseAdminMock).not.toHaveBeenCalled()
+  })
 })
 
 describe('POST /api/profiles', () => {

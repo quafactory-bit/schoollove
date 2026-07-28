@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> **PHASE 10A SAFETY OVERRIDE (2026-07-28):** 공개 등록 폼과 다중·제3자 등록을 중단하며 `/api/profiles`는 CAPTCHA·rate limit·DB 접근보다 먼저 503 `PROFILE_REGISTRATION_TEMPORARILY_DISABLED`로 거부한다. PHASE 10B 전에는 어떤 환경변수로도 다시 열지 않는다. 향후 등록은 만 19세 이상 본인 정보와 인증된 소유권만 허용한다.
+
 ## 0. 정의
 
 Register Flow는 입력 폼이 아니다.

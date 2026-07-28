@@ -35,19 +35,9 @@ async function fetchSchoolsBySearchRpc(
 
 export async function searchSchools(query: string): Promise<SchoolSearchResult[]> {
   const schools = await fetchSchoolsBySearchRpc(query, 20)
-
-  const schoolsWithCount = await Promise.all(
-    schools.map(async (school) => {
-      const { count } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_id', school.id)
-        .eq('is_hidden', false)
-      return { ...school, profile_count: count || 0 } as SchoolSearchResult
-    })
-  )
-
-  return schoolsWithCount
+  // PHASE 10A: 학교 검색 결과는 학교 기본 정보만 사용한다. profile_count는 기존
+  // 타입 호환을 위해 0으로 유지하지만 profiles 테이블을 조회하거나 노출 근거로 쓰지 않는다.
+  return schools.map((school) => ({ ...school, profile_count: 0 } as SchoolSearchResult))
 }
 
 // ─── 자동완성 전용 (Phase 4C) ─────────────────────────────────────

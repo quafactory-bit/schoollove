@@ -86,12 +86,15 @@ export default function SchoolSearchResults() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <SearchBar variant="search" onFullSearch={runSearch} />
+      <p className="mt-3 rounded-lg bg-white px-4 py-3 text-xs leading-5 text-gray-500">
+        학교 기본 정보만 검색합니다. 개인 이름 검색과 공개 명단은 성인 본인 인증 기반 구조로 전환하는 동안 제공하지 않습니다.
+      </p>
 
       {status === 'idle' && (
         <div className="mt-16 text-center">
           <p className="text-sm text-gray-500">학교 이름을 검색해보세요.</p>
           <p className="mt-1 text-xs text-gray-400">
-            학교 이름을 입력하면 그 학교의 성장 현황과 등록된 동문을 볼 수 있어요.
+            학교 이름과 지역 등 기본 정보를 확인할 수 있어요.
           </p>
         </div>
       )}
@@ -117,14 +120,8 @@ export default function SchoolSearchResults() {
         <div className="mt-16 text-center">
           <p className="text-sm font-medium text-gray-600">&apos;{query}&apos; 검색 결과가 없어요.</p>
           <p className="mt-1 text-xs text-gray-400">
-            찾는 학교가 없다면 내 공개 인스타그램을 먼저 등록해보세요.
+            학교명과 지역을 다시 확인해 주세요.
           </p>
-          <Link
-            href="/submit"
-            className="mt-4 inline-block rounded-lg bg-schoollove-text px-4 py-2 text-sm text-white"
-          >
-            내 인스타 등록하기
-          </Link>
         </div>
       )}
 
@@ -149,13 +146,7 @@ export default function SchoolSearchResults() {
                     </div>
                   </div>
                 </div>
-                {school.profile_count > 0 ? (
-                  <span className="font-retro rounded-sm bg-schoollove-neon-mint px-2 py-1 text-xs text-schoollove-text">
-                    동문 {school.profile_count}명
-                  </span>
-                ) : (
-                  <span className="text-xs text-gray-300">등록 없음</span>
-                )}
+                <span className="text-xs text-gray-400">학교 정보 보기</span>
               </Link>
             ))}
           </div>

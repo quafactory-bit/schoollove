@@ -1,21 +1,23 @@
-import type { Metadata, Viewport } from 'next';
-import './globals.css';
-import { Providers } from './providers';
-import Footer from '@/components/Footer';
-import TabBar from '@/components/TabBar';
-import { Analytics } from "@vercel/analytics/next";
+import type { Metadata, Viewport } from 'next'
+import './globals.css'
+import { Providers } from './providers'
+import Footer from '@/components/Footer'
+import TabBar from '@/components/TabBar'
+import { Analytics } from '@vercel/analytics/next'
+
 export const viewport: Viewport = {
   themeColor: '#FFFFFF',
   width: 'device-width',
   initialScale: 1,
-};
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.schoollove.kr'),
   title: {
-    default: '스쿨러브아이 - 학교 인스타 동창 찾기',
+    default: '스쿨러브아이 - 학교 정보 찾기',
     template: '%s | 스쿨러브아이',
   },
-  description: '전국 초중고 대학교 동창들의 인스타그램을 한눈에 찾아보세요',
+  description: '학교 기본 정보를 안전하게 검색하고 확인할 수 있는 스쿨러브아이입니다.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -35,14 +37,14 @@ export const metadata: Metadata = {
     icon: '/icons/icon-192.png',
     apple: '/icons/icon-192.png',
   },
-};
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
       <head />
       <body className="antialiased">
         <Providers>
-          {/* 하단 탭바에 콘텐츠가 가리지 않게 여백 확보 */}
           <div className="pb-16">
             {children}
             <Footer />
@@ -52,5 +54,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
       </body>
     </html>
-  );
+  )
 }

@@ -1,117 +1,74 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: '개인정보처리방침',
+  description: '스쿨러브아이 개인정보 안전 전환과 처리 원칙을 안내합니다.',
+}
+
+const CONTACT = 'schoollove.contact@gmail.com'
+
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-12">
-      <h1 className="mb-8 text-2xl font-bold">개인정보처리방침</h1>
-      <div className="space-y-8 text-sm leading-relaxed text-gray-700">
+    <main className="mx-auto max-w-2xl px-5 py-12">
+      <h1 className="text-3xl font-black text-gray-950">개인정보처리방침</h1>
+      <p className="mt-3 text-sm text-gray-500">시행일: 2026년 7월 28일</p>
+
+      <div className="mt-10 space-y-9 text-sm leading-7 text-gray-700">
         <section>
-          <p>
-            스쿨러브아이(이하 &lsquo;서비스&rsquo;)는 학교 기반 공개 인스타그램 검색 플랫폼으로,
-            이용자가 입력한 정보가 누구나 볼 수 있도록 공개되고 외부 검색엔진에 노출될 수 있는
-            특성을 가집니다. 본 방침은 그 처리 방식을 안내합니다.
+          <h2 className="text-lg font-bold text-gray-950">1. 현재 개인정보 안전 전환 상태</h2>
+          <p className="mt-2">
+            스쿨러브아이는 개인의 이름·졸업연도·학년·반·Instagram 정보가 결합된 공개 명단과 사람 검색을 중단했습니다.
+            신규 개인 등록도 중단했으며, 공개 화면에서는 학교명·지역·학교 유형 등 학교 기본 정보만 제공합니다.
           </p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-bold">1. 수집하는 개인정보 항목</h2>
-          <p>
-            서비스는 로그인 없이 이용 가능하며, 등록 시 다음 정보를 수집합니다.
-          </p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>필수: 이름 또는 별명, 학교명, 졸업(예정) 년도, 학년·반(초·중·고) 또는 학과·학번(대학)</li>
-            <li>선택: 인스타그램 ID, 등록 시 남기는 한마디</li>
-            <li>자동 수집: 접속 IP 주소, 서비스 이용 기록(부정 이용 방지 및 통계 목적)</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="mb-2 text-base font-bold">2. 수집 및 이용 목적</h2>
-          <p>학교 기반 인스타그램 검색 서비스 제공, 신고·삭제 요청 처리, 부정 이용 방지, 서비스 개선 및 통계 분석.</p>
-        </section>
-
-        <section>
-          <h2 className="mb-2 text-base font-bold">3. 등록 정보의 공개 및 검색엔진 노출</h2>
-          <p>
-            본 서비스에 등록된 정보(이름/별명, 인스타그램 ID, 학교·학년·반 등)는 로그인 여부와
-            관계없이 <strong>누구나 열람할 수 있도록 공개</strong>됩니다. 또한 공개된 페이지는
-            <strong> 구글, 네이버 등 외부 검색엔진에 색인되어 검색 결과에 표시될 수 있습니다.</strong>
-            이용자는 정보 등록 시 이러한 공개 및 검색엔진 노출에 동의하는 것으로 간주됩니다.
+          <h2 className="text-lg font-bold text-gray-950">2. 기존 정보의 처리</h2>
+          <p className="mt-2">
+            기존에 접수된 개인 정보는 공개 화면에서 제공하지 않으며, 안전 전환·삭제 요청 처리·분쟁 대응·보안 운영에 필요한 범위에서만 제한적으로 보관하고 관리자 권한으로 처리합니다.
+            이 전환은 기존 데이터를 자동 삭제하는 작업이 아니며, 보유 필요성이 사라지거나 적법한 삭제 요청이 확인되면 필요한 절차에 따라 처리합니다.
           </p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-bold">4. 제3자(타인) 정보의 등록</h2>
-          <p>
-            본 서비스는 이용자가 본인 외 타인(동창 등)의 공개 정보를 등록할 수 있는 구조입니다.
-            타인의 정보를 등록하는 경우, 해당 정보가 위 3항과 같이 공개·노출됨에 대한 책임은
-            등록자에게 있습니다. 서비스는 비공개·민감 정보의 무단 등록을 금지하며, 신고 또는
-            삭제 요청이 접수된 정보는 검토 후 비공개 처리하거나 삭제합니다.
+          <h2 className="text-lg font-bold text-gray-950">3. 신규 등록 재개 조건</h2>
+          <p className="mt-2">
+            신규 등록은 만 19세 이상 이용자, 본인 정보, 인증된 소유권, 상대방 승인 전 비공개를 기본으로 하는 구조가 준비된 뒤 별도 고지와 함께 재개합니다.
+            타인의 이름이나 계정을 대신 등록하는 방식은 허용하지 않습니다.
           </p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-bold">5. 만 14세 미만 아동의 개인정보</h2>
-          <p>
-            본 서비스는 만 14세 미만 아동을 대상으로 하지 않으며, 만 14세 미만 아동의 정보는
-            법정대리인의 동의 없이 등록할 수 없습니다. 만 14세 미만 아동 본인 또는 그 정보가
-            동의 없이 등록된 사실을 확인한 경우, 아래 연락처로 요청하시면 지체 없이 삭제합니다.
+          <h2 className="text-lg font-bold text-gray-950">4. 자동 수집 및 이용 목적</h2>
+          <p className="mt-2">
+            서비스 보안, 장애 대응, 부정 이용 방지 및 통계 분석을 위해 접속·요청 관련 기술 정보가 처리될 수 있습니다.
+            Web Analytics는 페이지 방문을 집계하며 개인 이름, Instagram ID, 메시지, 검색어 원문을 커스텀 분석 이벤트로 전송하지 않습니다.
           </p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-bold">6. 보유 및 이용 기간</h2>
-          <p>
-            등록된 정보는 삭제 요청 시 또는 보관 필요가 사라진 때 삭제합니다. 로그인·회원 제도가
-            없으므로 별도의 탈퇴 절차는 없으며, 삭제 요청을 통해 정보를 제거할 수 있습니다.
-            다만 관계 법령에 따라 보존이 필요한 경우 해당 기간 동안 보존 후 삭제합니다.
+          <h2 className="text-lg font-bold text-gray-950">5. 처리 위탁과 국외 처리 가능성</h2>
+          <p className="mt-2">
+            서비스 운영을 위해 Supabase(데이터베이스), Vercel(호스팅·분석), Upstash(요청 제한·캐시) 등 외부 서비스가 사용될 수 있으며, 제공 사업자의 인프라 위치에 따라 국외에서 처리될 수 있습니다.
           </p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-bold">7. 삭제 및 정정 요청</h2>
-          <p>
-            등록된 정보의 삭제·정정을 원하실 경우 각 페이지의 신고/수정·삭제 요청 기능을
-            이용하거나 아래 연락처로 요청해 주세요. 관리자 확인 후 신속히 처리하며, 처리 완료
-            시 해당 페이지는 비공개 처리됩니다. 외부 검색엔진의 캐시는 검색엔진의 정책에 따라
-            반영에 일정 시간이 소요될 수 있으며, 필요한 경우 검색엔진에 색인 삭제를 요청합니다.
+          <h2 className="text-lg font-bold text-gray-950">6. 열람·삭제·처리정지 및 신고</h2>
+          <p className="mt-2">
+            본인 정보의 열람, 삭제, 정정, 처리정지 또는 개인정보 침해 신고는 {CONTACT}으로 요청할 수 있습니다.
+            요청자의 권리와 타인의 개인정보를 보호하기 위해 본인 확인과 대상 정보 확인을 요청할 수 있습니다.
           </p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-bold">8. 처리의 위탁 및 국외 이전</h2>
-          <p>
-            서비스 운영을 위해 데이터 저장·호스팅을 외부 사업자에 위탁하며, 이 과정에서 개인정보가
-            국외 서버에 저장될 수 있습니다.
-          </p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Supabase (데이터베이스 저장)</li>
-            <li>Vercel (웹 호스팅)</li>
-            <li>Upstash (요청 제한·캐시)</li>
-          </ul>
+          <h2 className="text-lg font-bold text-gray-950">7. 문의</h2>
+          <p className="mt-2">개인정보 관련 문의 및 긴급 삭제 요청: {CONTACT}</p>
         </section>
 
-        <section>
-          <h2 className="mb-2 text-base font-bold">9. 정보주체의 권리</h2>
-          <p>
-            이용자는 자신의 개인정보에 대해 열람, 정정, 삭제, 처리정지를 요청할 수 있으며, 아래
-            연락처를 통해 행사할 수 있습니다.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="mb-2 text-base font-bold">10. 개인정보 보호책임자</h2>
-          <p>
-            성명: [스쿨러브아이]
-            <br />
-            연락처: schoollove.contact@gmail.com
-          </p>
-        </section>
-
-        <section>
-          <h2 className="mb-2 text-base font-bold">11. 문의</h2>
-          <p>schoollove.contact@gmail.com</p>
-        </section>
-
-        <p className="mt-8 text-xs text-gray-400">시행일: 2026년 5월 22일</p>
+        <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-950">
+          이 문서는 현재 서비스 동작을 설명하기 위한 운영 고지이며, 관계 법령에 따른 최종 법률 검토를 대체하지 않습니다.
+        </p>
       </div>
     </main>
   )

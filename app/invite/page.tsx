@@ -1,104 +1,24 @@
-'use client'
-
-import { useState } from 'react'
+import type { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
-import { IMG } from '@/lib/images'
+import PrivacyTransitionNotice from '@/components/PrivacyTransitionNotice'
+import { PRIVATE_ROUTE_ROBOTS } from '@/lib/policy/privacySafety'
 
-const SITE_URL = 'https://www.schoollove.kr'
-const SHARE_TEXT = '학교 동창들 인스타 모으는 곳 - 스쿨러브아이. 너도 와서 이름 남겨봐!'
+export const metadata: Metadata = {
+  title: '공유 기능 중단 안내',
+  description: '개인정보 안전 전환 중에는 개인 등록을 유도하는 초대 기능을 제공하지 않습니다.',
+  robots: PRIVATE_ROUTE_ROBOTS,
+}
 
 export default function InvitePage() {
-  const [copied, setCopied] = useState(false)
-
-  // 공유 링크 (추후 초대 코드 붙이려면 여기만 바꾸면 됨)
-  const inviteUrl = SITE_URL
-
-  function copyLink() {
-    navigator.clipboard
-      ?.writeText(inviteUrl)
-      .then(() => {
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-      })
-      .catch(() => {})
-  }
-
-  // 카카오/일반 공유: navigator.share 있으면 시트 호출, 없으면 링크 복사로 폴백
-  function shareNative() {
-    if (typeof navigator !== 'undefined' && (navigator as Navigator).share) {
-      ;(navigator as Navigator)
-        .share({ title: '스쿨러브아이', text: SHARE_TEXT, url: inviteUrl })
-        .catch(() => {})
-    } else {
-      copyLink()
-    }
-  }
-
   return (
-    <main className="mx-auto w-full max-w-md px-5 pb-28 pt-10">
-      <div className="mx-auto mb-6 w-full max-w-xs">
-        <Image src={IMG.completeSchool} alt="" width={1536} height={1024} className="h-auto w-full" />
-      </div>
-
-      <h1 className="text-center text-2xl font-bold leading-tight text-neutral-900">
-        함께 모일수록
-        <br />
-        연결될 확률이 높아져요
-      </h1>
-      <p className="mt-3 text-center text-sm text-neutral-500">
-        친구에게 스쿨러브아이를 공유해보세요.
-        <br />
-        한 명이 오면, 그 학교가 살아나요.
+    <main className="mx-auto w-full max-w-xl px-5 py-12">
+      <PrivacyTransitionNotice title="초대 기능을 잠시 중단했습니다" />
+      <p className="mt-5 text-sm leading-6 text-gray-600">
+        개인정보 안전 전환이 완료될 때까지 개인 등록을 유도하는 초대 링크와 공유 문구를 제공하지 않습니다.
       </p>
-
-      {/* 초대 링크 */}
-      <section className="mt-9">
-        <label className="mb-2 block text-sm font-semibold text-neutral-800">초대 링크</label>
-        <div className="flex gap-2">
-          <input
-            value={inviteUrl}
-            readOnly
-            className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-sm text-neutral-600 outline-none"
-          />
-          <button
-            onClick={copyLink}
-            className="shrink-0 rounded-xl bg-blue-600 px-5 py-3.5 text-sm font-semibold text-white transition active:scale-95"
-          >
-            {copied ? '복사됨' : '복사'}
-          </button>
-        </div>
-      </section>
-
-      {/* 공유 버튼 */}
-      <section className="mt-8 space-y-2.5">
-        <button
-          onClick={shareNative}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] px-5 py-4 text-sm font-semibold text-[#3A1D1D] transition active:scale-95"
-        >
-          카카오톡으로 공유하기
-        </button>
-        <button
-          onClick={shareNative}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-5 py-4 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 active:scale-95"
-        >
-          다른 앱으로 공유하기
-        </button>
-      </section>
-
-      <div className="mt-8 rounded-xl bg-blue-50 px-5 py-4 text-center">
-        <p className="text-sm text-neutral-600">
-          우리 학교 사람들,
-          <br />
-          <b className="text-blue-600">같이 모으고 다시 연결돼요.</b>
-        </p>
-      </div>
-
-      <p className="mt-6 text-center">
-        <Link href="/submit" className="text-sm font-medium text-neutral-500 underline underline-offset-4 hover:text-blue-600">
-          먼저 이름부터 남기러 가기
-        </Link>
-      </p>
+      <Link href="/search" className="mt-7 inline-flex min-h-11 items-center rounded-xl bg-gray-900 px-5 font-semibold text-white">
+        학교 기본 정보 검색하기
+      </Link>
     </main>
   )
 }

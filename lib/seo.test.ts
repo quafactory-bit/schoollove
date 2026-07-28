@@ -18,37 +18,24 @@ const school: School = {
   slug: 'daechi-high',
 } as School
 
-describe('buildSchoolPath/buildYearPath/buildClassPath — PHASE 8 canonical·sitemap 공용 경로 빌더', () => {
-  it('School 경로', () => {
+describe('safe School/Year/Class paths and metadata', () => {
+  it('keeps the existing route hierarchy', () => {
     expect(buildSchoolPath('daechi-high')).toBe('/school/daechi-high')
-  })
-  it('Year 경로', () => {
     expect(buildYearPath('daechi-high', 2020)).toBe('/school/daechi-high/2020')
-  })
-  it('Class 경로', () => {
     expect(buildClassPath('daechi-high', 2020, 3, 2)).toBe('/school/daechi-high/2020/3-2')
   })
-})
 
-describe('getSchoolPageMetadata/getYearPageMetadata/getClassPageMetadata — canonical URL이 path builder와 정확히 일치한다', () => {
-  // SITE_URL(도메인)은 환경변수에 따라 달라질 수 있으므로 도메인을 하드코딩하지 않고,
-  // canonical이 항상 "도메인 + buildXxxPath(...)" 형태로 끝나는지만 확인한다 — 두 URL
-  // 생성 경로가 실제로 같은 빌더를 거쳐 절대 드리프트하지 않음을 증명하는 것이 목적.
-  it('School canonical', () => {
-    const meta = getSchoolPageMetadata(school)
-    expect(meta.alternates?.canonical).toContain(buildSchoolPath(school.slug))
+  it('keeps School basic information indexable without personal discovery copy', () => {
+    const metadata = getSchoolPageMetadata(school)
+    expect(metadata.title).toBe('대치고등학교 학교 정보')
+    expect(metadata.description).not.toMatch(/Instagram|인스타|동창/)
+    expect(metadata.alternates?.canonical).toContain(buildSchoolPath(school.slug))
   })
-  it('Year canonical', () => {
-    const meta = getYearPageMetadata(school, 2020)
-    expect(meta.alternates?.canonical).toContain(buildYearPath(school.slug, 2020))
-  })
-  it('Class canonical', () => {
-    const meta = getClassPageMetadata(school, 2020, 3, 2)
-    expect(meta.alternates?.canonical).toContain(buildClassPath(school.slug, 2020, 3, 2))
-  })
-  it('title/description은 무변경 유지된다(회귀 없음)', () => {
-    expect(getSchoolPageMetadata(school).title).toBe('대치고등학교 인스타 모음')
-    expect(getYearPageMetadata(school, 2020).title).toBe('대치고등학교 2020년 졸업 인스타 모음')
-    expect(getClassPageMetadata(school, 2020, 3, 2).title).toBe('대치고등학교 2020년 3학년 2반 인스타 모음')
+
+  it('marks Year and Class destinations private and noarchive', () => {
+    for (const metadata of [getYearPageMetadata(school, 2020), getClassPageMetadata(school, 2020, 3, 2)]) {
+      expect(metadata.title).toBe('대치고등학교 개인 명단 비공개 안내')
+      expect(metadata.robots).toMatchObject({ index: false, follow: false, noarchive: true })
+    }
   })
 })

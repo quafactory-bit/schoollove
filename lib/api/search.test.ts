@@ -118,12 +118,12 @@ describe('searchSchoolsForAutocomplete — Phase 4C 자동완성 전용 조회',
   })
 })
 
-describe('searchSchools — 기존 전체 검색 계약 회귀 없음 확인 (테스트 항목 22)', () => {
-  it('여전히 search_schools_v2를 lim=20으로 호출하고 profile_count를 포함한다', async () => {
+describe('searchSchools — PHASE 10A 학교 전용 검색', () => {
+  it('search_schools_v2를 lim=20으로 호출하지만 profiles 테이블은 조회하지 않는다', async () => {
     const rows = [
       { id: 's1', school_name: '대치고등학교', school_type: 'high', sido: '서울', sigungu: '강남구', slug: 'daechi-high', address: '', school_code: '', created_at: '' },
     ]
-    const { supabase, rpc } = createMockSupabase({ data: rows, error: null })
+    const { supabase, rpc, from } = createMockSupabase({ data: rows, error: null })
     vi.doMock('@/lib/supabase', () => ({ supabase }))
     const { searchSchools } = await import('./search')
 
@@ -131,6 +131,7 @@ describe('searchSchools — 기존 전체 검색 계약 회귀 없음 확인 (�
 
     expect(rpc).toHaveBeenCalledWith('search_schools_v2', { q: '대치', lim: 20 })
     expect(result[0]).toMatchObject({ id: 's1', school_name: '대치고등학교', profile_count: 0 })
+    expect(from).not.toHaveBeenCalled()
   })
 
   it('2글자 미만 검색어는 여전히 빈 배열을 반환한다', async () => {
