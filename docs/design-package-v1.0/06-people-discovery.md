@@ -4,6 +4,8 @@ Status: **FROZEN**
 
 > **PHASE 10A SAFETY OVERRIDE (2026-07-28):** 공개 Year/Class/Profile 사람 발견 흐름, 이름 검색, 개인 카드와 Instagram 링크를 전면 중단한다. 해당 URL은 개인 행을 조회·렌더링하지 않는 비공개 안내와 noindex/nofollow/noarchive만 제공한다. 사람 발견은 PHASE 10B의 만 19세 이상 본인 인증·소유권·상호 승인 구조 이후 재정의한다.
 
+> **PHASE 10C APPROVED SUPERSESSION (2026-07-28):** 사람 발견은 공개 명단 대신 로그인한 성인이 입력한 학교·졸업연도·정확한 이름의 단일 일치 상태만 반환한다. 상대 user ID와 개인정보는 opaque token 뒤에 숨기며, 최초 안부 1회와 7일 후 동일 안부 재알림 1회, 수락 이후의 비공개 연결만 허용한다. 세부 계약은 `docs/decisions/2026-07-28-safe-connection-request-messaging.md`가 우선한다.
+
 ## 0. 이 문서의 역할
 
 이 문서는 사용자 여정의 뒷단, 즉 **사람을 발견하는 세 화면**(Year Hub · Class Hub · Profile)을 하나의 흐름으로 정의한다.

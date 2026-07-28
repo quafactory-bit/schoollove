@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useSchoolAutocomplete } from '@/lib/hooks/useSchoolAutocomplete'
 import type { AccountState } from '@/lib/account'
 
@@ -189,6 +190,19 @@ export default function AccountClient({ email, state }: Props) {
           {state.deletionRequested ? '탈퇴 요청 접수됨' : '계정 탈퇴 요청'}
         </button>
       </section>
+
+      {state.profile && state.adultEligible && state.consentsComplete && (
+        <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5">
+          <h2 className="text-lg font-bold text-gray-950">안전한 사람 연결</h2>
+          <p className="mt-2 text-sm leading-6 text-gray-600">정확한 학교·졸업연도·이름이 일치할 때만 최초 안부를 한 번 보낼 수 있습니다. 공개 명단은 제공하지 않습니다.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/people/search" className="rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white">정확한 사람 찾기</Link>
+            <Link href="/connections" className="rounded-xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900">내 연결과 안부</Link>
+            <Link href="/notifications" className="rounded-xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900">내 알림</Link>
+            <Link href="/account/safety" className="rounded-xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900">내 안전 설정</Link>
+          </div>
+        </section>
+      )}
 
       {status && <p role="status" className="sticky bottom-20 mt-5 rounded-xl bg-gray-950 px-4 py-3 text-sm text-white shadow-lg">{status}</p>}
     </main>

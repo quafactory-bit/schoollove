@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 
 const ProfileSchema = z.object({
-  display_name: z.string().trim().min(1).max(50),
+  display_name: z.string().transform((value) => value.normalize('NFKC').trim()).pipe(z.string().min(1).max(50)),
   instagram_handle: z.string().trim().regex(/^[A-Za-z0-9._]{1,30}$/).nullable().optional(),
   profile_photo_url: z.string().trim().url().max(500).nullable().optional(),
   introduction: z.string().trim().max(300).nullable().optional(),
