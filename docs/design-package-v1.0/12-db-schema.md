@@ -190,3 +190,6 @@ Home Feed는 기존 이벤트 원천(`profiles`, `traces`, Level 갱신)을 조�
 - DB trigger 안에 Level 공식 중복 구현
 - DB에서 SEO 상태 계산
 - 3개 외 P1 컬럼 임의 추가
+# PHASE 10D supersession note (2026-07-28)
+
+프로모션 private schema의 기준은 `20260728210000_today_instagram_advertising_mvp.sql`이다. 무료 editorial과 paid sponsored를 분리하며 원시 IP·개인별 방문자 목록을 저장하지 않는다.

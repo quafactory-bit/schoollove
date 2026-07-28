@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { Search, ShieldCheck } from 'lucide-react'
+import { getPublicPromotion } from '@/lib/promotions'
+import TodayInstagramCard from '@/components/TodayInstagramCard'
 
 export const revalidate = 60
 
-export default function HomePage() {
+export default async function HomePage() {
+  const promotion = await getPublicPromotion({ placement: 'homepage_today' })
   return (
     <main className="mx-auto w-full max-w-[1180px] overflow-x-clip px-5 pb-16 sm:px-6 lg:px-8">
       <header className="pt-7 lg:pt-12">
@@ -47,6 +50,8 @@ export default function HomePage() {
           </div>
         ))}
       </section>
+
+      {promotion ? <section className="mt-10"><TodayInstagramCard promotion={promotion} /></section> : null}
 
       <section className="mt-10 border border-schoollove-border bg-schoollove-surface-subtle p-6">
         <h2 className="text-lg font-semibold text-schoollove-text">기존 정보의 삭제·비공개가 필요하신가요?</h2>

@@ -2,6 +2,8 @@
 
 ## 2026-07-28
 
+- PHASE 10D 로컬 초안: 무료 ‘오늘의 발견’과 유료 ‘스폰서드’를 분리하고, 만 19세 이상 본인 Instagram 소유 확인, 운영자 수동 검수·결제 확인·KST 슬롯 예약, 공개 광고 표시, privacy-safe 집계와 긴급 신고 중단 경계를 구현했다. Production migration·merge·배포는 별도 승인 전까지 금지한다.
+
 - PHASE 10C-R 감사 보강: hashed opaque token, 양방향 pair 중복 방지, terminal/message/participant DB trigger, 탈퇴 FK 정리, zero-width 연락처 우회 차단, 중복 신고 제한, 격리 PostgreSQL migration·RPC 실행 검증.
 - PHASE 10C Production smoke hotfix: 로그인·계정·사람 찾기·연결·알림 private route에 noarchive metadata를 명시적으로 추가.
 - PHASE 10C 안전 연결 로컬 구현 승인: 학교·졸업연도·정확한 이름 exact match, opaque match token, 최초 안부 1회, 7일 후 동일 안부 재알림 1회, 수락·거절·아닌 사람·차단·신고, 수락 후 기본 텍스트 대화, 상대별 Instagram 공개 승인.

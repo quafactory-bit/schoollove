@@ -7,6 +7,8 @@ import { getSchoolPageMetadata } from '@/lib/seo'
 import { getPublicRouteRobots } from '@/lib/policy/privacySafety'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import PrivacyTransitionNotice from '@/components/PrivacyTransitionNotice'
+import TodayInstagramCard from '@/components/TodayInstagramCard'
+import { getPublicPromotion } from '@/lib/promotions'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -27,6 +29,7 @@ export default async function SchoolPage({ params }: PageProps) {
   const { slug } = await params
   const school = await getSchoolBySlug(slug)
   if (!school) notFound()
+  const promotion = await getPublicPromotion({ placement: 'school_page', schoolId: school.id })
 
   return (
     <main className="page-container space-y-5">
@@ -48,6 +51,7 @@ export default async function SchoolPage({ params }: PageProps) {
       </section>
 
       <PrivacyTransitionNotice schoolName={school.school_name} />
+      {promotion ? <TodayInstagramCard promotion={promotion} /> : null}
     </main>
   )
 }
