@@ -6,6 +6,8 @@ import { checkPromotionRateLimit, getPromotionRequestIp } from '@/lib/security/p
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  const { data: adult } = await auth.client.rpc('has_current_adult_access', { target_user_id: auth.user.id })
+  if (adult !== true) return NextResponse.json({ error: '만 19세 이상 확인과 필수 동의가 필요합니다.' }, { status: 403 })
   const rate = await checkPromotionRateLimit({ ip: getPromotionRequestIp(request), userId: auth.user.id, action: 'verification' })
   if (!rate.allowed) return NextResponse.json({ error: rate.status === 503 ? '안전 설정을 확인 중입니다.' : '요청 횟수를 초과했습니다.' }, { status: rate.status, headers: rate.retryAfter ? { 'Retry-After': String(rate.retryAfter) } : undefined })
   const { id } = await context.params

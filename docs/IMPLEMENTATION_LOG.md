@@ -1703,4 +1703,11 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - 측정은 원시 IP·사용자 ID를 저장하지 않고 일자별 HMAC session hash로 중복을 제한한다. 광고주는 노출·클릭 집계만 보며 raw event row와 개인별 방문 목록은 볼 수 없다.
 - PHASE 10D migration은 Production 미적용이며 PR은 Draft 상태까지만 진행한다. 자동 결제·영수증·세금계산서·쿠폰·반복 캠페인·Meta API는 PHASE 10E다.
 - 격리 Supabase-compatible PostgreSQL에서 PHASE 10A→10B→10C→10D를 순차 적용하고 소유 확인·수정·취소·검수·수동 결제·KST 슬롯 충돌·활성화·중복 제거 지표·긴급 중단·계정 삭제 cascade·RLS/grant를 통과했다.
-- 최종 검증: TypeScript 통과, 87 files / 909 tests 통과, Production build 43 pages 통과, `git diff --check` 통과. 로컬 비로그인 `/promote`→`/login` 전환, private robots, API 401, 360/390/412 폭을 확인했다.
+
+## 2026-07-28 — PHASE 10D-R 최종 감사 보강
+
+- 광고 소재 수정 API도 최초 신청과 동일한 이미지 호스트 allowlist를 적용해 API와 DB 검증 계약을 일치시켰다.
+- Instagram 소유권 확인 코드 재발급 때도 현재 만 19세 이상·필수 동의 상태를 다시 검증하도록 보강했다.
+- 관련 테스트 4 files / 18 tests, 전체 87 files / 910 tests, TypeScript, Production build(43 pages), `git diff --check`를 통과했다.
+- Production과 분리된 일회성 PostgreSQL에서 PHASE 10A→10B→10C→10D 순차 migration과 합성 사용자 전체 수명주기를 다시 통과했고 컨테이너를 제거했다.
+- 최종 검증: TypeScript 통과, 87 files / 910 tests 통과, Production build 43 pages 통과, `git diff --check` 통과. 로컬 비로그인 `/promote`→`/login` 전환, private robots, API 401, 360/390/412 폭을 확인했다.

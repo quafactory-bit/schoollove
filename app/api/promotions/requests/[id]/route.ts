@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
-import { isPromotionTextSafe, isSafeHttpsUrl, normalizePromotionText } from '@/lib/policy/promotionSafety'
+import { isPromotionTextSafe, isSafeHttpsUrl, isSafePromotionImageUrl, normalizePromotionText } from '@/lib/policy/promotionSafety'
 import { cancelPromotionRequest, revisePromotionRequest } from '@/lib/promotions'
 import { checkPromotionRateLimit, getPromotionRequestIp } from '@/lib/security/promotionRateLimit'
 
 const RevisionSchema = z.object({
   title: z.string().transform(normalizePromotionText).pipe(z.string().min(1).max(80).refine(isPromotionTextSafe)),
   body: z.string().transform(normalizePromotionText).pipe(z.string().min(1).max(300).refine(isPromotionTextSafe)),
-  image_url: z.string().max(500).refine(isSafeHttpsUrl), landing_url: z.string().max(500).refine(isSafeHttpsUrl),
+  image_url: z.string().max(500).refine(isSafePromotionImageUrl), landing_url: z.string().max(500).refine(isSafeHttpsUrl),
 }).strict()
 
 async function context(request: NextRequest) {

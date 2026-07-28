@@ -5,7 +5,7 @@ const route = (name: string) => readFileSync(new URL(name, import.meta.url), 'ut
 
 describe('PHASE 10D promotion API boundaries', () => {
   it('requires a verified user and adult access for account and request creation', () => {
-    for (const source of [route('./accounts/route.ts'), route('./requests/route.ts')]) {
+    for (const source of [route('./accounts/route.ts'), route('./accounts/[id]/verification/route.ts'), route('./requests/route.ts')]) {
       expect(source).toContain('getAuthenticatedRequestContext')
       expect(source).toContain("status: 401")
       expect(source).toContain("has_current_adult_access")
@@ -37,5 +37,11 @@ describe('PHASE 10D promotion API boundaries', () => {
     expect(source).toContain('isSafePromotionImageUrl')
     expect(source).toContain('5_000_000')
     expect(source).toContain("X-Content-Type-Options")
+  })
+
+  it('uses the same image host allowlist for revisions as for new requests', () => {
+    const source = route('./requests/[id]/route.ts')
+    expect(source).toContain('isSafePromotionImageUrl')
+    expect(source).toContain('refine(isSafePromotionImageUrl)')
   })
 })
