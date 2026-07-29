@@ -3,9 +3,9 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 
 type View='setup'|'users'|'schools'|'advertisers'|'tasks'|'readiness'|'report'
-type State={programs:any[];drafts:any[];members:any[];memberSummary:Record<string,{count:number|null;masked:boolean;label:string}>;feedback:any[];tasks:any[];campaigns:any[];aggregates:any[];readiness:any[];advertisers:{requests:any[];orders:any[]};incidents:any[];privacy:Record<string,unknown>}
+type State={programs:any[];drafts:any[];snapshots:any[];members:any[];memberSummary:Record<string,{count:number|null;masked:boolean;label:string}>;feedback:any[];tasks:any[];campaigns:any[];aggregates:any[];readiness:any[];advertisers:{requests:any[];orders:any[]};incidents:any[];privacy:Record<string,unknown>}
 type Synthetic={mode:string;users:Array<{ref:string;status:string;stage:string}>;lifecycle:string[];counts:{profiles:number;payments:number;publicLaunches:number}}
-const emptyState:State={programs:[],drafts:[],members:[],memberSummary:{},feedback:[],tasks:[],campaigns:[],aggregates:[],readiness:[],advertisers:{requests:[],orders:[]},incidents:[],privacy:{minimumAggregate:10}}
+const emptyState:State={programs:[],drafts:[],snapshots:[],members:[],memberSummary:{},feedback:[],tasks:[],campaigns:[],aggregates:[],readiness:[],advertisers:{requests:[],orders:[]},incidents:[],privacy:{minimumAggregate:10}}
 const nav:[View,string][]=[['setup','시작 마법사'],['users','베타 사용자'],['schools','첫 학교'],['advertisers','첫 광고주'],['tasks','피드백·작업 큐'],['readiness','중단·준비도'],['report','일일 보고']]
 const input='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm'
 const card='rounded-2xl border border-gray-200 bg-white p-5 shadow-sm'
@@ -40,6 +40,7 @@ function SetupView({state,mutate}:{state:State;mutate:(payload:Record<string,unk
   const draft=state.drafts[0]
   async function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();const form=new FormData(event.currentTarget);const features=form.getAll('features').map(String);await mutate({action:'save_setup',setup:{id:draft?.id??null,draftKey:String(form.get('draftKey')),name:String(form.get('name')),startsAt:form.get('startsAt')?new Date(String(form.get('startsAt'))).toISOString():null,endsAt:form.get('endsAt')?new Date(String(form.get('endsAt'))).toISOString():null,maxUsers:Number(form.get('maxUsers')),targetScope:String(form.get('targetScope')),enabledFeatures:features,invitePolicy:{maxUsesPerInvite:Number(form.get('maxUsesPerInvite')),expiresInDays:Number(form.get('expiresInDays'))},approvalWaitlistEnabled:true,stopConditions:{PRIVACY_EXPOSURE:true,RLS_FAILURE:true,HEALTH_FAILURE:true},operatorMemo:String(form.get('memo')??''),status:String(form.get('status'))}})}
   return <section className={card}><h2 className="text-xl font-black">제한 베타 시작 마법사</h2><p className="mt-2 text-sm text-gray-600">미리보기와 위험 경고를 확인한 뒤 검증합니다. 활성화해도 프로그램은 paused로 생성되며 초대나 공개 기능은 켜지지 않습니다.</p><a className="mt-3 inline-block rounded-lg border border-blue-300 px-3 py-2 text-sm text-blue-800" href="/admin/beta/setup?synthetic=1">TEST 합성 lifecycle 미리보기</a>
+    {state.snapshots.length?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm"><strong>활성화 계약 snapshot {state.snapshots.length}개</strong><p className="mt-1">정원·대상·허용 기능·초대 정책·승인 대기·중단 조건은 활성화 시 불변 snapshot으로 보존됩니다.</p></div>:null}
     <form onSubmit={event=>void submit(event)} className="mt-5 grid gap-4 md:grid-cols-2">
       <label>프로그램 키<input className={input} name="draftKey" defaultValue={draft?.draft_key??'controlled_beta_01'} required pattern="[a-z0-9][a-z0-9_-]{2,39}"/></label>
       <label>프로그램 이름<input className={input} name="name" defaultValue={draft?.name??'성인 제한 베타'} required/></label>

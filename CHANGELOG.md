@@ -2,6 +2,8 @@
 
 ## 2026-07-29 — PHASE 10I controlled beta operations
 
+- Preserved every validated setup as an immutable program snapshot and enforced capacity, invite, feature, and mandatory-stop contracts at database boundaries.
+- Made pre-activation draft-key changes persistent with explicit draft/program collision errors and idempotent activation retries.
 - Added operator-only setup, member, school, advertiser, feedback, task, daily-report, emergency-stop, and readiness surfaces.
 - Added seven RLS/FORCE RLS operation tables and atomic service-role audit RPCs.
 - Added active beta-member feedback with personal/external identifier filtering.

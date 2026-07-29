@@ -2,7 +2,7 @@
 DO $$
 DECLARE table_name text;
 BEGIN
-  FOREACH table_name IN ARRAY ARRAY['beta_setup_drafts','beta_operator_notes','beta_feedback','beta_operation_tasks','beta_campaigns','beta_campaign_aggregates','beta_readiness_snapshots'] LOOP
+  FOREACH table_name IN ARRAY ARRAY['beta_setup_drafts','beta_program_setup_snapshots','beta_operator_notes','beta_feedback','beta_operation_tasks','beta_campaigns','beta_campaign_aggregates','beta_readiness_snapshots'] LOOP
     IF NOT EXISTS(SELECT 1 FROM pg_class WHERE oid=('public.'||table_name)::regclass AND relrowsecurity AND relforcerowsecurity) THEN RAISE EXCEPTION 'RLS/FORCE missing on %',table_name; END IF;
     IF has_table_privilege('anon','public.'||table_name,'SELECT,INSERT,UPDATE,DELETE') THEN RAISE EXCEPTION 'anon privilege leak on %',table_name; END IF;
     IF NOT has_table_privilege('service_role','public.'||table_name,'SELECT,INSERT,UPDATE,DELETE') THEN RAISE EXCEPTION 'service privilege missing on %',table_name; END IF;
@@ -10,6 +10,7 @@ BEGIN
   END LOOP;
   IF NOT has_table_privilege('authenticated','public.beta_feedback','SELECT,INSERT') OR has_table_privilege('authenticated','public.beta_feedback','UPDATE,DELETE') THEN RAISE EXCEPTION 'feedback grant boundary invalid'; END IF;
   IF has_function_privilege('authenticated','public.admin_controlled_beta_stop(text,text,text)','EXECUTE') OR NOT has_function_privilege('service_role','public.admin_controlled_beta_stop(text,text,text)','EXECUTE') THEN RAISE EXCEPTION 'admin stop RPC boundary invalid'; END IF;
+  IF has_function_privilege('authenticated','public.admin_save_beta_setup(uuid,text,text,timestamptz,timestamptz,integer,text,text[],jsonb,boolean,jsonb,text,text,text)','EXECUTE') OR NOT has_function_privilege('service_role','public.admin_save_beta_setup(uuid,text,text,timestamptz,timestamptz,integer,text,text[],jsonb,boolean,jsonb,text,text,text)','EXECUTE') THEN RAISE EXCEPTION 'admin setup RPC boundary invalid'; END IF;
   IF has_function_privilege('anon','public.has_active_beta_program_membership(uuid,uuid)','EXECUTE') OR NOT has_function_privilege('authenticated','public.has_active_beta_program_membership(uuid,uuid)','EXECUTE') THEN RAISE EXCEPTION 'membership helper boundary invalid'; END IF;
 END $$;
 
@@ -17,6 +18,17 @@ BEGIN;
 INSERT INTO auth.users(id,email,created_at,updated_at) VALUES
 ('31000000-0000-4000-8000-000000000001','rls-owner@example.invalid',now(),now()),
 ('31000000-0000-4000-8000-000000000002','rls-other@example.invalid',now(),now());
+SET LOCAL ROLE service_role;
+SELECT public.admin_save_beta_setup(
+  NULL,'service_role_contract_10i','TEST service role contract',NULL,NULL,5,'adult graduates',
+  ARRAY['account_registration'],jsonb_build_object('maxUsesPerInvite',1,'expiresInDays',7),true,
+  jsonb_build_object('PRIVACY_EXPOSURE',true,'RLS_FAILURE',true,'HEALTH_FAILURE',true),
+  'TEST service role RPC','draft','test:service-role'
+);
+RESET ROLE;
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM public.beta_setup_drafts WHERE draft_key='service_role_contract_10i') THEN RAISE EXCEPTION 'service role setup RPC failed'; END IF;
+END $$;
 INSERT INTO public.beta_members(program_id,user_id,status,reviewed_at,reviewed_by,reason_code)
 SELECT id,'31000000-0000-4000-8000-000000000001','active',now(),'test:admin','SYNTHETIC_APPROVAL' FROM public.beta_programs WHERE program_key='limited_beta_2026';
 SELECT set_config('test.feedback_program_id',id::text,false) FROM public.beta_programs WHERE program_key='limited_beta_2026';

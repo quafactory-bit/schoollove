@@ -13,9 +13,10 @@ const rows = <T>(result:{data:T[]|null,error:unknown}) => { if(result.error) thr
 
 export async function getControlledBetaState() {
   const admin=getSupabaseAdmin()
-  const [programsResult,draftsResult,membersResult,progressResult,feedbackResult,tasksResult,campaignsResult,aggregatesResult,readinessResult,requestsResult,ordersResult,incidentsResult] = await Promise.all([
+  const [programsResult,draftsResult,snapshotsResult,membersResult,progressResult,feedbackResult,tasksResult,campaignsResult,aggregatesResult,readinessResult,requestsResult,ordersResult,incidentsResult] = await Promise.all([
     admin.from('beta_programs').select('id,program_key,name,status,requires_admin_approval,starts_at,ends_at,emergency_disabled_at,updated_at').order('created_at'),
     admin.from('beta_setup_drafts').select('id,draft_key,name,starts_at,ends_at,max_users,target_scope,enabled_features,invite_policy,approval_waitlist_enabled,stop_conditions,operator_memo,status,updated_at').order('updated_at',{ascending:false}).limit(20),
+    admin.from('beta_program_setup_snapshots').select('id,program_id,source_draft_id,max_users,target_scope,enabled_features,invite_policy,approval_waitlist_enabled,stop_conditions,created_at').order('created_at',{ascending:false}).limit(20),
     admin.from('beta_members').select('id,program_id,user_id,status,enrolled_at,reviewed_at,reason_code,updated_at').order('enrolled_at',{ascending:false}).limit(200),
     admin.from('beta_onboarding_progress').select('program_id,user_id,stage_key,source_channel,last_synced_at').order('last_synced_at',{ascending:false}).limit(200),
     admin.from('beta_feedback').select('id,program_id,kind,description,page_path,coarse_browser,coarse_device,safe_error_code,status,priority,assigned_to,resolution_code,created_at').order('created_at',{ascending:false}).limit(200),
@@ -32,7 +33,7 @@ export async function getControlledBetaState() {
   const members=rows(membersResult).map((item:any)=>({id:item.id,program_id:item.program_id,account_ref:safeRef(item.user_id),status:item.status,enrolled_at:item.enrolled_at,reviewed_at:item.reviewed_at,reason_code:item.reason_code,updated_at:item.updated_at,stage:progressByUser.get(`${item.program_id}:${item.user_id}`)?.stage_key ?? 'invite_required'}))
   const statusCounts=members.reduce<Record<string,number>>((acc,item)=>{acc[item.status]=(acc[item.status]??0)+1;return acc},{})
   return {
-    programs:rows(programsResult), drafts:rows(draftsResult), members,
+    programs:rows(programsResult), drafts:rows(draftsResult), snapshots:rows(snapshotsResult), members,
     memberSummary:Object.fromEntries(Object.entries(statusCounts).map(([key,value])=>[key,maskSmallAggregate(value)])),
     feedback:rows(feedbackResult), tasks:rows(tasksResult), campaigns:rows(campaignsResult), aggregates:rows(aggregatesResult), readiness:rows(readinessResult),
     advertisers:{requests:rows(requestsResult),orders:rows(ordersResult)}, incidents:rows(incidentsResult),

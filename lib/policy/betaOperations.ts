@@ -3,6 +3,7 @@ import { betaFeatureKeys } from '@/lib/policy/operations'
 
 export const betaReadinessStates = ['blocked','internal_only','limited_beta','beta_stable','launch_candidate'] as const
 export const betaTaskTypes = ['beta_approval','onboarding_failure','report','block_review','deletion_request','advertiser_verification','advertiser_review','quote','payment_confirmation','ad_schedule','refund','cron_failure','outbox_failure','feedback','health_warning'] as const
+export const requiredBetaStopConditions = ['PRIVACY_EXPOSURE','RLS_FAILURE','HEALTH_FAILURE'] as const
 
 const reasonCode = z.string().regex(/^[A-Z0-9_]{2,60}$/)
 const safeOperatorText = z.string().trim().min(1).max(2000)
@@ -42,6 +43,7 @@ export const BetaSetupSchema = z.object({
   if (value.startsAt && value.endsAt && new Date(value.endsAt)<=new Date(value.startsAt)) context.addIssue({code:'custom',path:['endsAt'],message:'END_MUST_FOLLOW_START'})
   if (value.enabledFeatures.includes('messaging') && !value.enabledFeatures.includes('connection_request')) context.addIssue({code:'custom',path:['enabledFeatures'],message:'MESSAGING_REQUIRES_CONNECTIONS'})
   if (value.enabledFeatures.includes('connection_request') && !value.enabledFeatures.includes('people_search')) context.addIssue({code:'custom',path:['enabledFeatures'],message:'CONNECTIONS_REQUIRE_SEARCH'})
+  for(const condition of requiredBetaStopConditions) if(value.stopConditions[condition]!==true) context.addIssue({code:'custom',path:['stopConditions',condition],message:'REQUIRED_STOP_CONDITION_MISSING'})
 })
 
 export const BetaAdminActionSchema = z.discriminatedUnion('action',[
