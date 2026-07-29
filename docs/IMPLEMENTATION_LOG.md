@@ -9,6 +9,37 @@
 - 관리자 운영 상태 화면, 관리자 전용 health, `CRON_SECRET` 보호 cron, 관리자 로그인 rate limit을 추가했다.
 - 합성 데이터 전용 PostgreSQL 전체 migration 적용, 베타 lifecycle rollback smoke, 권한 smoke를 통과했다. Production 적용 상태는 배포 후 별도로 기록한다.
 
+### Production 적용 및 검증
+
+- PR #29를 squash merge하고 merge commit `98882aa04615b08d020f35d0651c51bc94cce845`를 Vercel Production에 배포했다.
+- PHASE 10F migration을 Production DB에 적용했다. 기존 공개 profile 25건을 변경하지 않았고 private/connection/promotion domain row는 0건이었다.
+- 신규 10개 table의 RLS/FORCE RLS, anon/authenticated 권한 0건, service-role 경계와 제한 베타 프로그램 생성을 원격에서 확인했다.
+- 공식 도메인 `/`, `/search`, `/submit`은 200, 미인증 admin/health/cron 경계는 401, 공개 `POST /api/profiles`는 503을 확인했다.
+- Vercel Cron은 `/api/cron/operations`, `0 18 * * *`로 활성화했다. 운영 job row를 만드는 수동 Run은 실행하지 않았다.
+- PHASE 10E migration table은 운영에 존재하지만 migration history row가 확인되지 않는 상태를 남은 운영 위험으로 기록한다. 임의 history 보정은 수행하지 않았다.
+- 최종 상태: `PHASE_10F_PRODUCTION_APPLIED_LIMITED_BETA_READY`.
+
+## 2026-07-29 — PHASE 10G 결제 Provider Sandbox (Local/Draft)
+
+### 구현
+
+- 국내 PG 연동 확장성과 공식 V2 결제 조회·취소·Standard Webhooks 계약을 기준으로 PortOne V2 sandbox를 선택했다. 실제 Production credential은 등록하거나 사용하지 않았다.
+- provider-neutral `PaymentProvider` 계약과 manual, mock, `portone_sandbox` adapter를 구현했다. Production에서는 mock provider가 fail-closed 된다.
+- 서버 저장 주문 금액·통화·소유권과 provider 재조회 결과가 모두 일치할 때만 결제 완료를 확정한다. 브라우저 callback 성공만으로 결제를 신뢰하지 않는다.
+- 결제 시도 idempotency, webhook 서명·5분 timestamp·replay 방어, 원문 대신 SHA-256 payload hash, 취소·부분/전체 환불, 증빙 요청과 관리자 재처리 경계를 추가했다.
+- 결제·webhook·환불·증빙 table에 RLS/FORCE RLS를 적용하고 owner 최소 조회와 service-role mutation만 허용했다.
+- owner 결제 UI/API, 관리자 결제 queue, health 집계와 owner 데이터 export를 추가했다. 결제 페이지도 서버 로그인·만 19세 이상·필수 동의 경계 뒤에 두고 private robots를 유지했다.
+- 자동 결제 활성화, Production webhook 등록, Production 환경변수, 실제 결제·취소·환불은 이번 단계에서 수행하지 않았다.
+
+### 검증
+
+- PHASE 10G 관련 테스트 5 files / 15 tests를 통과했다.
+- 전체 테스트 102 files / 964 tests, TypeScript, Next.js 15.3.8 Production build(54 static pages), `git diff --check`를 통과했다.
+- Production과 분리된 일회성 PostgreSQL에서 PHASE 10A→10B→10C→10D→10E→10F→10G migration, 금액 변조 거부, idempotent 중복 요청, webhook replay 방어, 부분·전체 환불, RLS/grant를 검증했다. 최종 결과는 `PHASE10G_PAYMENT_LIFECYCLE_OK`, `PHASE10G_PAYMENT_PERMISSIONS_OK`, `PHASE10G_ISOLATED_DB_OK`이며 컨테이너를 제거했다.
+- Production build 서버에서 Chromium desktop과 360/390/412 mobile viewport 4개 E2E를 통과했다. 미인증 owner/admin API, 잘못된 webhook, 비공개 결제 페이지가 fail-closed이고 horizontal overflow가 없음을 확인했다.
+- 로컬 E2E의 Upstash 환경변수 미설정 경고는 예상된 로컬 경고이며 보호 경계는 fail-closed로 동작했다. 비밀값은 읽거나 출력하지 않았다.
+- 상태: `PHASE_10G_LOCAL_VERIFIED`; Production 적용은 금지하고 Draft PR까지만 진행한다.
+
 ## 2026-07-28 — PHASE 10C Safe Connection Messaging (Local/Draft)
 
 ### Implementation
