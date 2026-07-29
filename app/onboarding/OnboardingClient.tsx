@@ -56,7 +56,7 @@ export default function OnboardingClient() {
   return <main className="mx-auto min-h-screen max-w-2xl px-5 py-10">
     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Adult-only limited beta</p>
     <h1 className="mt-2 text-3xl font-black tracking-tight text-gray-950">제한 베타 시작하기</h1>
-    <p className="mt-3 text-sm leading-6 text-gray-600">개인 정보는 기본 비공개이며, 승인된 성인 사용자만 단계별로 시작할 수 있습니다.</p>
+    <p className="mt-3 text-sm leading-6 text-gray-600">개인 정보는 기본 비공개이며, 승인된 성인 사용자만 단계별로 시작할 수 있습니다. 본인 프로필과 본인이 졸업한 학교 정보만 입력하고 타인의 정보는 등록하지 마세요.</p>
 
     {!state ? <p className="mt-8 rounded-2xl bg-gray-50 p-5 text-sm">안전한 시작 상태를 확인하고 있습니다.</p> : <>
       <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">

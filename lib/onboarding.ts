@@ -66,5 +66,8 @@ export async function getLimitedLaunchAdminState(days = 14) {
     requested_end: date(end),
   })
   if (error || !data) throw new Error('LIMITED_LAUNCH_FUNNEL_UNAVAILABLE')
-  return data as { currentStages: Array<{ stage_key:string; source_channel:string; count:number }>; dailyEntries: Array<{ metric_date:string; stage_key:string; source_channel:string; count:number }> }
+  return data as {
+    currentStages: Array<{ stage_key:string; source_channel:string; count:number|null; masked:boolean }>
+    dailyEntries: Array<{ metric_date:string; stage_key:string; source_channel:string; count:number|null; masked:boolean }>
+  }
 }

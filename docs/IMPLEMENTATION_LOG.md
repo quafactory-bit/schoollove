@@ -1836,3 +1836,15 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Chromium과 모바일 360/390/412에서 비로그인 온보딩 redirect, private robots, no-store API, 관리자 funnel 401, 가로 overflow를 확인했다: 8 tests 통과.
 - 실제 사용자·Production row·결제·광고 주문·개인정보 원문을 사용하지 않았다.
 - PHASE 10H migration은 Production에 적용하지 않았고 PR은 Draft 상태까지만 진행한다.
+
+### PHASE 10H-R 최종 안전 감사
+
+- 관리자 제한 출시 funnel의 단계·날짜·출처 세그먼트가 10명 미만일 때 정확한 count를 반환하던 문제를 수정했다. 응답과 UI는 `masked`와 `10명 미만`만 제공하고 개인 drill-down은 추가하지 않았다.
+- `people_search` 비상 차단이 검색만 막고 새 안부·재알림·응답을 연쇄 차단하지 않던 경계를 서버 feature dependency와 DB INSERT trigger에서 모두 fail-closed로 보강했다.
+- `messaging` 중단 시 기존 연결의 대화 GET·POST·읽음 PATCH도 차단했다. 신고·차단·연결 해제는 기능 중단 중에도 유지해 안전 조치를 막지 않는다.
+- 같은 사용자가 같은 프로그램 초대를 다시 사용해 초대 use count를 소진할 수 있던 문제를 `ALREADY_REDEEMED` 멱등 차단으로 수정했다.
+- service-role 초대 사용 RPC에서 사용자용 `has_current_adult_access()`의 `auth.uid()` NULL 결과가 PL/pgSQL `IF`를 통과할 수 있는 문제를 발견했다. RPC 내부에서 성인 확인과 필수 동의를 명시적 `EXISTS`/누락 검사로 다시 검증하고, 미확인 합성 사용자의 초대 사용이 membership mutation 없이 차단되는 회귀 검증을 추가했다.
+- 여러 active 프로그램에서 첫 프로그램을 무조건 선택하던 온보딩을 사용자의 active/pending membership 프로그램 우선으로 수정했다.
+- 본인 프로필과 본인이 졸업한 학교만 입력하고 타인의 정보를 등록하지 말라는 온보딩 안내를 추가했다.
+- 합성 관리자·사용자 A/B·대기·거절 사용자를 이용해 다른 프로그램 초대, 만료·소진·중복 초대, 승인·거절, pause, people-search emergency disable, 단계 중복 방지, coarse source 고정, 최소 집계, audit와 실제 owner RLS를 격리 DB에서 통과했다. 모든 합성 row는 transaction rollback되고 컨테이너는 삭제됐다.
+- PHASE 10A~10H 회귀 11 files / 70 tests, 관련 4 files / 18 tests, 전체 105 files / 982 tests, TypeScript, Production build 55 pages/routes, Chromium 및 모바일 360/390/412 E2E 8 tests를 통과했다.

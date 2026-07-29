@@ -2,6 +2,7 @@
 
 ## 2026-07-29 — PHASE 10H (LOCAL/DRAFT)
 
+- 최종 감사에서 10명 미만 funnel 마스킹, 사람 찾기 중단의 안부 연쇄 차단, 메시지 중단의 기존 대화 차단, 안전 조치 예외, 중복 초대 사용 횟수 보호, membership 프로그램 우선 선택을 보강했다.
 - 성인 확인·필수 동의·해시 초대·운영자 승인·비공개 프로필·과거 학교 이력을 연결하는 `/onboarding` 제한 출시 흐름을 추가했다.
 - 본인만 읽는 온보딩 진행 상태, 단계별 최초 진입 이벤트, 개인 원문 없는 일별 성장 집계를 추가했다.
 - direct·organic social·creator·community·referral·paid social·unknown의 거친 출처만 허용하고 raw UTM·IP·referrer·검색어·이름·Instagram을 저장하지 않는다.

@@ -73,9 +73,11 @@ BEGIN
     THEN RAISE EXCEPTION 'INVALID_ONBOARDING_SOURCE'; END IF;
 
   SELECT p.* INTO program_row FROM public.beta_programs p
+  LEFT JOIN public.beta_members own_member ON own_member.program_id=p.id AND own_member.user_id=actor_user_id
   WHERE p.status IN ('active','paused') AND p.emergency_disabled_at IS NULL
     AND (p.starts_at IS NULL OR p.starts_at<=now()) AND (p.ends_at IS NULL OR p.ends_at>now())
-  ORDER BY CASE p.status WHEN 'active' THEN 0 ELSE 1 END,p.created_at LIMIT 1;
+  ORDER BY CASE own_member.status WHEN 'active' THEN 0 WHEN 'pending_review' THEN 1 ELSE 2 END,
+    CASE p.status WHEN 'active' THEN 0 ELSE 1 END,p.created_at LIMIT 1;
   IF program_row.id IS NULL THEN
     RETURN jsonb_build_object('stage','access_paused','programAvailable',false,'adultReady',false,
       'consentsReady',false,'memberStatus',NULL,'profileReady',false,'schoolReady',false,'discoveryReady',false);
@@ -148,6 +150,78 @@ BEGIN
   );
 END; $$;
 
+-- A disabled discovery boundary must also prevent creation of a new greeting,
+-- even when connection_request itself remains enabled.
+CREATE OR REPLACE FUNCTION public.enforce_beta_write_access()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE actor uuid; feature text;
+BEGIN
+  actor := (CASE TG_TABLE_NAME
+    WHEN 'private_profiles' THEN to_jsonb(NEW)->>'owner_user_id'
+    WHEN 'profile_school_memberships' THEN to_jsonb(NEW)->>'owner_user_id'
+    WHEN 'connection_match_tokens' THEN to_jsonb(NEW)->>'requester_user_id'
+    WHEN 'connection_requests' THEN to_jsonb(NEW)->>'sender_user_id'
+    WHEN 'connection_messages' THEN to_jsonb(NEW)->>'sender_user_id'
+    WHEN 'connection_instagram_permissions' THEN to_jsonb(NEW)->>'grantor_user_id'
+    WHEN 'promotion_accounts' THEN to_jsonb(NEW)->>'owner_user_id'
+    WHEN 'promotion_requests' THEN to_jsonb(NEW)->>'owner_user_id'
+    ELSE NULL END)::uuid;
+  feature := CASE TG_TABLE_NAME
+    WHEN 'private_profiles' THEN 'private_profile'
+    WHEN 'profile_school_memberships' THEN 'private_profile'
+    WHEN 'connection_match_tokens' THEN 'people_search'
+    WHEN 'connection_requests' THEN 'connection_request'
+    WHEN 'connection_messages' THEN 'messaging'
+    WHEN 'connection_instagram_permissions' THEN 'instagram_permission'
+    WHEN 'promotion_accounts' THEN 'promotion_application'
+    WHEN 'promotion_requests' THEN 'promotion_application'
+    ELSE 'account_registration' END;
+  IF NOT public.has_beta_feature_access(actor,feature) THEN RAISE EXCEPTION 'BETA_ACCESS_REQUIRED'; END IF;
+  IF TG_TABLE_NAME='connection_requests' AND NOT public.has_beta_feature_access(actor,'people_search')
+    THEN RAISE EXCEPTION 'BETA_DISCOVERY_ACCESS_REQUIRED'; END IF;
+  RETURN NEW;
+END; $$;
+
+-- Re-redeeming any invite for the same program must not consume another use.
+CREATE OR REPLACE FUNCTION public.redeem_beta_invite(
+  actor_user_id uuid, requested_token_hash text, actor_email_hash text, actor_domain_hash text
+) RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE invite public.beta_invites%ROWTYPE; program public.beta_programs%ROWTYPE; next_status text;
+BEGIN
+  IF requested_token_hash !~ '^[0-9a-f]{64}$' OR actor_email_hash !~ '^[0-9a-f]{64}$'
+    OR actor_domain_hash !~ '^[0-9a-f]{64}$' THEN RETURN 'INVALID'; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM public.adult_eligibility_records a
+    WHERE a.user_id=actor_user_id AND a.adult_eligible=true
+      AND a.verification_method='self_attestation' AND a.policy_version='phase10b-2026-07-28'
+  ) OR EXISTS(
+    SELECT required_type FROM unnest(ARRAY['terms','privacy_collection','adult_confirmation','private_by_default']) required_type
+    WHERE NOT EXISTS(
+      SELECT 1 FROM public.consent_records c WHERE c.user_id=actor_user_id
+        AND c.consent_type=required_type AND c.consented=true AND c.policy_version='phase10b-2026-07-28'
+    )
+  ) THEN RETURN 'ADULT_CONSENT_REQUIRED'; END IF;
+  SELECT * INTO invite FROM public.beta_invites WHERE token_hash=requested_token_hash FOR UPDATE;
+  IF invite.id IS NULL THEN RETURN 'UNAVAILABLE'; END IF;
+  IF EXISTS(SELECT 1 FROM public.beta_members m WHERE m.program_id=invite.program_id AND m.user_id=actor_user_id)
+    THEN RETURN 'ALREADY_REDEEMED'; END IF;
+  IF invite.revoked_at IS NOT NULL OR invite.expires_at<=now() OR invite.use_count>=invite.max_uses
+    THEN RETURN 'UNAVAILABLE'; END IF;
+  IF invite.email_hash IS NOT NULL AND invite.email_hash<>actor_email_hash THEN RETURN 'IDENTITY_MISMATCH'; END IF;
+  IF invite.domain_hash IS NOT NULL AND invite.domain_hash<>actor_domain_hash THEN RETURN 'IDENTITY_MISMATCH'; END IF;
+  SELECT * INTO program FROM public.beta_programs WHERE id=invite.program_id AND status='active'
+    AND emergency_disabled_at IS NULL AND (starts_at IS NULL OR starts_at<=now())
+    AND (ends_at IS NULL OR ends_at>now()) FOR UPDATE;
+  IF program.id IS NULL THEN RETURN 'PROGRAM_UNAVAILABLE'; END IF;
+  next_status:=CASE WHEN program.requires_admin_approval THEN 'pending_review' ELSE 'active' END;
+  INSERT INTO public.beta_members(program_id,user_id,invite_id,status)
+  VALUES(program.id,actor_user_id,invite.id,next_status);
+  UPDATE public.beta_invites SET use_count=use_count+1 WHERE id=invite.id;
+  INSERT INTO public.beta_audit_logs(actor_type,actor_reference,action,target_type,target_id)
+  VALUES('user',actor_user_id::text,'invite_redeemed','beta_member',actor_user_id);
+  RETURN upper(next_status);
+END; $$;
+
 CREATE OR REPLACE FUNCTION public.admin_get_limited_launch_funnel(
   requested_start date, requested_end date
 ) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
@@ -157,11 +231,15 @@ BEGIN
     OR requested_end>requested_start+90 THEN RAISE EXCEPTION 'INVALID_FUNNEL_PERIOD'; END IF;
   SELECT jsonb_build_object(
     'currentStages',COALESCE((SELECT jsonb_agg(row_to_json(s) ORDER BY s.stage_key,s.source_channel) FROM (
-      SELECT stage_key,source_channel,count(*)::integer AS count
+      SELECT stage_key,source_channel,
+        CASE WHEN count(*)>=10 THEN count(*)::integer ELSE NULL END AS count,
+        count(*)<10 AS masked
       FROM public.beta_onboarding_progress GROUP BY stage_key,source_channel
     ) s),'[]'::jsonb),
     'dailyEntries',COALESCE((SELECT jsonb_agg(row_to_json(d) ORDER BY d.metric_date,d.stage_key,d.source_channel) FROM (
-      SELECT metric_date,stage_key,source_channel,count
+      SELECT metric_date,stage_key,source_channel,
+        CASE WHEN count>=10 THEN count ELSE NULL END AS count,
+        count<10 AS masked
       FROM public.beta_growth_daily_metrics WHERE metric_date BETWEEN requested_start AND requested_end
     ) d),'[]'::jsonb)
   ) INTO result;

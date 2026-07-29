@@ -18,3 +18,28 @@ BEGIN
     THEN RAISE EXCEPTION 'service onboarding RPC missing'; END IF;
 END $$;
 SELECT 'PHASE10H_PERMISSIONS_OK' AS status;
+
+BEGIN;
+INSERT INTO auth.users(id,email,created_at,updated_at) VALUES
+  ('21000000-0000-4000-8000-000000000001','rls-owner@example.invalid',now(),now()),
+  ('21000000-0000-4000-8000-000000000002','rls-other@example.invalid',now(),now());
+INSERT INTO public.beta_onboarding_progress(program_id,user_id,stage_key)
+SELECT p.id,u.id,'adult_required' FROM public.beta_programs p CROSS JOIN auth.users u
+WHERE p.program_key='limited_beta_2026' AND u.id IN (
+  '21000000-0000-4000-8000-000000000001','21000000-0000-4000-8000-000000000002'
+);
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"21000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+SELECT set_config('request.jwt.claim.sub','21000000-0000-4000-8000-000000000001',true);
+SELECT set_config('request.jwt.claim.role','authenticated',true);
+DO $$
+BEGIN
+  IF auth.uid()<>'21000000-0000-4000-8000-000000000001'::uuid
+    THEN RAISE EXCEPTION 'synthetic auth.uid was not configured'; END IF;
+  IF (SELECT count(*) FROM public.beta_onboarding_progress)<>1 OR EXISTS(
+    SELECT 1 FROM public.beta_onboarding_progress WHERE user_id<>'21000000-0000-4000-8000-000000000001'
+  ) THEN RAISE EXCEPTION 'owner onboarding RLS leaked another user'; END IF;
+END $$;
+RESET ROLE;
+ROLLBACK;
+SELECT 'PHASE10H_OWNER_RLS_OK' AS status;

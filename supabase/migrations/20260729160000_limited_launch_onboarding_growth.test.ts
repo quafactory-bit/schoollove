@@ -23,4 +23,19 @@ describe('PHASE 10H limited launch migration', () => {
     expect(sql).toContain('ON CONFLICT(progress_id,stage_key) DO NOTHING')
     expect(sql).toContain('IF event_inserted=1 THEN')
   })
+
+  it('masks small aggregates and closes dependent discovery writes', () => {
+    expect(sql).toContain('CASE WHEN count(*)>=10 THEN count(*)::integer ELSE NULL END AS count')
+    expect(sql).toContain('count(*)<10 AS masked')
+    expect(sql).toContain("TG_TABLE_NAME='connection_requests' AND NOT public.has_beta_feature_access(actor,'people_search')")
+  })
+
+  it('does not consume an invite twice and selects the membership program first', () => {
+    expect(sql).toContain("THEN RETURN 'ALREADY_REDEEMED'")
+    expect(sql).toContain("CASE own_member.status WHEN 'active' THEN 0 WHEN 'pending_review' THEN 1 ELSE 2 END")
+    const redeem=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION public.redeem_beta_invite'),sql.indexOf('CREATE OR REPLACE FUNCTION public.admin_get_limited_launch_funnel'))
+    expect(redeem).toContain('public.adult_eligibility_records')
+    expect(redeem).toContain('public.consent_records')
+    expect(redeem).not.toContain('has_current_adult_access')
+  })
 })

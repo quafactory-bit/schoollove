@@ -7,8 +7,8 @@ type Program = { id:string; program_key:string; name:string; status:string; emer
 type Member = { id:string; program_id:string; status:string; enrolled_at:string; reason_code:string|null }
 type Flag = { id:string; program_id:string|null; feature_key:string; enabled:boolean; reason_code:string }
 type Launch = {
-  currentStages:Array<{stage_key:string;source_channel:string;count:number}>
-  dailyEntries:Array<{metric_date:string;stage_key:string;source_channel:string;count:number}>
+  currentStages:Array<{stage_key:string;source_channel:string;count:number|null;masked:boolean}>
+  dailyEntries:Array<{metric_date:string;stage_key:string;source_channel:string;count:number|null;masked:boolean}>
 }
 type State = { programs:Program[]; members:Member[]; flags:Flag[]; jobs:unknown[]; exports:unknown[]; events:unknown[]; incidents:unknown[]; launch:Launch }
 
@@ -76,10 +76,10 @@ export default function OperationsClient() {
         {state.launch.currentStages.map((item)=><div key={`${item.stage_key}:${item.source_channel}`} className="rounded-xl bg-gray-50 p-4">
           <p className="text-xs text-gray-500">{item.source_channel}</p>
           <p className="mt-1 text-sm font-semibold text-gray-800">{item.stage_key}</p>
-          <p className="mt-2 text-2xl font-black">{item.count}</p>
+          <p className="mt-2 text-2xl font-black">{item.masked ? '10명 미만' : item.count}</p>
         </div>)}
       </div>
-      <p className="mt-4 text-xs text-gray-500">최근 14일 단계 진입 합계: {state.launch.dailyEntries.reduce((sum,item)=>sum+Number(item.count),0)}</p>
+      <p className="mt-4 text-xs text-gray-500">10명 미만 세그먼트는 정확한 숫자를 표시하지 않습니다. 최근 14일 공개 가능 세그먼트: {state.launch.dailyEntries.filter((item)=>!item.masked).length}개</p>
     </section>
     <div className="grid gap-6 md:grid-cols-2">{(['jobs','exports','events','incidents'] as const).map((key)=><section key={key} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><h2 className="mb-3 text-lg font-bold">{key}</h2><p className="text-3xl font-black">{state[key].length}</p><pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs text-gray-600">{JSON.stringify(state[key],null,2)}</pre></section>)}</div>
   </div>

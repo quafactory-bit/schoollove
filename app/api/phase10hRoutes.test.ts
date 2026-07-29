@@ -44,4 +44,17 @@ describe('PHASE 10H route boundaries',()=>{
     expect(login).toContain('safeLoginDestination')
     expect(source('lib/policy/onboarding.ts')).toContain("value === '/onboarding'")
   })
+
+  it('chains people-search shutdown into greeting creation without blocking safety actions',()=>{
+    const boundary=source('lib/api/connectionRoute.ts')
+    expect(boundary).toContain("request: ['people_search','connection_request']")
+    expect(boundary).toContain("response: ['people_search','connection_request']")
+    const safety=source('app/api/connections/[id]/route.ts')
+    expect(safety.match(/requireConnectionContext\(request, 'response', \[\]\)/g)?.length).toBe(2)
+  })
+
+  it('requires messaging access for reading and writing an existing conversation',()=>{
+    const messages=source('app/api/connections/[id]/messages/route.ts')
+    expect(messages.match(/requireConnectionContext\(request, 'message'\)/g)?.length).toBe(3)
+  })
 })

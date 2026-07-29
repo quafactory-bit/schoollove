@@ -7,7 +7,7 @@ const IdSchema = z.string().uuid()
 const ActionSchema = z.object({ action: z.literal('block') }).strict()
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const context = await requireConnectionContext(request, 'response')
+  const context = await requireConnectionContext(request, 'response', [])
   if ('response' in context) return context.response
   const id = IdSchema.safeParse((await params).id)
   if (!id.success) return NextResponse.json({ error: '연결을 확인해 주세요.' }, { status: 400 })
@@ -16,7 +16,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const context = await requireConnectionContext(request, 'response')
+  const context = await requireConnectionContext(request, 'response', [])
   if ('response' in context) return context.response
   const id = IdSchema.safeParse((await params).id)
   const body = ActionSchema.safeParse(await readJson(request))
