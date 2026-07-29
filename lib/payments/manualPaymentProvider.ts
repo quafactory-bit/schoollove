@@ -1,26 +1,42 @@
-import type { PaymentProvider, PaymentRequest, PaymentResult } from './PaymentProvider'
+import type { ParsedPaymentWebhook, PaymentProvider, PaymentRefundRequest, PaymentRequest, PaymentResult, PaymentWebhookHeaders } from './PaymentProvider'
 
-function reference(orderNumber: string) {
-  return `manual:${orderNumber}`
+function result(paymentId: string, providerReference: string, status: PaymentResult['status']): PaymentResult {
+  return { provider: 'manual', paymentId, providerReference, status, amountKrw: 0, currency: 'KRW' }
 }
 
 export class ManualPaymentProvider implements PaymentProvider {
   readonly name = 'manual' as const
 
   async createPayment(request: PaymentRequest): Promise<PaymentResult> {
-    return { provider: this.name, providerReference: reference(request.orderNumber), status: 'awaiting_manual_transfer' }
+    return { ...result(request.paymentId, `manual:${request.orderNumber}`, 'awaiting_manual_transfer'), amountKrw: request.amountKrw }
   }
 
-  async verifyPayment(providerReference: string, _idempotencyKey: string): Promise<PaymentResult> {
-    return { provider: this.name, providerReference, status: 'manual_review_required' }
+  async getPayment(paymentId: string): Promise<PaymentResult> {
+    return result(paymentId, `manual:${paymentId}`, 'manual_review_required')
   }
 
-  async cancelPayment(providerReference: string, _idempotencyKey: string): Promise<PaymentResult> {
-    return { provider: this.name, providerReference, status: 'cancelled' }
+  async verifyPayment(paymentId: string): Promise<PaymentResult> {
+    return result(paymentId, `manual:${paymentId}`, 'manual_review_required')
   }
 
-  async handleWebhook(_payload: unknown, _signature: string | null): Promise<never> {
+  async cancelPayment(paymentId: string): Promise<PaymentResult> {
+    return result(paymentId, `manual:${paymentId}`, 'cancelled')
+  }
+
+  async refundPayment(request: PaymentRefundRequest): Promise<PaymentResult> {
+    return result(request.paymentId, `manual:${request.paymentId}`, 'manual_review_required')
+  }
+
+  async parseWebhook(_rawBody: string, _headers: PaymentWebhookHeaders): Promise<ParsedPaymentWebhook | null> {
     throw new Error('MANUAL_PROVIDER_WEBHOOK_DISABLED')
+  }
+
+  async verifyWebhookSignature(): Promise<boolean> {
+    return false
+  }
+
+  async getReceiptReference(): Promise<string | null> {
+    return null
   }
 }
 
