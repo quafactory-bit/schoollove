@@ -4,6 +4,7 @@ import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { isAdultEligibleInKst } from '@/lib/policy/adultEligibility'
 import { ACCOUNT_POLICY_VERSION } from '@/lib/policy/accountPolicy'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { syncOnboardingProgressSafely } from '@/lib/onboarding'
 
 const EligibilitySchema = z.object({ dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })
 
@@ -41,6 +42,8 @@ export async function POST(request: NextRequest) {
     policy_version: ACCOUNT_POLICY_VERSION,
   })
   if (error) return NextResponse.json({ error: '성인 확인을 저장할 수 없습니다.' }, { status: 500 })
+
+  await syncOnboardingProgressSafely(admin,auth.user.id,'direct')
 
   return NextResponse.json({ adultEligible: true, rawInputStored: false })
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { ACCOUNT_POLICY_VERSION, REQUIRED_CONSENT_TYPES } from '@/lib/policy/accountPolicy'
+import { syncOnboardingProgressSafely } from '@/lib/onboarding'
 
 const ConsentSchema = z.object({
   terms: z.literal(true),
@@ -55,5 +56,6 @@ export async function POST(request: NextRequest) {
 
   const { error } = await auth.client.from('consent_records').insert(records)
   if (error) return NextResponse.json({ error: '동의 기록을 저장할 수 없습니다.' }, { status: 500 })
+  await syncOnboardingProgressSafely(auth.client,auth.user.id,'direct')
   return NextResponse.json({ consentsComplete: true })
 }

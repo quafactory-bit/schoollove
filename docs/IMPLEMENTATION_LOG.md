@@ -1794,3 +1794,57 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - 합성 성인 사용자만 사용해 상품 생성, 승인·견적, 타 광고주 접근 차단, 견적 수락·중복 주문 차단, 부분·누적 입금, KST 예약·활성, 집계 metric·보고, 종료, 취소·부분 환불·완료, 계정 삭제 cascade와 신규 10개 table RLS/FORCE RLS·grant를 검증했다.
 - 집계 함수의 `day` SQL 별칭 충돌을 실제 실행에서 발견해 `metric_day`로 수정했고, 최종 깨끗한 실행은 `PHASE10E_ISOLATED_VERIFICATION_OK`를 반환했다. 일회성 컨테이너는 제거했다.
 - PHASE 10E migration은 Production에 적용하지 않았다.
+
+## 2026-07-29 — PHASE 10E migration history 정합성 복구
+
+- Production 프로젝트 `ucnybhzpbatzcipwqtox`의 `public` schema를 data-free로 dump하고, PHASE 10F까지 로컬 migration을 적용한 격리 PostgreSQL schema와 대조했다.
+- 컬럼·기본값·제약·index·policy 272개 정규화 정의의 차이가 0개였고, 관련 SECURITY DEFINER 함수 12개의 정의도 일치했다.
+- 대상 10개 테이블의 RLS/FORCE RLS, 공개 역할 table grant 0개, service-role table grant 10개, 공개 역할 함수 실행 권한 0개, service-role 함수 실행 권한 12개를 확인했다.
+- PHASE 10E schema가 실제 적용됐고 history만 누락된 조건을 충족한 뒤 Supabase CLI의 `migration repair --status applied`로 `20260728230000`을 기록했다. schema 변경, 데이터 mutation, 임의 history insert는 수행하지 않았다.
+- 최종 상태: `PHASE_10E_MIGRATION_HISTORY_RECONCILED`.
+
+## 2026-07-29 — PHASE 10G 결제 Provider Production 안전 적용
+
+- PR #30 최종 감사에서 결제 검증·환불·provider 설정·접근 경계를 보강하고 관련 5 files / 19 tests, 전체 102 files / 968 tests, TypeScript, Production build 54 pages, 격리 DB lifecycle·권한, Chromium 및 모바일 E2E 4개를 통과했다.
+- PR #30을 squash merge하고 merge commit `e76a3f67bce067bf55329ffbbeb14cf37b8816f4`를 Vercel Production에 배포했다.
+- Production에는 `20260729130000_payment_provider_sandbox.sql`만 적용했다. 신규 결제 테이블 4개는 RLS/FORCE RLS, anon 직접 권한 0개, authenticated mutation 권한 0개, service-role 전체 권한을 유지한다.
+- 결제 함수 9개는 모두 SECURITY DEFINER와 빈 search_path를 사용하고 anon/authenticated 실행 권한 0개, service-role 실행 권한 9개임을 확인했다.
+- 적용 전후 기존 공개 프로필 25건과 private profile·connection·promotion·order·placement 0건이 동일했고, 신규 결제 테이블도 모두 0건이었다.
+- 공식 도메인의 Home·Search·Submit, 로그인 경계, 관리자 결제 경계, private robots, 기존 연결·광고 경로를 확인했다. 공개 profile write는 503, 비인증 결제·관리자·health 경계는 401, webhook은 provider 미설정 503으로 닫혀 있다.
+- Production Provider는 live 결제를 활성화하지 않은 `manual`/미설정 경계다. PortOne Production secret·webhook, 실제 결제·취소·환불·광고 주문은 생성하지 않았다.
+- 최종 상태: `PHASE_10G_PRODUCTION_APPLIED_LIVE_PAYMENT_DISABLED`.
+
+## 2026-07-29 — PHASE 10H 제한 출시·온보딩·성장 운영 (LOCAL/DRAFT)
+
+### 구현
+
+- 이메일 OTP 로그인 뒤 만 19세 이상 확인, 필수 동의, 해시 초대, 운영자 승인, 기본 비공개 본인 프로필, 과거 학교 이력, exact match 사람 찾기로 이어지는 `/onboarding` 흐름을 추가했다.
+- 온보딩 진행 상태는 본인과 service role만 읽고, 단계 이벤트와 날짜별 funnel 집계는 service role만 접근한다. 신규 3개 테이블에 RLS/FORCE RLS를 적용했다.
+- 성장 출처는 `direct`, `organic_social`, `creator`, `community`, `referral`, `paid_social`, `unknown`만 허용한다. 이메일·이름·Instagram·학교명·검색어·IP·referrer·raw UTM은 성장 데이터에 저장하지 않는다.
+- 같은 사용자의 같은 단계는 최초 한 번만 집계하고, 기존 프로필·학교 이력·초대·사람 찾기·연결 요청 성공 경계에서 개인 원문 없는 운영 event만 증가시킨다.
+- 관리자 운영 화면에는 현재 단계와 최근 14일 aggregate만 추가했다. 기존 관리자 인증, private SEO, live payment 비활성 경계를 유지한다.
+- 최종 SQL 감사에서 프로그램 일시중지 또는 `people_search` 비상 차단 중에도 `ready`가 될 수 있는 문제를 찾아 `access_paused` fail-closed로 수정하고 격리 DB 회귀 검증을 추가했다.
+- Supabase 이미지가 초기화 중 재시작하는 조건에서도 migration을 조기에 시작하지 않도록 일회성 DB 실행 스크립트를 container health와 실제 query 성공으로 확인하도록 보강했다.
+
+### 검증
+
+- 관련 테스트 4 files / 14 tests 통과.
+- 전체 테스트 105 files / 978 tests 통과.
+- TypeScript 통과.
+- Next.js 15.3.8 Production build 통과: 55 static pages/routes.
+- 일회성 Supabase PostgreSQL에서 전체 migration, 합성 사용자 온보딩 lifecycle, 단계 deduplication, coarse-source 고정, 프로그램 pause·기능 emergency disable fail-closed, maintenance idempotency, RLS/FORCE RLS와 grant를 통과했다.
+- Chromium과 모바일 360/390/412에서 비로그인 온보딩 redirect, private robots, no-store API, 관리자 funnel 401, 가로 overflow를 확인했다: 8 tests 통과.
+- 실제 사용자·Production row·결제·광고 주문·개인정보 원문을 사용하지 않았다.
+- PHASE 10H migration은 Production에 적용하지 않았고 PR은 Draft 상태까지만 진행한다.
+
+### PHASE 10H-R 최종 안전 감사
+
+- 관리자 제한 출시 funnel의 단계·날짜·출처 세그먼트가 10명 미만일 때 정확한 count를 반환하던 문제를 수정했다. 응답과 UI는 `masked`와 `10명 미만`만 제공하고 개인 drill-down은 추가하지 않았다.
+- `people_search` 비상 차단이 검색만 막고 새 안부·재알림·응답을 연쇄 차단하지 않던 경계를 서버 feature dependency와 DB INSERT trigger에서 모두 fail-closed로 보강했다.
+- `messaging` 중단 시 기존 연결의 대화 GET·POST·읽음 PATCH도 차단했다. 신고·차단·연결 해제는 기능 중단 중에도 유지해 안전 조치를 막지 않는다.
+- 같은 사용자가 같은 프로그램 초대를 다시 사용해 초대 use count를 소진할 수 있던 문제를 `ALREADY_REDEEMED` 멱등 차단으로 수정했다.
+- service-role 초대 사용 RPC에서 사용자용 `has_current_adult_access()`의 `auth.uid()` NULL 결과가 PL/pgSQL `IF`를 통과할 수 있는 문제를 발견했다. RPC 내부에서 성인 확인과 필수 동의를 명시적 `EXISTS`/누락 검사로 다시 검증하고, 미확인 합성 사용자의 초대 사용이 membership mutation 없이 차단되는 회귀 검증을 추가했다.
+- 여러 active 프로그램에서 첫 프로그램을 무조건 선택하던 온보딩을 사용자의 active/pending membership 프로그램 우선으로 수정했다.
+- 본인 프로필과 본인이 졸업한 학교만 입력하고 타인의 정보를 등록하지 말라는 온보딩 안내를 추가했다.
+- 합성 관리자·사용자 A/B·대기·거절 사용자를 이용해 다른 프로그램 초대, 만료·소진·중복 초대, 승인·거절, pause, people-search emergency disable, 단계 중복 방지, coarse source 고정, 최소 집계, audit와 실제 owner RLS를 격리 DB에서 통과했다. 모든 합성 row는 transaction rollback되고 컨테이너는 삭제됐다.
+- PHASE 10A~10H 회귀 11 files / 70 tests, 관련 4 files / 18 tests, 전체 105 files / 982 tests, TypeScript, Production build 55 pages/routes, Chromium 및 모바일 360/390/412 E2E 8 tests를 통과했다.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { hasBetaFeatureAccess } from '@/lib/beta'
+import { recordLimitedLaunchEvent, syncOnboardingProgressSafely } from '@/lib/onboarding'
 
 const ProfileSchema = z.object({
   display_name: z.string().transform((value) => value.normalize('NFKC').trim()).pipe(z.string().min(1).max(50)),
@@ -60,6 +61,8 @@ export async function POST(request: NextRequest) {
     .select('id, display_name, instagram_handle, profile_photo_url, introduction, profile_visibility, status, created_at, updated_at')
     .single()
   if (error) return NextResponse.json({ error: '내 프로필을 저장할 수 없습니다.' }, { status: 500 })
+  await syncOnboardingProgressSafely(auth.client,auth.user.id,'direct')
+  await recordLimitedLaunchEvent('private_profile_saved')
   return NextResponse.json({ profile: data })
 }
 

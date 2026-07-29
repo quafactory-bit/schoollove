@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { hasBetaFeatureAccess } from '@/lib/beta'
 import { isFutureGraduationYear } from '@/lib/policy/operations'
+import { recordLimitedLaunchEvent, syncOnboardingProgressSafely } from '@/lib/onboarding'
 
 const MembershipSchema = z.object({
   school_id: z.string().uuid(),
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
     class_number: parsed.data.class_number ?? null,
   }).select('id').single()
   if (error) return NextResponse.json({ error: '학교 이력을 저장할 수 없습니다.' }, { status: 500 })
+  await syncOnboardingProgressSafely(auth.client,auth.user.id,'direct')
+  await recordLimitedLaunchEvent('school_membership_saved')
   return NextResponse.json({ membership: data }, { status: 201 })
 }
 

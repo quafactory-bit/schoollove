@@ -65,6 +65,7 @@ export default function AccountClient({ email, state }: Props) {
           router.refresh()
         }} className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700">로그아웃</button>
       </div>
+      <Link href="/onboarding" className="mt-5 block rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-900">제한 베타 시작 상태 확인</Link>
 
       <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="text-lg font-bold text-gray-950">1. 만 19세 이상 확인</h2>

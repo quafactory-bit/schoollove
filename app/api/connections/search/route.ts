@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ExactPersonSearchSchema } from '@/lib/policy/connectionSafety'
 import { requireConnectionContext, readJson } from '@/lib/api/connectionRoute'
 import { findExactConnectionMatch } from '@/lib/connections'
+import { recordLimitedLaunchEvent } from '@/lib/onboarding'
 
 async function waitForMinimumDuration(startedAt: number) {
   const remaining = 250 - (Date.now() - startedAt)
@@ -26,5 +27,6 @@ export async function POST(request: NextRequest) {
   })
   await waitForMinimumDuration(startedAt)
   if (!result) return NextResponse.json({ state: 'request_unavailable' }, { status: 503 })
+  await recordLimitedLaunchEvent('people_search_completed')
   return NextResponse.json({ state: result.state, ...(result.matchToken ? { matchToken: result.matchToken } : {}) })
 }

@@ -7,7 +7,7 @@ import { getConversation, markConversationRead, sendConnectionMessage } from '@/
 const IdSchema = z.string().uuid()
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const context = await requireConnectionContext(request)
+  const context = await requireConnectionContext(request, 'message')
   if ('response' in context) return context.response
   const id = IdSchema.safeParse((await params).id)
   if (!id.success) return NextResponse.json({ error: '대화를 확인해 주세요.' }, { status: 400 })
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const context = await requireConnectionContext(request)
+  const context = await requireConnectionContext(request, 'message')
   if ('response' in context) return context.response
   const id = IdSchema.safeParse((await params).id)
   if (!id.success) return NextResponse.json({ error: '대화를 확인해 주세요.' }, { status: 400 })

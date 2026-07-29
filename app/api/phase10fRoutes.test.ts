@@ -8,8 +8,9 @@ describe('PHASE 10F route boundaries',()=>{
   it('gates private profile, connection, and promotion feature writes',()=>{
     expect(source('app/api/account/profile/route.ts')).toContain("'private_profile'")
     expect(source('app/api/account/memberships/route.ts')).toContain("'private_profile'")
-    expect(source('lib/api/connectionRoute.ts')).toContain("search: 'people_search'")
-    expect(source('lib/api/connectionRoute.ts')).toContain("message: 'messaging'")
+    expect(source('lib/api/connectionRoute.ts')).toContain("search: ['people_search']")
+    expect(source('lib/api/connectionRoute.ts')).toContain("request: ['people_search','connection_request']")
+    expect(source('lib/api/connectionRoute.ts')).toContain("message: ['messaging']")
     for(const path of [
       'app/api/promotions/accounts/route.ts','app/api/promotions/accounts/[id]/verification/route.ts',
       'app/api/promotions/requests/route.ts','app/api/promotions/requests/[id]/route.ts',

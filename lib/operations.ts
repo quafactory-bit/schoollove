@@ -37,7 +37,11 @@ export async function applyBetaAdminOperation(operation: Operation, actor = 'adm
 }
 
 export async function runMaintenance(runKey: string, asOf = new Date().toISOString()) {
-  const { data, error } = await getSupabaseAdmin().rpc('run_phase10f_maintenance', { requested_run_key: runKey, requested_as_of: asOf })
-  if (error || !data || (typeof data === 'object' && 'ok' in data && data.ok === false)) throw new Error('MAINTENANCE_FAILED')
-  return data
+  const admin = getSupabaseAdmin()
+  const phase10f = await admin.rpc('run_phase10f_maintenance', { requested_run_key: runKey, requested_as_of: asOf })
+  const phase10h = await admin.rpc('run_phase10h_maintenance', { requested_run_key: `${runKey}:10h`, requested_as_of: asOf })
+  if (phase10f.error || phase10h.error || !phase10f.data || !phase10h.data ||
+    (typeof phase10f.data === 'object' && 'ok' in phase10f.data && phase10f.data.ok === false) ||
+    (typeof phase10h.data === 'object' && 'ok' in phase10h.data && phase10h.data.ok === false)) throw new Error('MAINTENANCE_FAILED')
+  return { phase10f:phase10f.data, phase10h:phase10h.data }
 }
