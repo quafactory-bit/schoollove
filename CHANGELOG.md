@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-29 — PHASE 10I controlled beta operations
+
+- Added operator-only setup, member, school, advertiser, feedback, task, daily-report, emergency-stop, and readiness surfaces.
+- Added seven RLS/FORCE RLS operation tables and atomic service-role audit RPCs.
+- Added active beta-member feedback with personal/external identifier filtering.
+- Added Preview/isolated-only synthetic lifecycle mode; Production remains fail-closed.
+- Kept public launch, real OTP/messages/notifications, live payment, and PHASE 10I Production migration disabled.
+
 ## 2026-07-29 — PHASE 10H (LOCAL/DRAFT)
 
 - 최종 감사에서 10명 미만 funnel 마스킹, 사람 찾기 중단의 안부 연쇄 차단, 메시지 중단의 기존 대화 차단, 안전 조치 예외, 중복 초대 사용 횟수 보호, membership 프로그램 우선 선택을 보강했다.

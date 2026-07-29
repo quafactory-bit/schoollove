@@ -1,5 +1,7 @@
 # SchoolLoveI 작업 규칙
 
+> PHASE 10I 결정: `docs/decisions/2026-07-29-controlled-beta-operations.md`에 따라 제한 베타 운영 도구는 관리자 전용·최소정보·10명 미만 마스킹·감사 원자성을 유지한다. synthetic mode는 명시적 비Production 플래그에서만 허용하며 PHASE 10I migration의 Production 적용·PR merge·Production 배포는 별도 승인 전까지 금지한다.
+
 > PHASE 10D 승인 결정: `docs/decisions/2026-07-28-today-instagram-advertising-mvp.md`에 따라 무료 편집 추천과 유료 스폰서드를 분리하고, 만 19세 이상 본인 소유 Instagram 검증·운영자 수동 검수·수동 결제 확인·집계형 성과만 허용한다. PHASE 10D migration의 Production 적용·PR merge·Production 배포는 별도 승인 전까지 금지한다.
 >
 > PHASE 10H 승인 결정: `docs/decisions/2026-07-29-limited-launch-onboarding-growth.md`에 따라 공개 가입을 열지 않고, 성인 확인·필수 동의·해시 초대·운영자 승인·기본 비공개 프로필·과거 학교 이력의 제한 온보딩과 비식별 단계 집계만 허용한다. PHASE 10H migration의 Production 적용과 PR merge는 별도 승인 전까지 금지한다.
