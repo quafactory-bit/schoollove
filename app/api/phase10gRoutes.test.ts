@@ -6,11 +6,13 @@ const source = (name: string) => fs.readFileSync(path.join(process.cwd(), name),
 
 describe('PHASE 10G route boundaries', () => {
   it('keeps owner payments authenticated, beta-gated, adult-only and no-store', () => {
-    const route = source('app/api/payments/route.ts')
-    expect(route).toContain('getAuthenticatedRequestContext')
-    expect(route).toContain('hasBetaFeatureAccess')
-    expect(route).toContain('has_current_adult_access')
-    expect(route).toContain('no-store')
+    for (const path of ['app/api/payments/route.ts','app/api/payments/verify/route.ts','app/api/payments/documents/route.ts']) {
+      const route = source(path)
+      expect(route).toContain('getAuthenticatedRequestContext')
+      expect(route).toContain('hasBetaFeatureAccess')
+      expect(route).toContain('has_current_adult_access')
+      expect(route).toContain('no-store')
+    }
   })
 
   it('verifies the raw webhook body before parsing or processing', () => {
@@ -30,6 +32,7 @@ describe('PHASE 10G route boundaries', () => {
     expect(paymentPage).toContain("redirect('/login?next=/promote/operations/payment')")
     expect(paymentPage).toContain('adultEligible')
     expect(paymentPage).toContain('consentsComplete')
+    expect(paymentPage).toContain('hasBetaFeatureAccess')
     const pages = source('app/admin/payments/page.tsx') + paymentPage
     expect(pages.match(/index: false/g)?.length).toBe(2)
     expect(pages.match(/noarchive: true/g)?.length).toBe(2)
@@ -40,5 +43,17 @@ describe('PHASE 10G route boundaries', () => {
     const migration = source('supabase/migrations/20260729130000_payment_provider_sandbox.sql')
     expect(service).not.toMatch(/console\.(log|error)|process\.env\.[A-Z_]+\s*\}/)
     expect(migration).not.toMatch(/card_number|account_number|buyer_email|buyer_phone|raw_payload/i)
+  })
+
+  it('keeps Production sandbox payment explicitly disabled by default', () => {
+    expect(source('lib/payments/providerFactory.ts')).toContain("process.env.PAYMENT_PROVIDER_MODE !== 'portone_sandbox'")
+    expect(source('app/promote/operations/PromotionOperationsClient.tsx')).toContain("NEXT_PUBLIC_PAYMENT_PROVIDER_MODE === 'portone_sandbox'")
+    expect(source('app/promote/operations/payment/PaymentCheckoutClient.tsx')).toContain('customData:{ orderId:payment.order_id')
+  })
+
+  it('keeps promotion pages behind their limited-beta feature flags', () => {
+    expect(source('app/promote/page.tsx')).toContain("hasBetaFeatureAccess(auth.client, auth.user.id, 'promotion_application')")
+    expect(source('app/promote/operations/page.tsx')).toContain("hasBetaFeatureAccess(auth.client, auth.user.id, 'promotion_operations')")
+    expect(source('app/promote/operations/payment/page.tsx')).toContain("hasBetaFeatureAccess(auth.client, auth.user.id, 'promotion_operations')")
   })
 })

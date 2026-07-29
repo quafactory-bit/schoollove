@@ -7,10 +7,17 @@ const API_BASE = 'https://api.portone.io'
 type PortOnePayment = {
   id?: unknown
   status?: unknown
+  storeId?: unknown
+  customData?: unknown
+  channel?: { type?: unknown }
   amount?: { total?: unknown; currency?: unknown }
   paidAt?: unknown
   transactionId?: unknown
   receiptUrl?: unknown
+}
+
+type PortOneCancellationResponse = {
+  cancellation?: { id?: unknown; status?: unknown }
 }
 
 type Config = {
@@ -19,6 +26,12 @@ type Config = {
   storeId: string
   channelKey: string
   fetchImpl?: typeof fetch
+}
+
+type PortOnePaymentDetails = PaymentResult & {
+  orderId: string | null
+  storeId: string
+  testChannel: boolean
 }
 
 function safeSandboxValue(value: string, name: string) {
@@ -34,6 +47,21 @@ function statusOf(value: unknown): PaymentStatus {
   if (value === 'READY') return 'ready'
   if (value === 'PENDING' || value === 'VIRTUAL_ACCOUNT_ISSUED' || value === 'PAY_PENDING') return 'pending'
   return 'created'
+}
+
+function orderIdOf(customData: unknown): string | null {
+  let value = customData
+  if (typeof value === 'string') {
+    try { value = JSON.parse(value) } catch { return null }
+  }
+  if (!value || typeof value !== 'object') return null
+  const orderId = (value as { orderId?: unknown }).orderId
+  return typeof orderId === 'string' ? orderId : null
+}
+
+function idempotencyHeader(value: string) {
+  if (!/^[A-Za-z0-9._:-]{16,256}$/.test(value)) throw new Error('INVALID_IDEMPOTENCY_KEY')
+  return `"${value}"`
 }
 
 export class PortOneSandboxPaymentProvider implements PaymentProvider {
@@ -61,12 +89,13 @@ export class PortOneSandboxPaymentProvider implements PaymentProvider {
   }
 
   async getPayment(paymentId: string): Promise<PaymentResult> {
-    return this.fetchPayment(paymentId)
+    return this.fetchPaymentDetails(paymentId)
   }
 
-  async verifyPayment(paymentId: string, expected: Pick<PaymentRequest, 'amountKrw' | 'currency'>): Promise<PaymentResult> {
-    const payment = await this.fetchPayment(paymentId)
-    if (payment.amountKrw !== expected.amountKrw || payment.currency !== expected.currency) throw new Error('PAYMENT_MISMATCH')
+  async verifyPayment(paymentId: string, expected: Pick<PaymentRequest, 'orderId' | 'amountKrw' | 'currency'>): Promise<PaymentResult> {
+    const payment = await this.fetchPaymentDetails(paymentId)
+    if (payment.storeId !== this.storeId || !payment.testChannel || payment.orderId !== expected.orderId
+      || payment.amountKrw !== expected.amountKrw || payment.currency !== expected.currency) throw new Error('PAYMENT_MISMATCH')
     return payment
   }
 
@@ -95,26 +124,29 @@ export class PortOneSandboxPaymentProvider implements PaymentProvider {
     return typeof payment.receiptUrl === 'string' ? payment.receiptUrl : null
   }
 
-  private async fetchPayment(paymentId: string): Promise<PaymentResult> {
+  private async cancel(paymentId: string, amountKrw: number, reason: string, idempotencyKey: string) {
+    const response = await this.fetchJson(`/payments/${encodeURIComponent(paymentId)}/cancel`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyHeader(idempotencyKey) },
+      body: JSON.stringify({ storeId: this.storeId, amount: amountKrw, reason: reason.slice(0, 200) }),
+    }) as PortOneCancellationResponse
+    if (typeof response.cancellation?.id !== 'string' || response.cancellation.status !== 'SUCCEEDED') throw new Error('REFUND_PENDING_RECONCILIATION')
+    const payment = await this.fetchPaymentDetails(paymentId)
+    return { ...payment, providerReference: response.cancellation.id }
+  }
+
+  private async fetchPaymentDetails(paymentId: string): Promise<PortOnePaymentDetails> {
     const value = await this.fetchJson(`/payments/${encodeURIComponent(paymentId)}`, { method: 'GET' }) as PortOnePayment
     const amount = value.amount?.total
     const currency = value.amount?.currency
-    if (typeof value.id !== 'string' || typeof amount !== 'number' || currency !== 'KRW') throw new Error('INVALID_PROVIDER_RESPONSE')
+    if (typeof value.id !== 'string' || typeof value.storeId !== 'string' || typeof amount !== 'number' || currency !== 'KRW') throw new Error('INVALID_PROVIDER_RESPONSE')
     return {
       provider: this.name, paymentId: value.id,
       providerReference: typeof value.transactionId === 'string' ? value.transactionId : value.id,
       status: statusOf(value.status), amountKrw: amount, currency,
       receiptReference: typeof value.receiptUrl === 'string' ? value.receiptUrl : null,
       paidAt: typeof value.paidAt === 'string' ? value.paidAt : null,
+      orderId: orderIdOf(value.customData), storeId: value.storeId, testChannel: value.channel?.type === 'TEST',
     }
-  }
-
-  private async cancel(paymentId: string, amountKrw: number, reason: string, idempotencyKey: string) {
-    await this.fetchJson(`/payments/${encodeURIComponent(paymentId)}/cancel`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify({ storeId: this.storeId, amount: amountKrw, reason: reason.slice(0, 200) }),
-    })
-    return this.fetchPayment(paymentId)
   }
 
   private async fetchJson(path: string, init: RequestInit) {

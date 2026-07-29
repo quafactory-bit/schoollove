@@ -204,19 +204,52 @@ BEGIN
   RETURN true;
 END; $$;
 
-CREATE OR REPLACE FUNCTION public.record_provider_refund(
+CREATE OR REPLACE FUNCTION public.reserve_provider_refund(
   requested_provider text, requested_payment_id text, requested_amount integer,
-  request_key_hash text, requested_provider_reference text, requested_status text
-) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE payment_row public.payment_transactions%ROWTYPE; refund_id uuid; cumulative integer; next_status text;
+  request_key_hash text
+) RETURNS public.payment_refund_attempts LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE payment_row public.payment_transactions%ROWTYPE; existing public.payment_refund_attempts%ROWTYPE;
+  result public.payment_refund_attempts%ROWTYPE; reserved_total integer;
 BEGIN
+  IF request_key_hash !~ '^[0-9a-f]{64}$' THEN RAISE EXCEPTION 'invalid_refund_request'; END IF;
+  SELECT * INTO existing FROM public.payment_refund_attempts WHERE idempotency_key_hash=request_key_hash;
+  IF existing.id IS NOT NULL THEN
+    IF existing.provider<>requested_provider OR existing.requested_amount_krw<>requested_amount
+      OR NOT EXISTS(SELECT 1 FROM public.payment_transactions p WHERE p.id=existing.payment_transaction_id
+        AND p.provider=requested_provider AND p.provider_payment_id=requested_payment_id)
+      THEN RAISE EXCEPTION 'refund_idempotency_conflict'; END IF;
+    RETURN existing;
+  END IF;
   SELECT * INTO payment_row FROM public.payment_transactions
     WHERE provider=requested_provider AND provider_payment_id=requested_payment_id FOR UPDATE;
   IF payment_row.id IS NULL OR payment_row.status NOT IN ('paid','partially_refunded')
     OR requested_amount<1 OR requested_amount>payment_row.amount_krw THEN RAISE EXCEPTION 'refund_unavailable'; END IF;
+  SELECT COALESCE(sum(CASE WHEN status='pending' THEN requested_amount_krw ELSE completed_amount_krw END),0)
+    INTO reserved_total FROM public.payment_refund_attempts
+    WHERE payment_transaction_id=payment_row.id AND status IN ('pending','partial','completed');
+  IF reserved_total+requested_amount>payment_row.amount_krw THEN RAISE EXCEPTION 'refund_amount_exceeded'; END IF;
   INSERT INTO public.payment_refund_attempts(payment_transaction_id,provider,idempotency_key_hash,requested_amount_krw,completed_amount_krw,status,provider_reference,completed_at)
-  VALUES(payment_row.id,requested_provider,request_key_hash,requested_amount,requested_amount,requested_status,requested_provider_reference,now())
-  RETURNING id INTO refund_id;
+  VALUES(payment_row.id,requested_provider,request_key_hash,requested_amount,0,'pending',NULL,NULL)
+  RETURNING * INTO result;
+  INSERT INTO public.promotion_audit_logs(actor_type,actor_reference,action,target_table,target_id,metadata)
+  VALUES('admin','admin-session','provider_refund_reserved','payment_refund_attempts',result.id,
+    jsonb_build_object('payment_transaction_id',payment_row.id,'requested_amount_krw',requested_amount));
+  RETURN result;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.complete_provider_refund(
+  target_refund_id uuid, requested_provider_reference text
+) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE refund_row public.payment_refund_attempts%ROWTYPE; payment_row public.payment_transactions%ROWTYPE;
+  cumulative integer; next_status text;
+BEGIN
+  SELECT * INTO refund_row FROM public.payment_refund_attempts WHERE id=target_refund_id FOR UPDATE;
+  IF refund_row.id IS NULL THEN RAISE EXCEPTION 'refund_not_found'; END IF;
+  IF refund_row.status IN ('partial','completed') THEN RETURN refund_row.id; END IF;
+  IF refund_row.status<>'pending' THEN RAISE EXCEPTION 'refund_state_conflict'; END IF;
+  SELECT * INTO payment_row FROM public.payment_transactions WHERE id=refund_row.payment_transaction_id FOR UPDATE;
+  UPDATE public.payment_refund_attempts SET completed_amount_krw=requested_amount_krw,status='completed',
+    provider_reference=requested_provider_reference,completed_at=now() WHERE id=refund_row.id;
   SELECT COALESCE(sum(completed_amount_krw),0) INTO cumulative FROM public.payment_refund_attempts
     WHERE payment_transaction_id=payment_row.id AND status IN ('partial','completed');
   IF cumulative>payment_row.amount_krw THEN RAISE EXCEPTION 'refund_amount_exceeded'; END IF;
@@ -225,9 +258,9 @@ BEGIN
   UPDATE public.promotion_commercial_orders SET status=CASE WHEN next_status='refunded' THEN 'refunded' ELSE 'partial_refund' END,
     refunded_amount_krw=cumulative,updated_at=now() WHERE id=payment_row.order_id;
   INSERT INTO public.promotion_audit_logs(actor_type,actor_reference,action,target_table,target_id,metadata)
-  VALUES('system',requested_provider,'provider_refund_recorded','payment_refund_attempts',refund_id,
+  VALUES('system',refund_row.provider,'provider_refund_recorded','payment_refund_attempts',refund_row.id,
     jsonb_build_object('payment_transaction_id',payment_row.id,'status',next_status));
-  RETURN refund_id;
+  RETURN refund_row.id;
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.request_payment_document(
@@ -266,7 +299,8 @@ REVOKE ALL ON FUNCTION public.confirm_verified_payment(text,text,text,integer,te
 REVOKE ALL ON FUNCTION public.register_payment_webhook_event(text,text,text,text,text,timestamptz) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.finish_payment_webhook_event(uuid,text,text) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.admin_retry_payment_webhook(uuid,text) FROM PUBLIC,anon,authenticated;
-REVOKE ALL ON FUNCTION public.record_provider_refund(text,text,integer,text,text,text) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.reserve_provider_refund(text,text,integer,text) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.complete_provider_refund(uuid,text) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.request_payment_document(uuid,uuid,text,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.create_payment_attempt(uuid,uuid,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.update_payment_attempt_status(text,text,text,text,text) TO service_role;
@@ -274,7 +308,8 @@ GRANT EXECUTE ON FUNCTION public.confirm_verified_payment(text,text,text,integer
 GRANT EXECUTE ON FUNCTION public.register_payment_webhook_event(text,text,text,text,text,timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION public.finish_payment_webhook_event(uuid,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.admin_retry_payment_webhook(uuid,text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.record_provider_refund(text,text,integer,text,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.reserve_provider_refund(text,text,integer,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.complete_provider_refund(uuid,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.request_payment_document(uuid,uuid,text,text) TO service_role;
 
 INSERT INTO public.retention_policy_versions(policy_key,version,status,rules,approved_by)

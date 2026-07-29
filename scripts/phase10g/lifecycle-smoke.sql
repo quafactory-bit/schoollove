@@ -26,7 +26,9 @@ INSERT INTO public.promotion_commercial_orders(id,order_number,quote_id,request_
 VALUES('25000000-0000-4000-8000-000000000001','SL-20260729-ABCDEF123456','24000000-0000-4000-8000-000000000001','22000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001',50000,0,50000,now()+interval '1 day','{"name":"Synthetic product"}','test-v1');
 
 DO $$
-DECLARE first_attempt public.payment_transactions%ROWTYPE; replay public.payment_transactions%ROWTYPE; webhook_id uuid; duplicate_id uuid; refund_one uuid; refund_two uuid;
+DECLARE first_attempt public.payment_transactions%ROWTYPE; replay public.payment_transactions%ROWTYPE;
+  webhook_id uuid; duplicate_id uuid; refund_one public.payment_refund_attempts%ROWTYPE;
+  refund_replay public.payment_refund_attempts%ROWTYPE; refund_two public.payment_refund_attempts%ROWTYPE;
 BEGIN
   first_attempt:=public.create_payment_attempt('20000000-0000-4000-8000-000000000001','25000000-0000-4000-8000-000000000001','mock','slp_synthetic_123456',repeat('a',64));
   replay:=public.create_payment_attempt('20000000-0000-4000-8000-000000000001','25000000-0000-4000-8000-000000000001','mock','slp_synthetic_123456',repeat('a',64));
@@ -43,8 +45,12 @@ BEGIN
   duplicate_id:=public.register_payment_webhook_event('mock','msg_synthetic_123456','Transaction.Paid','slp_synthetic_123456',repeat('b',64),now());
   IF webhook_id IS NULL OR duplicate_id IS NOT NULL THEN RAISE EXCEPTION 'webhook replay protection failed'; END IF;
   PERFORM public.finish_payment_webhook_event(webhook_id,'processed',NULL);
-  refund_one:=public.record_provider_refund('mock','slp_synthetic_123456',10000,repeat('c',64),'mock:refund:1','partial');
-  refund_two:=public.record_provider_refund('mock','slp_synthetic_123456',40000,repeat('d',64),'mock:refund:2','completed');
+  refund_one:=public.reserve_provider_refund('mock','slp_synthetic_123456',10000,repeat('c',64));
+  refund_replay:=public.reserve_provider_refund('mock','slp_synthetic_123456',10000,repeat('c',64));
+  IF refund_one.id<>refund_replay.id THEN RAISE EXCEPTION 'refund reservation was not idempotent'; END IF;
+  PERFORM public.complete_provider_refund(refund_one.id,'mock:refund:1');
+  refund_two:=public.reserve_provider_refund('mock','slp_synthetic_123456',40000,repeat('d',64));
+  PERFORM public.complete_provider_refund(refund_two.id,'mock:refund:2');
   IF (SELECT status FROM public.payment_transactions WHERE id=first_attempt.id)<>'refunded' THEN RAISE EXCEPTION 'full refund state missing'; END IF;
   IF (SELECT refunded_amount_krw FROM public.promotion_commercial_orders WHERE id='25000000-0000-4000-8000-000000000001')<>50000 THEN RAISE EXCEPTION 'refund total mismatch'; END IF;
 END $$;

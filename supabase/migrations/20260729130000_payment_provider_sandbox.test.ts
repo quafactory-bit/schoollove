@@ -23,4 +23,12 @@ describe('PHASE 10G payment migration', () => {
     expect(sql.match(/FORCE ROW LEVEL SECURITY/g)?.length).toBeGreaterThanOrEqual(1)
     expect(sql).toContain('REVOKE ALL ON FUNCTION public.confirm_verified_payment')
   })
+
+  it('reserves refund capacity before the provider call and completes only the reserved row', () => {
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.reserve_provider_refund')
+    expect(sql).toContain("status IN ('pending','partial','completed')")
+    expect(sql).toContain('reserved_total+requested_amount>payment_row.amount_krw')
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.complete_provider_refund')
+    expect(sql).not.toContain('CREATE OR REPLACE FUNCTION public.record_provider_refund')
+  })
 })

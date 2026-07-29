@@ -129,9 +129,17 @@ export async function applyPaymentAdminOperation(action: PaymentAdminOperation) 
   if (!payment || action.amount_krw > payment.amount_krw) return { data: null, error: new Error('REFUND_UNAVAILABLE') }
   const provider = getPaymentProvider(payment.provider)
   if (!provider) return { data: null, error: new Error('PAYMENT_PROVIDER_NOT_CONFIGURED') }
+  const { data: reserved, error: reserveError } = await admin.rpc('reserve_provider_refund', {
+    requested_provider: payment.provider, requested_payment_id: payment.provider_payment_id,
+    requested_amount: action.amount_krw, request_key_hash: hash(action.idempotency_key),
+  })
+  const reservation = Array.isArray(reserved) ? reserved[0] : reserved
+  if (reserveError || !reservation) return { data: null, error: reserveError ?? new Error('REFUND_RESERVATION_FAILED') }
+  if (['partial','completed'].includes(reservation.status)) return { data: reservation.id, error: null }
   try {
     const result = await provider.refundPayment({ paymentId: payment.provider_payment_id, amountKrw: action.amount_krw, reason: action.reason, idempotencyKey: action.idempotency_key })
-    return admin.rpc('record_provider_refund', { requested_provider: payment.provider, requested_payment_id: payment.provider_payment_id, requested_amount: action.amount_krw, request_key_hash: hash(action.idempotency_key), requested_provider_reference: result.providerReference, requested_status: action.amount_krw === payment.amount_krw ? 'completed' : 'partial' })
+    if (!['partially_refunded','refunded'].includes(result.status)) return { data: null, error: new Error('REFUND_PENDING_RECONCILIATION') }
+    return admin.rpc('complete_provider_refund', { target_refund_id: reservation.id, requested_provider_reference: result.providerReference })
   } catch (error) { return { data: null, error } }
 }
 

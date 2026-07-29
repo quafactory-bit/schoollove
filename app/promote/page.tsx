@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getAuthenticatedServerContext } from '@/lib/user-auth'
 import { getAccountState } from '@/lib/account'
+import { hasBetaFeatureAccess } from '@/lib/beta'
 import { getPromotionOwnerState } from '@/lib/promotions'
 import PromoteClient from './PromoteClient'
 
@@ -13,6 +14,7 @@ export default async function PromotePage() {
   if (!auth) redirect('/login?next=/promote')
   const account = await getAccountState(auth.client, auth.user.id)
   if (!account.adultEligible || !account.consentsComplete) redirect('/account')
+  if (!(await hasBetaFeatureAccess(auth.client, auth.user.id, 'promotion_application'))) redirect('/account')
   const state = await getPromotionOwnerState(auth.user.id)
   return <PromoteClient initialState={state ?? { accounts: [], requests: [] }} />
 }

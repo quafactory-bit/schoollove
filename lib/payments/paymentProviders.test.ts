@@ -41,17 +41,28 @@ describe('Standard Webhooks boundary', () => {
 describe('PortOne sandbox adapter', () => {
   it('maps verified provider responses and never accepts a live credential', async () => {
     expect(() => new PortOneSandboxPaymentProvider({ apiSecret: 'live_secret', webhookSecret: 'test', storeId: 'store', channelKey: 'channel' })).toThrow('SANDBOX_REQUIRED')
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ id: base.paymentId, status: 'PAID', amount: { total: 50000, currency: 'KRW' }, transactionId: 'tx_test', paidAt: '2026-07-29T00:00:00Z', receiptUrl: 'https://receipt.example.test/opaque' }), { status: 200 })) as unknown as typeof fetch
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ id: base.paymentId, status: 'PAID', storeId: 'store-test', customData: JSON.stringify({ orderId: base.orderId }), channel: { type: 'TEST' }, amount: { total: 50000, currency: 'KRW' }, transactionId: 'tx_test', paidAt: '2026-07-29T00:00:00Z', receiptUrl: 'https://receipt.example.test/opaque' }), { status: 200 })) as unknown as typeof fetch
     const provider = new PortOneSandboxPaymentProvider({ apiSecret: 'test_api_secret', webhookSecret: 'whsec_d2ViaG9vay10ZXN0LXNlY3JldC0wMTIzNDU2Nzg5', storeId: 'store-test', channelKey: 'channel-test', fetchImpl })
     expect((await provider.verifyPayment(base.paymentId, base)).status).toBe('paid')
     await expect(provider.verifyPayment(base.paymentId, { ...base, amountKrw: 1 })).rejects.toThrow('PAYMENT_MISMATCH')
+    await expect(provider.verifyPayment(base.paymentId, { ...base, orderId: crypto.randomUUID() })).rejects.toThrow('PAYMENT_MISMATCH')
     expect(fetchImpl).toHaveBeenCalledWith(expect.stringContaining(encodeURIComponent(base.paymentId)), expect.objectContaining({ method: 'GET' }))
   })
 
   it('does not log or serialize credentials into a provider response', async () => {
     const secret = 'test_api_secret_very_private'
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ id: base.paymentId, status: 'READY', amount: { total: 50000, currency: 'KRW' } }), { status: 200 })) as unknown as typeof fetch
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ id: base.paymentId, status: 'READY', storeId: 'store-test', amount: { total: 50000, currency: 'KRW' } }), { status: 200 })) as unknown as typeof fetch
     const provider = new PortOneSandboxPaymentProvider({ apiSecret: secret, webhookSecret: 'whsec_d2ViaG9vay10ZXN0LXNlY3JldC0wMTIzNDU2Nzg5', storeId: 'store-test', channelKey: 'channel-test', fetchImpl })
     expect(JSON.stringify(await provider.getPayment(base.paymentId))).not.toContain(secret)
+  })
+
+  it('quotes the PortOne idempotency header and returns the cancellation reference', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ cancellation: { id: 'cancel_test_123', status: 'SUCCEEDED' } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: base.paymentId, status: 'PARTIAL_CANCELLED', storeId: 'store-test', customData: JSON.stringify({ orderId: base.orderId }), channel: { type: 'TEST' }, amount: { total: 50000, currency: 'KRW' }, transactionId: 'tx_test' }), { status: 200 })) as unknown as typeof fetch
+    const provider = new PortOneSandboxPaymentProvider({ apiSecret: 'test_api_secret', webhookSecret: 'whsec_d2ViaG9vay10ZXN0LXNlY3JldC0wMTIzNDU2Nzg5', storeId: 'store-test', channelKey: 'channel-test', fetchImpl })
+    const result = await provider.refundPayment({ paymentId: base.paymentId, amountKrw: 10000, reason: 'partial refund', idempotencyKey: 'refund-1234567890123456' })
+    expect(result.providerReference).toBe('cancel_test_123')
+    expect(fetchImpl).toHaveBeenNthCalledWith(1, expect.stringContaining('/cancel'), expect.objectContaining({ headers: expect.objectContaining({ 'Idempotency-Key': '"refund-1234567890123456"' }) }))
   })
 })

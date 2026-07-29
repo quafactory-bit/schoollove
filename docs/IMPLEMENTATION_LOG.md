@@ -33,8 +33,10 @@
 
 ### 검증
 
-- PHASE 10G 관련 테스트 5 files / 15 tests를 통과했다.
-- 전체 테스트 102 files / 964 tests, TypeScript, Next.js 15.3.8 Production build(54 static pages), `git diff --check`를 통과했다.
+- 최종 감사에서 provider 조회의 주문 ID·store ID·TEST channel 결합 검증, RFC 형식 취소 idempotency header, 외부 환불 전 DB 한도 예약을 보강했다.
+- Production은 명시적인 server/client provider mode가 없으면 결제 CTA·외부 SDK·provider가 모두 비활성이다. 결제 확인·증빙·페이지에도 제한 베타·성인 경계를 일관되게 적용했다.
+- PHASE 10G 관련 테스트 5 files / 19 tests를 통과했다.
+- 전체 테스트 102 files / 968 tests, TypeScript, Next.js 15.3.8 Production build(54 static pages), `git diff --check`를 통과했다.
 - Production과 분리된 일회성 PostgreSQL에서 PHASE 10A→10B→10C→10D→10E→10F→10G migration, 금액 변조 거부, idempotent 중복 요청, webhook replay 방어, 부분·전체 환불, RLS/grant를 검증했다. 최종 결과는 `PHASE10G_PAYMENT_LIFECYCLE_OK`, `PHASE10G_PAYMENT_PERMISSIONS_OK`, `PHASE10G_ISOLATED_DB_OK`이며 컨테이너를 제거했다.
 - Production build 서버에서 Chromium desktop과 360/390/412 mobile viewport 4개 E2E를 통과했다. 미인증 owner/admin API, 잘못된 webhook, 비공개 결제 페이지가 fail-closed이고 horizontal overflow가 없음을 확인했다.
 - 로컬 E2E의 Upstash 환경변수 미설정 경고는 예상된 로컬 경고이며 보호 경계는 fail-closed로 동작했다. 비밀값은 읽거나 출력하지 않았다.

@@ -12,6 +12,7 @@ export function getPaymentProvider(name: PaymentProviderName): PaymentProvider |
     mockProvider ??= new MockPaymentProvider(process.env.PAYMENT_MOCK_WEBHOOK_SECRET)
     return mockProvider
   }
+  if (process.env.NODE_ENV === 'production' && process.env.PAYMENT_PROVIDER_MODE !== 'portone_sandbox') return null
   return getPortOneSandboxProvider()
 }
 

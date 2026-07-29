@@ -18,7 +18,7 @@
 
 ## 불변 조건
 
-- 결제 금액·통화·주문 소유권은 서버 저장값으로만 결정한다.
+- 결제 금액·통화·주문 소유권은 서버 저장값으로만 결정한다. provider 조회의 store ID, TEST channel, signed request에 넣은 order ID도 함께 일치해야 한다.
 - browser callback은 결제 완료 근거가 아니다. 서명된 callback state와 provider 단건 재조회가 모두 통과해야 한다.
 - webhook은 raw body, timestamp, `webhook-id`, `webhook-signature`를 먼저 검증한다.
 - `Transaction.*` allowlist 외 이벤트는 성공 응답 후 무시한다.
@@ -27,6 +27,8 @@
 - 결제와 주문의 `payment_confirmed` 변경은 하나의 DB transaction에서 실행한다.
 - manual provider는 fallback으로 유지한다.
 - mock provider는 Production에서 선택할 수 없다.
+- Production은 `PAYMENT_PROVIDER_MODE`를 명시하지 않으면 provider가 비활성이고, client 결제 CTA도 별도 공개 mode 없이는 렌더링하지 않는다.
+- 환불 한도는 provider 호출 전에 DB에서 멱등 예약하고, provider 성공 reference를 받은 예약 row만 완료 처리한다.
 - `live_*` 또는 live로 식별되는 credential은 sandbox adapter가 거부한다.
 
 ## Production 전환 조건

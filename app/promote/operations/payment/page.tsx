@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getAccountState } from '@/lib/account'
+import { hasBetaFeatureAccess } from '@/lib/beta'
 import { getAuthenticatedServerContext } from '@/lib/user-auth'
 import PaymentCheckoutClient from './PaymentCheckoutClient'
 
@@ -13,6 +14,7 @@ export default async function PaymentCheckoutPage() {
 
   const account = await getAccountState(auth.client, auth.user.id)
   if (!account.adultEligible || !account.consentsComplete) redirect('/account')
+  if (!(await hasBetaFeatureAccess(auth.client, auth.user.id, 'promotion_operations'))) redirect('/account')
 
   return <PaymentCheckoutClient />
 }
