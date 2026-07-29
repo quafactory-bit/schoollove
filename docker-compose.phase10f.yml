@@ -1,0 +1,15 @@
+services:
+  mailpit:
+    image: public.ecr.aws/supabase/mailpit:v1.30.2
+    restart: "no"
+    environment:
+      MP_MAX_MESSAGES: "100"
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - phase10f-mailpit:/data
+    ports:
+      - "58025:1025"
+      - "58026:8025"
+
+volumes:
+  phase10f-mailpit:

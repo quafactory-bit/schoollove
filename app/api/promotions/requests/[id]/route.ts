@@ -4,6 +4,7 @@ import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { isPromotionTextSafe, isSafeHttpsUrl, isSafePromotionImageUrl, normalizePromotionText } from '@/lib/policy/promotionSafety'
 import { cancelPromotionRequest, revisePromotionRequest } from '@/lib/promotions'
 import { checkPromotionRateLimit, getPromotionRequestIp } from '@/lib/security/promotionRateLimit'
+import { hasBetaFeatureAccess } from '@/lib/beta'
 
 const RevisionSchema = z.object({
   title: z.string().transform(normalizePromotionText).pipe(z.string().min(1).max(80).refine(isPromotionTextSafe)),
@@ -14,6 +15,7 @@ const RevisionSchema = z.object({
 async function context(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return null
+  if (!(await hasBetaFeatureAccess(auth.client,auth.user.id,'promotion_application'))) return { auth, rate:{ allowed:false as const, status:403 as const } }
   const rate = await checkPromotionRateLimit({ ip: getPromotionRequestIp(request), userId: auth.user.id, action: 'request' })
   return { auth, rate }
 }

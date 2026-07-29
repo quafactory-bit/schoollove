@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "powershell -ExecutionPolicy Bypass -File scripts/phase10f/run-playwright.ps1",
+    "test:phase10f:db": "powershell -ExecutionPolicy Bypass -File scripts/phase10f/run-isolated-db.ps1"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",
@@ -31,6 +33,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

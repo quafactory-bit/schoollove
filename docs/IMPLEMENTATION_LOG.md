@@ -1,5 +1,14 @@
 # SchoolLoveI Implementation Log
 
+## 2026-07-29 — PHASE 10F 제한 베타 운영 준비
+
+- OTP·성인·필수 동의 뒤 해시 초대와 운영자 승인을 요구하는 제한 베타 프로그램, 회원, 기능 flag, append-only audit 경계를 추가했다.
+- 비공개 프로필·사람 찾기·연결·메시지·Instagram 승인·프로모션 기능을 기능별로 차단하며 프로그램 비상 정지를 지원한다.
+- KST 현재 연도보다 미래인 졸업연도를 API와 DB trigger에서 거부한다.
+- idempotent daily maintenance, 운영 작업 기록, 보존 정책 version, aggregate event counter, incident, owner-only export queue를 추가했다.
+- 관리자 운영 상태 화면, 관리자 전용 health, `CRON_SECRET` 보호 cron, 관리자 로그인 rate limit을 추가했다.
+- 합성 데이터 전용 PostgreSQL 전체 migration 적용, 베타 lifecycle rollback smoke, 권한 smoke를 통과했다. Production 적용 상태는 배포 후 별도로 기록한다.
+
 ## 2026-07-28 — PHASE 10C Safe Connection Messaging (Local/Draft)
 
 ### Implementation

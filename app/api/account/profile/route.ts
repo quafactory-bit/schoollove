@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
+import { hasBetaFeatureAccess } from '@/lib/beta'
 
 const ProfileSchema = z.object({
   display_name: z.string().transform((value) => value.normalize('NFKC').trim()).pipe(z.string().min(1).max(50)),
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
+  if (auth && !(await hasBetaFeatureAccess(auth.client, auth.user.id, 'private_profile'))) return NextResponse.json({ error: 'LIMITED_BETA_ACCESS_REQUIRED' }, { status: 403 })
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
 
   let body: unknown
