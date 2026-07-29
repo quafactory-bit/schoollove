@@ -1,5 +1,20 @@
 # SchoolLoveI Implementation Log
 
+## 2026-07-29 — PHASE 10I controlled beta operations (local)
+
+- PHASE 10I-R connected setup drafts to an immutable activation snapshot. `max_users`, `target_scope`, `enabled_features`, `invite_policy`, `approval_waitlist_enabled`, and mandatory stop conditions are copied in the same transaction as the paused program and audit log.
+- Draft-key edits now persist before activation; another draft or existing program key produces an explicit safe conflict. Activation retries return the existing program and cannot duplicate the program or snapshot.
+- Snapshot capacity is enforced during invite redemption and member approval, invite limits during manual invite issue, and allowed features during flag mutation and effective access checks. Activation still creates no invite, enabled feature flag, public launch, OTP, message, payment, or advertising order.
+- Recorded `docs/decisions/2026-07-29-controlled-beta-operations.md` before implementation.
+- Added migration `20260729190000_controlled_beta_operations.sql` for setup drafts, immutable program setup snapshots, operator notes, feedback, tasks, campaigns, masked aggregates, readiness snapshots, RLS/FORCE RLS, and audited service-role RPCs.
+- Added `/admin/beta/setup`, `/users`, `/schools`, `/advertisers`, `/tasks`, `/readiness`, and `/report`.
+- Added signed-in active-beta feedback without automatic HTML, token, cookie, message, search-text, or personal-identifier attachment.
+- Added synthetic mode requiring an explicit non-Production environment flag.
+- Final security review made the synthetic lifecycle screen strictly read-only: it no longer renders real setup forms or mutation controls, and the membership helper rejects attempts to test another user's UUID.
+- Relevant tests passed: 3 files / 19 tests. Full tests passed: 108 files / 1001 tests. TypeScript and the 59-page Production build passed.
+- The isolated PostgreSQL lifecycle/RLS/grant suite returned `PHASE10I_ISOLATED_DB_OK`; Chromium and mobile 360/390/412 E2E passed 12 tests, including private admin routes, row-free synthetic mode, and private feedback.
+- PHASE 10I Production migration, merge, and deployment remain prohibited.
+
 ## 2026-07-29 — PHASE 10F 제한 베타 운영 준비
 
 - OTP·성인·필수 동의 뒤 해시 초대와 운영자 승인을 요구하는 제한 베타 프로그램, 회원, 기능 flag, append-only audit 경계를 추가했다.
