@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BetaFeatureKey } from '@/lib/policy/operations'
+import { getLimitedLaunchAdminState } from '@/lib/onboarding'
 
 export function hashBetaIdentity(value: string): string {
   return createHash('sha256').update(value.trim().toLowerCase()).digest('hex')
@@ -29,5 +30,6 @@ export async function getBetaAdminState() {
   ])
   const error = [programs,members,flags,jobs,exports,events,incidents].find((result) => result.error)?.error
   if (error) throw new Error('OPERATIONS_STATE_UNAVAILABLE')
-  return { programs: programs.data, members: members.data, flags: flags.data, jobs: jobs.data, exports: exports.data, events: events.data, incidents: incidents.data }
+  const launch = await getLimitedLaunchAdminState()
+  return { programs: programs.data, members: members.data, flags: flags.data, jobs: jobs.data, exports: exports.data, events: events.data, incidents: incidents.data, launch }
 }

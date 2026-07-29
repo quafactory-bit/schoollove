@@ -18,7 +18,8 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-bold text-gray-950">1. 현재 개인정보 안전 전환 상태</h2>
           <p className="mt-2">
             스쿨러브아이는 개인의 이름·졸업연도·학년·반·Instagram 정보가 결합된 공개 명단과 사람 검색을 중단했습니다.
-            신규 개인 등록도 중단했으며, 공개 화면에서는 학교명·지역·학교 유형 등 학교 기본 정보만 제공합니다.
+            공개 개인 등록은 중단했으며, 공개 화면에서는 학교명·지역·학교 유형 등 학교 기본 정보만 제공합니다.
+            승인된 만 19세 이상 제한 베타에서는 본인 소유 비공개 정보만 처리합니다.
           </p>
         </section>
 
@@ -31,9 +32,9 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-gray-950">3. 신규 등록 재개 조건</h2>
+          <h2 className="text-lg font-bold text-gray-950">3. 제한 베타 등록 조건</h2>
           <p className="mt-2">
-            신규 등록은 만 19세 이상 이용자, 본인 정보, 인증된 소유권, 상대방 승인 전 비공개를 기본으로 하는 구조가 준비된 뒤 별도 고지와 함께 재개합니다.
+            제한 베타 등록은 만 19세 이상 이용자, 본인 정보, 인증된 소유권, 상대방 승인 전 비공개를 기본으로 합니다.
             타인의 이름이나 계정을 대신 등록하는 방식은 허용하지 않습니다.
           </p>
           <p className="mt-2">
@@ -47,6 +48,7 @@ export default function PrivacyPage() {
           <p className="mt-2">
             서비스 보안, 장애 대응, 부정 이용 방지 및 통계 분석을 위해 접속·요청 관련 기술 정보가 처리될 수 있습니다.
             Web Analytics는 페이지 방문을 집계하며 개인 이름, Instagram ID, 메시지, 검색어 원문을 커스텀 분석 이벤트로 전송하지 않습니다.
+            제한 베타 온보딩은 개인 원문 없이 단계와 direct·organic social·creator·community·referral·paid social·unknown의 거친 출처만 집계합니다.
           </p>
         </section>
 

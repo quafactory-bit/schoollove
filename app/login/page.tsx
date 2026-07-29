@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { safeLoginDestination } from '@/lib/policy/onboarding'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -42,7 +43,7 @@ export default function LoginPage() {
       setStatus(result.error ?? '인증을 완료할 수 없습니다.')
       return
     }
-    router.push('/account')
+    router.push(safeLoginDestination(new URL(window.location.href).searchParams.get('next')))
     router.refresh()
   }
 
