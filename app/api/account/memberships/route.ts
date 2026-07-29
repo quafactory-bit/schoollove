@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
+import { hasBetaFeatureAccess } from '@/lib/beta'
+import { isFutureGraduationYear } from '@/lib/policy/operations'
 
 const MembershipSchema = z.object({
   school_id: z.string().uuid(),
@@ -19,6 +21,9 @@ export async function POST(request: NextRequest) {
   }
   const parsed = MembershipSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: '학교 이력 입력값을 확인해 주세요.' }, { status: 400 })
+
+  if (isFutureGraduationYear(parsed.data.graduation_year)) return NextResponse.json({ error: 'FUTURE_GRADUATION_YEAR_NOT_ALLOWED' }, { status: 400 })
+  if (!(await hasBetaFeatureAccess(auth.client, auth.user.id, 'private_profile'))) return NextResponse.json({ error: 'LIMITED_BETA_ACCESS_REQUIRED' }, { status: 403 })
 
   const { data: access } = await auth.client.rpc('has_current_adult_access', { target_user_id: auth.user.id })
   if (access !== true) return NextResponse.json({ error: '성인 확인과 필수 동의가 필요합니다.' }, { status: 403 })

@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { checkConnectionRateLimit, getRequestIp, type ConnectionRateAction } from '@/lib/security/connectionRateLimit'
+import { hasBetaFeatureAccess } from '@/lib/beta'
+
+const featureForAction: Partial<Record<ConnectionRateAction, 'people_search'|'connection_request'|'messaging'|'instagram_permission'>> = {
+  search: 'people_search', request: 'connection_request', reminder: 'connection_request',
+  response: 'connection_request', message: 'messaging', instagram: 'instagram_permission',
+}
 
 export async function requireConnectionContext(request: NextRequest, action?: ConnectionRateAction) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return { response: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) } as const
   if (!action) return { auth } as const
+  const feature = featureForAction[action]
+  if (feature && !(await hasBetaFeatureAccess(auth.client, auth.user.id, feature))) {
+    return { response: NextResponse.json({ error: 'LIMITED_BETA_ACCESS_REQUIRED' }, { status: 403 }) } as const
+  }
   const rate = await checkConnectionRateLimit({ ip: getRequestIp(request), userId: auth.user.id, action })
   if (!rate.allowed) {
     const response = NextResponse.json({ error: rate.status === 503 ? '안전 설정을 확인하는 동안 잠시 이용할 수 없습니다.' : '요청이 너무 많습니다.' }, { status: rate.status })

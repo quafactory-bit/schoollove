@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { createOwnerPerformanceCsv } from '@/lib/promotionOperations'
+import { hasBetaFeatureAccess } from '@/lib/beta'
 
 export async function GET(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  if (!(await hasBetaFeatureAccess(auth.client,auth.user.id,'promotion_operations'))) return NextResponse.json({ error:'LIMITED_BETA_ACCESS_REQUIRED' },{ status:403 })
   const { data } = await auth.client.rpc('has_current_adult_access', { target_user_id: auth.user.id })
   if (data !== true) return NextResponse.json({ error: '만 19세 이상 확인이 필요합니다.' }, { status: 403 })
   const csv = await createOwnerPerformanceCsv(auth.user.id)

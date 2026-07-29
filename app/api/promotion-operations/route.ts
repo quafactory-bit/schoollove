@@ -3,10 +3,12 @@ import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { PromotionOwnerOperationSchema } from '@/lib/policy/promotionOperations'
 import { applyPromotionOwnerOperation, getPromotionOperationsOwnerState } from '@/lib/promotionOperations'
 import { checkPromotionRateLimit, getPromotionRequestIp } from '@/lib/security/promotionRateLimit'
+import { hasBetaFeatureAccess } from '@/lib/beta'
 
 export async function GET(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  if (!(await hasBetaFeatureAccess(auth.client,auth.user.id,'promotion_operations'))) return NextResponse.json({ error:'LIMITED_BETA_ACCESS_REQUIRED' },{ status:403 })
   const { data: adult } = await auth.client.rpc('has_current_adult_access', { target_user_id: auth.user.id })
   if (adult !== true) return NextResponse.json({ error: '만 19세 이상 확인과 필수 동의가 필요합니다.' }, { status: 403 })
   const state = await getPromotionOperationsOwnerState(auth.user.id)
@@ -16,6 +18,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  if (!(await hasBetaFeatureAccess(auth.client,auth.user.id,'promotion_operations'))) return NextResponse.json({ error:'LIMITED_BETA_ACCESS_REQUIRED' },{ status:403 })
   const { data: adult } = await auth.client.rpc('has_current_adult_access', { target_user_id: auth.user.id })
   if (adult !== true) return NextResponse.json({ error: '만 19세 이상 확인과 필수 동의가 필요합니다.' }, { status: 403 })
   const rate = await checkPromotionRateLimit({ ip: getPromotionRequestIp(request), userId: auth.user.id, action: 'request' })
