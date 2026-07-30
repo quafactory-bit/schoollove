@@ -1,5 +1,16 @@
 # SchoolLoveI Implementation Log
 
+## 2026-07-30 — PHASE 10J-A first controlled beta preflight (audit only)
+
+- Verified local `main` and `origin/main` at `5215ec7a85653500fe312e01640d13f5ce3f4a0f` with a clean starting worktree, then performed a read-only Production and current-code audit.
+- Confirmed aligned Production migration history through `20260729190000`, all 8 PHASE 10I operation tables, 25 unchanged public profiles, and 10,006 unchanged schools.
+- Confirmed the single legacy program `limited_beta_2026` remains active with no emergency stop, end time, invite, member, setup snapshot, program flag, or campaign. All eight global feature flags remain enabled.
+- Determined `NEW_PROGRAM_RECOMMENDED`; the legacy readiness seed must not be modified or reused for the first real beta.
+- Found no dedicated atomic `paused` to `active` administrator RPC and no enforceable program-school contract. `target_scope` is text, campaign school is optional metadata, and invite issuance currently accepts paused or snapshotless programs.
+- Defined PHASE 10J-B remediation and the operator decision gates in `docs/decisions/2026-07-30-first-controlled-beta-plan.md`.
+- Created no Production program, Draft, snapshot, feature flag, invite, member, OTP, message, Instagram permission, promotion, order, payment, or environment change. The real beta has not started.
+- Final audit status: `PHASE_10J_PREFLIGHT_BLOCKED_IMPLEMENTATION_REQUIRED`.
+
 ## 2026-07-29 — PHASE 10I controlled beta operations (Production)
 
 - PHASE 10I-R connected setup drafts to an immutable activation snapshot. `max_users`, `target_scope`, `enabled_features`, `invite_policy`, `approval_waitlist_enabled`, and mandatory stop conditions are copied in the same transaction as the paused program and audit log.
