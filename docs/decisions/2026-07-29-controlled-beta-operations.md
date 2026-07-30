@@ -1,5 +1,9 @@
 # PHASE 10I — Controlled beta operations
 
+Status: `PHASE_10I_PRODUCTION_APPLIED_AND_MERGED_PAUSED`
+
+Production migration `20260729190000_controlled_beta_operations.sql`, PR #32 squash merge (`8352036ce58e510364fb3a830124b2d41ce58e4e`), Vercel Production deployment, and Production verification are complete. All 8 operation tables enforce RLS/FORCE RLS. Verification preserved 25 public profiles, 10,006 schools, and the existing connection, message, Instagram-permission, promotion, order, and payment data, and created no operational row, program, invite, member, or feature flag.
+
 ## Decision
 
 PHASE 10I adds an operator-only package for running a small, adult-only beta without opening personal features to the public.
@@ -15,8 +19,10 @@ PHASE 10I adds an operator-only package for running a small, adult-only beta wit
 - Every setup must enable `PRIVACY_EXPOSURE`, `RLS_FAILURE`, and `HEALTH_FAILURE` stop conditions in both the application schema and database contract.
 - `launch_candidate` is an operator judgement label, not an automatic activation signal.
 
-## Non-goals
+## Continuing safety contract
 
-- No Production migration or deployment in PHASE 10I.
-- No public launch, automatic invitations, real OTP, real messages, real advertising notifications, or live payment.
-- No ownership assignment or mutation of the existing 25 public profiles.
+- Production application of PHASE 10I is complete; this does not authorize an active beta or a public launch.
+- Every new program is initially `paused`. Changing a program to `active` requires separate approval.
+- Invite creation and delivery, real OTP, real messages, Instagram permission changes, advertising execution, and payment execution require separate approval.
+- Production environment-variable changes require separate approval.
+- No ownership assignment, mutation, or deletion of the existing 25 public profiles.

@@ -5,10 +5,12 @@
 - Preserved every validated setup as an immutable program snapshot and enforced capacity, invite, feature, and mandatory-stop contracts at database boundaries.
 - Made pre-activation draft-key changes persistent with explicit draft/program collision errors and idempotent activation retries.
 - Added operator-only setup, member, school, advertiser, feedback, task, daily-report, emergency-stop, and readiness surfaces.
-- Added seven RLS/FORCE RLS operation tables and atomic service-role audit RPCs.
+- Added eight RLS/FORCE RLS operation tables and atomic service-role audit RPCs.
 - Added active beta-member feedback with personal/external identifier filtering.
 - Added Preview/isolated-only synthetic lifecycle mode; Production remains fail-closed.
-- Kept public launch, real OTP/messages/notifications, live payment, and PHASE 10I Production migration disabled.
+- Applied Production migration `20260729190000`, squash-merged PR #32 as `8352036ce58e510364fb3a830124b2d41ce58e4e`, and completed Vercel Production deployment and verification.
+- Verified RLS/FORCE RLS on all 8 tables while preserving 25 public profiles, 10,006 schools, and all existing connection, message, Instagram-permission, promotion, order, and payment data.
+- Created no operational rows, program, invite, member, or feature flag during verification. Public launch, program activation, invite delivery, real OTP/messages/notifications, advertising execution, and live payment remain separately approved operations.
 
 ## 2026-07-29 — PHASE 10H (LOCAL/DRAFT)
 

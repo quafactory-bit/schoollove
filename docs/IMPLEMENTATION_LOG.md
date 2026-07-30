@@ -1,6 +1,6 @@
 # SchoolLoveI Implementation Log
 
-## 2026-07-29 — PHASE 10I controlled beta operations (local)
+## 2026-07-29 — PHASE 10I controlled beta operations (Production)
 
 - PHASE 10I-R connected setup drafts to an immutable activation snapshot. `max_users`, `target_scope`, `enabled_features`, `invite_policy`, `approval_waitlist_enabled`, and mandatory stop conditions are copied in the same transaction as the paused program and audit log.
 - Draft-key edits now persist before activation; another draft or existing program key produces an explicit safe conflict. Activation retries return the existing program and cannot duplicate the program or snapshot.
@@ -13,7 +13,13 @@
 - Final security review made the synthetic lifecycle screen strictly read-only: it no longer renders real setup forms or mutation controls, and the membership helper rejects attempts to test another user's UUID.
 - Relevant tests passed: 3 files / 19 tests. Full tests passed: 108 files / 1001 tests. TypeScript and the 59-page Production build passed.
 - The isolated PostgreSQL lifecycle/RLS/grant suite returned `PHASE10I_ISOLATED_DB_OK`; Chromium and mobile 360/390/412 E2E passed 12 tests, including private admin routes, row-free synthetic mode, and private feedback.
-- PHASE 10I Production migration, merge, and deployment remain prohibited.
+- Applied Production migration `20260729190000_controlled_beta_operations.sql`; migration history is aligned and all 8 new tables have RLS/FORCE RLS enabled.
+- Squash-merged PR #32 at `8352036ce58e510364fb3a830124b2d41ce58e4e` and completed the Vercel Production deployment and official-domain smoke verification.
+- Production lifecycle, permissions, non-member feedback rejection, service-role RPC, private-cache/SEO, and synthetic-mode 404 checks passed.
+- Preserved 25 public profiles, 10,006 schools, and all existing connection, message, Instagram-permission, promotion, order, and payment data. No ownership was assigned.
+- Created no PHASE 10I operational data and no new program, invite, member, or feature flag. The existing program and feature flags were unchanged.
+- Final status: `PHASE_10I_PRODUCTION_APPLIED_AND_MERGED_PAUSED`.
+- Program activation, invite creation or delivery, OTP, messages, Instagram permissions, advertising, payments, and Production environment changes remain separately approved operations. Every newly created beta program must start `paused`.
 
 ## 2026-07-29 — PHASE 10F 제한 베타 운영 준비
 
