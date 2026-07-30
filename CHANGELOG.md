@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-30 — PHASE 10J-A first controlled beta preflight
+
+- Completed a read-only Production and implementation audit for the first real controlled beta; no beta program, invite, member, feature flag, OTP, message, Instagram permission, promotion, order, or payment was created or changed.
+- Recommended a new 20-member, 14-day, one-school, adult-graduate program with one-use seven-day invites, administrator approval, and only `account_registration` plus `private_profile` initially allowed. The school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`.
+- Classified the legacy active `limited_beta_2026` readiness seed as `NEW_PROGRAM_RECOMMENDED` because it has no immutable setup snapshot, no end time, and inherits all eight enabled global feature flags.
+- Found blocking gaps in the atomic `paused` to `active` transition and enforceable school-ID scope. PHASE 10J-B implementation is required before any real program creation, activation, or invite.
+- Recorded the complete audit and proposed remediation in `docs/decisions/2026-07-30-first-controlled-beta-plan.md`.
+
 ## 2026-07-29 — PHASE 10I controlled beta operations
 
 - Preserved every validated setup as an immutable program snapshot and enforced capacity, invite, feature, and mandatory-stop contracts at database boundaries.
