@@ -11,6 +11,12 @@ const MembershipSchema = z.object({
   class_number: z.number().int().min(1).max(100).nullable().optional(),
 })
 const DeleteSchema = z.object({ membership_id: z.string().uuid() })
+const controlledBetaMembershipErrors = new Set(['SCHOOL_OUTSIDE_BETA_SCOPE','SECOND_SCHOOL_NOT_ALLOWED','ACTIVE_CONTROLLED_BETA_MEMBERSHIP_REQUIRED'])
+
+function controlledBetaMembershipError(error:{message?:string}|null){
+  const code=error?.message?.match(/\b[A-Z][A-Z0-9_]{1,59}\b/)?.[0]
+  return code&&controlledBetaMembershipErrors.has(code)?code:null
+}
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
@@ -44,7 +50,11 @@ export async function POST(request: NextRequest) {
     graduation_year: parsed.data.graduation_year,
     class_number: parsed.data.class_number ?? null,
   }).select('id').single()
-  if (error) return NextResponse.json({ error: '학교 이력을 저장할 수 없습니다.' }, { status: 500 })
+  if (error) {
+    const safeCode=controlledBetaMembershipError(error)
+    if(safeCode)return NextResponse.json({error:safeCode},{status:409})
+    return NextResponse.json({ error: '학교 이력을 저장할 수 없습니다.' }, { status: 500 })
+  }
   await syncOnboardingProgressSafely(auth.client,auth.user.id,'direct')
   await recordLimitedLaunchEvent('school_membership_saved')
   return NextResponse.json({ membership: data }, { status: 201 })

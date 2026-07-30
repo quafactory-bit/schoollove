@@ -219,3 +219,18 @@ All gates must pass before any Production mutation:
 `PHASE_10J_PREFLIGHT_BLOCKED_IMPLEMENTATION_REQUIRED`
 
 The current state supports read-only operations and several paused-program preparation steps, but it is not safe to create or start the first real beta until PHASE 10J-B implements the atomic active transition and enforceable one-school contract.
+
+## PHASE 10J-B implementation result
+
+The blockers identified above are implemented and locally verified in migration `20260730100000_first_controlled_beta_safety_boundaries.sql`:
+
+- the selected school is a validated UUID copied atomically into the immutable setup snapshot and a one-row `beta_program_schools` allowlist;
+- the first-beta contract is fixed at 20 members, exactly 14 days, one use per invite, at most seven days per invite, administrator approval, all three mandatory stops, and only `account_registration` plus `private_profile`;
+- a service-role-only, idempotent start RPC is the only supported transition from the newly created `paused` program to `active`;
+- program-scoped flags must contain all eight keys with exactly the two approved keys enabled, so legacy global flags cannot widen a snapshot-backed program;
+- invite issue, redemption, approval, capacity, and private school-history writes recheck the immutable contract at DB boundaries;
+- emergency stop pauses access and generic restore fails closed; a separately approved reactivation requires a post-stop readiness record and a complete contract recheck.
+
+Application tests, the full suite, TypeScript, Production build, isolated PostgreSQL lifecycle/RLS/grants, and Chromium/mobile E2E pass. This resolves the code blockers only. It does not authorize or perform a Production migration, a target-school decision, an actual Draft or program, an active transition, an invite, or any user-facing beta operation.
+
+Current implementation status: `PHASE_10J_B_LOCAL_VERIFIED`.

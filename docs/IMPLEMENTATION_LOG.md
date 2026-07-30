@@ -1,5 +1,20 @@
 # SchoolLoveI Implementation Log
 
+## 2026-07-30 — PHASE 10J-B first controlled beta safety boundaries (Local/Draft)
+
+- Added migration `20260730100000_first_controlled_beta_safety_boundaries.sql` without changing any previously applied migration.
+- Bound setup Drafts, immutable setup snapshots, beta members, and a new immutable `beta_program_schools` allowlist to one validated school UUID. Free-text `target_scope` remains descriptive only.
+- Replaced the first-beta setup contract with exact DB and app validation: 20 members, 14 days, one school, one-use/seven-day invites, approval waitlist, mandatory privacy/RLS/health stops, and only `account_registration` plus `private_profile` enabled.
+- Added idempotent, service-role-only feature configuration and atomic start. Activation remains a paused-program creation step; only `admin_start_controlled_beta_program()` can transition an eligible snapshot-backed program to `active` and append its audit record.
+- Made emergency stop pause snapshot-backed active programs. Generic emergency clearing fails closed; `admin_reactivate_controlled_beta_program()` requires a readiness record created after the stop and rechecks the complete contract before audited restoration.
+- Restricted invite issue, redemption, member approval, and private school-history writes to the active immutable school contract. Outstanding invites plus occupied member capacity cannot exceed 20.
+- Removed global feature mutation and generic restore from administrator UI. School search returns only minimal school metadata, start controls appear only when readiness is complete, and invite UI lists only eligible programs.
+- Targeted validation passed: 4 files / 24 tests. Full validation passed: 109 files / 1012 tests, TypeScript, and the 59-page Production build.
+- The isolated PostgreSQL suite returned `PHASE10J_LIFECYCLE_OK`, `PHASE10J_PERMISSIONS_OK`, and `PHASE10J_ISOLATED_DB_OK`. It exercised atomic rollback, idempotent activation/start, immutable school scope, exact flags, invite policy/capacity, member approval, authenticated school writes, emergency stop, fresh readiness, reactivation, RLS, and grants.
+- Chromium and mobile 360/390/412 E2E passed 11 tests for administrator-only routes, safe 400/409 errors, row-free synthetic guidance, school selection, paused creation, flags, readiness, active start, eligible invite display, emergency stop, reactivation, private robots, responsive layout, and closed public registration. Nine duplicate mobile executions of project-independent API-only checks were intentionally skipped.
+- Production migration, deployment, environment changes, school selection, real Draft/program/flag/invite/member, OTP, message, Instagram permission, promotion, order, and payment were not executed. Existing Production data was not changed.
+- Local status: `PHASE_10J_B_LOCAL_VERIFIED`; target school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`.
+
 ## 2026-07-30 — PHASE 10J-A first controlled beta preflight (audit only)
 
 - Verified local `main` and `origin/main` at `5215ec7a85653500fe312e01640d13f5ce3f4a0f` with a clean starting worktree, then performed a read-only Production and current-code audit.

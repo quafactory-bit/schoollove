@@ -1,9 +1,8 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { betaFeatureKeys } from '@/lib/policy/operations'
 
-type Program = { id:string; program_key:string; name:string; status:string; emergency_disabled_at:string|null }
+type Program = { id:string; program_key:string; name:string; status:string; emergency_disabled_at:string|null;snapshot_backed:boolean;invite_eligible:boolean;selected_school:{school_name:string;school_type:string;sido:string;sigungu:string}|null }
 type Member = { id:string; program_id:string; status:string; enrolled_at:string; reason_code:string|null }
 type Flag = { id:string; program_id:string|null; feature_key:string; enabled:boolean; reason_code:string }
 type Launch = {
@@ -41,34 +40,30 @@ export default function OperationsClient() {
 
   if (error && !state) return <p role="alert">{error}</p>
   if (!state) return <p>운영 상태를 확인하고 있습니다.</p>
-  const activeProgram=state.programs.find((program) => program.status==='active')
+  const invitePrograms=state.programs.filter((program) => program.invite_eligible)
   return <div className="space-y-6">
     {notice ? <p role="status" className="break-all rounded-xl border border-green-300 bg-green-50 p-4 text-sm">{notice}</p> : null}
     {error ? <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm">{error}</p> : null}
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold">프로그램·비상 제어</h2>
-      {state.programs.map((program) => <div key={program.id} className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3 text-sm"><span><strong>{program.name}</strong> · {program.status} · {program.emergency_disabled_at ? '비상 중단' : '정상'}</span><div className="flex gap-2"><button className="border px-3 py-2" onClick={() => mutate({action:'emergency',programId:program.id,disabled:true,reason:'ADMIN_EMERGENCY'}).catch((reason)=>setError(String(reason)))}>즉시 중단</button><button className="border px-3 py-2" onClick={() => mutate({action:'emergency',programId:program.id,disabled:false,reason:'ADMIN_RESTORE'}).catch((reason)=>setError(String(reason)))}>복구</button></div></div>)}
+      {state.programs.map((program) => <div key={program.id} className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3 text-sm"><span><strong>{program.name}</strong> · {program.status} · {program.emergency_disabled_at ? '비상 중단·별도 재활성화 필요' : '정상'} · {program.snapshot_backed?'snapshot 계약':'legacy'}</span><button className="border px-3 py-2" onClick={() => mutate({action:'emergency',programId:program.id,disabled:true,reason:'ADMIN_EMERGENCY'}).catch((reason)=>setError(String(reason)))}>즉시 중단</button></div>)}
     </section>
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold">해시 초대 발급</h2>
       <form onSubmit={issueInvite} className="mt-3 grid gap-3 md:grid-cols-2">
-        <select required name="programId" className="border p-3">{state.programs.map((program)=><option key={program.id} value={program.id}>{program.name}</option>)}</select>
+        <select required name="programId" className="border p-3" disabled={!invitePrograms.length}><option value="">발급 가능한 프로그램 선택</option>{invitePrograms.map((program)=><option key={program.id} value={program.id}>{program.name} · {program.selected_school?.school_name??'학교 계약 없음'}</option>)}</select>
         <input name="email" type="email" placeholder="제한 이메일(선택)" className="border p-3" />
         <input name="domain" placeholder="제한 도메인(선택)" className="border p-3" />
-        <input required name="maxUses" type="number" min="1" max="1000" defaultValue="1" className="border p-3" />
+        <input name="maxUses" type="hidden" value="1" /><p className="border p-3 text-sm">단일 사용 초대 · 최대 7일 · 프로그램 종료 전 만료</p>
         <input required name="expiresAt" type="datetime-local" className="border p-3" />
-        <button className="bg-gray-950 p-3 font-semibold text-white">초대 발급</button>
+        <button disabled={!invitePrograms.length} className="bg-gray-950 p-3 font-semibold text-white disabled:bg-gray-400">초대 발급</button>
       </form>
     </section>
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold">검수 대기 회원</h2>
       {state.members.map((member)=><div key={member.id} className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3 text-sm"><span>{member.id} · {member.status} · {new Date(member.enrolled_at).toLocaleString('ko-KR')}</span><div className="flex gap-2"><button className="border px-3 py-2" onClick={()=>mutate({action:'review_member',memberId:member.id,status:'active',reason:'ADMIN_APPROVED'}).catch((reason)=>setError(String(reason)))}>승인</button><button className="border px-3 py-2" onClick={()=>mutate({action:'review_member',memberId:member.id,status:'suspended',reason:'ADMIN_SUSPENDED'}).catch((reason)=>setError(String(reason)))}>중단</button></div></div>)}
     </section>
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-bold">기능 제어</h2>
-      <div className="mt-3 grid gap-2 md:grid-cols-2">{betaFeatureKeys.map((feature)=>{ const flag=state.flags.find((item)=>item.feature_key===feature && item.program_id===null); return <button key={feature} className="flex justify-between border p-3 text-left text-sm" onClick={()=>mutate({action:'set_feature',programId:null,userId:null,feature,enabled:!(flag?.enabled??false),reason:'ADMIN_FEATURE_CONTROL'}).catch((reason)=>setError(String(reason)))}><span>{feature}</span><strong>{flag?.enabled ? 'ON':'OFF'}</strong></button> })}</div>
-      {!activeProgram ? <p className="mt-3 text-sm text-red-700">활성 프로그램이 없습니다.</p> : null}
-    </section>
+    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-bold">기능 제어 경계</h2><p className="mt-2 text-sm">글로벌 flag는 이 화면에서 변경하지 않습니다. snapshot-backed 프로그램의 명시적 8개 flag는 제한 베타 시작 마법사에서만 설정합니다.</p></section>
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold">제한 출시 온보딩 퍼널</h2>
       <p className="mt-2 text-sm text-gray-600">개인 원문 없이 현재 단계와 최근 14일 최초 단계 진입 집계만 표시합니다.</p>
