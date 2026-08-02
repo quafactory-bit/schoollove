@@ -1,5 +1,18 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-02 — PHASE 10L legacy person data reset (local implementation)
+
+- Created branch `phase/10l-legacy-person-data-reset` from clean `main`/`origin/main` `09e632cdfa040d1695e374b1c464fc6a9dcd2a9a`.
+- Performed a Production read-only aggregate/catalog audit without outputting person content. Found 25 unowned legacy profiles across 13 schools, 1 linked report, 8 standalone traces across 5 schools, and 670 raw search logs. Schools remain 10,006, all at stored level 1 with no level timestamp.
+- Confirmed new private profiles, adult/consent records, memberships, connections, messages, Instagram permissions, safety rows, real beta operation rows, program/user-scoped beta flags, promotion/order rows, and payment rows are all zero. Preserved definitions are one legacy beta program and eight global flags.
+- Confirmed the only FK to legacy `profiles` is `reports.profile_id ON DELETE CASCADE`; traces link only to schools, search logs optionally link only to schools, and profiles link to schools plus optional auth owner. No view or materialized view reads profiles.
+- Added `20260802120000_legacy_person_data_reset.sql`. It locks asserted domains, accepts only the exact audited Production baseline or an all-zero fresh replay, deletes reports/traces/search logs/profiles in dependency order, normalizes affected school growth state, verifies empty ranking output, and commits atomically.
+- Added migration structure tests, a synthetic Production-shape seed, isolated lifecycle/RLS/grant/baseline-drift validation, PHASE 10J regression execution, public-boundary E2E, the decision record, and the Production execution runbook.
+- Isolated PostgreSQL passed `PHASE10L_LIFECYCLE_OK`, `PHASE10L_PERMISSIONS_OK`, `PHASE10J_LIFECYCLE_OK`, `PHASE10J_PERMISSIONS_OK`, `PHASE10L_BASELINE_GUARD_OK`, and `PHASE10L_ISOLATED_DB_OK`. A deliberately drifted one-profile state aborted before deletion and retained its row.
+- Targeted validation passed 3 files / 17 tests; the full suite passed 110 files / 1,017 tests. TypeScript and the 59-page Production build passed.
+- Chromium and mobile 360/390/412 E2E passed 8/8 checks for exact public profile-write 503, fail-closed/no-person-output trace and report writes, private search/account boundaries, and a person-free sitemap. An initial exact-503 assumption for the existing trace route was corrected after its local Production-mode boundary returned a non-success 500; no application code was changed.
+- Production migration, merge, deployment, school choice, beta operations, invitation, communication, promotion, order, and payment were not executed. Production still contains the audited legacy rows pending separate approval.
+
 ## 2026-08-02 — PHASE 10K limited beta readiness audit (documentation only)
 
 - Confirmed local `main` and `origin/main` at `d8ab78a308dae7e796eb16601303e4b392fcee93` with a clean starting worktree.
