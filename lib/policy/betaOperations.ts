@@ -4,6 +4,19 @@ import { betaFeatureKeys } from '@/lib/policy/operations'
 export const betaReadinessStates = ['blocked','internal_only','limited_beta','beta_stable','launch_candidate'] as const
 export const betaTaskTypes = ['beta_approval','onboarding_failure','report','block_review','deletion_request','advertiser_verification','advertiser_review','quote','payment_confirmation','ad_schedule','refund','cron_failure','outbox_failure','feedback','health_warning'] as const
 export const requiredBetaStopConditions = ['PRIVACY_EXPOSURE','RLS_FAILURE','HEALTH_FAILURE'] as const
+export const firstControlledBetaEnabledFeatures = ['account_registration','private_profile'] as const
+export const controlledBetaSafeErrorCodes = [
+  'TARGET_SCHOOL_REQUIRED','TARGET_SCHOOL_NOT_FOUND','INVALID_FIRST_BETA_FEATURE_SET',
+  'INVALID_FIRST_BETA_INVITE_POLICY','INVALID_FIRST_BETA_CONTRACT','DRAFT_ALREADY_ACTIVATED',
+  'PROGRAM_NOT_FOUND','PROGRAM_NOT_PAUSED','PROGRAM_NOT_CONFIGURABLE','PROGRAM_ALREADY_USED',
+  'PROGRAM_SETUP_SNAPSHOT_REQUIRED','PROGRAM_SETUP_CONTRACT_INVALID','PROGRAM_SCHOOL_CONTRACT_INVALID',
+  'PROGRAM_FEATURE_SET_INCOMPLETE','FRESH_READINESS_REQUIRED','REACTIVATION_REQUIRED',
+  'PROGRAM_NOT_REACTIVATABLE','LEGACY_PROGRAM_REJECTED','LEGACY_OR_EMERGENCY_PROGRAM_REJECTED',
+  'PROGRAM_UNAVAILABLE','PROGRAM_FULL','INVALID_FIRST_BETA_INVITE','INVITE_EXCEEDS_PROGRAM_END',
+  'INVITE_POLICY_NOT_ACTIVE','MEMBER_NOT_PENDING_REVIEW','ADULT_CONSENT_REQUIRED',
+  'INVITE_CONTRACT_INVALID','APPROVAL_POLICY_INVALID','SCHOOL_OUTSIDE_BETA_SCOPE',
+  'SECOND_SCHOOL_NOT_ALLOWED','ACTIVE_CONTROLLED_BETA_MEMBERSHIP_REQUIRED',
+] as const
 
 const reasonCode = z.string().regex(/^[A-Z0-9_]{2,60}$/)
 const safeOperatorText = z.string().trim().min(1).max(2000)
@@ -33,6 +46,7 @@ export const BetaSetupSchema = z.object({
   endsAt: z.string().datetime().nullable(),
   maxUsers: z.number().int().min(1).max(1000),
   targetScope: z.string().trim().min(2).max(120),
+  targetSchoolId: z.string().uuid().nullable(),
   enabledFeatures: z.array(z.enum(betaFeatureKeys)).max(betaFeatureKeys.length),
   invitePolicy: z.object({ maxUsesPerInvite:z.number().int().min(1).max(100), expiresInDays:z.number().int().min(1).max(30) }),
   approvalWaitlistEnabled: z.boolean(),
@@ -44,18 +58,30 @@ export const BetaSetupSchema = z.object({
   if (value.enabledFeatures.includes('messaging') && !value.enabledFeatures.includes('connection_request')) context.addIssue({code:'custom',path:['enabledFeatures'],message:'MESSAGING_REQUIRES_CONNECTIONS'})
   if (value.enabledFeatures.includes('connection_request') && !value.enabledFeatures.includes('people_search')) context.addIssue({code:'custom',path:['enabledFeatures'],message:'CONNECTIONS_REQUIRE_SEARCH'})
   for(const condition of requiredBetaStopConditions) if(value.stopConditions[condition]!==true) context.addIssue({code:'custom',path:['stopConditions',condition],message:'REQUIRED_STOP_CONDITION_MISSING'})
+  const enabled=new Set(value.enabledFeatures)
+  if(enabled.size!==2 || !firstControlledBetaEnabledFeatures.every((feature)=>enabled.has(feature))) context.addIssue({code:'custom',path:['enabledFeatures'],message:'INVALID_FIRST_BETA_FEATURE_SET'})
+  if(value.status==='validated') {
+    if(!value.targetSchoolId) context.addIssue({code:'custom',path:['targetSchoolId'],message:'TARGET_SCHOOL_REQUIRED'})
+    if(value.maxUsers!==20) context.addIssue({code:'custom',path:['maxUsers'],message:'FIRST_BETA_MAX_USERS_MUST_BE_20'})
+    if(!value.startsAt || !value.endsAt || new Date(value.endsAt).getTime()-new Date(value.startsAt).getTime()!==14*24*60*60*1000) context.addIssue({code:'custom',path:['endsAt'],message:'FIRST_BETA_DURATION_MUST_BE_14_DAYS'})
+    if(value.invitePolicy.maxUsesPerInvite!==1 || value.invitePolicy.expiresInDays!==7) context.addIssue({code:'custom',path:['invitePolicy'],message:'INVALID_FIRST_BETA_INVITE_POLICY'})
+    if(!value.approvalWaitlistEnabled) context.addIssue({code:'custom',path:['approvalWaitlistEnabled'],message:'APPROVAL_WAITLIST_REQUIRED'})
+  }
 })
 
 export const BetaAdminActionSchema = z.discriminatedUnion('action',[
   z.object({action:z.literal('save_setup'),setup:BetaSetupSchema}),
   z.object({action:z.literal('activate_setup'),draftId:z.string().uuid()}),
+  z.object({action:z.literal('configure_features'),programId:z.string().uuid(),enabledFeatures:z.array(z.enum(betaFeatureKeys)).length(2).refine((value)=>firstControlledBetaEnabledFeatures.every((feature)=>value.includes(feature)),'INVALID_FIRST_BETA_FEATURE_SET')}),
+  z.object({action:z.literal('start_program'),programId:z.string().uuid(),reason:reasonCode}),
+  z.object({action:z.literal('reactivate_program'),programId:z.string().uuid(),reason:reasonCode,resolutionCode:reasonCode}),
   z.object({action:z.literal('review_member'),memberId:z.string().uuid(),status:z.enum(['active','suspended','rejected','withdrawn']),reason:reasonCode}),
   z.object({action:z.literal('update_task'),taskId:z.string().uuid(),status:z.enum(['open','assigned','in_progress','resolved','dismissed']),priority:z.enum(['low','normal','high','urgent']),assignee:z.string().trim().min(1).max(100).nullable(),resolution:reasonCode.nullable()}),
   z.object({action:z.literal('create_task'),programId:z.string().uuid().nullable(),taskType:z.enum(betaTaskTypes),priority:z.enum(['low','normal','high','urgent']),summary:z.string().trim().min(1).max(300),dueAt:z.string().datetime().nullable()}),
   z.object({action:z.literal('create_note'),programId:z.string().uuid().nullable(),entityType:z.enum(['program','member','school','advertiser','feedback','task','incident']),entityId:z.string().uuid().nullable(),note:safeOperatorText}),
   z.object({action:z.literal('create_campaign'),programId:z.string().uuid(),schoolId:z.string().uuid().nullable(),campaignCode:z.string().regex(/^[a-z0-9][a-z0-9_-]{2,79}$/),channel:z.enum(['instagram','threads','x','tiktok','youtube','community','creator','direct','other']),inviteId:z.string().uuid().nullable(),nextAction:z.string().trim().max(300).nullable()}),
   z.object({action:z.literal('record_readiness'),programId:z.string().uuid().nullable(),status:z.enum(betaReadinessStates),criteria:z.record(z.string(),z.union([z.boolean(),z.number().int().nonnegative(),z.string().max(60)])),blockerCodes:z.array(reasonCode).max(30),operatorDecision:z.boolean()}),
-  z.object({action:z.literal('stop'),scope:z.enum(['all','people_search','messaging','promotion_application','promotion_operations','invites']),reason:reasonCode}),
+  z.object({action:z.literal('stop'),scope:z.enum(['all','account_registration','private_profile','people_search','messaging','promotion_application','promotion_operations','invites']),reason:reasonCode}),
 ])
 
 export function maskSmallAggregate(count: number, minimum = 10): { count:number|null; masked:boolean; label:string } {

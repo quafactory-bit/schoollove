@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-30 — PHASE 10J-B first controlled beta safety boundaries (LOCAL/DRAFT)
+
+- Added a validated school UUID to the setup Draft and immutable snapshot, plus an RLS/FORCE RLS `beta_program_schools` table that permits exactly one school per snapshot-backed program.
+- Added idempotent service-role-only feature configuration, atomic `paused` to `active` start, and separate post-emergency reactivation RPCs. Start and reactivation recheck the 20-member, 14-day, one-school, mandatory-stop, readiness, and exact two-feature contract.
+- Restricted invite issuance to an active in-window contract, one use, at most seven days, and available capacity. Redemption and administrator approval copy and recheck the immutable school boundary.
+- Enforced the selected school and single-school history at the private membership DB boundary; public registration and legacy program behavior are not widened.
+- Updated administrator surfaces to select a school UUID, show contract blockers, configure only program-scoped flags, list only invite-eligible programs, and remove generic emergency restore.
+- Verified 24 targeted tests, 109 files / 1012 full tests, TypeScript, 59-page Production build, isolated PostgreSQL lifecycle/RLS/grants, and 11 Chromium/mobile E2E tests; 9 redundant mobile API-only project cases were intentionally skipped while the complete UI workflow ran at every viewport.
+- Did not apply the migration to Production or create any real Draft, program, feature flag, invite, member, OTP, message, Instagram permission, promotion, order, or payment. The target school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`.
+
 ## 2026-07-30 — PHASE 10J-A first controlled beta preflight
 
 - Completed a read-only Production and implementation audit for the first real controlled beta; no beta program, invite, member, feature flag, OTP, message, Instagram permission, promotion, order, or payment was created or changed.

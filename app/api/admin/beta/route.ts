@@ -7,7 +7,9 @@ const privateHeaders={'Cache-Control':'private, no-store, max-age=0','X-Robots-T
 
 export async function GET(request:NextRequest) {
   if(!(await requireAdminSession(request))) return NextResponse.json({error:'ADMIN_AUTH_REQUIRED'},{status:401,headers:privateHeaders})
-  try { return NextResponse.json(await getControlledBetaState(),{headers:privateHeaders}) }
+  const schoolQuery=request.nextUrl.searchParams.get('schoolQuery')?.trim()??''
+  if(schoolQuery.length>100) return NextResponse.json({error:'INVALID_SCHOOL_QUERY'},{status:400,headers:privateHeaders})
+  try { return NextResponse.json(await getControlledBetaState(schoolQuery),{headers:privateHeaders}) }
   catch { return NextResponse.json({error:'BETA_OPERATIONS_UNAVAILABLE'},{status:500,headers:privateHeaders}) }
 }
 export async function PATCH(request:NextRequest) {
