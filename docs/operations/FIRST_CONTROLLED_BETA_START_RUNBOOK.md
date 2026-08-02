@@ -2,7 +2,7 @@
 
 ## Scope
 
-This runbook prepares one adult-graduate controlled beta. It does not itself authorize a Production migration, school choice, program start, invitation, OTP, message, Instagram permission, advertising action, or payment.
+This runbook prepares one adult-graduate controlled beta. PHASE 10J migration `20260730100000_first_controlled_beta_safety_boundaries.sql` is already applied, but this runbook does not itself authorize a school choice, Production Draft/program creation, program start, invitation, OTP, message, Instagram permission, advertising action, or payment.
 
 ## Fixed contract
 
@@ -21,7 +21,7 @@ Until the operator explicitly selects the first school, record `TARGET_SCHOOL_PE
 
 ## Approval gates
 
-1. Obtain separate approval to apply migration `20260730100000_first_controlled_beta_safety_boundaries.sql` to the identified Production project. Verify migration history, RLS/FORCE RLS, grants, existing row counts, and zero new operational rows.
+1. Confirm Production remains on the PHASE 10J merged baseline, migration `20260730100000_first_controlled_beta_safety_boundaries.sql` remains recorded as applied, RLS/FORCE RLS and grants remain intact, and no unapproved beta operational rows exist.
 2. Obtain the operator's explicit school decision. Select the school through the administrator school search and confirm the immutable UUID, not only its display name.
 3. Save and validate a new uniquely keyed Draft with the fixed contract. Verify no existing program is reused.
 4. Create the program. Confirm it is `paused`, has one snapshot, one matching allowlist row, zero invites, zero members, and no automatically enabled flags.
@@ -29,6 +29,25 @@ Until the operator explicitly selects the first school, record `TARGET_SCHOOL_PE
 6. Record a `limited_beta` readiness decision with no blockers. Obtain separate explicit approval for active transition.
 7. Start through `admin_start_controlled_beta_program()` only. Verify one start audit event and active access only for the two approved features.
 8. Obtain a second explicit approval before issuing the first invitation. Issue one hashed invite for one use and at most seven days; never log or document the raw token.
+
+## Runtime-log prerequisite
+
+- Use the Vercel project Logs page with an already authenticated account that can view observability/log data. Do not issue a new token, extract browser credentials, or grant deployment/settings permissions merely to read logs.
+- The current Hobby project exposes runtime logs in the dashboard but retains them for a short window. At every mutation gate, record the KST time and inspect Production warnings, errors, fatal entries, 4xx/5xx changes, and the affected route immediately.
+- Keep names, email addresses, messages, Instagram identifiers, invite tokens, cookies, authorization headers, and request bodies out of copied evidence.
+- Log access failure is a stop condition for active transition and first invitation; mark it unverified rather than bypassing the gate.
+
+## Stage outcomes
+
+| Stage | Success | Stop |
+| --- | --- | --- |
+| Baseline | Expected Git/deployment/migration, no unapproved rows, healthy public routes and logs | Any drift, 5xx increase, migration mismatch, or inaccessible mandatory evidence |
+| School decision | One adult-graduate cohort is operator-verifiable and one immutable school UUID is confirmed | School identity ambiguity, current-minor targeting, or need for broader school scope |
+| Draft and paused creation | Exact fixed contract; one snapshot and allowlist; zero invite/member; program `paused` | Any duplicate, mutable/missing snapshot, wrong dates/capacity/school/stops/features |
+| Feature/readiness | Exactly two allowed program flags; current health/RLS/privacy readiness has no blockers | Global/extra feature access, stale readiness, or any mandatory blocker |
+| Active transition | Separately approved atomic RPC; one audit event; contract unchanged | Non-atomic transition, missing audit, emergency state, time-window mismatch |
+| First invite | Separately approved active in-window program; one-use hashed invite; capacity available | Raw-token exposure, paused/full/out-of-window program, school or adult-boundary uncertainty |
+| Member approval | Verified adult graduate, required consent, invite/school/capacity rechecked | Under-19 risk, school mismatch, missing consent, capacity or RLS failure |
 
 ## Fail-closed checks
 
