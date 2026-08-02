@@ -1,8 +1,10 @@
-# PHASE 10J-A — First controlled beta preflight plan
+# PHASE 10J — First controlled beta safety plan
 
-Status: `PHASE_10J_PREFLIGHT_BLOCKED_IMPLEMENTATION_REQUIRED`
+Status: `PHASE_10J_PRODUCTION_APPLIED_AND_MERGED_NO_BETA_DATA`
 
-This document records a read-only Production and implementation audit. It does not authorize or perform a beta-program mutation, activation, invite, member enrollment, OTP, message, Instagram permission, promotion, order, payment, migration, environment change, or deployment.
+This document preserves the PHASE 10J-A preflight findings and the PHASE 10J-B implementation decision. Migration `20260730100000_first_controlled_beta_safety_boundaries.sql` was later applied to Production, PR #35 was squash-merged, and merge commit `d8ab78a308dae7e796eb16601303e4b392fcee93` was deployed. No real beta Draft, snapshot, allowlist, program, flag, readiness, invite, or member was created.
+
+The final PHASE 10J state is `PHASE_10J_PRODUCTION_APPLIED_AND_MERGED_NO_BETA_DATA`. Actual school selection, paused-program preparation, active transition, invitation, and user-facing beta operations remain separate approvals.
 
 ## Purpose
 
@@ -10,7 +12,7 @@ PHASE 10J prepares the first real, adult-only controlled beta. PHASE 10J-A deter
 
 The audit found that draft validation and atomic paused-program creation are implemented, but the first beta must not start yet. There is no administrator-only atomic `paused` to `active` transition boundary, and the target school is not enforced as a database contract. PHASE 10J-B must close these boundaries before a real program, activation, or invite is approved.
 
-## Audited baseline
+## Historical PHASE 10J-A audited baseline
 
 - Git baseline: local `main` and `origin/main` both at `5215ec7a85653500fe312e01640d13f5ce3f4a0f`; working tree clean before this documentation branch was created.
 - Production migration history is ordered through `20260729190000`.
@@ -214,7 +216,7 @@ All gates must pass before any Production mutation:
 - No Vercel deployment, setting, environment-variable, or secret change.
 - No existing public profile, school, connection, message, advertising, order, or payment row changed.
 
-## Final decision
+## Historical PHASE 10J-A decision
 
 `PHASE_10J_PREFLIGHT_BLOCKED_IMPLEMENTATION_REQUIRED`
 
@@ -231,6 +233,6 @@ The blockers identified above are implemented and locally verified in migration 
 - invite issue, redemption, approval, capacity, and private school-history writes recheck the immutable contract at DB boundaries;
 - emergency stop pauses access and generic restore fails closed; a separately approved reactivation requires a post-stop readiness record and a complete contract recheck.
 
-Application tests, the full suite, TypeScript, Production build, isolated PostgreSQL lifecycle/RLS/grants, and Chromium/mobile E2E pass. This resolves the code blockers only. It does not authorize or perform a Production migration, a target-school decision, an actual Draft or program, an active transition, an invite, or any user-facing beta operation.
+Application tests, the full suite, TypeScript, Production build, isolated PostgreSQL lifecycle/RLS/grants, and Chromium/mobile E2E passed before merge. Production migration, non-destructive database verification, PR merge, Vercel deployment, and public smoke verification subsequently passed.
 
-Current implementation status: `PHASE_10J_B_LOCAL_VERIFIED`.
+No target-school decision, actual Draft or program, active transition, invite, member enrollment, or user-facing beta operation was performed. Current status: `PHASE_10J_PRODUCTION_APPLIED_AND_MERGED_NO_BETA_DATA`.

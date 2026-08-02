@@ -1,6 +1,15 @@
 # SchoolLoveI Implementation Log
 
-## 2026-07-30 — PHASE 10J-B first controlled beta safety boundaries (Local/Draft)
+## 2026-08-02 — PHASE 10K limited beta readiness audit (documentation only)
+
+- Confirmed local `main` and `origin/main` at `d8ab78a308dae7e796eb16601303e4b392fcee93` with a clean starting worktree.
+- Used the existing authenticated Vercel dashboard session read-only; the `schoollove-kr` Production Logs page was accessible without new credentials and its visible last-30-minute filter showed 0 warnings, 0 errors, and 0 fatal entries.
+- Audited minimum runtime-log access, containment-first incident handling, migration `20260730100000` rollback impact, active-transition prerequisites, target-school selection, invite/member/stop/reactivation order, expected Production rows, and privacy/minor/school-scope boundaries.
+- Added `docs/decisions/2026-08-02-limited-beta-readiness-audit.md` and synchronized the first-beta start and stop/rollback runbooks. No code, test, package, environment, or migration file was changed.
+- Created or changed no Production Draft, snapshot, allowlist, program, flag, readiness, invite, member, profile, school history, OTP, message, Instagram permission, promotion, order, or payment. No deployment or Production setting changed.
+- Final audit status: `PHASE_10K_LIMITED_BETA_READINESS_AUDITED_NO_PRODUCTION_WRITES`.
+
+## 2026-07-30 — PHASE 10J first controlled beta safety boundaries (Production/Merged)
 
 - Added migration `20260730100000_first_controlled_beta_safety_boundaries.sql` without changing any previously applied migration.
 - Bound setup Drafts, immutable setup snapshots, beta members, and a new immutable `beta_program_schools` allowlist to one validated school UUID. Free-text `target_scope` remains descriptive only.
@@ -12,8 +21,10 @@
 - Targeted validation passed: 4 files / 24 tests. Full validation passed: 109 files / 1012 tests, TypeScript, and the 59-page Production build.
 - The isolated PostgreSQL suite returned `PHASE10J_LIFECYCLE_OK`, `PHASE10J_PERMISSIONS_OK`, and `PHASE10J_ISOLATED_DB_OK`. It exercised atomic rollback, idempotent activation/start, immutable school scope, exact flags, invite policy/capacity, member approval, authenticated school writes, emergency stop, fresh readiness, reactivation, RLS, and grants.
 - Chromium and mobile 360/390/412 E2E passed 11 tests for administrator-only routes, safe 400/409 errors, row-free synthetic guidance, school selection, paused creation, flags, readiness, active start, eligible invite display, emergency stop, reactivation, private robots, responsive layout, and closed public registration. Nine duplicate mobile executions of project-independent API-only checks were intentionally skipped.
-- Production migration, deployment, environment changes, school selection, real Draft/program/flag/invite/member, OTP, message, Instagram permission, promotion, order, and payment were not executed. Existing Production data was not changed.
-- Local status: `PHASE_10J_B_LOCAL_VERIFIED`; target school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`.
+- Production migration `20260730100000_first_controlled_beta_safety_boundaries.sql` was applied, PR #35 was squash-merged, and merge commit `d8ab78a308dae7e796eb16601303e4b392fcee93` was deployed to Vercel Production.
+- Production migration history, changed database objects, RLS/FORCE RLS, grants, role boundaries, public pages, and existing read flows passed non-destructive verification.
+- School selection and real Draft/program/snapshot/allowlist/flag/readiness/invite/member, OTP, message, Instagram permission, promotion, order, and payment were not executed. Existing Production data was not changed.
+- Final status: `PHASE_10J_PRODUCTION_APPLIED_AND_MERGED_NO_BETA_DATA`; target school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`.
 
 ## 2026-07-30 — PHASE 10J-A first controlled beta preflight (audit only)
 

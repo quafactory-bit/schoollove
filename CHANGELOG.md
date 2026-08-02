@@ -1,6 +1,14 @@
 # Changelog
 
-## 2026-07-30 — PHASE 10J-B first controlled beta safety boundaries (LOCAL/DRAFT)
+## 2026-08-02 — PHASE 10K limited beta readiness audit (NO PRODUCTION WRITES)
+
+- Audited Vercel Production runtime-log access, incident containment, migration rollback impact, pre-active gates, school selection, invite/member operations, and privacy/minor safety without starting a beta.
+- Confirmed the existing authenticated Vercel dashboard session can read `schoollove-kr` Production logs without a new token; the visible last-30-minute window showed 0 warnings, 0 errors, and 0 fatal entries. Hobby retention remains limited, so incident evidence must be captured promptly without personal content.
+- Defined containment-first rollback and a forward-corrective migration preference for `20260730100000`; destructive schema rollback is not an ordinary operating action.
+- Kept the target school at `TARGET_SCHOOL_PENDING_OPERATOR_DECISION` and created no Draft, snapshot, allowlist, program, feature flag, readiness, invite, member, OTP, message, Instagram permission, promotion, order, or payment.
+- Final audit status: `PHASE_10K_LIMITED_BETA_READINESS_AUDITED_NO_PRODUCTION_WRITES`.
+
+## 2026-07-30 — PHASE 10J first controlled beta safety boundaries (PRODUCTION / MERGED / NO BETA DATA)
 
 - Added a validated school UUID to the setup Draft and immutable snapshot, plus an RLS/FORCE RLS `beta_program_schools` table that permits exactly one school per snapshot-backed program.
 - Added idempotent service-role-only feature configuration, atomic `paused` to `active` start, and separate post-emergency reactivation RPCs. Start and reactivation recheck the 20-member, 14-day, one-school, mandatory-stop, readiness, and exact two-feature contract.
@@ -8,7 +16,10 @@
 - Enforced the selected school and single-school history at the private membership DB boundary; public registration and legacy program behavior are not widened.
 - Updated administrator surfaces to select a school UUID, show contract blockers, configure only program-scoped flags, list only invite-eligible programs, and remove generic emergency restore.
 - Verified 24 targeted tests, 109 files / 1012 full tests, TypeScript, 59-page Production build, isolated PostgreSQL lifecycle/RLS/grants, and 11 Chromium/mobile E2E tests; 9 redundant mobile API-only project cases were intentionally skipped while the complete UI workflow ran at every viewport.
-- Did not apply the migration to Production or create any real Draft, program, feature flag, invite, member, OTP, message, Instagram permission, promotion, order, or payment. The target school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`.
+- Applied migration `20260730100000_first_controlled_beta_safety_boundaries.sql` to Production, squash-merged PR #35, and deployed merge commit `d8ab78a308dae7e796eb16601303e4b392fcee93` to Vercel Production.
+- Verified migration history, the new/changed PHASE 10J objects, RLS/FORCE RLS, role boundaries, and the existing public Production read flows without creating test data.
+- Created no real Draft, snapshot, allowlist, program, feature flag, readiness, invite, member, OTP, message, Instagram permission, promotion, order, or payment. The target school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`.
+- Final status: `PHASE_10J_PRODUCTION_APPLIED_AND_MERGED_NO_BETA_DATA`.
 
 ## 2026-07-30 — PHASE 10J-A first controlled beta preflight
 
