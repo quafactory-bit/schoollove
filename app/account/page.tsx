@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { getAuthenticatedServerContext } from '@/lib/user-auth'
 import { getAccountState } from '@/lib/account'
 import AccountClient from './AccountClient'
+import { getPublicAccountLaunchState } from '@/lib/publicAccountLaunch'
+import { getKstCalendarDate } from '@/lib/policy/adultEligibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,8 +16,17 @@ export const metadata: Metadata = {
 
 export default async function AccountPage() {
   const auth = await getAuthenticatedServerContext()
-  if (!auth) redirect('/login')
+  if (!auth) redirect('/login?next=/account')
 
-  const state = await getAccountState(auth.client, auth.user.id)
-  return <AccountClient email={auth.user.email ?? ''} state={state} />
+  let state:Awaited<ReturnType<typeof getAccountState>>
+  let launch:Awaited<ReturnType<typeof getPublicAccountLaunchState>>
+  try {
+    ;[state,launch]=await Promise.all([
+      getAccountState(auth.client,auth.user.id),
+      getPublicAccountLaunchState(auth.client),
+    ])
+  } catch {
+    return <main className="mx-auto max-w-2xl px-5 py-16"><h1 className="text-2xl font-bold text-gray-950">내 계정 상태를 불러오지 못했습니다</h1><p className="mt-3 text-sm leading-6 text-gray-600">잠시 후 새로고침하거나 운영자 문의를 이용해 주세요. 안전을 위해 상태를 확인할 때까지 저장 기능을 제공하지 않습니다.</p></main>
+  }
+  return <AccountClient email={auth.user.email??''} state={state} launch={launch} currentYear={getKstCalendarDate().year} />
 }

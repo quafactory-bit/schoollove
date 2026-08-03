@@ -11,7 +11,7 @@ describe('PHASE 10A safe home', () => {
 
   it('초등·중등을 포함한 사람 등록 경쟁과 등록 CTA를 노출하지 않는다', () => {
     expect(SOURCE).not.toMatch(/현재 학교 순위|다음 성장 단계|내 이름 남기기|친구 등록|LEVEL UP/)
-    expect(SOURCE).toContain('개인 명단과 Instagram 노출을 중단했습니다')
+    expect(SOURCE).toContain('공개 개인 명단·사람 이름 검색·Instagram 노출 없이')
   })
 
   it('학교 검색과 삭제·비공개 문의 경로를 유지한다', () => {

@@ -4,6 +4,8 @@
 
 This runbook prepares one adult-graduate controlled beta. PHASE 10J migration `20260730100000_first_controlled_beta_safety_boundaries.sql` is already applied, but this runbook does not itself authorize a school choice, Production Draft/program creation, program start, invitation, OTP, message, Instagram permission, advertising action, or payment.
 
+> Current sequencing note (PHASE 10N-A): first-school selection is paused while the separate public adult-account soft launch is completed. Do not use public launch state as beta authorization, do not add beta invite/member state to public onboarding, and do not resume this runbook until the public-account Production gate and a new explicit operator instruction authorize school selection.
+
 ## Fixed contract
 
 - Maximum members: 20

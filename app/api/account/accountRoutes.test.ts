@@ -20,7 +20,7 @@ describe('PHASE 10B account API boundaries', () => {
 
   it('원본 생년월일을 DB payload나 로그에 저장하지 않는다', () => {
     expect(eligibility).toContain('dateOfBirth is used only in memory')
-    const insertStart = eligibility.indexOf("from('adult_eligibility_records').insert")
+    const insertStart = eligibility.indexOf("from('adult_eligibility_records').upsert")
     expect(eligibility.slice(insertStart)).not.toContain('dateOfBirth')
     expect(eligibility).not.toContain('console.log')
     expect(eligibility).toContain('getSupabaseAdmin()')
@@ -43,5 +43,21 @@ describe('PHASE 10B account API boundaries', () => {
   it('다른 사용자의 row ID만으로 수정·삭제할 수 없다', () => {
     expect(profile).toMatch(/\.delete\(\)[\s\S]*\.eq\('owner_user_id', auth\.user\.id\)/)
     expect(memberships).toMatch(/\.eq\('id', parsed\.data\.membership_id\)[\s\S]*\.eq\('owner_user_id', auth\.user\.id\)/)
+  })
+
+  it('public soft launch와 controlled beta를 분리된 server access 경로로 평가한다',()=>{
+    for(const source of [eligibility,consents,profile,memberships]){
+      expect(source).toContain('hasPublicAccountFeatureAccess')
+      expect(source).toContain('hasBetaFeatureAccess')
+    }
+    expect(profile).not.toContain('LIMITED_BETA_ACCESS_REQUIRED')
+    expect(memberships).toContain('getSafeMembershipError')
+  })
+
+  it('성인·동의 제출과 탈퇴 요청은 idempotent하고 개인 원문을 저장하지 않는다',()=>{
+    expect(eligibility).toContain("onConflict:'user_id,policy_version'")
+    expect(consents).toContain("onConflict:'user_id,consent_type,policy_version'")
+    expect(deletion).toContain('request_reason: null')
+    expect(deletion).toContain("z.object({ confirm: z.literal(true) }).strict()")
   })
 })

@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import SchoolSearchResults from '@/components/SchoolSearchResults'
 import { getPublicRouteRobots } from '@/lib/policy/privacySafety'
+import { recordPublicAccountEvent } from '@/lib/publicAccountLaunch'
+
+export const dynamic='force-dynamic'
 
 export const metadata: Metadata = {
   title: '학교 검색',
@@ -8,7 +11,8 @@ export const metadata: Metadata = {
   robots: getPublicRouteRobots('search'),
 }
 
-export default function SearchPage() {
+export default async function SearchPage() {
+  await recordPublicAccountEvent('school_search_started','school_search')
   return (
     <main className="min-h-screen bg-gray-50">
       <SchoolSearchResults />

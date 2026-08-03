@@ -25,7 +25,7 @@ export default function ContactPage() {
         </div>
         <div className="bg-gray-50 rounded-xl p-6">
           <h2 className="font-semibold text-black mb-1">개인정보 삭제 요청</h2>
-          <p className="text-sm text-gray-600 mb-3">본인 정보 삭제를 원하시면 이메일로 문의해주세요.</p>
+          <p className="text-sm text-gray-600 mb-3">로그인 가능한 계정은 내 계정에서 탈퇴를 요청할 수 있습니다. 로그인 문제·오류 접수는 이메일로 문의해 주세요. 접수는 영업일 1~3일 내 확인하고 원칙적으로 30일 이내 처리합니다.</p>
         </div>
         <div className="bg-gray-50 rounded-xl p-6">
           <h2 className="font-semibold text-black mb-1">답변 시간</h2>

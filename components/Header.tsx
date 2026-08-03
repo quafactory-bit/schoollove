@@ -18,7 +18,7 @@ export default function Header() {
 
         <nav className="hidden items-center gap-1 sm:flex">
           <NavLink href="/search" active={isActive('/search')}>학교 검색</NavLink>
-          <NavLink href="/submit" active={isActive('/submit')}>등록 안내</NavLink>
+          <NavLink href="/submit" active={isActive('/submit')}>계정 시작</NavLink>
           <NavLink href="/account" active={isActive('/account')}>내 계정</NavLink>
           <NavLink href="/privacy" active={isActive('/privacy')}>개인정보 안내</NavLink>
         </nav>
@@ -26,7 +26,7 @@ export default function Header() {
         <div className="flex items-center gap-2 sm:hidden">
           <Link href="/submit" className="flex items-center gap-1 rounded-full bg-gray-900 px-3 py-1.5 text-sm font-medium text-white">
             <ShieldCheck size={14} />
-            등록 안내
+            계정 안내
           </Link>
           <button
             type="button"
@@ -42,7 +42,7 @@ export default function Header() {
       {menuOpen && (
         <div className="space-y-1 border-t border-gray-100 bg-white px-4 py-3 sm:hidden">
           <MobileNavLink href="/search" onClick={() => setMenuOpen(false)}>학교 검색</MobileNavLink>
-          <MobileNavLink href="/submit" onClick={() => setMenuOpen(false)}>등록 안내</MobileNavLink>
+          <MobileNavLink href="/submit" onClick={() => setMenuOpen(false)}>계정 시작</MobileNavLink>
           <MobileNavLink href="/account" onClick={() => setMenuOpen(false)}>내 계정</MobileNavLink>
           <MobileNavLink href="/privacy" onClick={() => setMenuOpen(false)}>개인정보 안내</MobileNavLink>
         </div>

@@ -24,12 +24,14 @@ describe('PHASE 10H route boundaries',()=>{
 
   it('keeps aggregate telemetry from failing primary user writes',()=>{
     const helper=source('lib/onboarding.ts')
-    expect(helper).toContain('Aggregate growth telemetry must never make')
+    expect(helper).toContain('syncOnboardingProgressSafely')
+    expect(helper).toContain('catch { return null }')
     expect(helper).not.toMatch(/console\.(log|error)/)
     for(const path of ['app/api/account/profile/route.ts','app/api/account/memberships/route.ts']) {
       const route=source(path)
       expect(route).toContain('if (error) return NextResponse.json')
-      expect(route).toContain('recordLimitedLaunchEvent')
+      expect(route).toContain('syncOnboardingProgressSafely')
+      expect(route).toContain('recordPublicAccountEvent')
     }
   })
 

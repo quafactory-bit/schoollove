@@ -11,30 +11,30 @@ export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-2xl px-5 py-12">
       <h1 className="text-3xl font-black text-gray-950">개인정보처리방침</h1>
-      <p className="mt-3 text-sm text-gray-500">시행일: 2026년 7월 28일</p>
+      <p className="mt-3 text-sm text-gray-500">시행일: 2026년 8월 3일</p>
 
       <div className="mt-10 space-y-9 text-sm leading-7 text-gray-700">
         <section>
           <h2 className="text-lg font-bold text-gray-950">1. 현재 개인정보 안전 전환 상태</h2>
           <p className="mt-2">
             스쿨러브아이는 개인의 이름·졸업연도·학년·반·Instagram 정보가 결합된 공개 명단과 사람 검색을 중단했습니다.
-            공개 개인 등록은 중단했으며, 공개 화면에서는 학교명·지역·학교 유형 등 학교 기본 정보만 제공합니다.
-            승인된 만 19세 이상 제한 베타에서는 본인 소유 비공개 정보만 처리합니다.
+            공개 화면에서는 학교명·지역·학교 유형 등 학교 기본 정보만 제공합니다.
+            성인 비공개 계정은 launch 상태가 별도로 승인된 때에만 시작할 수 있고, 본인 소유 정보만 처리합니다.
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-bold text-gray-950">2. 기존 정보의 처리</h2>
           <p className="mt-2">
-            기존에 접수된 개인 정보는 공개 화면에서 제공하지 않으며, 안전 전환·삭제 요청 처리·분쟁 대응·보안 운영에 필요한 범위에서만 제한적으로 보관하고 관리자 권한으로 처리합니다.
-            이 전환은 기존 데이터를 자동 삭제하는 작업이 아니며, 보유 필요성이 사라지거나 적법한 삭제 요청이 확인되면 필요한 절차에 따라 처리합니다.
+            2026년 8월 3일 legacy 개인 정보와 원문 검색 로그 초기화를 완료했습니다. 기존 등록자를 조회·연락·전환·소유권 부여·초대·재사용하지 않습니다.
+            다시 방문하는 이용자는 현재 성인 확인·동의·인증·비공개 소유권 경계를 새로 거쳐야 합니다.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-gray-950">3. 제한 베타 등록 조건</h2>
+          <h2 className="text-lg font-bold text-gray-950">3. 성인 비공개 계정 조건</h2>
           <p className="mt-2">
-            제한 베타 등록은 만 19세 이상 이용자, 본인 정보, 인증된 소유권, 상대방 승인 전 비공개를 기본으로 합니다.
+            계정 등록은 만 19세 이상 이용자, 본인 정보, 인증된 소유권, 항상 비공개를 기본으로 합니다.
             타인의 이름이나 계정을 대신 등록하는 방식은 허용하지 않습니다.
           </p>
           <p className="mt-2">
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
           <p className="mt-2">
             서비스 보안, 장애 대응, 부정 이용 방지 및 통계 분석을 위해 접속·요청 관련 기술 정보가 처리될 수 있습니다.
             Web Analytics는 페이지 방문을 집계하며 개인 이름, Instagram ID, 메시지, 검색어 원문을 커스텀 분석 이벤트로 전송하지 않습니다.
-            제한 베타 온보딩은 개인 원문 없이 단계와 direct·organic social·creator·community·referral·paid social·unknown의 거친 출처만 집계합니다.
+            공개 계정 퍼널은 KST 일자, 허용된 단계, direct·school_search·account·onboarding의 거친 출처, 합계만 저장하며 10명 미만 관리자 집계를 마스킹합니다. 이메일·user/profile/school ID·이름·Instagram·생년월일·검색어·IP·user agent·token/cookie는 퍼널에 저장하지 않습니다.
           </p>
         </section>
 
@@ -64,6 +64,8 @@ export default function PrivacyPage() {
           <p className="mt-2">
             본인 정보의 열람, 삭제, 정정, 처리정지 또는 개인정보 침해 신고는 {CONTACT}으로 요청할 수 있습니다.
             요청자의 권리와 타인의 개인정보를 보호하기 위해 본인 확인과 대상 정보 확인을 요청할 수 있습니다.
+            계정 내 탈퇴 요청은 즉시 추가 profile·학교 이력 변경을 차단하고, 접수 확인은 영업일 1~3일, 처리는 원칙적으로 30일 이내 완료합니다. 법령상 보존·분쟁 사유로 연장이 필요하면 사유와 일정을 안내합니다.
+            처리 시 비공개 프로필과 학교 이력은 원자적으로 삭제합니다. 성인 확인·필수 동의·삭제 요청·감사 증빙은 법적 책임 확인에 필요한 기간 보존하며, Auth identity는 재접근이 차단된 tombstone으로 유지합니다. 접수 후 자동 취소는 제공하지 않습니다.
           </p>
         </section>
 

@@ -12,7 +12,8 @@ describe('email OTP auth routes', () => {
     expect(requestSource.indexOf("getAuthRateLimitKey('ip', ip)")).toBeLessThan(requestSource.indexOf('request.json()'))
     expect(requestSource.indexOf("getAuthRateLimitKey('email', parsed.data.email)")).toBeLessThan(requestSource.indexOf('client.auth.signInWithOtp'))
     expect(requestSource).toContain('client.auth.signInWithOtp')
-    expect(requestSource).toContain('shouldCreateUser: true')
+    expect(requestSource).toContain('shouldCreateUser: launch.registrationEnabled')
+    expect(requestSource).toContain('getPublicAccountLaunchState(client)')
     expect(requestSource).toContain('Account existence and provider errors are intentionally not disclosed')
   })
 

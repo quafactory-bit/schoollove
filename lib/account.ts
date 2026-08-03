@@ -22,6 +22,7 @@ export type SchoolMembership = {
   school: {
     id: string
     school_name: string
+    school_type: string
     sido: string
     sigungu: string
     slug: string
@@ -35,6 +36,7 @@ export type AccountState = {
   profile: PrivateProfile | null
   memberships: SchoolMembership[]
   deletionRequested: boolean
+  deletionStatus: 'pending' | 'done' | null
 }
 
 export async function getAccountState(
@@ -63,21 +65,26 @@ export async function getAccountState(
       .maybeSingle(),
     client
       .from('account_deletion_requests')
-      .select('id')
+      .select('id,status')
       .eq('user_id', userId)
-      .eq('status', 'pending')
+      .in('status', ['pending','done'])
+      .order('created_at',{ascending:false})
       .limit(1),
   ])
+  if (eligibilityResult.error || consentResult.error || profileResult.error || deletionResult.error) {
+    throw new Error('ACCOUNT_STATE_UNAVAILABLE')
+  }
 
   const profile = (profileResult.data as PrivateProfile | null) ?? null
   let memberships: SchoolMembership[] = []
   if (profile) {
     const membershipResult = await client
       .from('profile_school_memberships')
-      .select('id, school_id, graduation_year, class_number, school:schools(id, school_name, sido, sigungu, slug)')
+      .select('id, school_id, graduation_year, class_number, school:schools(id, school_name, school_type, sido, sigungu, slug)')
       .eq('owner_user_id', userId)
       .eq('profile_id', profile.id)
       .order('graduation_year', { ascending: false })
+    if (membershipResult.error) throw new Error('ACCOUNT_STATE_UNAVAILABLE')
     memberships = (membershipResult.data ?? []) as unknown as SchoolMembership[]
   }
 
@@ -93,7 +100,9 @@ export async function getAccountState(
     consentTypes,
     profile,
     memberships,
-    deletionRequested: (deletionResult.data?.length ?? 0) > 0,
+    deletionRequested: deletionResult.data?.[0]?.status === 'pending',
+    deletionStatus: deletionResult.data?.[0]?.status === 'pending' || deletionResult.data?.[0]?.status === 'done'
+      ? deletionResult.data[0].status : null,
   }
 }
 

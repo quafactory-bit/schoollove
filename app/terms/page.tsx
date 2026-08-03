@@ -11,23 +11,23 @@ export default function TermsPage() {
   return (
     <main className="mx-auto max-w-2xl px-5 py-12">
       <h1 className="text-3xl font-black text-gray-950">이용약관</h1>
-      <p className="mt-3 text-sm text-gray-500">시행일: 2026년 7월 28일</p>
+      <p className="mt-3 text-sm text-gray-500">시행일: 2026년 8월 3일</p>
 
       <div className="mt-10 space-y-9 text-sm leading-7 text-gray-700">
         <section>
           <h2 className="text-lg font-bold text-gray-950">1. 현재 제공 범위</h2>
           <p className="mt-2">
             공개 화면은 학교명·지역·학교 유형 등 학교 기본 정보 검색만 제공합니다.
-            공개 개인 명단과 부분 이름 검색은 제공하지 않습니다. 별도로 승인된 만 19세 이상 제한 베타 사용자는
-            이메일 인증·필수 동의·해시 초대·운영자 승인 뒤 기본 비공개 본인 정보와 상호 승인 연결 기능만 사용할 수 있습니다.
+            공개 개인 명단과 사람 이름 검색은 제공하지 않습니다. 별도로 공개 계정 launch가 승인된 경우 만 19세 이상 이용자는
+            이메일 인증·필수 동의 뒤 기본 비공개 본인 프로필과 과거 학교 이력만 관리할 수 있습니다.
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-bold text-gray-950">2. 이용 자격과 향후 등록 원칙</h2>
           <p className="mt-2">
-            제한 베타 개인 등록은 만 19세 이상 이용자가 본인 정보만 등록할 수 있습니다.
-            본인 소유권, 기본 비공개, 상대방 승인 전 Instagram 비공개를 기본 조건으로 합니다.
+            개인 등록은 만 19세 이상 이용자가 본인 정보만 등록할 수 있습니다.
+            본인 소유권과 항상 비공개를 기본 조건으로 하며 Instagram은 사람 검색이나 공개 화면에 표시하지 않습니다.
           </p>
           <p className="mt-2">
             초기 성인 확인은 KST 기준 만 나이를 계산하는 자기진술 방식이며 강한 법적 본인확인이 아닙니다.
@@ -49,6 +49,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-bold text-gray-950">4. 기존 정보와 삭제 요청</h2>
           <p className="mt-2">
             기존 개인 정보는 공개 화면에서 제공하지 않습니다. 본인 정보의 삭제·정정·처리정지 또는 침해 신고는 {CONTACT}으로 요청할 수 있으며, 안전한 처리를 위해 본인 확인을 요청할 수 있습니다.
+            계정 탈퇴 요청은 추가 변경을 즉시 차단하고 영업일 1~3일 내 접수를 확인하며 원칙적으로 30일 이내 처리합니다. 접수 후 자동 취소는 제공하지 않습니다.
           </p>
         </section>
 
@@ -56,7 +57,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-bold text-gray-950">5. 서비스 제한</h2>
           <p className="mt-2">
             개인정보 보호, 보안, 법적 의무 이행 또는 장애 대응을 위해 일부 기능을 즉시 중단하거나 접근을 제한할 수 있습니다.
-            불특정 다수의 가입과 공개 초대 링크 공유는 계속 중단하며, 제한 베타는 운영자가 승인한 범위에서만 제공합니다.
+            공개 계정 launch가 closed·internal_test·ready·emergency_stopped인 동안 신규 가입은 중단하며, controlled beta는 별도 운영자 승인 범위에서만 제공합니다.
           </p>
         </section>
 

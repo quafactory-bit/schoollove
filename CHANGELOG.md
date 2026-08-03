@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-03 — PHASE 10N-A public account site completion (LOCAL/DRAFT / PRODUCTION CLOSED)
+
+- Paused first-school controlled-beta selection and completed the separate adult public-account path without selecting a school or creating beta data.
+- Added forward migration `20260803120000_public_account_soft_launch.sql`: default-closed five-state launch control, exact three-feature boundary, FORCE RLS, service-only audited state/deletion RPCs, emergency stop, privacy-safe masked funnel, and distinct public-versus-controlled-beta school contracts.
+- Tied OTP `shouldCreateUser` to the public-safe launch state, preserved generic enumeration-resistant responses, and added shared server-side expired/near-expiry refresh with two-cookie rotation or clearing.
+- Completed KST adult self-attestation, current four-consent idempotency, owner-only private profile, public maximum-three past-school histories, beta single-school regression, restored onboarding, account deletion processing, and administrator launch/deletion controls.
+- Reworked Home, `/submit`, login, onboarding, account, Header, and mobile navigation while leaving public people/connection/message/Instagram/promotion/payment functions dormant.
+- Added disposable post-reset PostgreSQL lifecycle/RLS/rollback and actual local Supabase Auth/Mailpit/PostgREST Playwright coverage for Desktop 1440 and mobile 360/390/412. Production mutation, registration open, real-person Auth/OTP, beta/commercial data, package/lock, and environment changes remain zero.
+- Final evidence: targeted `10 files / 43 tests`, full `113 files / 996 tests`, TypeScript, 58-page/route Production build, isolated PHASE 10N/10J lifecycle and permission regressions, and provider-backed Playwright `20/20` (`5/5` per viewport, one worker, zero retries). Migration SHA-256: `F9E8872642DAE68A283C7ABB3E9DBD74ADEDE096EB0369EAB9BE31F1FC552F15`.
+
+
 ## 2026-08-03 — PHASE 10L-F Production legacy person data reset complete
 
 - Squash-merged PR #37 as `3d56ffe33c5f20abf44542c603bf3009708b5339` and deployed that exact commit to Vercel Production before the reset.

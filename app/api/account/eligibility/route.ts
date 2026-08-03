@@ -5,12 +5,17 @@ import { isAdultEligibleInKst } from '@/lib/policy/adultEligibility'
 import { ACCOUNT_POLICY_VERSION } from '@/lib/policy/accountPolicy'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
+import { hasPublicAccountFeatureAccess, recordPublicAccountEvent } from '@/lib/publicAccountLaunch'
+import { hasBetaFeatureAccess } from '@/lib/beta'
 
 const EligibilitySchema = z.object({ dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  const writeAllowed = await hasPublicAccountFeatureAccess(auth.client,'private_profile')
+    || await hasBetaFeatureAccess(auth.client,auth.user.id,'private_profile')
+  if (!writeAllowed) return NextResponse.json({ error:'계정 설정은 아직 준비 중입니다.' },{status:403})
 
   let body: unknown
   try {
@@ -35,15 +40,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '성인 확인을 저장할 수 없습니다.' }, { status: 503 })
   }
 
-  const { error } = await admin.from('adult_eligibility_records').insert({
+  const { error } = await admin.from('adult_eligibility_records').upsert({
     user_id: auth.user.id,
     adult_eligible: true,
     verification_method: 'self_attestation',
     policy_version: ACCOUNT_POLICY_VERSION,
-  })
+  }, { onConflict:'user_id,policy_version', ignoreDuplicates:true })
   if (error) return NextResponse.json({ error: '성인 확인을 저장할 수 없습니다.' }, { status: 500 })
 
   await syncOnboardingProgressSafely(admin,auth.user.id,'direct')
+  await recordPublicAccountEvent('adult_eligibility_completed','onboarding')
 
   return NextResponse.json({ adultEligible: true, rawInputStored: false })
 }
