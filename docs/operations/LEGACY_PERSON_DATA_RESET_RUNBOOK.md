@@ -1,6 +1,8 @@
 # Legacy person data reset runbook
 
-This runbook applies only to `20260802120000_legacy_person_data_reset.sql`. Local implementation does not authorize Production execution, merge, or deployment.
+> **COMPLETED — DO NOT RE-RUN:** Production execution finished on 2026-08-03. Migration `20260802120000_legacy_person_data_reset.sql` is a one-shot migration and must not be run again. A raw replay is not a successful reset. If additional cleanup is ever required, prepare a separately reviewed forward migration; do not alter migration history or change the existing assertion values. The procedure below is preserved as audit and incident-response evidence.
+
+This runbook applies only to the completed execution of `20260802120000_legacy_person_data_reset.sql`.
 
 ## Immutable safety contract
 

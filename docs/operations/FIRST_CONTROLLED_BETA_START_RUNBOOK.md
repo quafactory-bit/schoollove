@@ -19,9 +19,23 @@ This runbook prepares one adult-graduate controlled beta. PHASE 10J migration `2
 
 Until the operator explicitly selects the first school, record `TARGET_SCHOOL_PENDING_OPERATOR_DECISION` and stop before creating a Production Draft.
 
+## Stage 0 — Post-reset Production baseline
+
+Before any school-decision or mutation gate, confirm all of the following read-only:
+
+- latest Production migration history version is `20260802120000`;
+- `profiles`, `reports`, `traces`, and `search_logs` are all 0;
+- `schools` is 10,006;
+- scoped beta flags are 0, actual beta operational rows are 0, and commercial rows are 0;
+- `/api/profiles`, `/api/reports`, and `/api/traces` remain fixed 503 boundaries;
+- public person lists remain hidden and sitemap contains no profile or people path;
+- the target school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`, and no Production Draft may be created before the operator makes a separate explicit school decision.
+
+School selection, Draft creation, snapshot-backed `paused` program creation, `active` transition, and invite issuance each require their existing separate approval. Do not reuse the legacy `limited_beta_2026` program.
+
 ## Approval gates
 
-1. Confirm Production remains on the PHASE 10J merged baseline, migration `20260730100000_first_controlled_beta_safety_boundaries.sql` remains recorded as applied, RLS/FORCE RLS and grants remain intact, and no unapproved beta operational rows exist.
+1. Confirm Production remains on the post-reset baseline, migration history is current through `20260802120000` (including the PHASE 10J migration), RLS/FORCE RLS and grants remain intact, and no unapproved beta operational rows exist.
 2. Obtain the operator's explicit school decision. Select the school through the administrator school search and confirm the immutable UUID, not only its display name.
 3. Save and validate a new uniquely keyed Draft with the fixed contract. Verify no existing program is reused.
 4. Create the program. Confirm it is `paused`, has one snapshot, one matching allowlist row, zero invites, zero members, and no automatically enabled flags.
