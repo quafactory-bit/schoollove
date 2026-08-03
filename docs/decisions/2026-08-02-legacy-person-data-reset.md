@@ -1,6 +1,10 @@
 # PHASE 10L — Legacy person data reset
 
-Status: `IMPLEMENTED_LOCAL_VERIFIED_PRODUCTION_PENDING`
+Status: `PHASE_10L_F_PRODUCTION_LEGACY_PERSON_DATA_RESET_COMPLETE`
+
+## Current state
+
+The reviewed reset was executed in Production on 2026-08-03 after PR #37 merge commit `3d56ffe33c5f20abf44542c603bf3009708b5339` was deployed and legacy application writers were drained. Migration `20260802120000_legacy_person_data_reset.sql` is recorded exactly once. The four legacy tables are now empty, 10,006 schools and all 64 preserved public tables remain intact, raw search persistence stays closed, and no real controlled-beta or commercial data was created. The local audit and migration-design sections below are retained as the historical basis for that execution.
 
 ## Decision
 
@@ -72,3 +76,15 @@ The isolated PostgreSQL suite builds the complete schema, generates synthetic da
 - Next.js and Playwright use the actually reset disposable database, not an unreachable placeholder URL.
 
 No Production migration, data deletion, deployment, school selection, beta operation, invitation, communication, Instagram action, promotion, order, or payment was performed in PHASE 10L implementation.
+
+## Production execution result
+
+- Applied on 2026-08-03 through the reviewed Supabase migration path; migration history records `20260802120000` exactly once.
+- `profiles`, `reports`, `traces`, and `search_logs` are 0.
+- 10,006 schools and the unchanged row counts of all 64 preserved public tables remain intact.
+- Immediate and post-drain verification found no legacy-row recreation.
+- Legacy write closure remains enforced: no PUBLIC/anon/authenticated INSERT grant, column grant, INSERT policy, or publicly executable legacy write RPC remains, and service-role has no raw `search_logs` privilege.
+- Existing registrants were not queried, contacted, claimed, converted, invited, assigned ownership, or reused. A returning person follows the new private-account path.
+- This one-shot migration must not be run again. Any future cleanup requires a separately reviewed forward migration; migration history and the existing assertions must not be rewritten.
+
+Final status: `PHASE_10L_F_PRODUCTION_LEGACY_PERSON_DATA_RESET_COMPLETE`.

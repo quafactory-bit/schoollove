@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-03 — PHASE 10L-F Production legacy person data reset complete
+
+- Squash-merged PR #37 as `3d56ffe33c5f20abf44542c603bf3009708b5339` and deployed that exact commit to Vercel Production before the reset.
+- Applied `20260802120000_legacy_person_data_reset.sql` to Production with Supabase CLI `2.111.0`; migration history records the version exactly once.
+- Reset `profiles`, `reports`, `traces`, and `search_logs` to 0 while preserving 10,006 schools and unchanged row counts across all 64 preserved public tables.
+- Preserved the reviewed RLS/FORCE RLS boundaries and confirmed no PUBLIC/anon/authenticated legacy INSERT table or column grant, INSERT policy, or publicly executable legacy write RPC remains. Raw search persistence stays permanently closed.
+- Rechecked after the request-drain interval that no legacy table was repopulated. Official-domain smoke remained healthy, and the reviewed runtime window contained no unintended Warning, Error, Fatal, or 5xx result.
+- Created no beta operational or commercial data. The target school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`, and existing registrants will not be contacted, converted, claimed, invited, or reused.
+- Final status: `PHASE_10L_F_PRODUCTION_LEGACY_PERSON_DATA_RESET_COMPLETE`.
+
 ## 2026-08-02 — PHASE 10L legacy person data reset (LOCAL/DRAFT / PRODUCTION PENDING)
 
 - Decided not to claim, convert, contact, invite, or reuse the 25 pre-account legacy profiles; a returning person will be treated as a completely new private adult account.

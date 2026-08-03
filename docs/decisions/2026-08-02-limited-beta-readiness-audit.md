@@ -2,6 +2,8 @@
 
 Status: `PHASE_10K_LIMITED_BETA_READINESS_AUDITED_NO_PRODUCTION_WRITES`
 
+> Current-state note (2026-08-03): PHASE 10L-F subsequently completed the Production reset, so the four legacy personal-data tables are now 0. Beta operational data remains 0 and the target school remains `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`. The PHASE 10K school-selection, adult-verification, containment, and invitation safety gates below remain in force; its dated audit numbers and descriptions are retained as historical evidence.
+
 ## Scope and baseline
 
 This is a documentation-only readiness audit. It does not select a school or create, activate, invite, enroll, message, advertise, charge, migrate, deploy, or change Production data.

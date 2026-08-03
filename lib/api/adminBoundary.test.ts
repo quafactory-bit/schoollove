@@ -80,7 +80,7 @@ describe('app/api/reports/route.ts — 공개 제출 route는 service role을 �
     expect(source).not.toMatch(/getSupabaseAdmin/)
   })
 
-  it('supabaseServer(anon 키)만 사용한다', () => {
+  it('legacy report route는 요청 파싱이나 DB client 없이 고정 503 경계를 반환한다', () => {
     expect(source).not.toMatch(/supabaseServer|@\/lib\/supabase|\.from\(|\.rpc\(/)
     expect(source).toContain('LEGACY_REPORT_WRITE_PERMANENTLY_DISABLED')
     expect(source).toContain('status: 503')

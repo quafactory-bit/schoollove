@@ -1,5 +1,20 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-03 — PHASE 10L-F Production legacy person data reset
+
+1. **적용 전 검증:** clean `main`/`origin/main`과 Production deployment가 PR #37 squash merge commit `3d56ffe33c5f20abf44542c603bf3009708b5339`로 일치함을 확인했다. Production 집계는 `profiles=25`, `reports=1`, `traces=8`, `search_logs=670`, `schools=10006`이었고 신규 개인 데이터, editorial account 연결, 실제 beta 운영 데이터, scoped beta flag, commercial row는 모두 0이었다. public table 계약은 68 = 삭제 4 + 보존 64였다.
+2. **CLI dry-run:** repository tracked file을 변경하지 않는 Supabase CLI `2.111.0`으로 linked Production project를 확인했다. 적용 이력 15건과 최신 version `20260730100000`을 확인한 뒤 dry-run에서 pending 대상이 `20260802120000_legacy_person_data_reset.sql` 한 건뿐임을 확인했다. canonical LF SHA-256은 `859732AE6FE22AD06FD257FAD254E5ED8DC0622364493B21FD00EA4D8E2190AB`였다.
+3. **실제 migration 적용:** active client session과 대상 legacy table lock 조회가 모두 0행일 때 동일한 CLI의 `db push --linked`로 migration 한 건만 적용했다. exit code는 0이었고 자동 재시도, SQL Editor DELETE, seed, reset, migration history 조작은 없었다.
+4. **적용 직후 집계:** `profiles=0`, `reports=0`, `traces=0`, `search_logs=0`, `schools=10006`, school growth drift 0, ranking rows 0을 확인했다. 신규 개인 데이터, editorial account 연결, 실제 beta 운영 데이터, scoped beta flag, commercial row는 0을 유지했고 beta program 1개와 global beta flag 8개를 보존했다. migration의 transaction 내부 table-by-table 검증에서 보존 대상 64개 테이블의 행 수가 변하지 않았다.
+5. **drain 후 재검증:** 공식 학교 검색과 legacy API smoke 뒤 다시 집계해 네 legacy 테이블이 모두 0임을 확인했다. stale writer에 의한 재생성은 없었다.
+6. **권한 및 RLS 확인:** legacy table RLS 4/4와 `private_profiles`·`beta_programs` FORCE RLS를 유지했다. PUBLIC/anon/authenticated legacy INSERT table grant, column grant, INSERT policy, 공개 실행 가능한 legacy write RPC는 모두 0이었고 service-role raw `search_logs` 권한도 없었다.
+7. **공식 도메인 smoke:** Home과 School Hub는 200, 학교 검색은 정상, 개인 명단은 비노출이었다. `/people/search`와 `/account`는 로그인으로 이동했고 stale profile URL은 404였다. sitemap은 200이며 person 경로가 없었다. `/api/profiles`, `/api/reports`, `/api/traces`는 payload 처리나 DB persistence 없이 고정 503을 반환했다.
+8. **Vercel Runtime 확인:** Current Production deployment의 commit 일치를 다시 확인했다. 확인한 runtime 구간의 Warning, Error, Fatal은 각각 0이었고 의도된 legacy API 503 외 비의도 5xx는 0이었다.
+9. **저장소 무변경 상태:** Production 실행 중 source, migration, package, lockfile, environment file을 변경하거나 commit·push·수동 재배포하지 않았다. 종료 시 `main`과 `origin/main`은 동일했고 작업 트리는 clean이었다.
+10. **beta 미시작 상태:** target school은 `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`이다. 실제 beta Draft, snapshot, allowlist, program-scoped flag, readiness, invite, member, OTP, 메시지, Instagram 작업과 promotion/order/payment 작업을 생성하거나 실행하지 않았다. 기존 등록자를 조회·연락·전환·재사용하지 않았다.
+
+Final status: `PHASE_10L_F_PRODUCTION_LEGACY_PERSON_DATA_RESET_COMPLETE`.
+
 ## 2026-08-02 — PHASE 10L legacy person data reset (local implementation)
 
 - Created branch `phase/10l-legacy-person-data-reset` from clean `main`/`origin/main` `09e632cdfa040d1695e374b1c464fc6a9dcd2a9a`.
