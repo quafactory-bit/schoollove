@@ -1,5 +1,7 @@
 # search_logs 원문 공개 조회 제거 및 집계 RPC 전환 결정
 
+> PHASE 10L-C current status: the historical raw-query INSERT contract below is superseded. Application query persistence is removed, PUBLIC/anon/authenticated table and column INSERT is revoked, and `search_logs` is purged by the separately approved reset migration when applied. School search remains available. Any privacy-preserving search aggregate requires a new reviewed design and must not retain raw queries or person identifiers.
+
 Date: 2026-07-17
 
 ## Decision

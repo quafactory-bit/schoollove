@@ -1,5 +1,18 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-02 — PHASE 10L legacy person data reset (local implementation)
+
+- Created branch `phase/10l-legacy-person-data-reset` from clean `main`/`origin/main` `09e632cdfa040d1695e374b1c464fc6a9dcd2a9a`.
+- Performed a Production read-only aggregate/catalog audit without outputting person content. Found 25 unowned legacy profiles across 13 schools, 1 linked report, 8 standalone traces across 5 schools, and 670 raw search logs. Schools remain 10,006, all at stored level 1 with no level timestamp.
+- Confirmed new private profiles, adult/consent records, memberships, connections, messages, Instagram permissions, safety rows, real beta operation rows, program/user-scoped beta flags, promotion/order rows, and payment rows are all zero. Preserved definitions are one legacy beta program and eight global flags. A follow-up catalog audit classified all 68 Production public tables as 4 delete + 64 preserve and froze the complete UUID person-link column contract.
+- Confirmed the only FK to legacy `profiles` is `reports.profile_id ON DELETE CASCADE`; traces link only to schools, search logs optionally link only to schools, and profiles link to schools plus optional auth owner. No view or materialized view reads profiles.
+- Added `20260802120000_legacy_person_data_reset.sql`. It locks all 68 classified tables in deterministic order, accepts only the exact audited Production baseline, rejects an all-zero replay, deletes reports/traces/search logs/profiles in dependency order, normalizes affected school growth state, verifies empty ranking output, and commits atomically.
+- Added `safety_account_restrictions` to the person-data guard and preservation checks. Any `editorial_features.account_id` row, new/unclassified person-link UUID column, beta operation, advertising, order, payment, or public table drift aborts before deletion.
+- Permanently closed legacy raw writes: the app no longer stores school-search queries, raw `search_logs` INSERT is revoked for PUBLIC/anon/authenticated (including column grants) and service-role raw access is removed; profile/report/trace public API, RPC, policy, and grant boundaries are asserted closed. Privacy-safe search telemetry is deferred to a separate design.
+- Expanded disposable PostgreSQL validation to independent success and rollback databases for profile, safety, editorial, beta, advertising, order, payment, unclassified-table, forced mid-delete failure, and zero-row replay cases. The browser suite now builds and runs Next.js against the actually reset disposable database through PostgREST on Chromium and mobile 360/390/412.
+- PHASE 10L-C verification passed: related tests 5 files / 24 tests, full suite 110 files / 980 tests, TypeScript, 59-page Production build, isolated PostgreSQL lifecycle/permissions/PHASE 10J regression, and all independent rollback scenarios. Reset-database-backed Playwright passed 20/20 on Chromium and mobile 360/390/412; post-browser counts remained legacy rows 0 and schools 10,006.
+- Production migration, merge, deployment, school choice, beta operations, invitation, communication, promotion, order, and payment were not executed. Production still contains the audited legacy rows pending separate approval.
+
 ## 2026-08-02 — PHASE 10K limited beta readiness audit (documentation only)
 
 - Confirmed local `main` and `origin/main` at `d8ab78a308dae7e796eb16601303e4b392fcee93` with a clean starting worktree.

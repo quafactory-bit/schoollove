@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-02 — PHASE 10L legacy person data reset (LOCAL/DRAFT / PRODUCTION PENDING)
+
+- Decided not to claim, convert, contact, invite, or reuse the 25 pre-account legacy profiles; a returning person will be treated as a completely new private adult account.
+- Audited Production read-only without personal output: 25 legacy profiles across 13 schools, 1 linked report, 8 standalone traces across 5 schools, 670 raw search logs, 10,006 schools, and zero new private/account/connection, real beta-operation, promotion, order, or payment rows.
+- Added a forward-only, atomic, one-shot reset migration that accepts only the exact audited Production baseline; a raw replay after the zero-person state fails closed.
+- Classified the complete Production `public` schema as exactly 68 tables: 4 deletion targets and 64 preserved tables. Any missing, extra, duplicated, or unclassified table and any unexpected UUID person-link column aborts before deletion.
+- Permanently retired raw `search_logs` persistence and revoked PUBLIC/anon/authenticated table and column INSERT rights. School search remains available without storing the query; privacy-preserving aggregate telemetry is a separately reviewed follow-up.
+- Added isolated Production-shape lifecycle, RLS/grant, PHASE 10J regression, eleven rollback scenarios, and reset-database-backed Chromium/mobile E2E plus a concurrency-safe Production execution runbook.
+- Production migration, merge, deployment, data deletion, school selection, beta operation, invitation, communication, advertising, and payment remain unexecuted.
+
 ## 2026-08-02 — PHASE 10K limited beta readiness audit (NO PRODUCTION WRITES)
 
 - Audited Vercel Production runtime-log access, incident containment, migration rollback impact, pre-active gates, school selection, invite/member operations, and privacy/minor safety without starting a beta.

@@ -81,7 +81,9 @@ describe('app/api/reports/route.ts — 공개 제출 route는 service role을 �
   })
 
   it('supabaseServer(anon 키)만 사용한다', () => {
-    expect(source).toMatch(/import \{ supabaseServer \} from '@\/lib\/supabase'/)
+    expect(source).not.toMatch(/supabaseServer|@\/lib\/supabase|\.from\(|\.rpc\(/)
+    expect(source).toContain('LEGACY_REPORT_WRITE_PERMANENTLY_DISABLED')
+    expect(source).toContain('status: 503')
   })
 })
 
