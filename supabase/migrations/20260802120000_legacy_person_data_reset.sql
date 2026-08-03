@@ -9,76 +9,294 @@
 --   legacy beta programs=1, global beta feature flags=8
 --   promotion/order/payment data=0
 --
--- The all-zero legacy path is allowed so a fresh database can replay the full
--- migration history. Any partially populated or drifted legacy state fails
--- closed and leaves every row unchanged.
+-- This is a one-time Production reset. It accepts only the exact audited
+-- baseline. An empty or partially populated replay fails closed so a raw SQL
+-- rerun cannot be mistaken for a new successful reset.
 
 BEGIN;
 
-LOCK TABLE
-  public.profiles,
-  public.reports,
-  public.traces,
-  public.search_logs,
-  public.schools,
-  public.private_profiles,
-  public.profile_school_memberships,
-  public.adult_eligibility_records,
-  public.consent_records,
-  public.account_deletion_requests,
-  public.connection_match_tokens,
-  public.connection_requests,
-  public.connections,
-  public.connection_messages,
-  public.connection_instagram_permissions,
-  public.notifications,
-  public.user_blocks,
-  public.safety_reports,
-  public.data_export_jobs,
-  public.admin_audit_logs,
-  public.beta_programs,
-  public.beta_feature_flags,
-  public.beta_setup_drafts,
-  public.beta_program_setup_snapshots,
-  public.beta_program_schools,
-  public.beta_readiness_snapshots,
-  public.beta_invites,
-  public.beta_members,
-  public.beta_campaigns,
-  public.beta_feedback,
-  public.beta_onboarding_progress,
-  public.beta_onboarding_stage_events,
-  public.beta_operation_tasks,
-  public.beta_operator_notes,
-  public.beta_growth_daily_metrics,
-  public.beta_campaign_aggregates,
-  public.beta_audit_logs,
-  public.promotion_accounts,
-  public.promotion_account_verifications,
-  public.promotion_assets,
-  public.promotion_audit_logs,
-  public.promotion_cancellation_requests,
-  public.promotion_clicks,
-  public.promotion_commercial_orders,
-  public.promotion_impressions,
-  public.promotion_notification_outbox,
-  public.promotion_order_status_history,
-  public.promotion_orders,
-  public.promotion_payment_confirmations,
-  public.promotion_payment_submissions,
-  public.promotion_performance_reports,
-  public.promotion_placements,
-  public.promotion_products,
-  public.promotion_quotes,
-  public.promotion_refunds,
-  public.promotion_reports,
-  public.promotion_requests,
-  public.promotion_reviews,
-  public.payment_document_requests,
-  public.payment_refund_attempts,
-  public.payment_transactions,
-  public.payment_webhook_events
-IN SHARE ROW EXCLUSIVE MODE;
+SELECT pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('phase10l-legacy-person-data-reset', 0)
+);
+
+CREATE TEMP TABLE phase10l_table_contract (
+  table_name text PRIMARY KEY,
+  disposition text NOT NULL CHECK (disposition IN ('delete', 'preserve'))
+) ON COMMIT DROP;
+
+INSERT INTO phase10l_table_contract(table_name, disposition)
+VALUES
+  ('reports', 'delete'),
+  ('search_logs', 'delete'),
+  ('traces', 'delete'),
+  ('profiles', 'delete'),
+  ('account_deletion_requests', 'preserve'),
+  ('admin_audit_logs', 'preserve'),
+  ('adult_eligibility_records', 'preserve'),
+  ('beta_audit_logs', 'preserve'),
+  ('beta_campaign_aggregates', 'preserve'),
+  ('beta_campaigns', 'preserve'),
+  ('beta_feature_flags', 'preserve'),
+  ('beta_feedback', 'preserve'),
+  ('beta_growth_daily_metrics', 'preserve'),
+  ('beta_invites', 'preserve'),
+  ('beta_members', 'preserve'),
+  ('beta_onboarding_progress', 'preserve'),
+  ('beta_onboarding_stage_events', 'preserve'),
+  ('beta_operation_tasks', 'preserve'),
+  ('beta_operator_notes', 'preserve'),
+  ('beta_program_schools', 'preserve'),
+  ('beta_program_setup_snapshots', 'preserve'),
+  ('beta_programs', 'preserve'),
+  ('beta_readiness_snapshots', 'preserve'),
+  ('beta_setup_drafts', 'preserve'),
+  ('connection_instagram_permissions', 'preserve'),
+  ('connection_match_tokens', 'preserve'),
+  ('connection_messages', 'preserve'),
+  ('connection_requests', 'preserve'),
+  ('connections', 'preserve'),
+  ('consent_records', 'preserve'),
+  ('data_export_jobs', 'preserve'),
+  ('editorial_features', 'preserve'),
+  ('notifications', 'preserve'),
+  ('operational_event_counters', 'preserve'),
+  ('operational_incidents', 'preserve'),
+  ('operational_job_runs', 'preserve'),
+  ('payment_document_requests', 'preserve'),
+  ('payment_refund_attempts', 'preserve'),
+  ('payment_transactions', 'preserve'),
+  ('payment_webhook_events', 'preserve'),
+  ('private_profiles', 'preserve'),
+  ('profile_school_memberships', 'preserve'),
+  ('promotion_account_verifications', 'preserve'),
+  ('promotion_accounts', 'preserve'),
+  ('promotion_assets', 'preserve'),
+  ('promotion_audit_logs', 'preserve'),
+  ('promotion_cancellation_requests', 'preserve'),
+  ('promotion_clicks', 'preserve'),
+  ('promotion_commercial_orders', 'preserve'),
+  ('promotion_impressions', 'preserve'),
+  ('promotion_notification_outbox', 'preserve'),
+  ('promotion_order_status_history', 'preserve'),
+  ('promotion_orders', 'preserve'),
+  ('promotion_payment_confirmations', 'preserve'),
+  ('promotion_payment_submissions', 'preserve'),
+  ('promotion_performance_reports', 'preserve'),
+  ('promotion_placements', 'preserve'),
+  ('promotion_products', 'preserve'),
+  ('promotion_quotes', 'preserve'),
+  ('promotion_refunds', 'preserve'),
+  ('promotion_reports', 'preserve'),
+  ('promotion_requests', 'preserve'),
+  ('promotion_reviews', 'preserve'),
+  ('retention_policy_versions', 'preserve'),
+  ('safety_account_restrictions', 'preserve'),
+  ('safety_reports', 'preserve'),
+  ('schools', 'preserve'),
+  ('user_blocks', 'preserve');
+
+DO $phase10l_table_classification$
+DECLARE
+  contract_count integer;
+  delete_count integer;
+  preserve_count integer;
+  actual_count integer;
+  mismatch text;
+BEGIN
+  SELECT count(*),
+         count(*) FILTER (WHERE disposition = 'delete'),
+         count(*) FILTER (WHERE disposition = 'preserve')
+    INTO contract_count, delete_count, preserve_count
+    FROM phase10l_table_contract;
+
+  SELECT count(*) INTO actual_count
+    FROM pg_catalog.pg_class AS relation
+    JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+   WHERE namespace.nspname = 'public' AND relation.relkind = 'r';
+
+  SELECT string_agg(format('%s:%s', side, table_name), ', ' ORDER BY side, table_name)
+    INTO mismatch
+    FROM (
+      SELECT 'unclassified' AS side, relation.relname AS table_name
+        FROM pg_catalog.pg_class AS relation
+        JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+        LEFT JOIN phase10l_table_contract AS contract ON contract.table_name = relation.relname
+       WHERE namespace.nspname = 'public' AND relation.relkind = 'r'
+         AND contract.table_name IS NULL
+      UNION ALL
+      SELECT 'missing' AS side, contract.table_name
+        FROM phase10l_table_contract AS contract
+        LEFT JOIN pg_catalog.pg_class AS relation
+          ON relation.relname = contract.table_name
+         AND relation.relnamespace = 'public'::regnamespace
+         AND relation.relkind = 'r'
+       WHERE relation.oid IS NULL
+    ) AS differences;
+
+  IF contract_count <> 68 OR delete_count <> 4 OR preserve_count <> 64
+     OR actual_count <> 68 OR mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'PHASE10L_PUBLIC_TABLE_CLASSIFICATION_MISMATCH'
+      USING DETAIL = format(
+        'contract=%s delete=%s preserve=%s actual=%s mismatch=%s',
+        contract_count, delete_count, preserve_count, actual_count, coalesce(mismatch, 'none')
+      );
+  END IF;
+END
+$phase10l_table_classification$;
+
+-- Lock all 68 classified relations in one deterministic alphabetical order.
+DO $phase10l_lock_all$
+DECLARE
+  lock_targets text;
+BEGIN
+  SELECT string_agg(format('public.%I', table_name), ', ' ORDER BY table_name)
+    INTO lock_targets
+    FROM phase10l_table_contract;
+  EXECUTE 'LOCK TABLE ' || lock_targets || ' IN SHARE ROW EXCLUSIVE MODE';
+END
+$phase10l_lock_all$;
+
+-- Permanently close every legacy public write path. REVOKE ALL handles table
+-- grants; explicit column revokes close historical column-only grants.
+REVOKE ALL ON TABLE public.profiles, public.reports, public.traces, public.search_logs
+  FROM PUBLIC, anon, authenticated;
+REVOKE INSERT (
+  school_id, graduation_year, grade, class_number, department,
+  student_year, nickname, instagram_id, description, is_self, message
+) ON public.profiles FROM PUBLIC, anon, authenticated;
+REVOKE INSERT (profile_id, type, reason, requested_instagram_id, is_self_claimed)
+  ON public.reports FROM PUBLIC, anon, authenticated;
+REVOKE INSERT (school_id, graduation_year, grade, class_number, message)
+  ON public.traces FROM PUBLIC, anon, authenticated;
+REVOKE INSERT (query, result_count, clicked_school_id)
+  ON public.search_logs FROM PUBLIC, anon, authenticated;
+DO $phase10l_search_log_sequence$
+BEGIN
+  IF to_regclass('public.search_logs_id_seq') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON SEQUENCE public.search_logs_id_seq FROM PUBLIC, anon, authenticated, service_role';
+  END IF;
+END
+$phase10l_search_log_sequence$;
+REVOKE ALL ON TABLE public.search_logs FROM service_role;
+
+DROP POLICY IF EXISTS "profiles_insert" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_insert_anon" ON public.profiles;
+DROP POLICY IF EXISTS "reports_insert" ON public.reports;
+DROP POLICY IF EXISTS "traces_insert_public" ON public.traces;
+DROP POLICY IF EXISTS "Allow anon insert" ON public.search_logs;
+DROP POLICY IF EXISTS "search_logs_insert" ON public.search_logs;
+
+DO $phase10l_drop_legacy_insert_policies$
+DECLARE
+  legacy_policy record;
+BEGIN
+  FOR legacy_policy IN
+    SELECT relation.relname AS table_name, policy.polname AS policy_name
+      FROM pg_catalog.pg_policy AS policy
+      JOIN pg_catalog.pg_class AS relation ON relation.oid = policy.polrelid
+     WHERE policy.polrelid IN (
+       'public.profiles'::regclass,
+       'public.reports'::regclass,
+       'public.traces'::regclass,
+       'public.search_logs'::regclass
+     )
+       AND policy.polcmd = 'a'
+     ORDER BY relation.relname, policy.polname
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.%I', legacy_policy.policy_name, legacy_policy.table_name);
+  END LOOP;
+END
+$phase10l_drop_legacy_insert_policies$;
+
+-- Freeze the complete UUID person-link column catalog audited on 2026-08-03.
+-- A new or removed account/user/profile/member/invite link must be reviewed in
+-- a separate forward migration rather than being silently ignored or deleted.
+CREATE TEMP TABLE phase10l_person_link_contract (
+  table_name text NOT NULL,
+  column_name text NOT NULL,
+  PRIMARY KEY(table_name, column_name)
+) ON COMMIT DROP;
+
+INSERT INTO phase10l_person_link_contract(table_name, column_name)
+VALUES
+  ('account_deletion_requests', 'user_id'),
+  ('adult_eligibility_records', 'user_id'),
+  ('beta_campaigns', 'invite_id'),
+  ('beta_feature_flags', 'user_id'),
+  ('beta_feedback', 'owner_user_id'),
+  ('beta_members', 'invite_id'),
+  ('beta_members', 'user_id'),
+  ('beta_onboarding_progress', 'user_id'),
+  ('connection_instagram_permissions', 'grantee_user_id'),
+  ('connection_instagram_permissions', 'grantor_user_id'),
+  ('connection_match_tokens', 'receiver_user_id'),
+  ('connection_match_tokens', 'requester_user_id'),
+  ('connection_messages', 'sender_user_id'),
+  ('connection_requests', 'receiver_user_id'),
+  ('connection_requests', 'sender_user_id'),
+  ('connections', 'disconnected_by_user_id'),
+  ('consent_records', 'user_id'),
+  ('data_export_jobs', 'owner_user_id'),
+  ('editorial_features', 'account_id'),
+  ('notifications', 'user_id'),
+  ('payment_document_requests', 'owner_user_id'),
+  ('payment_transactions', 'owner_user_id'),
+  ('private_profiles', 'owner_user_id'),
+  ('profile_school_memberships', 'owner_user_id'),
+  ('profile_school_memberships', 'profile_id'),
+  ('profiles', 'owner_user_id'),
+  ('promotion_account_verifications', 'account_id'),
+  ('promotion_accounts', 'owner_user_id'),
+  ('promotion_cancellation_requests', 'owner_user_id'),
+  ('promotion_commercial_orders', 'owner_user_id'),
+  ('promotion_notification_outbox', 'owner_user_id'),
+  ('promotion_payment_submissions', 'owner_user_id'),
+  ('promotion_performance_reports', 'owner_user_id'),
+  ('promotion_quotes', 'owner_user_id'),
+  ('promotion_reports', 'reporter_user_id'),
+  ('promotion_requests', 'account_id'),
+  ('promotion_requests', 'owner_user_id'),
+  ('reports', 'profile_id'),
+  ('safety_account_restrictions', 'user_id'),
+  ('safety_reports', 'reported_user_id'),
+  ('safety_reports', 'reporter_user_id'),
+  ('user_blocks', 'blocked_user_id'),
+  ('user_blocks', 'blocker_user_id');
+
+DO $phase10l_person_link_classification$
+DECLARE
+  mismatch text;
+BEGIN
+  SELECT string_agg(format('%s:%s.%s', side, table_name, column_name), ', '
+                    ORDER BY side, table_name, column_name)
+    INTO mismatch
+    FROM (
+      SELECT 'unexpected' AS side, column_info.table_name, column_info.column_name
+        FROM information_schema.columns AS column_info
+        LEFT JOIN phase10l_person_link_contract AS contract
+          ON contract.table_name = column_info.table_name
+         AND contract.column_name = column_info.column_name
+       WHERE column_info.table_schema = 'public'
+         AND column_info.data_type = 'uuid'
+         AND column_info.column_name ~ '(^|_)(user|profile|account|member|invite)_id$'
+         AND contract.table_name IS NULL
+      UNION ALL
+      SELECT 'missing' AS side, contract.table_name, contract.column_name
+        FROM phase10l_person_link_contract AS contract
+        LEFT JOIN information_schema.columns AS column_info
+          ON column_info.table_schema = 'public'
+         AND column_info.table_name = contract.table_name
+         AND column_info.column_name = contract.column_name
+         AND column_info.data_type = 'uuid'
+       WHERE column_info.column_name IS NULL
+    ) AS differences;
+
+  IF mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'PHASE10L_PERSON_LINK_COLUMN_CLASSIFICATION_MISMATCH'
+      USING DETAIL = mismatch;
+  END IF;
+END
+$phase10l_person_link_classification$;
 
 CREATE TEMP TABLE phase10l_affected_schools ON COMMIT DROP AS
 SELECT DISTINCT school_id
@@ -97,12 +315,13 @@ DECLARE
   school_count bigint;
   school_growth_drift_count bigint;
   new_person_count bigint;
+  safety_restriction_count bigint;
+  editorial_account_count bigint;
   beta_operation_count bigint;
   beta_program_count bigint;
   global_flag_count bigint;
   scoped_flag_count bigint;
   commercial_count bigint;
-  empty_legacy boolean;
 BEGIN
   SELECT count(*),
          count(*) FILTER (WHERE legacy_profile.owner_user_id IS NOT NULL),
@@ -119,7 +338,13 @@ BEGIN
   SELECT count(*) INTO school_count FROM public.schools;
   SELECT count(*) INTO school_growth_drift_count
     FROM public.schools
-   WHERE coalesce(current_level, 1) <> 1 OR level_updated_at IS NOT NULL;
+     WHERE coalesce(current_level, 1) <> 1 OR level_updated_at IS NOT NULL;
+
+  SELECT count(*) INTO safety_restriction_count
+    FROM public.safety_account_restrictions;
+  SELECT count(*) INTO editorial_account_count
+    FROM public.editorial_features
+   WHERE account_id IS NOT NULL;
 
   SELECT
       (SELECT count(*) FROM public.private_profiles)
@@ -136,6 +361,7 @@ BEGIN
     + (SELECT count(*) FROM public.user_blocks)
     + (SELECT count(*) FROM public.safety_reports)
     + (SELECT count(*) FROM public.data_export_jobs)
+    + safety_restriction_count
     INTO new_person_count;
 
   SELECT
@@ -190,14 +416,13 @@ BEGIN
     + (SELECT count(*) FROM public.payment_webhook_events)
     INTO commercial_count;
 
-  empty_legacy := profile_count = 0
-    AND report_row_count = 0
-    AND trace_count = 0
-    AND search_log_count = 0;
-
   IF new_person_count <> 0 THEN
     RAISE EXCEPTION 'PHASE10L_NEW_PERSON_DATA_PRESENT'
       USING DETAIL = format('new_person_rows=%s', new_person_count);
+  END IF;
+  IF editorial_account_count <> 0 THEN
+    RAISE EXCEPTION 'PHASE10L_EDITORIAL_ACCOUNT_DATA_PRESENT'
+      USING DETAIL = format('editorial_account_rows=%s', editorial_account_count);
   END IF;
   IF beta_operation_count <> 0 OR scoped_flag_count <> 0 THEN
     RAISE EXCEPTION 'PHASE10L_BETA_OPERATION_DATA_PRESENT'
@@ -208,8 +433,7 @@ BEGIN
       USING DETAIL = format('commercial_rows=%s', commercial_count);
   END IF;
 
-  IF NOT empty_legacy AND (
-       profile_count <> 25
+  IF profile_count <> 25
     OR owned_profile_count <> 0
     OR hidden_profile_count <> 0
     OR reported_profile_count <> 0
@@ -220,8 +444,7 @@ BEGIN
     OR school_count <> 10006
     OR school_growth_drift_count <> 0
     OR beta_program_count <> 1
-    OR global_flag_count <> 8
-  ) THEN
+    OR global_flag_count <> 8 THEN
     RAISE EXCEPTION 'PHASE10L_PRODUCTION_BASELINE_MISMATCH'
       USING DETAIL = format(
         'profiles=%s owned=%s hidden=%s reported=%s profile_schools=%s reports=%s traces=%s search_logs=%s schools=%s school_growth_drift=%s beta_programs=%s global_flags=%s',
@@ -246,66 +469,11 @@ DECLARE
   preserved_table text;
   preserved_count bigint;
 BEGIN
-  FOREACH preserved_table IN ARRAY ARRAY[
-    'schools',
-    'private_profiles',
-    'profile_school_memberships',
-    'adult_eligibility_records',
-    'consent_records',
-    'account_deletion_requests',
-    'connection_match_tokens',
-    'connection_requests',
-    'connections',
-    'connection_messages',
-    'connection_instagram_permissions',
-    'notifications',
-    'user_blocks',
-    'safety_reports',
-    'data_export_jobs',
-    'admin_audit_logs',
-    'beta_programs',
-    'beta_feature_flags',
-    'beta_setup_drafts',
-    'beta_program_setup_snapshots',
-    'beta_program_schools',
-    'beta_readiness_snapshots',
-    'beta_invites',
-    'beta_members',
-    'beta_campaigns',
-    'beta_feedback',
-    'beta_onboarding_progress',
-    'beta_onboarding_stage_events',
-    'beta_operation_tasks',
-    'beta_operator_notes',
-    'beta_growth_daily_metrics',
-    'beta_campaign_aggregates',
-    'beta_audit_logs',
-    'promotion_accounts',
-    'promotion_account_verifications',
-    'promotion_assets',
-    'promotion_audit_logs',
-    'promotion_cancellation_requests',
-    'promotion_clicks',
-    'promotion_commercial_orders',
-    'promotion_impressions',
-    'promotion_notification_outbox',
-    'promotion_order_status_history',
-    'promotion_orders',
-    'promotion_payment_confirmations',
-    'promotion_payment_submissions',
-    'promotion_performance_reports',
-    'promotion_placements',
-    'promotion_products',
-    'promotion_quotes',
-    'promotion_refunds',
-    'promotion_reports',
-    'promotion_requests',
-    'promotion_reviews',
-    'payment_document_requests',
-    'payment_refund_attempts',
-    'payment_transactions',
-    'payment_webhook_events'
-  ]
+  FOR preserved_table IN
+    SELECT table_name
+      FROM phase10l_table_contract
+     WHERE disposition = 'preserve'
+     ORDER BY table_name
   LOOP
     EXECUTE format('SELECT count(*) FROM public.%I', preserved_table)
       INTO preserved_count;
@@ -389,5 +557,84 @@ BEGIN
   END LOOP;
 END
 $phase10l_verify_preserved$;
+
+DO $phase10l_verify_legacy_writes_closed$
+DECLARE
+  role_name text;
+BEGIN
+  FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated']
+  LOOP
+    IF has_table_privilege(role_name, 'public.profiles', 'INSERT')
+       OR has_table_privilege(role_name, 'public.reports', 'INSERT')
+       OR has_table_privilege(role_name, 'public.traces', 'INSERT')
+       OR has_table_privilege(role_name, 'public.search_logs', 'INSERT')
+       OR has_any_column_privilege(role_name, 'public.profiles', 'INSERT')
+       OR has_any_column_privilege(role_name, 'public.reports', 'INSERT')
+       OR has_any_column_privilege(role_name, 'public.traces', 'INSERT')
+       OR has_any_column_privilege(role_name, 'public.search_logs', 'INSERT') THEN
+      RAISE EXCEPTION 'PHASE10L_LEGACY_PUBLIC_INSERT_PRIVILEGE_REMAINS'
+        USING DETAIL = format('role=%s', role_name);
+    END IF;
+  END LOOP;
+
+  IF EXISTS (
+    SELECT 1
+      FROM information_schema.table_privileges AS privilege
+     WHERE privilege.table_schema = 'public'
+       AND privilege.table_name IN ('profiles','reports','traces','search_logs')
+       AND privilege.grantee = 'PUBLIC' AND privilege.privilege_type = 'INSERT'
+  ) OR EXISTS (
+    SELECT 1
+      FROM information_schema.column_privileges AS privilege
+     WHERE privilege.table_schema = 'public'
+       AND privilege.table_name IN ('profiles','reports','traces','search_logs')
+       AND privilege.grantee = 'PUBLIC' AND privilege.privilege_type = 'INSERT'
+  ) THEN
+    RAISE EXCEPTION 'PHASE10L_LEGACY_PUBLIC_INSERT_PRIVILEGE_REMAINS'
+      USING DETAIL = 'role=PUBLIC';
+  END IF;
+
+  IF has_table_privilege('service_role', 'public.search_logs', 'SELECT,INSERT,UPDATE,DELETE')
+     OR has_any_column_privilege('service_role', 'public.search_logs', 'INSERT') THEN
+    RAISE EXCEPTION 'PHASE10L_SEARCH_LOG_SERVICE_ROLE_PRIVILEGE_REMAINS';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_policy AS policy
+     WHERE policy.polrelid IN (
+       'public.profiles'::regclass,
+       'public.reports'::regclass,
+       'public.traces'::regclass,
+       'public.search_logs'::regclass
+     )
+       AND policy.polcmd = 'a'
+       AND (
+         policy.polroles = ARRAY[0::oid]
+         OR policy.polroles && ARRAY[
+           (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'anon'),
+           (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'authenticated')
+         ]
+       )
+  ) THEN
+    RAISE EXCEPTION 'PHASE10L_LEGACY_PUBLIC_INSERT_POLICY_REMAINS';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_proc AS routine
+      JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = routine.pronamespace
+     WHERE namespace.nspname = 'public'
+       AND routine.prokind IN ('f', 'p')
+       AND routine.prosrc ~* '(insert[[:space:]]+into|update|delete[[:space:]]+from)[[:space:]]+(public\\.)?(profiles|reports|traces|search_logs)'
+       AND (
+         has_function_privilege('anon', routine.oid, 'EXECUTE')
+         OR has_function_privilege('authenticated', routine.oid, 'EXECUTE')
+       )
+  ) THEN
+    RAISE EXCEPTION 'PHASE10L_LEGACY_PUBLIC_WRITE_RPC_REMAINS';
+  END IF;
+END
+$phase10l_verify_legacy_writes_closed$;
 
 COMMIT;

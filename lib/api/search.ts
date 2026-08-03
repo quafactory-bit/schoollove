@@ -75,25 +75,6 @@ export async function searchSchoolsForAutocomplete(query: string): Promise<Schoo
 // 클라이언트 state로만 동작한다(lib/policy/yearHub.ts). 학교 검색(searchSchools,
 // searchSchoolsForAutocomplete)은 이 파일에서 무변경으로 유지된다.
 
-// PHASE 7B COMPLETION PATCH — SCHOOL SEARCH CONTINUITY
-// 학교 검색 로그만 복구한다(사람 검색과는 무관 — Year Hub 이름 검색은 이 함수를 호출하지
-// 않는다). docs/decisions/2026-07-17-search-logs-aggregate-rpc.md #4 "logSearch()의 INSERT
-// 동작과 search_logs_insert 정책은 그대로 둔다"를 따라 기존 INSERT 계약(컬럼
-// query/result_count, RLS search_logs_insert)을 그대로 재사용했다 — School Hub의
-// getSchoolSearchCount()(lib/api/searches.ts)가 이 값을 읽는 유일한 소비자다. 이름을
-// logSearch → logSchoolSearch로 바꿔 "사람 검색"과 절대 혼동되지 않게 했다. fire-and-forget:
-// 실패해도 호출부의 검색 결과 표시를 절대 막지 않는다(호출부에서도 await하지 않고
-// void 호출로만 사용).
-export async function logSchoolSearch(query: string, resultCount: number): Promise<void> {
-  try {
-    const trimmed = query.trim()
-    if (trimmed.length < 2) return
-    if (trimmed.length > 100) return
-    await supabase.from('search_logs').insert({
-      query: trimmed,
-      result_count: resultCount,
-    })
-  } catch {
-    // 로그 실패는 조용히 무시
-  }
-}
+// PHASE 10L: raw search query persistence is permanently retired. School
+// search continues through search_schools_v2 without recording the query.
+// A privacy-preserving aggregate requires a separately approved design.

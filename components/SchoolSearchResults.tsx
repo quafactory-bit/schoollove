@@ -19,7 +19,7 @@
 // 없다(의도적으로 단순화한 부분, 최종 보고서에 기록).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { logSchoolSearch, searchSchools, type SchoolSearchResult } from '@/lib/api/search'
+import { searchSchools, type SchoolSearchResult } from '@/lib/api/search'
 import SearchBar from './SearchBar'
 import { schoolTypeLabel } from '@/lib/utils'
 import {
@@ -35,10 +35,8 @@ export default function SchoolSearchResults() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SchoolSearchResult[]>([])
 
-  // "가장 마지막으로 시작된 실행"만 결과를 반영하고 로그를 남긴다 — 개발 모드 React
-  // Strict Mode가 마운트 useEffect를 두 번 실행해도(같은 sessionStorage 값을 두 번 읽어도)
-  // 로그가 중복 기록되지 않는다. 실제 사용자가 서로 다른 검색어로 연달아 검색하는
-  // 정상적인 경우에는 매번 새 실행 id가 되어 각각 정상적으로 한 번씩 기록된다.
+  // "가장 마지막으로 시작된 실행"만 결과를 반영한다. 개발 모드 React Strict Mode가
+  // 마운트 useEffect를 두 번 실행해도 앞선 응답이 최신 검색 결과를 덮어쓰지 않는다.
   const executionRef = useRef(0)
 
   const runSearch = useCallback((raw: string) => {
@@ -63,8 +61,6 @@ export default function SchoolSearchResults() {
         if (executionRef.current !== executionId) return
         setResults(schools)
         setStatus('ok')
-        // fire-and-forget — 로그 실패가 이미 표시된 결과를 절대 지우지 않는다.
-        void logSchoolSearch(normalized, schools.length)
       },
       () => {
         if (executionRef.current !== executionId) return

@@ -55,14 +55,14 @@ describe('launch measurement minimum privacy contracts', () => {
     }
   })
 
-  it('preserves trace/report limiter windows and prefixes', () => {
-    expect(tracesRoute).toContain("Ratelimit.slidingWindow(5, '60 s')")
-    expect(tracesRoute).toContain("prefix: 'schoollove:trace'")
-    expect(tracesRoute).toContain('{ ex: 600 }')
-    expect(reportsRoute).toContain("const ACTOR_WINDOW = '60 s'")
-    expect(reportsRoute).toContain("const TARGET_WINDOW = '600 s'")
-    expect(reportsRoute).toContain("prefix: 'schoollove:reports:actor'")
-    expect(reportsRoute).toContain("prefix: 'schoollove:reports:target'")
+  it('permanently closes trace/report writes before parsing, limiting, or database access', () => {
+    expect(tracesRoute).toContain('LEGACY_TRACE_WRITE_PERMANENTLY_DISABLED')
+    expect(reportsRoute).toContain('LEGACY_REPORT_WRITE_PERMANENTLY_DISABLED')
+    for (const route of [tracesRoute, reportsRoute]) {
+      expect(route).toContain('status: 503')
+      expect(route).toContain("'Cache-Control': 'no-store'")
+      expect(route).not.toMatch(/request\.json|Ratelimit|Redis|getSupabaseAdmin|supabaseServer|\.from\(|\.rpc\(/)
+    }
   })
 
   it('renders Vercel Analytics exactly once without custom events', () => {

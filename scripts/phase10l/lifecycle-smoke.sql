@@ -45,9 +45,19 @@ BEGIN
     + (SELECT count(*) FROM public.connections)
     + (SELECT count(*) FROM public.connection_messages)
     + (SELECT count(*) FROM public.connection_instagram_permissions)
+    + (SELECT count(*) FROM public.safety_account_restrictions)
     INTO new_person_rows;
   IF new_person_rows <> 0 THEN
     RAISE EXCEPTION 'new account/person data changed: %', new_person_rows;
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.editorial_features WHERE account_id IS NOT NULL) THEN
+    RAISE EXCEPTION 'editorial person link remains';
+  END IF;
+
+  IF (SELECT count(*) FROM pg_catalog.pg_class AS relation
+       JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid=relation.relnamespace
+      WHERE namespace.nspname='public' AND relation.relkind='r') <> 68 THEN
+    RAISE EXCEPTION 'public table contract changed';
   END IF;
 
   SELECT

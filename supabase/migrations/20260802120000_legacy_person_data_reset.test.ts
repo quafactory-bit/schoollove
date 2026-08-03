@@ -8,19 +8,33 @@ const sql = readFileSync(
 )
 
 describe('PHASE 10L legacy person reset migration', () => {
-  it('is one guarded transaction with an empty fresh-database path', () => {
+  it('is a one-shot guarded transaction that locks the complete contract', () => {
     expect(sql).toMatch(/BEGIN;[\s\S]*COMMIT;/)
+    expect(sql).toContain('pg_advisory_xact_lock')
+    expect(sql).toContain("contract_count <> 68")
+    expect(sql).toContain("delete_count <> 4")
+    expect(sql).toContain("preserve_count <> 64")
+    expect(sql).toContain("actual_count <> 68")
+    expect(sql).toContain('PHASE10L_PUBLIC_TABLE_CLASSIFICATION_MISMATCH')
+    expect(sql).toContain("ORDER BY table_name")
     expect(sql).toContain('IN SHARE ROW EXCLUSIVE MODE')
-    expect(sql).toContain('empty_legacy := profile_count = 0')
-    expect(sql).toContain('PHASE10L_PRODUCTION_BASELINE_MISMATCH')
-    expect(sql).toContain('profile_count <> 25')
-    expect(sql).toContain('search_log_count <> 670')
-    expect(sql).toContain('school_count <> 10006')
+    expect(sql).not.toContain('empty_legacy')
   })
 
-  it('deletes only the audited legacy person and raw-search tables', () => {
-    for (const table of ['reports', 'traces', 'search_logs', 'profiles']) {
+  it('classifies exactly four delete tables and all six previously omitted preserve tables', () => {
+    for (const table of ['reports', 'search_logs', 'traces', 'profiles']) {
+      expect(sql).toContain(`('${table}', 'delete')`)
       expect(sql).toContain(`DELETE FROM public.${table};`)
+    }
+    for (const table of [
+      'safety_account_restrictions',
+      'editorial_features',
+      'operational_event_counters',
+      'operational_incidents',
+      'operational_job_runs',
+      'retention_policy_versions',
+    ]) {
+      expect(sql).toContain(`('${table}', 'preserve')`)
     }
     expect(sql).not.toMatch(/DELETE\s+FROM\s+public\.schools/i)
     expect(sql).not.toMatch(/DELETE\s+FROM\s+public\.beta_/i)
@@ -28,13 +42,38 @@ describe('PHASE 10L legacy person reset migration', () => {
     expect(sql).not.toMatch(/TRUNCATE/i)
   })
 
-  it('fails closed around new private, beta, and commercial data', () => {
+  it('freezes the person-link catalog and fails closed on new person data', () => {
+    expect(sql).toContain("('safety_account_restrictions', 'user_id')")
+    expect(sql).toContain("('editorial_features', 'account_id')")
+    expect(sql).toContain('PHASE10L_PERSON_LINK_COLUMN_CLASSIFICATION_MISMATCH')
+    expect(sql).toContain("column_info.column_name ~ '(^|_)(user|profile|account|member|invite)_id$'")
+    expect(sql).toContain('safety_restriction_count')
     expect(sql).toContain('PHASE10L_NEW_PERSON_DATA_PRESENT')
+    expect(sql).toContain('PHASE10L_EDITORIAL_ACCOUNT_DATA_PRESENT')
     expect(sql).toContain('PHASE10L_BETA_OPERATION_DATA_PRESENT')
     expect(sql).toContain('PHASE10L_COMMERCIAL_DATA_PRESENT')
-    expect(sql).toContain('scoped_flag_count <> 0')
+  })
+
+  it('accepts only the exact audited baseline and preserves all 64 other tables', () => {
+    expect(sql).toContain('PHASE10L_PRODUCTION_BASELINE_MISMATCH')
+    expect(sql).toContain('profile_count <> 25')
+    expect(sql).toContain('search_log_count <> 670')
+    expect(sql).toContain('school_count <> 10006')
+    expect(sql).toContain('beta_program_count <> 1')
+    expect(sql).toContain('global_flag_count <> 8')
     expect(sql).toContain('phase10l_preserved_counts')
+    expect(sql).toContain("WHERE disposition = 'preserve'")
     expect(sql).toContain('PHASE10L_PRESERVED_TABLE_CHANGED')
+  })
+
+  it('permanently removes raw-search and public legacy write grants', () => {
+    expect(sql).toMatch(/REVOKE ALL ON TABLE public\.profiles, public\.reports, public\.traces, public\.search_logs\s+FROM PUBLIC, anon, authenticated;/)
+    expect(sql).toContain('ON public.search_logs FROM PUBLIC, anon, authenticated;')
+    expect(sql).toContain('REVOKE ALL ON TABLE public.search_logs FROM service_role;')
+    expect(sql).toContain('PHASE10L_LEGACY_PUBLIC_INSERT_PRIVILEGE_REMAINS')
+    expect(sql).toContain('PHASE10L_LEGACY_PUBLIC_INSERT_POLICY_REMAINS')
+    expect(sql).toContain('PHASE10L_LEGACY_PUBLIC_WRITE_RPC_REMAINS')
+    expect(sql).toContain('PHASE10L_SEARCH_LOG_SERVICE_ROLE_PRIVILEGE_REMAINS')
   })
 
   it('normalizes only affected school growth state and proves empty rankings', () => {
@@ -45,9 +84,9 @@ describe('PHASE 10L legacy person reset migration', () => {
     expect(sql).toContain('PHASE10L_RANKING_NOT_EMPTY')
   })
 
-  it('does not alter schema security or migration history', () => {
-    expect(sql).not.toMatch(/CREATE\s+POLICY|DROP\s+POLICY|GRANT\s|REVOKE\s/i)
+  it('does not manipulate migration history or delete security objects', () => {
     expect(sql).not.toMatch(/schema_migrations|migration_history|supabase_migrations/i)
+    expect(sql).not.toMatch(/DROP\s+TABLE|DROP\s+FUNCTION|DROP\s+TRIGGER/i)
     expect(sql).not.toMatch(/ALTER\s+TABLE/i)
   })
 })
