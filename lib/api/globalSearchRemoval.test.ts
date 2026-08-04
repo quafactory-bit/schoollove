@@ -53,7 +53,7 @@ describe('app/search/page.tsx — 쿼리를 다시 렌더하지 않는 정적 �
   const source = readSource('app/search/page.tsx')
 
   it('SearchPage 컴포넌트가 searchParams를 props로 받지 않는다(설명 주석이 아니라 실제 함수 시그니처 확인)', () => {
-    expect(source).toMatch(/export default function SearchPage\(\)\s*\{/)
+    expect(source).toMatch(/export default (?:async )?function SearchPage\(\)\s*\{/)
     expect(source).not.toMatch(/interface\s+Props/)
   })
 

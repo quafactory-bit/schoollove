@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ authenticated: true })
     setUserSessionCookies(response, data.session)
+    await client.rpc('record_own_otp_verified_milestone')
     return response
   } catch {
     return NextResponse.json({ error: '인증을 완료할 수 없습니다.' }, { status: 503 })

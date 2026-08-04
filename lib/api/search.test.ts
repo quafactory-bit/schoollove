@@ -131,7 +131,7 @@ describe('searchSchools — PHASE 10A 학교 전용 검색', () => {
 
     const result = await searchSchools('대치')
 
-    expect(rpc).toHaveBeenCalledWith('search_schools_v2', { q: '대치', lim: 20 })
+    expect(rpc).toHaveBeenCalledWith('search_schools_with_activity', { q: '대치', lim: 20 })
     expect(result[0]).toMatchObject({ id: 's1', school_name: '대치고등학교', profile_count: 0 })
     expect(from).not.toHaveBeenCalled()
   })
@@ -147,11 +147,12 @@ describe('searchSchools — PHASE 10A 학교 전용 검색', () => {
 })
 
 describe('PHASE 10L raw search log retirement', () => {
-  it('keeps school search RPC behavior without any search_logs persistence path', () => {
+  it('keeps school search activity aggregate-only without any search_logs persistence path', () => {
     const source = readFileSync(join(process.cwd(), 'lib/api/search.ts'), 'utf8')
     const consumer = readFileSync(join(process.cwd(), 'components/SchoolSearchResults.tsx'), 'utf8')
 
-    expect(source).toContain("supabase.rpc('search_schools_v2'")
+    expect(source).toContain("'search_schools_with_activity'")
+    expect(source).toContain("'search_schools_v2'")
     expect(source).not.toMatch(/from\(['"]search_logs['"]\)|logSchoolSearch/)
     expect(consumer).not.toMatch(/logSchoolSearch|search_logs/)
   })

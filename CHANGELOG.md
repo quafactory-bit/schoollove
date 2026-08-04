@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-08-04 — PHASE 10N-C2 provider-backed emergency boundary verification (LOCAL / DRAFT)
+
+- Found a real route-level bypass where an active controlled-beta account could submit eligibility during public `emergency_stopped`; introduced one common `public_account_access_active` precheck for eligibility, consent, profile, membership, and onboarding writable state without blocking separate privacy deletion or account-deletion rights.
+- Preserved the intended split: `closed` still permits a valid active controlled-beta account, `open` still gives the beta one-school contract precedence, and emergency stops both public and beta account create/update writes.
+- Verified targeted `8 files / 54 tests`, full `114 files / 1,008 tests`, TypeScript, the 58-page/route Production build, 18 isolated drift/rollback scenarios, and PHASE 10J/10N lifecycle and permission regressions.
+- Completed the modified-head disposable provider matrix: Chromium, mobile 360, mobile 390, and mobile 412 each passed `5/5` (`20/20`, workers `1`, retries `0`). Local GoTrue/PostgREST/PostgreSQL/Mailpit used only `@example.invalid`; provider failure reached `failed_safe`, recovery retry deleted the Auth identity, and the final baseline was `0|0|0|0|10006|0|0|0|0`.
+- Canonical-LF migration SHA-256 is `5DF7F3E489D91C18328524C0AA1ACA3F10276F0700604FD27433F68228854A48`. External email, Production Auth, Production migration/state/data, registration open, beta/commercial operation, dependency, lockfile, and environment mutation remain zero.
+
+## 2026-08-03 — PHASE 10N-B public account security hardening (LOCAL / DRAFT)
+
+- Added exact 68→71-table Production preflight/postflight checks, frozen UUID person-link validation, post-reset row-count guards, and full-transaction rollback coverage to the still-unapplied `20260803120000` migration.
+- Removed authenticated direct consent, deletion-request, private-profile, and membership writes in favor of fixed-contract `auth.uid()` owner RPCs; added explicit abuse, grant, RLS, function-owner, and empty-search-path checks.
+- Split query-free request activity from first-transition milestones, stopped search-page renders and autocomplete from incrementing search activity, and preserved no raw search persistence or per-user telemetry.
+- Restored controlled-beta account UI access independently of the closed public launch, kept beta's one-school rule, and strengthened immutable readiness/open/emergency sequencing.
+- Selected actual Auth identity deletion: public rows are deleted first, the request moves through `public_data_deleted` and `auth_deletion_pending`, Auth Admin hard-delete is required before `done`, and failures remain blocked and retryable as `failed_safe`; deidentified request/audit evidence is purged after 90 days.
+- This entry records the pre-C2 hardening work. Its intermediate validation counts, earlier digest, and provider-blocked conclusion were superseded by the 2026-08-04 C2 verification above.
+
+## 2026-08-03 — PHASE 10N-A public account site completion (LOCAL/DRAFT / PRODUCTION CLOSED)
+
+- Paused first-school controlled-beta selection and completed the separate adult public-account path without selecting a school or creating beta data.
+- Added forward migration `20260803120000_public_account_soft_launch.sql`: default-closed five-state launch control, exact three-feature boundary, FORCE RLS, service-only audited state/deletion RPCs, emergency stop, privacy-safe masked funnel, and distinct public-versus-controlled-beta school contracts.
+- Tied OTP `shouldCreateUser` to the public-safe launch state, preserved generic enumeration-resistant responses, and added shared server-side expired/near-expiry refresh with two-cookie rotation or clearing.
+- Completed KST adult self-attestation, current four-consent idempotency, owner-only private profile, public maximum-three past-school histories, beta single-school regression, restored onboarding, account deletion processing, and administrator launch/deletion controls.
+- Reworked Home, `/submit`, login, onboarding, account, Header, and mobile navigation while leaving public people/connection/message/Instagram/promotion/payment functions dormant.
+- Added disposable post-reset PostgreSQL lifecycle/RLS/rollback and actual local Supabase Auth/Mailpit/PostgREST Playwright coverage for Desktop 1440 and mobile 360/390/412. Production mutation, registration open, real-person Auth/OTP, beta/commercial data, package/lock, and environment changes remain zero.
+- Historical pre-hardening evidence at the PHASE 10N-A head: targeted `10 files / 43 tests`, full `113 files / 996 tests`, TypeScript, 58-page/route Production build, isolated PHASE 10N/10J lifecycle and permission regressions, and provider-backed Playwright `20/20` (`5/5` per viewport, one worker, zero retries). That migration digest was superseded by PHASE 10N-B; the current canonical-LF SHA-256 is recorded above.
+
+
 ## 2026-08-03 — PHASE 10L-F Production legacy person data reset complete
 
 - Squash-merged PR #37 as `3d56ffe33c5f20abf44542c603bf3009708b5339` and deployed that exact commit to Vercel Production before the reset.

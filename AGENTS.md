@@ -1,5 +1,11 @@
 # SchoolLoveI 작업 규칙
 
+> PHASE 10N-C2 현재 결정: disposable provider matrix에서 public `emergency_stopped`인데 active controlled-beta 사용자의 eligibility route가 200을 반환하는 우회를 발견해, 네 account write route와 onboarding writable 판정이 공통 `public_account_access_active` 선검사를 거치도록 수정했다. `closed`에서는 valid active beta 권한을 유지하고, `open`에서도 beta one-school 계약이 우선하며, emergency는 public/beta account 신규·수정 write보다 우선한다. 개인정보 owner 삭제와 탈퇴 요청 권리는 별도 경계로 유지한다. 최신 local 검증은 targeted 8 files/54 tests, full 114 files/1,008 tests, TypeScript, 58 pages/routes build, isolated 18 rollback 및 PHASE 10J/10N 회귀, disposable provider Chromium/mobile 360/390/412 각 5/5(총 20/20, workers=1, retries=0)다. 외부 이메일·Production Auth·Production mutation은 0이며 PR #39는 계속 Draft, Ready·merge·Production migration/deploy/open은 금지한다.
+
+> PHASE 10N-B 현재 결정: PR #39는 Draft에서 공개 계정 경계를 강화한다. 미적용 migration `20260803120000`은 68→71 public-table/UUID person-link/Production post-reset 기준을 영구 DDL 전에 검증하고 전체 transaction으로 rollback한다. authenticated의 consent·deletion·private profile·membership 직접 write를 폐쇄하고 `auth.uid()` owner RPC만 사용한다. activity 요청량과 계정별 최초 milestone을 분리하고 `return_session`은 제거한다. 탈퇴는 public data 삭제→Auth Admin 실제 삭제→완료의 2단계이며 실패는 `failed_safe`, 비식별 운영 기록은 90일 후 파기한다. generic state RPC는 ready/open을 허용하지 않고 최신 immutable readiness와 별도 open RPC를 요구한다. Production migration·배포·환경 변경·실제 Auth/OTP·open·학교/beta/commercial mutation, PR Ready·merge는 계속 금지한다.
+
+> PHASE 10N-A 현재 결정: 첫 controlled-beta 학교 선정은 중단하고, 방문→이메일 OTP→KST 만 19세 자기진술→필수 동의 4개→owner-only 비공개 프로필→본인 과거 학교 이력 최대 3개→계정 관리·탈퇴의 공개 계정 흐름을 먼저 완성한다. 공개 계정은 controlled beta와 분리된 `public_account_launch_control`만 사용하며 기능은 `account_registration`·`private_profile`·`school_membership` 세 개뿐이다. Production 기본값과 현재 상태는 계속 `closed`; migration 적용·배포만으로 open되지 않는다. 사람 찾기·연결·메시지·Instagram 공개·광고·결제·학교 선택·beta Draft/program/invite/member는 별도 승인 전까지 dormant/금지다. 적용 migration 수정, 실제 등록/OTP, Production mutation은 금지하며 PHASE 10N-A는 local·isolated DB·Preview·Draft PR까지만 허용한다.
+
 > PHASE 10L-F 완료 결정: PR #37 merge commit `3d56ffe33c5f20abf44542c603bf3009708b5339`의 애플리케이션을 먼저 Production에 배포한 뒤 migration `20260802120000_legacy_person_data_reset.sql`을 적용해 `profiles`·`reports`·`traces`·`search_logs`를 모두 0건으로 초기화했다. `schools` 10,006개와 나머지 64개 public 테이블은 보존됐고 raw search persistence와 legacy public write는 영구 종료됐다. 기존 등록자는 조회·연락·전환·소유권 부여·초대·재사용하지 않으며, 다시 방문하는 사람은 성인 확인·동의·인증을 거친 신규 private account 구조만 사용한다. target school은 `TARGET_SCHOOL_PENDING_OPERATOR_DECISION`이며 실제 beta Draft·snapshot·allowlist·program-scoped flag·readiness·invite·member 생성은 별도 승인 대상이다. 최종 상태는 `PHASE_10L_F_PRODUCTION_LEGACY_PERSON_DATA_RESET_COMPLETE`다.
 
 > PHASE 10J 완료 결정: migration `20260730100000_first_controlled_beta_safety_boundaries.sql`의 Production 적용, PR #35 squash merge, Vercel Production 배포와 비파괴 검증을 완료했다. 최종 상태는 `PHASE_10J_PRODUCTION_APPLIED_AND_MERGED_NO_BETA_DATA`다. 첫 실제 제한 베타는 새 snapshot-backed 프로그램만 사용하며 최대 20명·정확히 14일·학교 UUID 1곳·초대 1회/최대 7일·관리자 승인 대기·`account_registration`/`private_profile`만 허용한다. 프로그램은 항상 `paused`로 생성하고 별도 승인된 원자적 시작 RPC만 `active`로 전환한다. 긴급 중단 뒤에는 새 readiness와 별도 재활성화 승인이 필요하다. 실제 학교 선택과 Draft·프로그램·flag·초대·멤버 생성은 계속 별도 승인 전까지 금지한다.
@@ -17,7 +23,7 @@
 
 - 이 절은 아래의 기존 제품·FROZEN 계약과 충돌할 때 우선한다.
 - 공개 `POST /api/profiles`와 제3자 등록은 계속 항상 차단한다.
-- PHASE 10B 개인 등록은 이메일 OTP session, KST 기준 만 19세 이상 자기진술, 필수 동의, 본인 소유권을 모두 검증한 `/account` 경계에서만 허용한다.
+- 공개 계정이 별도 승인으로 open된 뒤의 개인 등록은 이메일 OTP session, KST 기준 만 19세 이상 자기진술, 필수 동의, 본인 소유권을 모두 검증한 `/account` 경계에서만 허용한다. closed/internal_test/ready/emergency_stopped에서는 신규 Production Auth user 생성을 금지한다.
 - 개인 정보는 기본 비공개이며, 상대방 승인 전에는 Instagram을 공개하지 않는다.
 - 공개 사람 명단, 이름 검색, Year/Class 개인 카드와 개인 Instagram 노출을 금지한다.
 - 학교명·지역·학교 유형 등 학교 기본 정보 검색은 유지한다.
@@ -30,7 +36,7 @@
 ## A. 제품 최상위 원칙
 
 - PHASE 10A 동안 SchoolLoveI는 안전한 학교 기본 정보 검색과 개인정보 전환 안내를 제공한다.
-- 사람 발견은 PHASE 10C의 상호 승인·차단·신고 경계가 완성된 뒤 재개한다.
+- 사람 발견·연결·메시지는 코드와 DB 경계를 보존하되 공개 계정 soft launch 기능으로 활성화하지 않는다.
 - 페이지보다 필터를 우선한다.
 - 등록보다 발견을 우선한다.
 - 입력보다 기여를 우선한다.
@@ -40,14 +46,14 @@
 ## B. Home 계약
 
 - Home은 검색창 중심 랜딩 페이지가 아니다.
-- PHASE 10A 동안 Home의 프로필 기반 성장 피드·랭킹·등록 CTA를 중단하고 안전 전환 안내를 우선한다.
+- Home은 공개 계정 launch state에 맞는 안전 안내를 표시하고, `open`에서만 성인 비공개 계정 시작 CTA를 제공한다.
 - Home을 과거의 단순 학교 검색 화면으로 되돌리지 않는다.
 - Home 활동에서 개인 nickname이나 Instagram을 직접 노출하지 않는다.
 
 ## C. Register Flow 계약
 
-- PHASE 10A 동안 공개 Register Flow는 정비 안내만 렌더링하고 API는 fail-closed 503을 반환한다.
-- 기존 등록 모듈과 성공 상태는 보존할 수 있으나 공개 UI에서 호출하지 않는다.
+- legacy 공개 Register Flow와 `POST /api/profiles`는 영구 종료한다. 새 공개 계정은 별도 open 승인 뒤 `/login`→`/onboarding`→`/account`만 사용한다.
+- 기존 등록 모듈과 성공 상태는 공개 UI에서 호출하지 않는다.
 - PHASE 10B의 `private_profiles` 등록은 학교 성장·랭킹에 반영하지 않고 본인 전용으로 유지한다.
 
 ## D. 공개 사용자 UX 계약

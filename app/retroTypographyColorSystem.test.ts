@@ -134,7 +134,7 @@ describe('public social typography and text color system', () => {
 
   it('replaces the mobile registration title with a readable privacy maintenance notice', () => {
     const title = SUBMIT.match(/<h1[^>]*>[\s\S]*?<\/h1>/)?.[0] ?? ''
-    expect(title).toContain('신규 개인 등록을 잠시 중단했습니다')
+    expect(title).toContain('본인 정보만 비공개로 관리합니다')
     expect(title).toContain('break-keep')
     expect(title).not.toMatch(/overflow-hidden|truncate|scale-|transform/)
     expect(SUBMIT).not.toContain('기억나는 친구 이름을')

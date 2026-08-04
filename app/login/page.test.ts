@@ -13,6 +13,6 @@ describe('/login', () => {
 
   it('만 19세 이상과 self-attestation 한계를 고지한다', () => {
     expect(source).toContain('만 19세 이상')
-    expect(source).toContain('강한 본인확인이 아닙니다')
+    expect(source).toContain('신분증 기반 본인확인이 아닙니다')
   })
 })

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   if (!auth) return NextResponse.json({ error: 'AUTH_REQUIRED' }, { status: 401, headers: privateHeaders })
   const parsed = OnboardingQuerySchema.safeParse({ source: request.nextUrl.searchParams.get('source') ?? 'unknown' })
   if (!parsed.success) return NextResponse.json({ error: 'INVALID_ONBOARDING_SOURCE' }, { status: 400, headers: privateHeaders })
-  const state = await syncOnboardingProgress(auth.client,auth.user.id,parsed.data.source)
+  const state = await syncOnboardingProgress(auth.client,auth.user.id,parsed.data.source).catch(()=>null)
   return state
     ? NextResponse.json({ state }, { headers: privateHeaders })
     : NextResponse.json({ error: 'ONBOARDING_STATE_UNAVAILABLE' }, { status: 503, headers: privateHeaders })

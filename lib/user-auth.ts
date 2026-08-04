@@ -5,10 +5,33 @@ import type { NextRequest, NextResponse } from 'next/server'
 export const USER_ACCESS_COOKIE = 'sl_user_access'
 export const USER_REFRESH_COOKIE = 'sl_user_refresh'
 
-type SessionTokens = {
+export type SessionTokens = {
   access_token: string
   refresh_token: string
   expires_in?: number
+}
+
+export function getAccessTokenExpiry(accessToken: string | undefined): number | null {
+  if (!accessToken) return null
+  try {
+    const payload = accessToken.split('.')[1]
+    if (!payload) return null
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const decoded = JSON.parse(atob(normalized)) as { exp?: unknown }
+    return typeof decoded.exp === 'number' && Number.isFinite(decoded.exp) ? decoded.exp : null
+  } catch {
+    return null
+  }
+}
+
+export function shouldRefreshUserSession(
+  accessToken: string | undefined,
+  refreshToken: string | undefined,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): boolean {
+  if (!refreshToken) return false
+  const expiry = getAccessTokenExpiry(accessToken)
+  return !accessToken || expiry === null || expiry <= nowSeconds + 60
 }
 
 function getPublicSupabaseConfig() {
@@ -41,6 +64,13 @@ async function verifyAccessToken(accessToken: string | undefined): Promise<{
   const client = createAuthenticatedSupabase(accessToken)
   const { data, error } = await client.auth.getUser(accessToken)
   if (error || !data.user) return null
+  const { data: blockedDeletion } = await client
+    .from('account_deletion_requests')
+    .select('id')
+    .eq('user_id', data.user.id)
+    .neq('status', 'rejected')
+    .limit(1)
+  if (blockedDeletion?.length) return null
   return { user: data.user, client }
 }
 
@@ -72,8 +102,20 @@ export function setUserSessionCookies(response: NextResponse, session: SessionTo
 }
 
 export function clearUserSessionCookies(response: NextResponse): void {
-  response.cookies.set(USER_ACCESS_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 })
-  response.cookies.set(USER_REFRESH_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 })
+  const secure = process.env.NODE_ENV === 'production'
+  response.cookies.set(USER_ACCESS_COOKIE, '', { httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: 0 })
+  response.cookies.set(USER_REFRESH_COOKIE, '', { httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: 0 })
+}
+
+export async function refreshUserSessionTokens(refreshToken: string): Promise<SessionTokens | null> {
+  try {
+    const client = createPublicAuthClient()
+    const { data, error } = await client.auth.refreshSession({ refresh_token: refreshToken })
+    if (error || !data.session?.access_token || !data.session.refresh_token) return null
+    return data.session
+  } catch {
+    return null
+  }
 }
 
 export async function revokeUserSession(

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { checkAuthRateLimit, getAuthRateLimitKey } from '@/lib/security/authRateLimit'
 import { createPublicAuthClient } from '@/lib/user-auth'
+import { getPublicAccountLaunchState, recordPublicAccountActivity } from '@/lib/publicAccountLaunch'
 
 const RequestOtpSchema = z.object({ email: z.string().trim().email().max(254) })
 const GENERIC_MESSAGE = '입력한 이메일로 인증번호를 보냈습니다.'
@@ -46,11 +47,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const client = createPublicAuthClient()
+    const launch = await getPublicAccountLaunchState(client)
     const { error } = await client.auth.signInWithOtp({
       email: parsed.data.email,
-      options: { shouldCreateUser: true },
+      options: { shouldCreateUser: launch.registrationEnabled },
     })
     if (error) console.error('Email OTP request failed without exposing account state.')
+    else await recordPublicAccountActivity('otp_request_accepted', 'account')
   } catch {
     console.error('Email OTP request could not reach the auth provider.')
   }

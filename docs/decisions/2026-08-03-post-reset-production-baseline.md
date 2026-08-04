@@ -82,10 +82,11 @@ The migration verified unchanged table-by-table row counts for all 64 preserved 
 
 ## 9. Next approval gate
 
-- The next product stage is preparation for the first controlled beta.
+- PHASE 10N-A supersedes the immediate beta-start sequence: complete and independently approve the public adult-account soft launch before selecting a controlled-beta school.
+- Production public-account migration, application deployment, internal Auth test, readiness, and `open` are separate gates; the default and current Production state remain closed.
 - School selection requires a separate explicit operator decision.
 - The decision must use the exact immutable `schools.id`, not a school-name string.
-- No Production Draft may be created before the school is decided.
+- No Production Draft may be created before the public-account decision and a later school decision are complete.
 - The beta must use a new snapshot-backed program; do not reuse `limited_beta_2026`.
 - School decision and every Production mutation are outside this PR's scope.
 

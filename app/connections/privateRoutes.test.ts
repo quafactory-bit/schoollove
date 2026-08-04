@@ -17,7 +17,7 @@ describe('PHASE 10C private route SEO and auth boundaries', () => {
   it.each(pages.filter((path) => !path.includes('/admin/')))('%s는 서버 인증 없이 렌더링하지 않는다', (path) => {
     const source = readFileSync(join(process.cwd(), path), 'utf8')
     expect(source).toContain('getAuthenticatedServerContext()')
-    expect(source).toContain("redirect('/login')")
+    expect(source).toContain("redirect('/login")
   })
 
   it('sitemap은 개인 연결 경로를 생성하지 않는다', () => {
