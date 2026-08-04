@@ -48,7 +48,7 @@ export default function PrivacyPage() {
           <p className="mt-2">
             서비스 보안, 장애 대응, 부정 이용 방지 및 통계 분석을 위해 접속·요청 관련 기술 정보가 처리될 수 있습니다.
             Web Analytics는 페이지 방문을 집계하며 개인 이름, Instagram ID, 메시지, 검색어 원문을 커스텀 분석 이벤트로 전송하지 않습니다.
-            공개 계정 퍼널은 KST 일자, 허용된 단계, direct·school_search·account·onboarding의 거친 출처, 합계만 저장하며 10명 미만 관리자 집계를 마스킹합니다. 이메일·user/profile/school ID·이름·Instagram·생년월일·검색어·IP·user agent·token/cookie는 퍼널에 저장하지 않습니다.
+            공개 계정 집계는 KST 일자, 허용된 단계, direct·school_search·account·onboarding의 거친 출처, 합계만 저장하며 10 미만 관리자 집계를 마스킹합니다. Home·login·실제 학교 검색은 고유 방문자가 아닌 요청 횟수이고, OTP 인증 이후의 전환 단계는 같은 계정의 최초 완료만 집계합니다. 이메일·user/profile/school ID·이름·Instagram·생년월일·검색어·IP·user agent·token/cookie는 집계에 저장하지 않습니다.
           </p>
         </section>
 
@@ -64,8 +64,8 @@ export default function PrivacyPage() {
           <p className="mt-2">
             본인 정보의 열람, 삭제, 정정, 처리정지 또는 개인정보 침해 신고는 {CONTACT}으로 요청할 수 있습니다.
             요청자의 권리와 타인의 개인정보를 보호하기 위해 본인 확인과 대상 정보 확인을 요청할 수 있습니다.
-            계정 내 탈퇴 요청은 즉시 추가 profile·학교 이력 변경을 차단하고, 접수 확인은 영업일 1~3일, 처리는 원칙적으로 30일 이내 완료합니다. 법령상 보존·분쟁 사유로 연장이 필요하면 사유와 일정을 안내합니다.
-            처리 시 비공개 프로필과 학교 이력은 원자적으로 삭제합니다. 성인 확인·필수 동의·삭제 요청·감사 증빙은 법적 책임 확인에 필요한 기간 보존하며, Auth identity는 재접근이 차단된 tombstone으로 유지합니다. 접수 후 자동 취소는 제공하지 않습니다.
+            계정 내 탈퇴 요청은 즉시 추가 profile·학교 이력 변경을 차단합니다. 운영 확인 후 공개 계정 데이터를 먼저 삭제하고 Auth identity 실제 삭제를 요청하는 2단계 절차를 사용합니다.
+            Auth 제공자 삭제가 실패하면 완료로 표시하지 않고 차단된 재시도 대기 상태를 유지합니다. Auth 삭제가 완료되면 성인 확인과 필수 동의는 Auth 외래 키 삭제와 함께 제거됩니다. 삭제 요청과 최소 감사 기록은 재시도·장애 확인을 위해 개인 식별 연결을 제거한 뒤 90일 동안만 유지하고 파기합니다.
           </p>
         </section>
 

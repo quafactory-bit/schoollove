@@ -13,7 +13,7 @@ describe('user auth server boundary', () => {
 
   it('서버가 getUser로 access token을 검증한다', () => {
     expect(source).toContain('client.auth.getUser(accessToken)')
-    expect(source).toMatch(/account_deletion_requests[\s\S]*\.eq\('status', 'done'\)/)
+    expect(source).toMatch(/account_deletion_requests[\s\S]*\.neq\('status', 'rejected'\)/)
     expect(source).not.toContain('getSession()')
   })
 

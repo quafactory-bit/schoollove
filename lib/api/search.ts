@@ -19,11 +19,12 @@ export interface SchoolSearchResult {
 // 지역 prefix까지 매칭하는 기존 RPC를 재사용한다 (예: "순천이수초" → "이수초등학교").
 async function fetchSchoolsBySearchRpc(
   query: string,
-  limit: number
+  limit: number,
+  recordActivity = false,
 ): Promise<Array<Omit<SchoolSearchResult, 'profile_count'>>> {
   if (query.trim().length < 2) return []
 
-  const { data, error } = await supabase.rpc('search_schools_v2', {
+  const { data, error } = await supabase.rpc(recordActivity ? 'search_schools_with_activity' : 'search_schools_v2', {
     q: query.trim(),
     lim: limit,
   })
@@ -34,7 +35,7 @@ async function fetchSchoolsBySearchRpc(
 }
 
 export async function searchSchools(query: string): Promise<SchoolSearchResult[]> {
-  const schools = await fetchSchoolsBySearchRpc(query, 20)
+  const schools = await fetchSchoolsBySearchRpc(query, 20, true)
   // PHASE 10A: 학교 검색 결과는 학교 기본 정보만 사용한다. profile_count는 기존
   // 타입 호환을 위해 0으로 유지하지만 profiles 테이블을 조회하거나 노출 근거로 쓰지 않는다.
   return schools.map((school) => ({ ...school, profile_count: 0 } as SchoolSearchResult))
@@ -75,6 +76,6 @@ export async function searchSchoolsForAutocomplete(query: string): Promise<Schoo
 // 클라이언트 state로만 동작한다(lib/policy/yearHub.ts). 학교 검색(searchSchools,
 // searchSchoolsForAutocomplete)은 이 파일에서 무변경으로 유지된다.
 
-// PHASE 10L: raw search query persistence is permanently retired. School
-// search continues through search_schools_v2 without recording the query.
-// A privacy-preserving aggregate requires a separately approved design.
+// PHASE 10L/10N: raw search query persistence remains permanently retired.
+// Full search records only a query-free daily activity aggregate through the
+// wrapper RPC; autocomplete keeps using search_schools_v2 without telemetry.

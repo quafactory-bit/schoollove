@@ -7,7 +7,8 @@ const source=(path:string)=>readFileSync(join(process.cwd(),path),'utf8')
 describe('PHASE 10F route boundaries',()=>{
   it('gates private profile, connection, and promotion feature writes',()=>{
     expect(source('app/api/account/profile/route.ts')).toContain("'private_profile'")
-    expect(source('app/api/account/memberships/route.ts')).toContain("'private_profile'")
+    expect(source('app/api/account/memberships/route.ts')).toContain("'school_membership'")
+    expect(source('lib/publicAccountLaunch.ts')).toContain("requested_feature:'private_profile'")
     expect(source('lib/api/connectionRoute.ts')).toContain("search: ['people_search']")
     expect(source('lib/api/connectionRoute.ts')).toContain("request: ['people_search','connection_request']")
     expect(source('lib/api/connectionRoute.ts')).toContain("message: ['messaging']")

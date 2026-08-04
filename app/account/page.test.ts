@@ -34,4 +34,11 @@ describe('/account private management UI', () => {
     expect(client).toContain('{onboardingCompleted*20}%')
   })
 
+  it('public 또는 controlled beta 중 하나가 허용한 기능만 저장 가능하다',()=>{
+    expect(page).toContain("hasBetaFeatureAccess(auth.client,auth.user.id,'private_profile')")
+    expect(client).toContain('(launch.privateProfileEnabled||controlledBetaAccess)&&!launch.emergencyStopped')
+    expect(client).toContain('(launch.schoolMembershipEnabled||controlledBetaAccess)&&!launch.emergencyStopped')
+    expect(client).toContain('controlledBetaAccess?1:3')
+  })
+
 })

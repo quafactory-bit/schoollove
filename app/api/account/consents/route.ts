@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
-import { ACCOUNT_POLICY_VERSION, REQUIRED_CONSENT_TYPES } from '@/lib/policy/accountPolicy'
+import { ACCOUNT_POLICY_VERSION } from '@/lib/policy/accountPolicy'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
-import { getSupabaseAdmin } from '@/lib/supabase'
-import { hasPublicAccountFeatureAccess, recordPublicAccountEvent } from '@/lib/publicAccountLaunch'
-import { hasBetaFeatureAccess } from '@/lib/beta'
+import { hasPublicAccountWriteAccess } from '@/lib/publicAccountLaunch'
 
 const ConsentSchema = z.object({
   terms: z.literal(true),
@@ -17,8 +15,7 @@ const ConsentSchema = z.object({
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
-  const writeAllowed = await hasPublicAccountFeatureAccess(auth.client,'private_profile')
-    || await hasBetaFeatureAccess(auth.client,auth.user.id,'private_profile')
+  const writeAllowed = await hasPublicAccountWriteAccess(auth.client,auth.user.id,'private_profile')
   if (!writeAllowed) return NextResponse.json({ error:'계정 설정은 아직 준비 중입니다.' },{status:403})
 
   let body: unknown
@@ -41,18 +38,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '성인 확인이 먼저 필요합니다.' }, { status: 403 })
   }
 
-  const records = REQUIRED_CONSENT_TYPES.map((consentType) => ({
-      user_id: auth.user.id,
-      consent_type: consentType,
-      consented: true,
-      policy_version: ACCOUNT_POLICY_VERSION,
-    }))
-
-  const { error } = await getSupabaseAdmin().from('consent_records').upsert(records,{
-    onConflict:'user_id,consent_type,policy_version',ignoreDuplicates:true,
+  const { error } = await auth.client.rpc('record_own_required_consents', {
+    requested_policy_version: ACCOUNT_POLICY_VERSION,
   })
   if (error) return NextResponse.json({ error: '동의 기록을 저장할 수 없습니다.' }, { status: 500 })
   await syncOnboardingProgressSafely(auth.client,auth.user.id,'direct')
-  await recordPublicAccountEvent('required_consents_completed','onboarding')
   return NextResponse.json({ consentsComplete: true })
 }

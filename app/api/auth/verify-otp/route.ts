@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createPublicAuthClient, setUserSessionCookies } from '@/lib/user-auth'
 import { checkAuthRateLimit, getAuthRateLimitKey } from '@/lib/security/authRateLimit'
-import { recordPublicAccountEvent } from '@/lib/publicAccountLaunch'
 
 const VerifyOtpSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ authenticated: true })
     setUserSessionCookies(response, data.session)
-    await recordPublicAccountEvent('otp_verify_succeeded', 'account')
+    await client.rpc('record_own_otp_verified_milestone')
     return response
   } catch {
     return NextResponse.json({ error: '인증을 완료할 수 없습니다.' }, { status: 503 })

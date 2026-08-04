@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Search,ShieldCheck,UserRound } from 'lucide-react'
-import { getPublicAccountLaunchState,recordPublicAccountEvent } from '@/lib/publicAccountLaunch'
+import { getPublicAccountLaunchState,recordPublicAccountActivity } from '@/lib/publicAccountLaunch'
 
 export const dynamic='force-dynamic'
 
@@ -14,7 +14,7 @@ const stateCopy={
 
 export default async function HomePage(){
   const launch=await getPublicAccountLaunchState()
-  await recordPublicAccountEvent('public_home_view','direct')
+  await recordPublicAccountActivity('public_home_view','direct')
   const copy=stateCopy[launch.state]
   return <main className="mx-auto w-full max-w-[1180px] overflow-x-clip px-5 pb-16 sm:px-6 lg:px-8">
     <header className="pt-7 lg:pt-12"><div className="flex items-start justify-between gap-4"><div><Link href="/" className="schoollove-focus inline-flex min-h-11 items-center text-[18px] font-semibold tracking-tight text-schoollove-text">스쿨러브아이</Link><p className="mt-1 text-[13px] text-schoollove-secondary">학교 정보와 본인용 비공개 계정</p></div><Link href="/account" className="schoollove-focus hidden min-h-11 items-center border border-schoollove-border px-4 text-[14px] text-schoollove-text lg:inline-flex">내 계정</Link></div>

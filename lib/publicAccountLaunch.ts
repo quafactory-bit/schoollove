@@ -77,22 +77,39 @@ export async function hasPublicAccountFeatureAccess(
   return !error && data === true
 }
 
+export async function hasPublicAccountWriteAccess(
+  client: SupabaseClient,
+  userId: string,
+  feature: Exclude<PublicAccountFeature,'account_registration'>,
+): Promise<boolean> {
+  const {data:active,error:activeError}=await client.rpc('public_account_access_active',{
+    target_user_id:userId,
+  })
+  if(activeError||active!==true)return false
+  if(await hasPublicAccountFeatureAccess(client,feature))return true
+  const {data:betaAccess,error:betaError}=await client.rpc('has_beta_feature_access',{
+    target_user_id:userId,requested_feature:'private_profile',
+  })
+  return !betaError&&betaAccess===true
+}
+
 export const PUBLIC_ACCOUNT_EVENTS = [
   'public_home_view','school_search_started','login_page_view','otp_request_accepted',
   'otp_verify_succeeded','adult_eligibility_completed','required_consents_completed',
-  'private_profile_saved','school_membership_saved','onboarding_completed','return_session',
+  'private_profile_created','first_school_membership_created','onboarding_completed',
   'account_deletion_requested',
 ] as const
 export type PublicAccountEvent = (typeof PUBLIC_ACCOUNT_EVENTS)[number]
+export type PublicAccountActivity = 'public_home_view'|'school_search_started'|'login_page_view'|'otp_request_accepted'
 export type PublicAccountSource = 'direct' | 'school_search' | 'account' | 'onboarding'
 
-export async function recordPublicAccountEvent(
-  event: PublicAccountEvent,
-  source: PublicAccountSource = 'direct',
+export async function recordPublicAccountActivity(
+  event: PublicAccountActivity,
+  source: Exclude<PublicAccountSource,'onboarding'> = 'direct',
 ): Promise<void> {
   try {
     const { getSupabaseAdmin } = await import('@/lib/supabase')
-    await getSupabaseAdmin().rpc('record_public_account_event',{
+    await getSupabaseAdmin().rpc('record_public_account_activity',{
       requested_event:event,
       requested_source:source,
     })
@@ -110,7 +127,7 @@ export async function getPublicAccountAdminState() {
       .eq('control_key','public_account').single(),
     admin.rpc('get_public_account_funnel'),
     admin.from('account_deletion_requests')
-      .select('id,status,created_at,resolved_at').eq('status','pending')
+      .select('id,status,created_at,resolved_at').in('status',['pending','public_data_deleted','auth_deletion_pending','failed_safe'])
       .order('created_at',{ascending:true}).limit(100),
     admin.from('public_account_launch_audit')
       .select('id,action,from_state,to_state,reason_code,created_at')
@@ -122,6 +139,8 @@ export async function getPublicAccountAdminState() {
 }
 
 const safeMembershipErrors: Record<string,string> = {
+  INVALID_SCHOOL_MEMBERSHIP:'학교 이력 입력값을 확인해 주세요.',
+  SCHOOL_MEMBERSHIP_CLOSED:'학교 이력 저장은 아직 준비 중입니다.',
   PUBLIC_ACCOUNT_SCHOOL_MEMBERSHIP_CLOSED:'학교 이력 저장은 아직 준비 중입니다.',
   PUBLIC_ACCOUNT_SCHOOL_LIMIT_REACHED:'학교 이력은 최대 3개까지 저장할 수 있습니다.',
   PUBLIC_ACCOUNT_SCHOOL_DUPLICATE:'이미 저장한 학교와 졸업연도입니다.',

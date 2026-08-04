@@ -1,6 +1,6 @@
-# PHASE 10N-A — Public account soft launch and site completion
+# PHASE 10N-B — Public account soft launch security hardening
 
-Status: `LOCAL_VERIFIED_PRODUCTION_CLOSED`
+Status: `DRAFT_HARDENED_PRODUCTION_CLOSED`
 
 ## Decision
 
@@ -17,15 +17,18 @@ States are `closed`, `internal_test`, `ready`, `open`, and `emergency_stopped`:
 - `closed`, `ready`, and `emergency_stopped` permit no public account write.
 - `internal_test` permits profile and school-membership writes for an existing authenticated synthetic/local user but does not permit Auth user creation.
 - `open` permits all three public features only after a separate `ready` decision.
-- an emergency stop blocks all three features. It can return only to `closed` with `POST_EMERGENCY_READINESS_REVIEWED`, after which ordinary readiness is repeated.
+- an emergency stop blocks all three features. It can return only to `closed`; a new immutable readiness record and separate open approval are then required.
+- the same emergency stop overrides active controlled-beta access for eligibility, consent, profile, membership, and onboarding writable state. `closed` still permits a valid active-beta account, and `open` still keeps the beta one-school contract. Owner privacy deletion and account-deletion rights remain separate from create/update shutdown.
 
-Only service-role RPCs mutate launch state. The singleton, audit, and aggregate tables use RLS and FORCE RLS and expose no direct PUBLIC/anon/authenticated mutation.
+Only service-role RPCs mutate launch state. Generic state mutation cannot select `ready` or `open`. Readiness records the reviewed commit, migration version and hash, health, RLS/grants, Auth/SMTP, deletion operator, runtime logs, Preview/isolated checks, blocker list, and affirmative operator decision in append-only audit metadata. Only the latest, blocker-free record from the last 24 hours can authorize the separate open RPC; any later state or emergency audit invalidates it. The singleton, audit, and aggregate tables use RLS and FORCE RLS and expose no direct PUBLIC/anon/authenticated mutation.
+
+Before permanent DDL, the migration verifies the exact post-reset Production contract: 68 public tables, the frozen UUID person-link catalog, legacy `0/0/0/0`, schools 10,006 with no growth drift, no private/account/connection/safety person rows, no editorial links, no actual beta operations or scoped flags, one legacy beta program, eight global flags, and no commercial rows. The complete preflight, 68→71 DDL, postflight, and permission audit run in one explicit transaction.
 
 ## Pre-implementation audit findings
 
 The existing site had no authorization boundary separate from controlled beta, OTP requests always used `shouldCreateUser: true`, and expired access cookies had no shared refresh-and-rotation path. Login was only a partial flow. Public onboarding still depended on invite/operator/beta semantics, profile and school writes inherited beta membership requirements, and account deletion had no atomic administrator completion or durable session block. Home, submit, account, and navigation copy still exposed the former maintenance/beta direction, dormant connection surfaces remained reachable, and public-account funnel measurement had no separate privacy contract.
 
-During end-to-end verification, five additional defects were found and corrected: exact `/api/onboarding` was missing from middleware session matching; the disposable GoTrue user lacked the authenticated role expected by PostgREST; the Mailpit harness could select a stale OTP and hit the default SMTP interval; a pending deletion trigger could block insertion of its own deletion request; and GoTrue could not parse PostgreSQL `infinity` as `banned_until`, so the tombstone now uses the finite provider-compatible `9999-12-31 23:59:59+00` value. All corrections remained local and are covered by the final verification.
+The hardening audit additionally found that old authenticated table grants could bypass route validation, repeated writes inflated conversion counts, search page renders were counted as searches, controlled-beta users could be blocked by public-only UI flags, deletion copy promised more than the Auth process performed, and generic administrator transitions made readiness too weak. The migration and application now close those boundaries.
 
 ## Authentication and session
 
@@ -41,9 +44,9 @@ The current required consents remain `terms`, `privacy_collection`, `adult_confi
 
 ## Private profile and school history
 
-The verified session, never a body user ID, supplies ownership. RLS permits owner-only SELECT/INSERT/UPDATE/DELETE, forces `profile_visibility='private'`, and blocks writes after a pending or completed deletion request. The API accepts a normalized display name and optional private Instagram handle and introduction; it rejects control/format characters and limits lengths. Profile photo input is omitted until a reviewed upload path exists.
+The verified session, never a body user ID, supplies ownership. RLS keeps owner-only SELECT, while authenticated direct INSERT/UPDATE/DELETE is revoked. Owner-only SECURITY DEFINER RPCs derive `auth.uid()`, repeat access/adult/deletion checks, normalize and validate text, force `profile_photo_url=NULL`, `profile_visibility='private'`, and `status='active'`, and return only safe fields. Consent and deletion direct INSERT policies/grants are also removed; their RPCs accept no owner or free-form deletion reason.
 
-General public accounts may store at most three memberships with an existing school UUID and a non-future graduation year. Exact user/profile/school/year duplicates are rejected safely. An active controlled-beta member remains on the existing single approved-school contract and does not inherit the public three-school rule.
+General public accounts may store at most three memberships with an existing school UUID and a non-future graduation year. The owner RPC resolves the profile in the database, takes an advisory transaction lock, and rejects duplicates safely. An active controlled-beta member remains on the existing single approved-school contract and does not inherit the public three-school rule. The account UI uses feature-specific `public OR controlled-beta` access and shows the one-school limit when beta scope takes precedence.
 
 ## Onboarding and public surfaces
 
@@ -53,22 +56,26 @@ Home and `/submit` describe closed/internal/ready/open/emergency states without 
 
 ## Deletion
 
-A verified user may submit one idempotent request. No free-form reason is stored. Pending or completed requests block profile and school writes. The service-only administrator RPC atomically deletes the private profile (and cascading memberships), clears private onboarding state, marks the request done, and writes a reason-code-only audit event. A forced intermediate failure rolls back all effects.
+A verified user may submit one idempotent no-argument request. No free-form reason is accepted or stored, and every active deletion state blocks further account writes and sessions.
 
-The Auth identity is deliberately retained as a long-term blocked tombstone to prevent silent re-registration. The same database transaction sets `auth.users.banned_until` to the finite provider-compatible UTC timestamp `9999-12-31 23:59:59`, removes the private profile and cascading memberships, completes the request, and writes the safe audit record. The application authentication boundary also rejects every completed deletion, so an already-issued session cannot regain account access. Adult eligibility, consent, deletion request, and audit evidence are retained for legal accountability; no personal raw content is copied into audit. The user UI states this policy and routes errors to operator contact. Cancellation is not offered after submission.
+Deletion is an explicit two-system process. Phase one transactionally deletes public profile, membership, onboarding, adult, and consent rows; blocks the Auth identity; marks `public_data_deleted`; and emits a non-personal audit event. The service-only handoff then marks `auth_deletion_pending` and returns the linked identity to the application, which calls the Auth Admin hard-delete API. Provider failure is recorded as `failed_safe`, never `done`, and is retryable while access remains blocked. Auth deletion clears the request's user foreign key; only then can finalization mark `done`. The now-deidentified request and its minimal operational audit are retained for 90 days for retry and incident reconciliation, then the service-only purge RPC removes them. No unverified legal-retention claim is made.
 
 ## Privacy-safe measurement and administration
 
-Allowed daily KST counters are: `public_home_view`, `school_search_started`, `login_page_view`, `otp_request_accepted`, `otp_verify_succeeded`, `adult_eligibility_completed`, `required_consents_completed`, `private_profile_saved`, `school_membership_saved`, `onboarding_completed`, `return_session`, and `account_deletion_requested`.
+Activity request counters are `public_home_view`, `login_page_view`, `school_search_started`, and provider-accepted `otp_request_accepted`. They are request counts, not unique visitors. Search increments only when a two-or-more-character results RPC actually runs; page render and autocomplete do not increment it.
 
-They store only event, coarse source (`direct`, `school_search`, `account`, `onboarding`), date, and atomic count. They never store email, user/profile/school identifiers, names, Instagram, date of birth, search text, IP, user agent, invite/session/token/cookie, arbitrary attribution, or per-user rows. Administrator output masks counts below 10 and shows deletion request IDs/statuses but no email, user ID, or reason content.
+Milestones are `otp_verify_succeeded`, `adult_eligibility_completed`, `required_consents_completed`, `private_profile_created`, `first_school_membership_created`, `onboarding_completed`, and `account_deletion_requested`. Each increments only on the first persisted transition. Profile edits, second or third schools, repeated consent/adult/deletion submissions, and reloads do not increment it. `return_session` is removed because no privacy-safe deduplication contract exists. Aggregates store only event kind, event, coarse source, date, and count; they never store search text or a public per-user telemetry row. Administrator output distinguishes activity from milestone and masks counts below 10.
 
 ## Verification and residual risk
 
 The disposable PostgreSQL suite must apply the post-reset baseline before this migration and verify lifecycle, RLS/FORCE RLS, grants, function ownership/search paths, emergency recovery, deletion rollback, exact public-school limit, controlled-beta regression, and unchanged legacy/school/beta/commercial baselines. Browser coverage must include Desktop 1440 and mobile 360/390/412.
 
-Actual local authentication was completed with disposable PostgreSQL, PostgREST, GoTrue, and Mailpit. The full browser suite passed `20/20`: Chromium `5/5`, mobile 360 `5/5`, mobile 390 `5/5`, and mobile 412 `5/5`, with one worker and zero retries. This was provider-backed OTP/session/refresh testing, not a route mock. Targeted Vitest passed `10 files / 43 tests`; the full suite passed `113 files / 996 tests`; TypeScript, the 58-page/route Production build, `git diff --check`, secret scan, and the isolated lifecycle/RLS/rollback suite passed. The isolated and browser final data baselines remained legacy `0/0/0/0`, schools `10006`, and beta/commercial `0`.
+Provider-backed verification exposed and corrected one real application boundary defect: active controlled-beta eligibility could bypass public emergency at the route layer even though the UI was disabled. All account create/update routes and onboarding now require the shared access-active check before public-or-beta feature evaluation; deletion rights remain separately available.
 
-The migration SHA-256 is `F9E8872642DAE68A283C7ABB3E9DBD74ADEDE096EB0369EAB9BE31F1FC552F15`. Production remains closed and unchanged regardless of local evidence.
+For the hardened modified head, targeted Vitest passed `8 files / 54 tests`; the full suite passed `114 files / 1,008 tests`; TypeScript, the 58-page/route Production build, 18 isolated drift/rollback scenarios, and PHASE 10J/10N lifecycle/permission suites passed. The isolated final data baseline remained legacy `0/0/0/0`, schools `10006`, beta/commercial `0`, and launch `closed`.
+
+The disposable provider-backed browser matrix passed `20/20` with Chromium, mobile 360, mobile 390, and mobile 412 each `5/5`, workers 1, and retries 0. It used only loopback/Docker-local PostgreSQL, PostgREST, GoTrue, Mailpit, synthetic UUIDs, and `@example.invalid`. Forced Auth provider deletion failure produced `failed_safe`; recovery and retry deleted the identity and completed the request. The final provider baseline was `0|0|0|0|10006|0|0|0|0`; external email and Production Auth were zero.
+
+The canonical-LF migration SHA-256 is `5DF7F3E489D91C18328524C0AA1ACA3F10276F0700604FD27433F68228854A48`. Production remains closed and unchanged regardless of local evidence.
 
 Residual risks are external email deliverability, Production provider configuration, Production traffic/log evidence, operator readiness, and the irreversible human decision to open registration. These remain later approval gates.

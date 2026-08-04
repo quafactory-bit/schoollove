@@ -36,7 +36,7 @@ export type AccountState = {
   profile: PrivateProfile | null
   memberships: SchoolMembership[]
   deletionRequested: boolean
-  deletionStatus: 'pending' | 'done' | null
+  deletionStatus: 'pending' | 'public_data_deleted' | 'auth_deletion_pending' | 'failed_safe' | 'done' | null
 }
 
 export async function getAccountState(
@@ -67,7 +67,7 @@ export async function getAccountState(
       .from('account_deletion_requests')
       .select('id,status')
       .eq('user_id', userId)
-      .in('status', ['pending','done'])
+      .in('status', ['pending','public_data_deleted','auth_deletion_pending','failed_safe','done'])
       .order('created_at',{ascending:false})
       .limit(1),
   ])
@@ -100,9 +100,9 @@ export async function getAccountState(
     consentTypes,
     profile,
     memberships,
-    deletionRequested: deletionResult.data?.[0]?.status === 'pending',
-    deletionStatus: deletionResult.data?.[0]?.status === 'pending' || deletionResult.data?.[0]?.status === 'done'
-      ? deletionResult.data[0].status : null,
+    deletionRequested: ['pending','public_data_deleted','auth_deletion_pending','failed_safe'].includes(deletionResult.data?.[0]?.status??''),
+    deletionStatus: ['pending','public_data_deleted','auth_deletion_pending','failed_safe','done'].includes(deletionResult.data?.[0]?.status??'')
+      ? deletionResult.data[0].status as AccountState['deletionStatus'] : null,
   }
 }
 

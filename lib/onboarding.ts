@@ -1,14 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { OnboardingSource } from '@/lib/policy/onboarding'
 import { getAccountState } from '@/lib/account'
-import { hasPublicAccountFeatureAccess } from '@/lib/publicAccountLaunch'
-
-async function hasPrivateBetaAccess(client:SupabaseClient,userId:string) {
-  const {data,error}=await client.rpc('has_beta_feature_access',{
-    target_user_id:userId,requested_feature:'private_profile',
-  })
-  return !error&&data===true
-}
+import { hasPublicAccountWriteAccess } from '@/lib/publicAccountLaunch'
 
 export type OnboardingStage =
   | 'access_paused' | 'adult_required' | 'consent_required'
@@ -29,12 +22,10 @@ export async function syncOnboardingProgress(
   userId: string,
   source: OnboardingSource = 'unknown',
 ): Promise<OnboardingState | null> {
-  const [account,publicAccess,betaAccess] = await Promise.all([
+  const [account,writable] = await Promise.all([
     getAccountState(client,userId),
-    hasPublicAccountFeatureAccess(client,'private_profile'),
-    hasPrivateBetaAccess(client,userId),
+    hasPublicAccountWriteAccess(client,userId,'private_profile'),
   ])
-  const writable = publicAccess || betaAccess
   const stage:OnboardingStage = account.deletionStatus || !writable ? 'access_paused'
     : !account.adultEligible ? 'adult_required'
       : !account.consentsComplete ? 'consent_required'

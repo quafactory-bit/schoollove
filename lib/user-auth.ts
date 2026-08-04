@@ -64,13 +64,13 @@ async function verifyAccessToken(accessToken: string | undefined): Promise<{
   const client = createAuthenticatedSupabase(accessToken)
   const { data, error } = await client.auth.getUser(accessToken)
   if (error || !data.user) return null
-  const { data: completedDeletion } = await client
+  const { data: blockedDeletion } = await client
     .from('account_deletion_requests')
     .select('id')
     .eq('user_id', data.user.id)
-    .eq('status', 'done')
+    .neq('status', 'rejected')
     .limit(1)
-  if (completedDeletion?.length) return null
+  if (blockedDeletion?.length) return null
   return { user: data.user, client }
 }
 
