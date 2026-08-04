@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-08-04 — PHASE 10N-E browser Supabase lifecycle fix (LOCAL / DRAFT)
+
+- Reproduced `Multiple GoTrueClient instances detected` in a fresh browser tab when school autocomplete first imported `lib/api/search.ts`. The shared module created both `supabase` and `supabaseServer` as browser clients with the same default auth storage key; the warning was not caused by an extension or an old browser session.
+- Reused one anon/RLS Supabase client for the full browser-context lifetime, including repeated Fast Refresh evaluations, while preserving stateless server rendering clients and request-scoped authenticated server clients.
+- Added lifecycle regression coverage. Targeted validation passed `6 files / 40 tests`, the full suite passed `115 files / 1,012 tests`, TypeScript passed, and the 58-page/route Production build passed. `npm run lint` remains unavailable because the repository has no ESLint configuration and `next lint` enters its interactive setup prompt.
+- A fresh post-fix autocomplete context reported zero GoTrueClient warnings, console warnings, and console errors. The existing tab created during the pre-fix-to-fixed HMR transition recorded the expected one-time second client, but a subsequent fixed-module HMR created no third client.
+- Draft Vercel Preview viewport evidence is pending the automatic deployment. No Production deployment, migration, database/state/environment mutation, OTP, Auth user, PASS flow, Ready transition, or merge is part of this phase.
+
+## 2026-08-04 — PHASE 10N-D merged Production closed baseline
+
+- Squash-merged PR #39 as `48f693bc0625c4dabfcb9c974c364292877349b6`, deployed that commit to Production, and applied `20260803120000_public_account_soft_launch.sql` once.
+- Production remains `closed`: `account_registration=false`, `private_profile=false`, and `school_membership=false`. Production Auth users created by this launch, private profiles, and school memberships remain zero, and ordinary public account registration remains prohibited.
+- The PHASE 10N-E Draft does not reopen or mutate this frozen Production baseline.
+
 ## 2026-08-04 — PHASE 10N-C2 provider-backed emergency boundary verification (LOCAL / DRAFT)
 
 - Found a real route-level bypass where an active controlled-beta account could submit eligibility during public `emergency_stopped`; introduced one common `public_account_access_active` precheck for eligibility, consent, profile, membership, and onboarding writable state without blocking separate privacy deletion or account-deletion rights.

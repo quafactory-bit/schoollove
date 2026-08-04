@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { School } from '@/types/school';
 import type { Profile, Report } from '@/types/profile';
 
@@ -9,13 +9,37 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase env vars are missing');
 }
 
-// Browser client (RLS applies)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+type BrowserSupabaseScope = typeof globalThis & {
+  __schoolloveBrowserSupabaseClient?: SupabaseClient;
+};
 
-// SSR client - same anon key, RLS applies
-export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false },
-});
+type BrowserSupabaseFactory = () => SupabaseClient;
+
+/**
+ * Reuses one anon/RLS client for the full browser-context lifetime. The slot
+ * survives repeated Next.js Fast Refresh module evaluations after the fixed
+ * module first loads. Server auth clients intentionally stay in
+ * lib/user-auth.ts and continue to be created per request/session.
+ */
+export function getOrCreateBrowserSupabaseClient(
+  scope: BrowserSupabaseScope = globalThis as BrowserSupabaseScope,
+  factory: BrowserSupabaseFactory = () => createClient(supabaseUrl, supabaseAnonKey),
+): SupabaseClient {
+  scope.__schoolloveBrowserSupabaseClient ??= factory();
+  return scope.__schoolloveBrowserSupabaseClient;
+}
+
+// Browser client (RLS applies). The server render gets a stateless anon client;
+// the browser gets the stable context singleton above.
+export const supabase = typeof window === 'undefined'
+  ? createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } })
+  : getOrCreateBrowserSupabaseClient();
+
+// SSR client - same anon key, RLS applies. Client bundles that import a shared
+// data helper must not create a second GoTrueClient under the same storage key.
+export const supabaseServer = typeof window === 'undefined'
+  ? createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } })
+  : supabase;
 
 // Admin client - service_role key, BYPASSES RLS
 // CRITICAL: Only import from server-side code (API routes, server components).
