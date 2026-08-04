@@ -6,7 +6,8 @@
 - Reused one anon/RLS Supabase client for the full browser-context lifetime, including repeated Fast Refresh evaluations, while preserving stateless server rendering clients and request-scoped authenticated server clients.
 - Added lifecycle regression coverage. Targeted validation passed `6 files / 40 tests`, the full suite passed `115 files / 1,012 tests`, TypeScript passed, and the 58-page/route Production build passed. `npm run lint` remains unavailable because the repository has no ESLint configuration and `next lint` enters its interactive setup prompt.
 - A fresh post-fix autocomplete context reported zero GoTrueClient warnings, console warnings, and console errors. The existing tab created during the pre-fix-to-fixed HMR transition recorded the expected one-time second client, but a subsequent fixed-module HMR created no third client.
-- Draft Vercel Preview viewport evidence is pending the automatic deployment. No Production deployment, migration, database/state/environment mutation, OTP, Auth user, PASS flow, Ready transition, or merge is part of this phase.
+- Automatic Vercel Preview deployment `GRAgyJ8poYn77hQdiWzDFJEDoCch` succeeded for commit `bb41e60a9febf975ca2be9015eb0ec1cbf1e562a`. In the authenticated Preview browser, autocomplete and the Seoul High School Hub rendered correctly with zero Warning/Error/GoTrue warning. Fresh Playwright mobile contexts were redirected to Vercel's protection login instead of the app, so the required direct 360/390/412 app viewport matrix remains blocked; protection settings, cookies, and session stores were not bypassed or changed.
+- No Production deployment, migration, database/state/environment mutation, OTP, Auth user, PASS flow, Ready transition, or merge is part of this phase.
 
 ## 2026-08-04 — PHASE 10N-D merged Production closed baseline
 
