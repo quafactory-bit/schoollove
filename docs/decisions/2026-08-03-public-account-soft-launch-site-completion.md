@@ -1,12 +1,12 @@
 # PHASE 10N-B — Public account soft launch security hardening
 
-Status: `DRAFT_HARDENED_PRODUCTION_CLOSED`
+Status: `PRODUCTION_APPLIED_CLOSED_ACCOUNT_LAUNCH_PROHIBITED`
 
 ## Decision
 
 The first controlled-beta school-selection plan is paused. Before selecting a school or issuing an invite, SchoolLoveI will complete the ordinary adult account path: visit, email OTP login, adult self-attestation, four required consents, one owner-only private profile, up to three owner-only past-school memberships, onboarding restoration, account management, logout, and deletion request.
 
-This is not approval to open Production. Migration `20260803120000_public_account_soft_launch.sql` starts `closed`, and deploying code or applying the migration cannot change it to `open`. Production migration, state change, environment change, registration, Auth user/OTP/email, school selection, beta data, promotion, payment, connection, and message operations require separate approvals.
+This is not approval to open Production. PR #39 was squash-merged as `48f693bc0625c4dabfcb9c974c364292877349b6`, that application was deployed, and migration `20260803120000_public_account_soft_launch.sql` was applied once. The singleton remains `closed`; `account_registration`, `private_profile`, and `school_membership` are false, and launch-created Auth users, private profiles, and school memberships remain zero. Any state change, environment change, registration, Auth user/OTP/email, school selection, beta data, promotion, payment, connection, or message operation requires separate approval.
 
 ## Separate authorization contracts
 
@@ -76,6 +76,8 @@ For the hardened modified head, targeted Vitest passed `8 files / 54 tests`; the
 
 The disposable provider-backed browser matrix passed `20/20` with Chromium, mobile 360, mobile 390, and mobile 412 each `5/5`, workers 1, and retries 0. It used only loopback/Docker-local PostgreSQL, PostgREST, GoTrue, Mailpit, synthetic UUIDs, and `@example.invalid`. Forced Auth provider deletion failure produced `failed_safe`; recovery and retry deleted the identity and completed the request. The final provider baseline was `0|0|0|0|10006|0|0|0|0`; external email and Production Auth were zero.
 
-The canonical-LF migration SHA-256 is `5DF7F3E489D91C18328524C0AA1ACA3F10276F0700604FD27433F68228854A48`. Production remains closed and unchanged regardless of local evidence.
+The canonical-LF migration SHA-256 is `5DF7F3E489D91C18328524C0AA1ACA3F10276F0700604FD27433F68228854A48`. Production remains closed regardless of local or Preview evidence.
+
+PHASE 10N-E reproduced the historical GoTrue warning at the actual school-autocomplete activation boundary. `lib/supabase.ts` exported two separately created anon clients into the browser bundle, so both auth clients used the same storage key. The fix reuses one anon/RLS client for the browser-context lifetime and aliases browser `supabaseServer` consumers to it, while leaving stateless server rendering and request-scoped authenticated server clients separate. Fresh post-fix autocomplete produced zero warnings/errors, and a repeated fixed-module HMR created no additional auth client. The automatic Draft Preview succeeded and its authenticated browser passed autocomplete/School Hub with zero Warning/Error/GoTrue warning, but isolated mobile contexts reached Vercel protection login instead of the app. Direct 360/390/412 Preview app measurement remains a blocker unless a separately authorized test session or protection bypass is supplied. This lifecycle fix and its Draft Preview do not authorize a Production deployment or any launch-state operation.
 
 Residual risks are external email deliverability, Production provider configuration, Production traffic/log evidence, operator readiness, and the irreversible human decision to open registration. These remain later approval gates.

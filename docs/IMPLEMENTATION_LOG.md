@@ -1,5 +1,22 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-04 — PHASE 10N-E GoTrueClient lifecycle and mobile Preview (LOCAL / DRAFT)
+
+- Reconfirmed the clean synchronized baseline `main == origin/main == 48f693bc0625c4dabfcb9c974c364292877349b6`, then created `codex/phase-10n-e-gotrue-mobile` without changing dependencies, lockfiles, environment files, migrations, Production data, or launch state.
+- In a fresh browser tab, `/search` loaded without a warning until entering `진명` activated autocomplete. That import path (`SchoolSearchResults` -> `lib/api/search.ts` -> `lib/supabase.ts`) instantiated both exported anon clients in the same browser context and produced exactly one `Multiple GoTrueClient instances detected` warning under the same storage key. A fresh tab and the interaction boundary ruled out extensions and stale sessions.
+- Added a browser-context global singleton for the public anon/RLS client. Browser imports of `supabaseServer` now alias that client; server rendering still receives stateless anon clients, and authenticated clients in `lib/user-auth.ts` remain request-scoped.
+- Regression tests prove repeated helper calls and separate browser consumers invoke the factory once, while authenticated server clients remain distinct. Targeted Vitest passed `6 files / 40 tests`; full Vitest passed `115 files / 1,012 tests`; TypeScript and the 58-page/route Production build passed. `npm run lint` stopped at the repository's existing interactive ESLint setup prompt, so no unapproved lint configuration was created.
+- Fresh post-fix autocomplete produced zero console warnings/errors and zero GoTrueClient warnings. After the first old-to-new HMR transition, a second fixed-module HMR produced no additional client warning, confirming the stable slot survives repeated module evaluation.
+- Draft PR #40 produced automatic Vercel Preview deployment `GRAgyJ8poYn77hQdiWzDFJEDoCch` (GitHub deployment `5743431289`) successfully for head `bb41e60a9febf975ca2be9015eb0ec1cbf1e562a`. The authenticated in-app Preview browser passed school autocomplete and the Seoul High School Hub privacy state with console Warning 0, Error 0, and duplicate GoTrue warning 0.
+- A fresh Playwright 360 context reached Vercel's protection login rather than the application; the same protected deployment cannot be measured in isolated 360/390/412 app contexts without a separate authorized session or bypass mechanism. No cookie/profile/session inspection, protection setting change, or bypass was attempted. Therefore direct mobile Preview verification remains blocked rather than being reported as passed.
+- No Production deploy, migration, DB/state/environment mutation, OTP, Auth user, PASS execution, Ready transition, or merge occurred.
+
+## 2026-08-04 — PHASE 10N-D Production closed baseline
+
+- PR #39 was squash-merged as `48f693bc0625c4dabfcb9c974c364292877349b6`; that exact application commit was deployed to Production and migration `20260803120000_public_account_soft_launch.sql` was applied once.
+- The Production launch singleton remains `closed` with `account_registration=false`, `private_profile=false`, and `school_membership=false`. Launch-created Auth users, private profiles, and school memberships remain zero, while ordinary public registration and all dormant people/connection/message surfaces remain prohibited.
+- PHASE 10N-E starts from this frozen baseline and authorizes only a local fix, Draft PR, and Preview verification.
+
 ## 2026-08-04 — PHASE 10N-C2 emergency boundary and provider matrix (LOCAL / DRAFT)
 
 - Reproduced a real local provider defect: during public `emergency_stopped`, an active controlled-beta account saw disabled UI but `/api/account/eligibility` still returned 200 because routes evaluated public-or-beta features without first requiring the shared access-active gate.
