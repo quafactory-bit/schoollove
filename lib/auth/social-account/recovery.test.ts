@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { createCipheriv } from 'node:crypto'
 import {
   RECOVERY_VERIFICATION_MAX_FAILURES,
   RECOVERY_VERIFICATION_TTL_SECONDS,
   RECOVERY_OTP_DIGITS,
   canonicalizeRecoveryEmail,
-  decryptRecoveryEmail,
-  encryptRecoveryEmail,
+  decryptRecoveryEmailForAccount,
+  encryptRecoveryEmailForAccount,
   recoveryEmailHmac,
   recoveryOtpMac,
   verifyRecoveryOtpMac,
@@ -15,6 +16,7 @@ const hmacKey = { version: 7, material: Buffer.alloc(32, 0x11) }
 const encryptionKey = { version: 9, material: Buffer.alloc(32, 0x22) }
 const otpKey = { version: 11, material: Buffer.alloc(32, 0x33) }
 const challenge = '10000000-0000-4000-8000-000000000001'
+const account = '20000000-0000-4000-8000-000000000001'
 
 describe('recovery-email frozen canonicalization and crypto contract', () => {
   it('trims only outer ASCII whitespace and preserves local case, Unicode, plus and dots', () => {
@@ -28,6 +30,14 @@ describe('recovery-email frozen canonicalization and crypto contract', () => {
     }
   })
 
+  it('enforces recovery email limits by UTF-8 byte length after IDNA conversion', () => {
+    expect(() => canonicalizeRecoveryEmail(`${'가'.repeat(22)}@example.invalid`)).toThrow('RECOVERY_EMAIL_INVALID')
+    expect(() => canonicalizeRecoveryEmail(`a@${Array.from({ length: 8 }, () => '가'.repeat(30)).join('.')}`)).toThrow('RECOVERY_EMAIL_INVALID')
+    const maxDomain = `${'a'.repeat(63)}.${'b'.repeat(63)}.${'c'.repeat(61)}`
+    const boundary = canonicalizeRecoveryEmail(`${'L'.repeat(64)}@${maxDomain}`)
+    expect(Buffer.byteLength(boundary, 'utf8')).toBe(254)
+  })
+
   it('uses a deterministic, full-length, version-separated HMAC', () => {
     const canonical = canonicalizeRecoveryEmail('User+tag@EXAMPLE.INVALID')
     expect(recoveryEmailHmac(canonical, hmacKey)).toHaveLength(32)
@@ -36,17 +46,27 @@ describe('recovery-email frozen canonicalization and crypto contract', () => {
     expect(Buffer.compare(Buffer.from(recoveryEmailHmac(canonical, hmacKey)), Buffer.from(recoveryEmailHmac(canonical, { version: 8, material: Buffer.alloc(32, 0x44) })))).not.toBe(0)
   })
 
-  it('encrypts with AES-256-GCM, unique 96-bit nonces and stable AAD binding', () => {
-    const first = encryptRecoveryEmail({ canonicalEmail: 'User.Name+tag@example.invalid', key: encryptionKey, purpose: 'activation', recordId: challenge })
-    const second = encryptRecoveryEmail({ canonicalEmail: 'User.Name+tag@example.invalid', key: encryptionKey, purpose: 'activation', recordId: challenge })
+  it('binds durable account recovery ciphertext to account, fixed column, and key version', () => {
+    const first = encryptRecoveryEmailForAccount({ canonicalEmail: 'User.Name+tag@example.invalid', key: encryptionKey, accountId: account })
+    const second = encryptRecoveryEmailForAccount({ canonicalEmail: 'User.Name+tag@example.invalid', key: encryptionKey, accountId: account })
     expect(first.nonce).toHaveLength(12)
     expect(first.ciphertext).toHaveLength('User.Name+tag@example.invalid'.length + 16)
     expect(Buffer.compare(Buffer.from(first.nonce), Buffer.from(second.nonce))).not.toBe(0)
-    expect(decryptRecoveryEmail({ encrypted: first, key: encryptionKey, purpose: 'activation', recordId: challenge })).toBe('User.Name+tag@example.invalid')
-    expect(() => decryptRecoveryEmail({ encrypted: first, key: { version: 9, material: Buffer.alloc(32, 0x55) }, purpose: 'activation', recordId: challenge })).toThrow('RECOVERY_DECRYPTION_REJECTED')
-    expect(() => decryptRecoveryEmail({ encrypted: { ...first, ciphertext: Buffer.concat([first.ciphertext.subarray(0, -1), Buffer.from([first.ciphertext.at(-1)! ^ 1])]) }, key: encryptionKey, purpose: 'activation', recordId: challenge })).toThrow('RECOVERY_DECRYPTION_REJECTED')
-    expect(() => decryptRecoveryEmail({ encrypted: first, key: encryptionKey, purpose: 'change', recordId: challenge })).toThrow('RECOVERY_DECRYPTION_REJECTED')
-    expect(() => decryptRecoveryEmail({ encrypted: first, key: encryptionKey, purpose: 'activation', recordId: '10000000-0000-4000-8000-000000000002' })).toThrow('RECOVERY_DECRYPTION_REJECTED')
+    expect(decryptRecoveryEmailForAccount({ encrypted: first, key: encryptionKey, accountId: account })).toBe('User.Name+tag@example.invalid')
+    expect(() => decryptRecoveryEmailForAccount({ encrypted: first, key: { version: 9, material: Buffer.alloc(32, 0x55) }, accountId: account })).toThrow('RECOVERY_DECRYPTION_REJECTED')
+    expect(() => decryptRecoveryEmailForAccount({ encrypted: { ...first, ciphertext: Buffer.concat([first.ciphertext.subarray(0, -1), Buffer.from([first.ciphertext.at(-1)! ^ 1])]) }, key: encryptionKey, accountId: account })).toThrow('RECOVERY_DECRYPTION_REJECTED')
+    expect(() => decryptRecoveryEmailForAccount({ encrypted: first, key: encryptionKey, accountId: '20000000-0000-4000-8000-000000000002' })).toThrow('RECOVERY_DECRYPTION_REJECTED')
+    expect(() => decryptRecoveryEmailForAccount({ encrypted: first, key: { ...encryptionKey, version: 10 }, accountId: account })).toThrow('RECOVERY_DECRYPTION_REJECTED')
+    const frame = (value: string) => {
+      const bytes = Buffer.from(value, 'utf8')
+      const length = Buffer.allocUnsafe(4)
+      length.writeUInt32BE(bytes.byteLength)
+      return Buffer.concat([length, bytes])
+    }
+    const wrongColumnCipher = createCipheriv('aes-256-gcm', encryptionKey.material, Buffer.alloc(12, 0x44), { authTagLength: 16 })
+    wrongColumnCipher.setAAD(Buffer.concat([frame('schoollove:recovery-email-account:v1'), frame(account), frame('other_recovery_column'), frame('9')]))
+    const wrongColumn = Buffer.concat([wrongColumnCipher.update('User.Name+tag@example.invalid', 'utf8'), wrongColumnCipher.final(), wrongColumnCipher.getAuthTag()])
+    expect(() => decryptRecoveryEmailForAccount({ encrypted: { ciphertext: wrongColumn, nonce: Buffer.alloc(12, 0x44), keyVersion: 9 }, key: encryptionKey, accountId: account })).toThrow('RECOVERY_DECRYPTION_REJECTED')
   })
 
   it('MACs framed OTP values without retaining the OTP', () => {

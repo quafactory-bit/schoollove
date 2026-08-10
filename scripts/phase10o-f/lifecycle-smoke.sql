@@ -25,6 +25,8 @@ BEGIN
   verify_locked:=public.create_recovery_email_verification(a,'activation',hmac_a,1,decode(repeat('1',96),'hex'),nonce,1,mac,1);
   FOR i IN 1..5 LOOP PERFORM public.consume_recovery_email_verification(verify_locked,decode(repeat('f',64),'hex')); END LOOP;
   IF NOT EXISTS(SELECT 1 FROM private.recovery_email_verifications WHERE id=verify_locked AND status='locked' AND otp_mac IS NULL AND destination_ciphertext IS NULL AND recovery_email_hmac IS NULL) THEN RAISE EXCEPTION 'five failures did not lock and clear terminal secret'; END IF;
+  BEGIN INSERT INTO private.recovery_email_verifications(account_id,purpose,recovery_email_hmac,hmac_key_version,destination_ciphertext,destination_nonce,encryption_key_version,otp_mac,otp_key_version,expires_at,status)
+    VALUES(a,'activation',hmac_a,1,decode(repeat('1',96),'hex'),nonce,1,mac,1,clock_timestamp()+interval '10 minutes','locked'); RAISE EXCEPTION 'terminal challenge accepted retained secret'; EXCEPTION WHEN check_violation THEN NULL; END;
   verify_a:=public.create_recovery_email_verification(a,'activation',hmac_a,1,decode(repeat('2',96),'hex'),nonce,1,mac,1);
   verify_b:=public.create_recovery_email_verification(a,'activation',hmac_a,1,decode(repeat('3',96),'hex'),nonce,1,mac,1);
   IF NOT EXISTS(SELECT 1 FROM private.recovery_email_verifications WHERE id=verify_a AND status='revoked' AND otp_mac IS NULL AND destination_ciphertext IS NULL AND recovery_email_hmac IS NULL) THEN RAISE EXCEPTION 'previous challenge was not superseded and cleared'; END IF;
@@ -54,6 +56,12 @@ BEGIN
   IF EXISTS(SELECT 1 FROM private.private_accounts WHERE id=a AND recovery_email_ciphertext IS NOT NULL) OR NOT EXISTS(SELECT 1 FROM private.private_accounts WHERE id=a AND recovery_email_hmac=hmac_a) THEN RAISE EXCEPTION 'deletion crypto clear/retention contract failed'; END IF;
   cleanup_a:=public.enqueue_auth_principal_cleanup(a,NULL); cleanup_again:=public.enqueue_auth_principal_cleanup(a,NULL);
   IF cleanup_a<>cleanup_again OR (SELECT count(*) FROM private.auth_principal_cleanup_jobs WHERE account_id=a AND status='queued')<>1 THEN RAISE EXCEPTION 'cleanup queue idempotency failed'; END IF;
+  UPDATE private.auth_principal_cleanup_jobs SET status='failed_safe' WHERE id=cleanup_a;
+  cleanup_again:=public.enqueue_auth_principal_cleanup(a,NULL);
+  IF cleanup_a<>cleanup_again OR (SELECT count(*) FROM private.auth_principal_cleanup_jobs WHERE account_id=a)<>1 THEN RAISE EXCEPTION 'failed-safe cleanup created a duplicate job'; END IF;
+  UPDATE private.auth_principal_cleanup_jobs SET status='completed',completed_at=clock_timestamp() WHERE id=cleanup_a;
+  cleanup_again:=public.enqueue_auth_principal_cleanup(a,NULL);
+  IF cleanup_a<>cleanup_again OR (SELECT count(*) FROM private.auth_principal_cleanup_jobs WHERE account_id=a)<>1 THEN RAISE EXCEPTION 'completed cleanup created a duplicate job'; END IF;
   DELETE FROM auth.users WHERE id='81000000-0000-4000-8000-000000000001';
   IF NOT EXISTS(SELECT 1 FROM private.auth_principal_cleanup_jobs WHERE id=cleanup_a AND auth_user_id='81000000-0000-4000-8000-000000000001'::uuid AND account_id=a) THEN RAISE EXCEPTION 'cleanup job did not retain opaque auth UUID'; END IF;
   IF EXISTS(SELECT 1 FROM private.private_accounts WHERE id=a AND auth_user_id IS NOT NULL) OR EXISTS(SELECT 1 FROM private.social_identity_registry WHERE account_id=a AND auth_user_id IS NOT NULL) THEN RAISE EXCEPTION 'Auth delete did not null private principal references'; END IF;

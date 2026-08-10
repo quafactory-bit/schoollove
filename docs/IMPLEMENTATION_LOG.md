@@ -1,5 +1,11 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-10 PHASE 10O-F final contract closure (local/Draft)
+
+- Replaced generic challenge-record AAD with durable account-bound recovery ciphertext AAD: domain + `private_accounts.id` + fixed column purpose + encryption key version. Challenge purge cannot affect future account decryption.
+- Enforced UTF-8 byte limits for local part (64) and final IDNA-canonical email (254), added fail-fast pre-DDL migration preflight, made terminal secret emptiness a direct DB CHECK, and made cleanup enqueue return the existing account job for queued, failed-safe, or completed states.
+- Added disposable negative preflight validation for an existing private schema, colliding public RPC, and missing launch singleton; no Production migration or mutation was performed.
+
 ## 2026-08-10 PHASE 10O-F security-review hardening (local/Draft)
 
 - Modified only the still-unapplied `20260810160000_social_account_recovery_boundary.sql`: cleanup jobs retain an opaque Auth UUID without an Auth FK, survive later private-account deletion, and direct private schema/table access is denied to service role as well as public roles. Only approved SECURITY DEFINER mutation RPCs remain executable by service role.

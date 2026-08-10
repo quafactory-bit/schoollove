@@ -12,8 +12,8 @@ const HMAC_BYTES = 32
 const GCM_NONCE_BYTES = 12
 const GCM_TAG_BYTES = 16
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const RECOVERY_AAD_DOMAIN = 'schoollove:recovery-email-aad:v1'
-const APPROVED_RECOVERY_PURPOSES = new Set(['activation', 'change', 'cross_provider_check', 'recovery_assistance'])
+const RECOVERY_ACCOUNT_AAD_DOMAIN = 'schoollove:recovery-email-account:v1'
+export const RECOVERY_EMAIL_CIPHERTEXT_COLUMN = 'recovery_email_ciphertext'
 
 export const RECOVERY_OTP_DIGITS = 8
 const OTP_PATTERN = new RegExp(`^[0-9]{${RECOVERY_OTP_DIGITS}}$`)
@@ -53,11 +53,16 @@ function framed(value: string): Buffer {
   return Buffer.concat([length, bytes])
 }
 
-function recoveryAad(purpose: string, recordId: string): Buffer {
-  if (!APPROVED_RECOVERY_PURPOSES.has(purpose) || !UUID_PATTERN.test(recordId)) {
+function recoveryAccountAad(accountId: string, encryptionKeyVersion: number): Buffer {
+  if (!UUID_PATTERN.test(accountId) || !Number.isInteger(encryptionKeyVersion) || encryptionKeyVersion < 1 || encryptionKeyVersion > 32767) {
     throw new Error('RECOVERY_ENCRYPTION_INPUT_INVALID')
   }
-  return Buffer.concat([framed(RECOVERY_AAD_DOMAIN), framed(purpose), framed(recordId)])
+  return Buffer.concat([
+    framed(RECOVERY_ACCOUNT_AAD_DOMAIN),
+    framed(accountId),
+    framed(RECOVERY_EMAIL_CIPHERTEXT_COLUMN),
+    framed(String(encryptionKeyVersion)),
+  ])
 }
 
 /**
@@ -67,19 +72,21 @@ function recoveryAad(purpose: string, recordId: string): Buffer {
 export function canonicalizeRecoveryEmail(input: string): string {
   if (typeof input !== 'string') throw new Error('RECOVERY_EMAIL_INVALID')
   const trimmed = asciiTrim(input)
-  if (trimmed.length === 0 || trimmed.length > 254 || /[\u0000-\u001f\u007f\s]/u.test(trimmed)) {
+  if (trimmed.length === 0 || /[\u0000-\u001f\u007f\s]/u.test(trimmed)) {
     throw new Error('RECOVERY_EMAIL_INVALID')
   }
   const firstAt = trimmed.indexOf('@')
   if (firstAt <= 0 || firstAt !== trimmed.lastIndexOf('@')) throw new Error('RECOVERY_EMAIL_INVALID')
   const local = trimmed.slice(0, firstAt)
   const unicodeDomain = trimmed.slice(firstAt + 1)
-  if (local.length > 64 || !validRecoveryLocalPart(local)) {
+  if (Buffer.byteLength(local, 'utf8') > 64 || !validRecoveryLocalPart(local)) {
     throw new Error('RECOVERY_EMAIL_INVALID')
   }
   const asciiDomain = domainToASCII(unicodeDomain)
   if (!validAsciiDomain(asciiDomain)) throw new Error('RECOVERY_EMAIL_INVALID')
-  return `${local}@${asciiDomain.toLowerCase()}`
+  const canonical = `${local}@${asciiDomain.toLowerCase()}`
+  if (Buffer.byteLength(canonical, 'utf8') > 254) throw new Error('RECOVERY_EMAIL_INVALID')
+  return canonical
 }
 
 export function recoveryEmailHmac(canonicalEmail: string, key: VersionedKey): Uint8Array {
@@ -91,18 +98,17 @@ export function recoveryEmailHmac(canonicalEmail: string, key: VersionedKey): Ui
     .digest()
 }
 
-export function encryptRecoveryEmail(input: Readonly<{
+export function encryptRecoveryEmailForAccount(input: Readonly<{
   canonicalEmail: string
   key: VersionedKey
-  purpose: string
-  recordId: string
+  accountId: string
   nonce?: Uint8Array
 }>): RecoveryEmailCiphertext {
   assertVersionedKey(input.key, 'RECOVERY_ENCRYPTION')
   const nonce = input.nonce ? Buffer.from(input.nonce) : randomBytes(GCM_NONCE_BYTES)
   if (nonce.byteLength !== GCM_NONCE_BYTES) throw new Error('RECOVERY_ENCRYPTION_INPUT_INVALID')
   const cipher = createCipheriv('aes-256-gcm', input.key.material, nonce, { authTagLength: GCM_TAG_BYTES })
-  cipher.setAAD(recoveryAad(input.purpose, input.recordId))
+  cipher.setAAD(recoveryAccountAad(input.accountId, input.key.version))
   const body = Buffer.concat([cipher.update(canonicalizeRecoveryEmail(input.canonicalEmail), 'utf8'), cipher.final()])
   return Object.freeze({
     ciphertext: Buffer.concat([body, cipher.getAuthTag()]),
@@ -111,11 +117,10 @@ export function encryptRecoveryEmail(input: Readonly<{
   })
 }
 
-export function decryptRecoveryEmail(input: Readonly<{
+export function decryptRecoveryEmailForAccount(input: Readonly<{
   encrypted: RecoveryEmailCiphertext
   key: VersionedKey
-  purpose: string
-  recordId: string
+  accountId: string
 }>): string {
   assertVersionedKey(input.key, 'RECOVERY_ENCRYPTION')
   if (input.encrypted.keyVersion !== input.key.version || input.encrypted.nonce.byteLength !== GCM_NONCE_BYTES
@@ -127,7 +132,7 @@ export function decryptRecoveryEmail(input: Readonly<{
     const body = value.subarray(0, -GCM_TAG_BYTES)
     const tag = value.subarray(-GCM_TAG_BYTES)
     const decipher = createDecipheriv('aes-256-gcm', input.key.material, input.encrypted.nonce, { authTagLength: GCM_TAG_BYTES })
-    decipher.setAAD(recoveryAad(input.purpose, input.recordId))
+    decipher.setAAD(recoveryAccountAad(input.accountId, input.key.version))
     decipher.setAuthTag(tag)
     return canonicalizeRecoveryEmail(Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8'))
   } catch {

@@ -26,6 +26,10 @@ CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE SET sear
   Invoke-SqlFile (Resolve-Path 'scripts/phase10l/seed-production-shape.sql').Path
   Invoke-SqlFile (Resolve-Path 'supabase/migrations/20260802120000_legacy_person_data_reset.sql').Path
   Invoke-SqlFile (Resolve-Path 'supabase/migrations/20260803120000_public_account_soft_launch.sql').Path
+  docker exec $containerName psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -c 'CREATE DATABASE phase10of_preflight_base TEMPLATE phase10of'
+  if($LASTEXITCODE-ne 0){throw 'Could not create isolated preflight baseline.'}
+  & powershell -ExecutionPolicy Bypass -File scripts/phase10o-f/run-negative-preflight.ps1 -ContainerName $containerName
+  if($LASTEXITCODE-ne 0){throw 'Negative preflight smoke failed.'}
   Invoke-SqlFile (Resolve-Path 'supabase/migrations/20260810160000_social_account_recovery_boundary.sql').Path
   foreach($smoke in @('scripts/phase10o-f/lifecycle-smoke.sql','scripts/phase10o-f/permission-smoke.sql')){Invoke-SqlFile (Resolve-Path $smoke).Path}
   & powershell -ExecutionPolicy Bypass -File scripts/phase10o-f/run-concurrency.ps1 -ContainerName $containerName

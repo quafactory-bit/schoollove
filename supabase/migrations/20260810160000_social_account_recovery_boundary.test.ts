@@ -52,7 +52,7 @@ describe('PHASE 10O-F social-account recovery migration contract', () => {
   it('keeps cleanup evidence durable across Auth and private-account deletion', () => {
     expect(sql).toContain('auth_user_id uuid NOT NULL,')
     expect(sql).toContain('account_id uuid NULL REFERENCES private.private_accounts(id) ON DELETE SET NULL')
-    expect(sql).toContain('auth_principal_cleanup_jobs_one_active_account')
+    expect(sql).toContain('auth_principal_cleanup_jobs_one_account')
     expect(sql).not.toContain('auth_user_id uuid NOT NULL REFERENCES auth.users')
   })
 
@@ -62,6 +62,20 @@ describe('PHASE 10O-F social-account recovery migration contract', () => {
     expect(sql).toContain("CHECK (status <> 'active' OR (")
     expect(sql).toContain('recovery_email_ciphertext IS NOT NULL')
     expect(sql).toContain("CHECK (status<>'active' OR (auth_user_id IS NOT NULL AND activated_at IS NOT NULL))")
+  })
+
+  it('fails fast before DDL for unaudited schema, RPC, or launch-control baselines', () => {
+    expect(sql).toContain('PHASE10O_F_PRIVATE_SCHEMA_COLLISION')
+    expect(sql).toContain('PHASE10O_F_PUBLIC_RPC_COLLISION')
+    expect(sql).toContain('PHASE10O_F_LAUNCH_CONTROL_SINGLETON_INVALID')
+    expect(sql.indexOf('PHASE10O_F_PRIVATE_SCHEMA_COLLISION')).toBeLessThan(sql.indexOf('CREATE SCHEMA private'))
+    expect(sql).not.toContain('CREATE OR REPLACE FUNCTION')
+  })
+
+  it('requires pending secret completeness and terminal secret emptiness', () => {
+    expect(sql).toContain("status='pending' AND")
+    expect(sql).toContain("status<>'pending' AND")
+    expect(sql).toContain('destination_ciphertext IS NULL AND destination_nonce IS NULL AND encryption_key_version IS NULL')
   })
 
   it('keeps activation dark behind the existing open launch decision and adds no HTTP route', () => {
