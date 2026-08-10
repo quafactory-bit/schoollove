@@ -1,5 +1,11 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-10 PHASE 10O-F security-review hardening (local/Draft)
+
+- Modified only the still-unapplied `20260810160000_social_account_recovery_boundary.sql`: cleanup jobs retain an opaque Auth UUID without an Auth FK, survive later private-account deletion, and direct private schema/table access is denied to service role as well as public roles. Only approved SECURITY DEFINER mutation RPCs remain executable by service role.
+- Restored the frozen 8-digit numeric OTP contract; activation is the only implemented recovery mutation purpose; new activation challenges revoke and clear their predecessors; every terminal challenge clears one-time HMAC/ciphertext/nonce/key-version/OTP-MAC material.
+- Tightened exact `slb:v1:kNN:provider:43-char-base64url` checks, key-version/provider agreement, complete active-row checks, ciphertext minimum length, unquoted local-part validation, and length-framed AES-GCM AAD. Documented the maintenance-closed single-current-version HMAC rotation procedure.
+
 ## 2026-08-10 — PHASE 10O-F local/Draft implementation
 
 - Added the unapplied `20260810160000_social_account_recovery_boundary.sql` migration. It places social account, registry, recovery challenge, and cleanup queue tables in a non-public `private` schema with RLS, FORCE RLS, direct grant removal, immutable primary identity triggers, and service-only `SECURITY DEFINER` transitions.

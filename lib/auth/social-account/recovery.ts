@@ -11,7 +11,12 @@ const ASCII_OUTER_WHITESPACE = /^[\t\n\v\f\r ]+|[\t\n\v\f\r ]+$/g
 const HMAC_BYTES = 32
 const GCM_NONCE_BYTES = 12
 const GCM_TAG_BYTES = 16
-const OTP_PATTERN = /^[0-9]{6}$/
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const RECOVERY_AAD_DOMAIN = 'schoollove:recovery-email-aad:v1'
+const APPROVED_RECOVERY_PURPOSES = new Set(['activation', 'change', 'cross_provider_check', 'recovery_assistance'])
+
+export const RECOVERY_OTP_DIGITS = 8
+const OTP_PATTERN = new RegExp(`^[0-9]{${RECOVERY_OTP_DIGITS}}$`)
 
 export type VersionedKey = Readonly<{ version: number; material: Uint8Array }>
 export type RecoveryEmailCiphertext = Readonly<{ ciphertext: Uint8Array; nonce: Uint8Array; keyVersion: number }>
@@ -31,6 +36,30 @@ function validAsciiDomain(domain: string): boolean {
   return domain.split('.').every((label) => label.length > 0 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label))
 }
 
+function validRecoveryLocalPart(local: string): boolean {
+  // Explicitly support only an unquoted atom-style local part. This deliberately
+  // rejects RFC quoted strings and domain literals without rewriting accepted text.
+  return local.length > 0
+    && !new RegExp('[<>()\\[\\],;:"\\\\]', 'u').test(local)
+    && !local.startsWith('.')
+    && !local.endsWith('.')
+    && !local.includes('..')
+}
+
+function framed(value: string): Buffer {
+  const bytes = Buffer.from(value, 'utf8')
+  const length = Buffer.allocUnsafe(4)
+  length.writeUInt32BE(bytes.byteLength)
+  return Buffer.concat([length, bytes])
+}
+
+function recoveryAad(purpose: string, recordId: string): Buffer {
+  if (!APPROVED_RECOVERY_PURPOSES.has(purpose) || !UUID_PATTERN.test(recordId)) {
+    throw new Error('RECOVERY_ENCRYPTION_INPUT_INVALID')
+  }
+  return Buffer.concat([framed(RECOVERY_AAD_DOMAIN), framed(purpose), framed(recordId)])
+}
+
 /**
  * Contract deliberately preserves the verified local part byte-for-byte after
  * ASCII outer whitespace removal. It neither case-folds nor normalizes Unicode.
@@ -45,7 +74,7 @@ export function canonicalizeRecoveryEmail(input: string): string {
   if (firstAt <= 0 || firstAt !== trimmed.lastIndexOf('@')) throw new Error('RECOVERY_EMAIL_INVALID')
   const local = trimmed.slice(0, firstAt)
   const unicodeDomain = trimmed.slice(firstAt + 1)
-  if (local.length > 64 || local.startsWith('.') || local.endsWith('.') || local.includes('..')) {
+  if (local.length > 64 || !validRecoveryLocalPart(local)) {
     throw new Error('RECOVERY_EMAIL_INVALID')
   }
   const asciiDomain = domainToASCII(unicodeDomain)
@@ -71,9 +100,9 @@ export function encryptRecoveryEmail(input: Readonly<{
 }>): RecoveryEmailCiphertext {
   assertVersionedKey(input.key, 'RECOVERY_ENCRYPTION')
   const nonce = input.nonce ? Buffer.from(input.nonce) : randomBytes(GCM_NONCE_BYTES)
-  if (nonce.byteLength !== GCM_NONCE_BYTES || !input.purpose || !input.recordId) throw new Error('RECOVERY_ENCRYPTION_INPUT_INVALID')
+  if (nonce.byteLength !== GCM_NONCE_BYTES) throw new Error('RECOVERY_ENCRYPTION_INPUT_INVALID')
   const cipher = createCipheriv('aes-256-gcm', input.key.material, nonce, { authTagLength: GCM_TAG_BYTES })
-  cipher.setAAD(Buffer.from(`${input.purpose}\0${input.recordId}`, 'utf8'))
+  cipher.setAAD(recoveryAad(input.purpose, input.recordId))
   const body = Buffer.concat([cipher.update(canonicalizeRecoveryEmail(input.canonicalEmail), 'utf8'), cipher.final()])
   return Object.freeze({
     ciphertext: Buffer.concat([body, cipher.getAuthTag()]),
@@ -90,7 +119,7 @@ export function decryptRecoveryEmail(input: Readonly<{
 }>): string {
   assertVersionedKey(input.key, 'RECOVERY_ENCRYPTION')
   if (input.encrypted.keyVersion !== input.key.version || input.encrypted.nonce.byteLength !== GCM_NONCE_BYTES
-    || input.encrypted.ciphertext.byteLength <= GCM_TAG_BYTES || !input.purpose || !input.recordId) {
+    || input.encrypted.ciphertext.byteLength <= GCM_TAG_BYTES) {
     throw new Error('RECOVERY_DECRYPTION_REJECTED')
   }
   try {
@@ -98,7 +127,7 @@ export function decryptRecoveryEmail(input: Readonly<{
     const body = value.subarray(0, -GCM_TAG_BYTES)
     const tag = value.subarray(-GCM_TAG_BYTES)
     const decipher = createDecipheriv('aes-256-gcm', input.key.material, input.encrypted.nonce, { authTagLength: GCM_TAG_BYTES })
-    decipher.setAAD(Buffer.from(`${input.purpose}\0${input.recordId}`, 'utf8'))
+    decipher.setAAD(recoveryAad(input.purpose, input.recordId))
     decipher.setAuthTag(tag)
     return canonicalizeRecoveryEmail(Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8'))
   } catch {

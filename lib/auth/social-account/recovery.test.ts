@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   RECOVERY_VERIFICATION_MAX_FAILURES,
   RECOVERY_VERIFICATION_TTL_SECONDS,
+  RECOVERY_OTP_DIGITS,
   canonicalizeRecoveryEmail,
   decryptRecoveryEmail,
   encryptRecoveryEmail,
@@ -22,7 +23,7 @@ describe('recovery-email frozen canonicalization and crypto contract', () => {
   })
 
   it('rejects malformed addresses without normalizing the local part', () => {
-    for (const value of ['', 'no-at', 'a@@example.invalid', '.a@example.invalid', 'a..b@example.invalid', 'a@-bad.invalid', 'a@bad-.invalid', 'a @example.invalid']) {
+    for (const value of ['', 'no-at', 'a@@example.invalid', '.a@example.invalid', 'a..b@example.invalid', 'a@-bad.invalid', 'a@bad-.invalid', 'a @example.invalid', 'a<@example.invalid', 'a>@example.invalid', 'a(@example.invalid', 'a)@example.invalid', 'a[@example.invalid', 'a]@example.invalid', 'a,@example.invalid', 'a;@example.invalid', 'a:@example.invalid', 'a"@example.invalid', 'a\\@example.invalid']) {
       expect(() => canonicalizeRecoveryEmail(value)).toThrow('RECOVERY_EMAIL_INVALID')
     }
   })
@@ -44,13 +45,19 @@ describe('recovery-email frozen canonicalization and crypto contract', () => {
     expect(decryptRecoveryEmail({ encrypted: first, key: encryptionKey, purpose: 'activation', recordId: challenge })).toBe('User.Name+tag@example.invalid')
     expect(() => decryptRecoveryEmail({ encrypted: first, key: { version: 9, material: Buffer.alloc(32, 0x55) }, purpose: 'activation', recordId: challenge })).toThrow('RECOVERY_DECRYPTION_REJECTED')
     expect(() => decryptRecoveryEmail({ encrypted: { ...first, ciphertext: Buffer.concat([first.ciphertext.subarray(0, -1), Buffer.from([first.ciphertext.at(-1)! ^ 1])]) }, key: encryptionKey, purpose: 'activation', recordId: challenge })).toThrow('RECOVERY_DECRYPTION_REJECTED')
+    expect(() => decryptRecoveryEmail({ encrypted: first, key: encryptionKey, purpose: 'change', recordId: challenge })).toThrow('RECOVERY_DECRYPTION_REJECTED')
+    expect(() => decryptRecoveryEmail({ encrypted: first, key: encryptionKey, purpose: 'activation', recordId: '10000000-0000-4000-8000-000000000002' })).toThrow('RECOVERY_DECRYPTION_REJECTED')
   })
 
   it('MACs framed OTP values without retaining the OTP', () => {
-    const mac = recoveryOtpMac(challenge, '123456', otpKey)
+    const mac = recoveryOtpMac(challenge, '12345678', otpKey)
     expect(mac).toHaveLength(32)
-    expect(verifyRecoveryOtpMac({ challengeId: challenge, otp: '123456', expectedMac: mac, key: otpKey })).toBe(true)
-    expect(verifyRecoveryOtpMac({ challengeId: challenge, otp: '123457', expectedMac: mac, key: otpKey })).toBe(false)
+    expect(verifyRecoveryOtpMac({ challengeId: challenge, otp: '12345678', expectedMac: mac, key: otpKey })).toBe(true)
+    expect(verifyRecoveryOtpMac({ challengeId: challenge, otp: '12345679', expectedMac: mac, key: otpKey })).toBe(false)
+    for (const otp of ['123456', '1234567', '123456789', '1234abcd']) {
+      expect(() => recoveryOtpMac(challenge, otp, otpKey)).toThrow('RECOVERY_OTP_INVALID')
+    }
+    expect(RECOVERY_OTP_DIGITS).toBe(8)
     expect(RECOVERY_VERIFICATION_TTL_SECONDS).toBe(600)
     expect(RECOVERY_VERIFICATION_MAX_FAILURES).toBe(5)
   })

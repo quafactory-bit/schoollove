@@ -4,6 +4,7 @@
 
 - Added an unapplied additive migration for private social-account identity, immutable opaque broker-subject registry, protected recovery verification challenges, and database-only Auth-principal cleanup jobs.
 - Added synthetic-key recovery canonicalization/HMAC/AES-256-GCM/OTP-MAC domain tests plus disposable PostgreSQL lifecycle, RLS/grant, and concurrency verification.
+- Security hardening removed service-role direct private-table grants, made cleanup evidence survive Auth/account deletion, restored the frozen 8-digit OTP contract, limited current recovery mutation to activation, superseded pending challenges, cleared terminal challenge secrets, and tightened broker-subject, active-row, ciphertext, email, AAD, and HMAC-rotation contracts.
 - No public route, `/login`, existing Supabase email OTP flow, middleware, environment requirement, real email/provider call, Auth user, or Production configuration changed.
 
 ## 2026-08-10 — PHASE 10O-E social auth broker core (LOCAL / DRAFT / FEATURE OFF)
