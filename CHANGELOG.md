@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-10 — PHASE 10O-E social auth broker core (LOCAL / DRAFT / FEATURE OFF)
+
+- Added a server-only, provider-neutral broker domain core for the frozen Kakao/Naver/Google direction without adding a public route, provider network client, Supabase Auth/DB write, runtime secret, or login UI change.
+- Added opaque HMAC-SHA-256 broker subjects, one-time state and nonce digests, S256-only PKCE, an immutable-provider login-attempt state machine, network-free fake upstream adapters, and an ephemeral in-memory RS256 test issuer with opaque Access Token and downstream nonce contracts.
+- Added unit and threat-model coverage for state substitution, OAuth mix-up/provider substitution, PKCE downgrade/mismatch, nonce mismatch, callback/code/attempt replay, expiry, client/redirect binding, namespace/key-version separation, terminal reuse, concurrent consume, malformed upstream responses, and sensitive-log leakage.
+- Recorded the frozen no-email-linking identity policy and exact recovery-email canonicalization contract, including outer ASCII-whitespace removal before validation, in `docs/decisions/2026-08-10-social-auth-broker-contract.md`.
+- Production deploy, DB/migration/environment/Auth/provider configuration, actual provider/API/email/Auth-user activity, launch-state change, Ready transition, and merge remain prohibited.
+
 ## 2026-08-04 — PHASE 10N-E browser Supabase lifecycle fix (LOCAL / DRAFT)
 
 - Reproduced `Multiple GoTrueClient instances detected` in a fresh browser tab when school autocomplete first imported `lib/api/search.ts`. The shared module created both `supabase` and `supabaseServer` as browser clients with the same default auth storage key; the warning was not caused by an extension or an old browser session.
