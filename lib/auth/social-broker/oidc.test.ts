@@ -1,6 +1,8 @@
 import { createPublicKey, verify, type JsonWebKey as NodeJsonWebKey } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
+import { LoginAttempt } from './attempt'
 import { SocialBrokerError } from './errors'
+import { createBrokerLogEvent, serializeBrokerLogEvent } from './logging'
 import { FakeBrokerOidcIssuer, pkceChallengeForAuthorization } from './oidc'
 import { createPkceVerifier } from './pkce'
 import { deriveBrokerSubject } from './subject'
@@ -20,7 +22,12 @@ const issuer = () => new FakeBrokerOidcIssuer({
   clients: [{ clientId: CLIENT_ID, redirectUris: [REDIRECT_URI] }],
 })
 
-function issueCode(server: FakeBrokerOidcIssuer, verifier = createPkceVerifier(), issuedAt = NOW) {
+function issueCode(
+  server: FakeBrokerOidcIssuer,
+  verifier = createPkceVerifier(),
+  issuedAt = NOW,
+  nonce?: string,
+) {
   return {
     verifier,
     code: server.issueAuthorizationCode({
@@ -31,6 +38,7 @@ function issueCode(server: FakeBrokerOidcIssuer, verifier = createPkceVerifier()
       codeChallengeMethod: 'S256',
       issuedAt,
       authenticationTime: issuedAt - 5,
+      ...(nonce === undefined ? {} : { nonce }),
     }),
   }
 }
@@ -70,7 +78,7 @@ describe('local-only fake broker OIDC issuer contract', () => {
     }
   })
 
-  it('issues a single-use, client/redirect/PKCE-bound 60-second code and minimal ID token', () => {
+  it('issues a single-use, client/redirect/PKCE-bound 60-second code and interoperable token response', () => {
     const server = issuer()
     const { code, verifier } = issueCode(server)
     const token = server.exchangeAuthorizationCode({
@@ -84,7 +92,15 @@ describe('local-only fake broker OIDC issuer contract', () => {
     const publicJwk = server.jwks().keys[0]
     const protectedHeader = JSON.parse(Buffer.from(token.idToken.split('.')[0], 'base64url').toString('utf8'))
     expect(server.codeTtlSeconds).toBe(60)
+    expect(server.accessTokenTtlSeconds).toBe(60)
     expect(server.idTokenTtlSeconds).toBe(300)
+    expect(Object.keys(token).sort()).toEqual(['accessToken', 'expiresIn', 'idToken', 'tokenType'])
+    expect(token.tokenType).toBe('Bearer')
+    expect(token.expiresIn).toBe(server.accessTokenTtlSeconds)
+    expect(Buffer.from(token.accessToken, 'base64url')).toHaveLength(32)
+    expect(token.accessToken).not.toContain(subject)
+    expect(token.accessToken).not.toContain('synthetic-google-subject')
+    expect(token.accessToken).not.toContain('recovery@example.invalid')
     expect(token).not.toHaveProperty('refreshToken')
     expect(protectedHeader).toEqual({ alg: 'RS256', typ: 'JWT', kid: publicJwk.kid })
     expect(verifyRs256(token.idToken, publicJwk)).toBe(true)
@@ -100,6 +116,59 @@ describe('local-only fake broker OIDC issuer contract', () => {
       codeVerifier: verifier,
       now: NOW + 11,
     })).toThrowError(new SocialBrokerError('REPLAY_REJECTED'))
+  })
+
+  it('binds a Supabase-facing authorization nonce exactly to its code and ID token', () => {
+    const server = issuer()
+    const firstNonce = 'supabase-nonce-A_Exact.Value~1'
+    const secondNonce = 'supabase-nonce-B_Exact.Value~2'
+    const first = issueCode(server, createPkceVerifier(), NOW, firstNonce)
+    const second = issueCode(server, createPkceVerifier(), NOW, secondNonce)
+
+    const firstToken = server.exchangeAuthorizationCode({
+      code: first.code, clientId: CLIENT_ID, redirectUri: REDIRECT_URI,
+      codeVerifier: first.verifier, now: NOW + 1,
+    })
+    const secondToken = server.exchangeAuthorizationCode({
+      code: second.code, clientId: CLIENT_ID, redirectUri: REDIRECT_URI,
+      codeVerifier: second.verifier, now: NOW + 1,
+    })
+    const firstClaims = server.decodeIdTokenClaims(firstToken.idToken)
+    const secondClaims = server.decodeIdTokenClaims(secondToken.idToken)
+
+    expect(firstClaims.nonce).toBe(firstNonce)
+    expect(secondClaims.nonce).toBe(secondNonce)
+    expect(firstClaims.nonce).not.toBe(secondNonce)
+    expect(secondClaims.nonce).not.toBe(firstNonce)
+    expect(Object.keys(firstClaims).sort()).toEqual(['aud', 'auth_time', 'exp', 'iat', 'iss', 'nonce', 'sub'])
+  })
+
+  it('does not synthesize an ID token nonce when the authorization request omitted it', () => {
+    const server = issuer()
+    const issued = issueCode(server)
+    const token = server.exchangeAuthorizationCode({
+      code: issued.code, clientId: CLIENT_ID, redirectUri: REDIRECT_URI,
+      codeVerifier: issued.verifier, now: NOW + 1,
+    })
+    expect(server.decodeIdTokenClaims(token.idToken)).not.toHaveProperty('nonce')
+  })
+
+  it('does not leak an issued access token or downstream nonce through the safe log schema', () => {
+    const server = issuer()
+    const nonce = 'supabase-facing-nonce-value'
+    const issued = issueCode(server, createPkceVerifier(), NOW, nonce)
+    const token = server.exchangeAuthorizationCode({
+      code: issued.code, clientId: CLIENT_ID, redirectUri: REDIRECT_URI,
+      codeVerifier: issued.verifier, now: NOW + 1,
+    })
+    const attempt = new LoginAttempt({
+      id: 'att_1234567890abcdef', provider: 'google', createdAt: NOW, expiresAt: NOW + 300,
+    })
+    const output = serializeBrokerLogEvent(createBrokerLogEvent({
+      event: 'broker_code_issued', attempt: attempt.snapshot(), at: NOW + 1,
+    }))
+    expect(output).not.toContain(token.accessToken)
+    expect(output).not.toContain(nonce)
   })
 
   it('rejects expiry, wrong redirect URI, wrong client ID, verifier mismatch, and PKCE plain', () => {

@@ -20,6 +20,7 @@ export type BrokerIdTokenClaims = Readonly<{
   iat: number
   exp: number
   auth_time: number
+  nonce?: string
 }>
 
 export type FakeDiscoveryMetadata = Readonly<{
@@ -43,10 +44,12 @@ type StoredAuthorizationCode = {
   issuedAt: number
   expiresAt: number
   authenticationTime: number
+  nonce?: string
   consumed: boolean
 }
 
 export type FakeBrokerTokenResponse = Readonly<{
+  accessToken: string
   tokenType: 'Bearer'
   expiresIn: number
   idToken: string
@@ -67,6 +70,7 @@ const codeDigest = (code: string): string => createHash('sha256').update(code, '
 export class FakeBrokerOidcIssuer {
   readonly issuer: string
   readonly codeTtlSeconds = 60
+  readonly accessTokenTtlSeconds = 60
   readonly idTokenTtlSeconds = 300
   #clients = new Map<string, FakeBrokerClient>()
   #codes = new Map<string, StoredAuthorizationCode>()
@@ -123,6 +127,7 @@ export class FakeBrokerOidcIssuer {
     codeChallengeMethod: 'S256' | 'plain'
     issuedAt: number
     authenticationTime: number
+    nonce?: string
   }>): string {
     const client = this.#clients.get(input.clientId)
     if (!client) brokerFailure('UNKNOWN_CLIENT')
@@ -130,6 +135,7 @@ export class FakeBrokerOidcIssuer {
     if (input.codeChallengeMethod !== 'S256') brokerFailure('PKCE_DOWNGRADE_REJECTED')
     if (!input.subject.startsWith('slb:v1:')) brokerFailure('INVALID_SUBJECT')
     if (input.authenticationTime > input.issuedAt) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+    if (input.nonce !== undefined && typeof input.nonce !== 'string') brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
     const code = randomBytes(32).toString('base64url')
     const digest = codeDigest(code)
     this.#codes.set(digest, {
@@ -141,6 +147,7 @@ export class FakeBrokerOidcIssuer {
       issuedAt: input.issuedAt,
       expiresAt: input.issuedAt + this.codeTtlSeconds,
       authenticationTime: input.authenticationTime,
+      ...(input.nonce === undefined ? {} : { nonce: input.nonce }),
       consumed: false,
     })
     return code
@@ -170,10 +177,12 @@ export class FakeBrokerOidcIssuer {
       iat: input.now,
       exp: input.now + this.idTokenTtlSeconds,
       auth_time: stored.authenticationTime,
+      ...(stored.nonce === undefined ? {} : { nonce: stored.nonce }),
     })
     return Object.freeze({
+      accessToken: randomBytes(32).toString('base64url'),
       tokenType: 'Bearer',
-      expiresIn: this.idTokenTtlSeconds,
+      expiresIn: this.accessTokenTtlSeconds,
       idToken: this.#signIdToken(claims),
     })
   }

@@ -79,11 +79,21 @@ Each upstream authorization leg has independent state, PKCE, and, for fake Kakao
 
 ## 7. OIDC issuer contract
 
-The fake issuer models discovery metadata, authorization and token endpoints, public JWKS, authorization codes, and minimal ID-token claims. Broker ID tokens contain only `iss`, `aud`, `sub`, `iat`, `exp`, and `auth_time`.
+The fake issuer models discovery metadata, authorization and token endpoints, public JWKS, authorization codes, and an Authorization Code token response with an opaque Access Token plus an ID Token. The fake Access Token is a 256-bit CSPRNG base64url value with a 60-second TTL; it encodes no user, subject, email, or provider information, is not stored in DB/files/environment, is never logged, and exists only in process memory. It does not model a UserInfo route, resource API, or Production access-token design. Refresh tokens are not issued.
+
+Broker ID tokens contain `iss`, `aud`, `sub`, `iat`, `exp`, and `auth_time`. When the downstream authorization request includes a nonce, the ID Token additionally contains that exact `nonce` value and no normalization is applied.
 
 They must not contain email, `email_verified`, name, nickname, picture, phone, upstream tokens, or recovery email. PHASE 10O-E uses only an ephemeral in-memory RSA test key and signs with RS256. No private key file is stored or committed, and no internet-accessible issuer or route is created.
 
 The frozen Production direction remains RS256 with a versioned `kid` and KMS/HSM custody. PHASE 10O-E does not implement or use Production key custody, key rotation, or a Production signing key.
+
+### Supabase-facing downstream OIDC leg
+
+The SchoolLoveI broker acts as an OIDC issuer toward Supabase. This downstream leg is separate from the upstream Kakao/Google nonce verification leg. The broker supports the Supabase-facing authorization-request nonce: if Supabase provides it, the exact value is bound to that authorization code and returned in the resulting ID Token. The broker must not rely on `skip_nonce_check=true`; the Production target is Supabase nonce validation enabled.
+
+For this Authorization Code flow, the token response returns an Access Token, `token_type` Bearer semantics, `expires_in`, and an ID Token. The current broker contract does not issue a refresh token.
+
+The actual token-endpoint client-authentication method for hosted Supabase Custom OIDC (for example, client-secret transport) is intentionally not selected in PHASE 10O-E. A future HTTP/OIDC interoperability checklist must confirm token endpoint client authentication against hosted Supabase before fixing that method.
 
 ## 8. Safe logging
 
@@ -105,7 +115,7 @@ PHASE 10O-E is dark code only:
 - no Supabase Auth or database write; and
 - no Production deployment or launch-state change.
 
-Later work requires separate review and approval for each boundary: durable attempt/code storage, recovery-email OTP, production key custody and rotation, provider-specific protocol adapters, broker HTTP/OIDC routes, Supabase Auth integration, explicit account activation, cross-provider recovery/linking, UI rollout, Preview security verification, and finally Production open readiness.
+Later work requires separate review and approval for each boundary: durable attempt/code storage, recovery-email OTP, production key custody and rotation, provider-specific protocol adapters, broker HTTP/OIDC routes, hosted Supabase token-endpoint client authentication interoperability, Supabase Auth integration, explicit account activation, cross-provider recovery/linking, UI rollout, Preview security verification, and finally Production open readiness.
 
 ## 10. Current exclusions
 

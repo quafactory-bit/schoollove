@@ -27,7 +27,8 @@ describe('social broker security and feature-off contract', () => {
     }))
     const forbidden = [
       'raw-upstream-subject', 'raw-state-value', 'raw-nonce-value', 'pkce-verifier-value',
-      'authorization-code-value', 'token-value', 'Recovery.Local+tag@xn--example.invalid',
+      'authorization-code-value', 'token-value', 'access-token-value', 'supabase-facing-nonce-value',
+      'Recovery.Local+tag@xn--example.invalid',
       'provider-response-body', 'code=callback-query',
     ]
     for (const secret of forbidden) expect(output).not.toContain(secret)
