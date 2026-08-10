@@ -29,7 +29,7 @@ export type FakeDiscoveryMetadata = Readonly<{
   jwks_uri: string
   response_types_supported: readonly ['code']
   subject_types_supported: readonly ['public']
-  id_token_signing_alg_values_supported: readonly ['EdDSA']
+  id_token_signing_alg_values_supported: readonly ['RS256']
   grant_types_supported: readonly ['authorization_code']
   code_challenge_methods_supported: readonly ['S256']
 }>
@@ -67,6 +67,7 @@ const codeDigest = (code: string): string => createHash('sha256').update(code, '
 export class FakeBrokerOidcIssuer {
   readonly issuer: string
   readonly codeTtlSeconds = 60
+  readonly idTokenTtlSeconds = 300
   #clients = new Map<string, FakeBrokerClient>()
   #codes = new Map<string, StoredAuthorizationCode>()
   #privateKey: KeyObject
@@ -84,7 +85,10 @@ export class FakeBrokerOidcIssuer {
         redirectUris: Object.freeze([...client.redirectUris]),
       }))
     }
-    const pair = generateKeyPairSync('ed25519')
+    const pair = generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicExponent: 0x10001,
+    })
     this.#privateKey = pair.privateKey
     this.#publicKey = pair.publicKey
     this.#kid = `fake-${randomBytes(8).toString('hex')}`
@@ -98,7 +102,7 @@ export class FakeBrokerOidcIssuer {
       jwks_uri: `${this.issuer}/.well-known/jwks.json`,
       response_types_supported: ['code'] as const,
       subject_types_supported: ['public'] as const,
-      id_token_signing_alg_values_supported: ['EdDSA'] as const,
+      id_token_signing_alg_values_supported: ['RS256'] as const,
       grant_types_supported: ['authorization_code'] as const,
       code_challenge_methods_supported: ['S256'] as const,
     })
@@ -107,7 +111,7 @@ export class FakeBrokerOidcIssuer {
   jwks(): Readonly<{ keys: readonly Record<string, unknown>[] }> {
     const publicJwk = this.#publicKey.export({ format: 'jwk' }) as Record<string, unknown>
     return Object.freeze({
-      keys: Object.freeze([{ ...publicJwk, kid: this.#kid, use: 'sig', alg: 'EdDSA' }]),
+      keys: Object.freeze([{ ...publicJwk, kid: this.#kid, use: 'sig', alg: 'RS256' }]),
     })
   }
 
@@ -164,12 +168,12 @@ export class FakeBrokerOidcIssuer {
       aud: stored.clientId,
       sub: stored.subject,
       iat: input.now,
-      exp: input.now + 300,
+      exp: input.now + this.idTokenTtlSeconds,
       auth_time: stored.authenticationTime,
     })
     return Object.freeze({
       tokenType: 'Bearer',
-      expiresIn: 300,
+      expiresIn: this.idTokenTtlSeconds,
       idToken: this.#signIdToken(claims),
     })
   }
@@ -181,10 +185,10 @@ export class FakeBrokerOidcIssuer {
   }
 
   #signIdToken(claims: BrokerIdTokenClaims): string {
-    const header = encodeJson({ alg: 'EdDSA', typ: 'JWT', kid: this.#kid })
+    const header = encodeJson({ alg: 'RS256', typ: 'JWT', kid: this.#kid })
     const payload = encodeJson(claims)
     const body = `${header}.${payload}`
-    const signature = sign(null, Buffer.from(body, 'ascii'), this.#privateKey).toString('base64url')
+    const signature = sign('RSA-SHA256', Buffer.from(body, 'ascii'), this.#privateKey).toString('base64url')
     return `${body}.${signature}`
   }
 }

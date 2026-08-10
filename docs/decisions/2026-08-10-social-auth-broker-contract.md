@@ -42,15 +42,16 @@ Before first service-account activation, the user must verify a recovery email u
 
 The canonical recovery-email form is frozen as follows:
 
-1. Split at the email address boundary into local part and domain.
-2. Preserve the user-verified local part exactly.
-3. Do not lowercase or case-fold the local part.
-4. Do not apply Unicode normalization to the local part.
-5. Do not remove `+tag` content.
-6. Do not remove dots.
-7. Do not apply provider-specific alias rules.
-8. Convert only the domain to IDNA ASCII and lowercase that ASCII domain.
-9. Calculate `recovery_email_hmac` uniqueness from exactly this canonical form.
+1. Remove only leading and trailing ASCII whitespace from the entire input before validation.
+2. Split the trimmed input at the email address boundary into local part and domain.
+3. Preserve the user-verified local part exactly from that point onward.
+4. Do not lowercase or case-fold the local part.
+5. Do not apply Unicode normalization to the local part.
+6. Do not remove `+tag` content.
+7. Do not remove dots.
+8. Do not apply provider-specific alias rules.
+9. Convert only the domain to IDNA ASCII and lowercase that ASCII domain.
+10. Calculate `recovery_email_hmac` uniqueness from exactly this canonical form.
 
 No recovery-email OTP sender, persistence, HMAC key, route, or UI is implemented in PHASE 10O-E.
 
@@ -80,7 +81,9 @@ Each upstream authorization leg has independent state, PKCE, and, for fake Kakao
 
 The fake issuer models discovery metadata, authorization and token endpoints, public JWKS, authorization codes, and minimal ID-token claims. Broker ID tokens contain only `iss`, `aud`, `sub`, `iat`, `exp`, and `auth_time`.
 
-They must not contain email, `email_verified`, name, nickname, picture, phone, upstream tokens, or recovery email. PHASE 10O-E uses only an in-process ephemeral Ed25519 signing key. No private key file is stored or committed, and no internet-accessible issuer or route is created.
+They must not contain email, `email_verified`, name, nickname, picture, phone, upstream tokens, or recovery email. PHASE 10O-E uses only an ephemeral in-memory RSA test key and signs with RS256. No private key file is stored or committed, and no internet-accessible issuer or route is created.
+
+The frozen Production direction remains RS256 with a versioned `kid` and KMS/HSM custody. PHASE 10O-E does not implement or use Production key custody, key rotation, or a Production signing key.
 
 ## 8. Safe logging
 
