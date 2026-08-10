@@ -10,6 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:e2e": "powershell -ExecutionPolicy Bypass -File scripts/phase10f/run-playwright.ps1",
+    "test:phase10o-f:db": "powershell -ExecutionPolicy Bypass -File scripts/phase10o-f/run-isolated-db.ps1",
     "test:phase10f:db": "powershell -ExecutionPolicy Bypass -File scripts/phase10f/run-isolated-db.ps1",
     "test:phase10g:db": "powershell -ExecutionPolicy Bypass -File scripts/phase10g/run-isolated-db.ps1",
     "test:phase10g:e2e": "powershell -ExecutionPolicy Bypass -File scripts/phase10g/run-playwright.ps1",

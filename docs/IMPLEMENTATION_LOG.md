@@ -1,5 +1,11 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-10 — PHASE 10O-F local/Draft implementation
+
+- Added the unapplied `20260810160000_social_account_recovery_boundary.sql` migration. It places social account, registry, recovery challenge, and cleanup queue tables in a non-public `private` schema with RLS, FORCE RLS, direct grant removal, immutable primary identity triggers, and service-only `SECURITY DEFINER` transitions.
+- Added a server-only-by-placement recovery domain layer. It preserves the frozen recovery local-part contract, uses IDNA/lowercase only for the domain, and accepts only synthetic test keys; it does not read environment secrets or send email.
+- Disposable PostgreSQL verification returned `PHASE10O_F_LIFECYCLE_OK`, `PHASE10O_F_PERMISSIONS_OK`, `PHASE10O_F_CONCURRENCY_OK`, and `PHASE10O_F_ISOLATED_DB_OK`. The container was removed. Production migration, DB mutation, environment/Auth/provider changes, real email/OTP, and login UX changes remain zero.
+
 ## 2026-08-04 — PHASE 10N-E GoTrueClient lifecycle and mobile Preview (LOCAL / DRAFT)
 
 - Reconfirmed the clean synchronized baseline `main == origin/main == 48f693bc0625c4dabfcb9c974c364292877349b6`, then created `codex/phase-10n-e-gotrue-mobile` without changing dependencies, lockfiles, environment files, migrations, Production data, or launch state.
