@@ -1,5 +1,23 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-10 PHASE 10O-F final contract closure (local/Draft)
+
+- Replaced generic challenge-record AAD with durable account-bound recovery ciphertext AAD: domain + `private_accounts.id` + fixed column purpose + encryption key version. Challenge purge cannot affect future account decryption.
+- Enforced UTF-8 byte limits for local part (64) and final IDNA-canonical email (254), added fail-fast pre-DDL migration preflight, made terminal secret emptiness a direct DB CHECK, and made cleanup enqueue return the existing account job for queued, failed-safe, or completed states.
+- Added disposable negative preflight validation for an existing private schema, colliding public RPC, and missing launch singleton; no Production migration or mutation was performed.
+
+## 2026-08-10 PHASE 10O-F security-review hardening (local/Draft)
+
+- Modified only the still-unapplied `20260810160000_social_account_recovery_boundary.sql`: cleanup jobs retain an opaque Auth UUID without an Auth FK, survive later private-account deletion, and direct private schema/table access is denied to service role as well as public roles. Only approved SECURITY DEFINER mutation RPCs remain executable by service role.
+- Restored the frozen 8-digit numeric OTP contract; activation is the only implemented recovery mutation purpose; new activation challenges revoke and clear their predecessors; every terminal challenge clears one-time HMAC/ciphertext/nonce/key-version/OTP-MAC material.
+- Tightened exact `slb:v1:kNN:provider:43-char-base64url` checks, key-version/provider agreement, complete active-row checks, ciphertext minimum length, unquoted local-part validation, and length-framed AES-GCM AAD. Documented the maintenance-closed single-current-version HMAC rotation procedure.
+
+## 2026-08-10 — PHASE 10O-F local/Draft implementation
+
+- Added the unapplied `20260810160000_social_account_recovery_boundary.sql` migration. It places social account, registry, recovery challenge, and cleanup queue tables in a non-public `private` schema with RLS, FORCE RLS, direct grant removal, immutable primary identity triggers, and service-only `SECURITY DEFINER` transitions.
+- Added a server-only-by-placement recovery domain layer. It preserves the frozen recovery local-part contract, uses IDNA/lowercase only for the domain, and accepts only synthetic test keys; it does not read environment secrets or send email.
+- Disposable PostgreSQL verification returned `PHASE10O_F_LIFECYCLE_OK`, `PHASE10O_F_PERMISSIONS_OK`, `PHASE10O_F_CONCURRENCY_OK`, and `PHASE10O_F_ISOLATED_DB_OK`. The container was removed. Production migration, DB mutation, environment/Auth/provider changes, real email/OTP, and login UX changes remain zero.
+
 ## 2026-08-04 — PHASE 10N-E GoTrueClient lifecycle and mobile Preview (LOCAL / DRAFT)
 
 - Reconfirmed the clean synchronized baseline `main == origin/main == 48f693bc0625c4dabfcb9c974c364292877349b6`, then created `codex/phase-10n-e-gotrue-mobile` without changing dependencies, lockfiles, environment files, migrations, Production data, or launch state.
