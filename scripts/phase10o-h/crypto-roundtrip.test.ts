@@ -1,10 +1,12 @@
 import { execFileSync } from 'node:child_process'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   decryptRecoveryEmailForAccount,
   verifyRecoveryOtpMac,
   type VersionedKey,
 } from '../../lib/auth/social-account/recovery'
+
+vi.mock('server-only', () => ({}))
 import { prepareAttemptRecoveryChallenge } from '../../lib/auth/social-account/recovery-preparation'
 
 const container = process.env.PHASE10O_H_DB_CONTAINER

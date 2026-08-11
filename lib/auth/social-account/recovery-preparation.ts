@@ -1,3 +1,4 @@
+import 'server-only'
 import { randomInt, randomUUID } from 'node:crypto'
 import {
   RECOVERY_OTP_DIGITS,
@@ -7,9 +8,6 @@ import {
   recoveryOtpMac,
   type VersionedKey,
 } from './recovery'
-
-// Server-only by placement: this module is consumed only by future server-side
-// orchestration and deliberately has no client export, route, or env lookup.
 
 export type PreparedAttemptRecoveryChallenge = Readonly<{
   /** Service-only database payload. It contains no raw email or OTP. */

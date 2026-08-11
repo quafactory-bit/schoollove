@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createCipheriv } from 'node:crypto'
 import {
   RECOVERY_VERIFICATION_MAX_FAILURES,
@@ -11,6 +11,8 @@ import {
   recoveryOtpMac,
   verifyRecoveryOtpMac,
 } from './recovery'
+
+vi.mock('server-only', () => ({}))
 import { generateRecoveryOtp, prepareAttemptRecoveryChallenge } from './recovery-preparation'
 
 const hmacKey = { version: 7, material: Buffer.alloc(32, 0x11) }
