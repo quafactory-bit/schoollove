@@ -11,6 +11,8 @@ function readyAttempt(): LoginAttempt {
   attempt.verifyUpstream('google', NOW)
   attempt.requireRecovery(NOW)
   attempt.verifyRecovery(NOW)
+  attempt.markAccountDecided(NOW)
+  attempt.markAuthPrincipalBound(NOW)
   attempt.markBrokerCodeReady(NOW)
   return attempt
 }
@@ -21,6 +23,23 @@ describe('login attempt state machine', () => {
     expect(attempt.state).toBe('broker_code_ready')
     expect(attempt.consume(NOW).state).toBe('consumed')
     expect(() => attempt.startUpstream(NOW)).toThrowError(new SocialBrokerError('TERMINAL_ATTEMPT_REUSE'))
+  })
+
+  it('keeps existing-primary and cross-provider match paths separate from account decision', () => {
+    const primary = new LoginAttempt({ provider: 'kakao', createdAt: NOW, expiresAt: NOW + 300 })
+    primary.startUpstream(NOW)
+    primary.verifyUpstream('kakao', NOW)
+    primary.markExistingPrimary(NOW)
+    primary.markBrokerCodeReady(NOW)
+    expect(primary.consume(NOW).state).toBe('consumed')
+
+    const crossProvider = new LoginAttempt({ provider: 'google', createdAt: NOW, expiresAt: NOW + 300 })
+    crossProvider.startUpstream(NOW)
+    crossProvider.verifyUpstream('google', NOW)
+    crossProvider.requireRecovery(NOW)
+    crossProvider.verifyRecovery(NOW)
+    crossProvider.markExistingAccountMatch(NOW)
+    expect(() => crossProvider.markBrokerCodeReady(NOW)).toThrowError(new SocialBrokerError('INVALID_ATTEMPT_TRANSITION'))
   })
 
   it('rejects skipped transitions and makes terminal failures non-reusable', () => {

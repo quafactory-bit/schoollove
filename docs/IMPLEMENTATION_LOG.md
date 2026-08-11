@@ -2009,3 +2009,8 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Added threat-model tests for CSRF/state substitution, mix-up/provider substitution, PKCE downgrade and mismatch, nonce mismatch, callback and authorization-code replay, attempt/code expiry, client and redirect binding, namespace/key-version separation, terminal reuse, concurrent consume, malformed upstream responses, and sensitive-log leakage.
 - Frozen the no-email-linking policy, Auth-email-NULL direction, immutable primary provider, separate recovery-email OTP boundary, and outer-ASCII-whitespace-trimmed/exact-local-part-preserving/domain-only-IDNA canonicalization in `docs/decisions/2026-08-10-social-auth-broker-contract.md`.
 - Kept `/login`, existing email OTP, middleware, account/onboarding/profile/membership, launch state, Production, migrations, environment, provider dashboards, real OAuth, real email, Auth users, and PASS unchanged.
+## 2026-08-10 — PHASE 10O-G attempt-first orchestration (LOCAL / DRAFT)
+
+- Added forward migration `20260810182000_social_login_attempt_decision_boundary.sql` and server-only attempt-decision contracts. The applied PHASE 10O-F migration is unchanged.
+- New/cross-provider flows are recovery-first; existing-primary login stays recovery-free; recovery match returns only the primary provider and does not link providers.
+- Production, Auth users/configuration, provider calls, email/OTP, login UI, middleware, launch state, and environment remain unchanged.

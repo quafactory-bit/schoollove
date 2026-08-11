@@ -8,8 +8,7 @@ try {
   docker version --format '{{.Server.Version}}'|Out-Null;if($LASTEXITCODE-ne 0){throw 'Docker engine is unavailable.'}
   $old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';docker rm -f $containerName 2>$null|Out-Null;$ErrorActionPreference=$old
   docker run -d --name $containerName -e POSTGRES_PASSWORD=local_phase10of_only $image|Out-Null;if($LASTEXITCODE-ne 0){throw 'Isolated PostgreSQL container could not start.'};$created=$true
-  $ready=$false;for($attempt=0;$attempt-lt 60;$attempt++){docker exec $containerName pg_isready -U postgres|Out-Null;if($LASTEXITCODE-eq 0){$ready=$true;break};Start-Sleep -Seconds 1};if(-not $ready){throw 'Isolated PostgreSQL did not become ready.'}
-  Start-Sleep -Seconds 3
+  $ready=$false;for($attempt=0;$attempt-lt 90;$attempt++){$health=(docker inspect --format '{{.State.Health.Status}}' $containerName 2>$null).Trim();if($health-eq'healthy'){$ready=$true;break};Start-Sleep -Seconds 1};if(-not $ready){throw 'Isolated PostgreSQL healthcheck did not become ready.'}
   docker exec $containerName createdb -U postgres phase10of
   Invoke-Sql @"
 CREATE SCHEMA IF NOT EXISTS extensions;
@@ -34,7 +33,16 @@ CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE SET sear
   foreach($smoke in @('scripts/phase10o-f/lifecycle-smoke.sql','scripts/phase10o-f/permission-smoke.sql')){Invoke-SqlFile (Resolve-Path $smoke).Path}
   & powershell -ExecutionPolicy Bypass -File scripts/phase10o-f/run-concurrency.ps1 -ContainerName $containerName
   if($LASTEXITCODE-ne 0){throw 'Concurrency smoke failed.'}
+  Invoke-SqlFile (Resolve-Path 'supabase/migrations/20260810182000_social_login_attempt_decision_boundary.sql').Path
+  Invoke-SqlFile (Resolve-Path 'scripts/phase10o-f/attempt-first-smoke.sql').Path
+  if($env:PHASE10O_G_ACCEPTANCE -eq '1'){
+    Invoke-Sql 'TRUNCATE private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.users;'
+    foreach($smoke in @('scripts/phase10o-g/lifecycle-smoke.sql','scripts/phase10o-g/permissions-smoke.sql')){Invoke-SqlFile (Resolve-Path $smoke).Path}
+    Invoke-SqlFile (Resolve-Path 'scripts/phase10o-g/concurrency-setup.sql').Path
+    & powershell -ExecutionPolicy Bypass -File scripts/phase10o-g/run-concurrency.ps1 -ContainerName $containerName
+    if($LASTEXITCODE-ne 0){throw 'PHASE 10O-G concurrency acceptance failed.'}
+  }
   $tableCount=docker exec $containerName psql -U postgres -d phase10of -tAc "SELECT count(*) FROM pg_catalog.pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='private' AND c.relkind='r'"
-  if($LASTEXITCODE-ne 0-or$tableCount.Trim()-ne'4'){throw "Private table boundary mismatch: $($tableCount.Trim())"}
-  Write-Output 'PHASE10O_F_ISOLATED_DB_OK private_tables=4 rollback=container_removed'
+  if($LASTEXITCODE-ne 0-or$tableCount.Trim()-ne'5'){throw "Private table boundary mismatch: $($tableCount.Trim())"}
+  if($env:PHASE10O_G_ACCEPTANCE -eq '1'){Write-Output 'PHASE10O_G_ISOLATED_DB_OK private_tables=5 container_removed=true'}else{Write-Output 'PHASE10O_G_ISOLATED_DB_MIGRATION_OK private_tables=5 rollback=container_removed'}
 } finally {if($created){$old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';docker rm -f $containerName 2>$null|Out-Null;$ErrorActionPreference=$old}}
