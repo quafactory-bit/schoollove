@@ -1,5 +1,13 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-11 PHASE 10O-I recovery delivery state boundary (local/Draft)
+
+- Added `20260811110000_recovery_delivery_state_boundary.sql` as a new forward-only migration after the Production-applied 10O-H migration; prior migrations remain unchanged.
+- Added `private.recovery_delivery_attempts` with RLS/FORCE RLS and direct CRUD grants removed for anon, authenticated, and service role. The ledger retains only verification/attempt IDs, HMAC/version budget material, state, and timestamps.
+- The service-only reserve RPC locks the attempt and the address HMAC lock domain, verifies the 60-second, three-per-attempt, and five-per-24-hour budgets before superseding any pending challenge, then inserts the exact preallocated verification and a `reserved` ledger record in one transaction.
+- `sent` is an idempotent service transition; `failed` terminally revokes the challenge so existing terminal-secret triggers clear its one-time crypto. The consumed-decision RPC now rejects every delivery state except an exact `sent` row for the supplied challenge.
+- Added server-only preparation-to-reserve orchestration with only a deterministic in-memory fake transport. The database adapter never receives raw email or OTP; no real sender, provider request, runtime secret, public route, login UI, Auth user, Production migration, or Production data change is included.
+
 ## 2026-08-11 PHASE 10O-H recovery crypto preallocated-ID binding (local/Draft)
 
 - Added `20260811090000_social_recovery_crypto_id_binding.sql` as a forward-only, unapplied migration after the Production-applied 10O-G boundary. It does not edit either historical 10O-F/10O-G migration.
