@@ -61,8 +61,19 @@ CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE SET sear
     & powershell -ExecutionPolicy Bypass -File scripts/phase10o-i/run-concurrency.ps1 -ContainerName $containerName
     if($LASTEXITCODE-ne 0){throw 'PHASE 10O-I concurrency acceptance failed.'}
   }
+  if($env:PHASE10O_J_ACCEPTANCE -eq '1'){
+    Invoke-Sql 'TRUNCATE private.recovery_delivery_attempts,private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.users;'
+    Invoke-SqlFile (Resolve-Path 'supabase/migrations/20260811220000_broker_authorization_code_boundary.sql').Path
+    foreach($smoke in @('scripts/phase10o-j/lifecycle-smoke.sql','scripts/phase10o-j/permissions-smoke.sql')){Invoke-SqlFile (Resolve-Path $smoke).Path}
+    Invoke-SqlFile (Resolve-Path 'scripts/phase10o-j/concurrency-setup.sql').Path
+    & powershell -ExecutionPolicy Bypass -File scripts/phase10o-j/run-concurrency.ps1 -ContainerName $containerName
+    if($LASTEXITCODE-ne 0){throw 'PHASE 10O-J concurrency acceptance failed.'}
+    $env:PHASE10O_J_DB_CONTAINER=$containerName
+    & npx.cmd vitest run --reporter verbose scripts/phase10o-j/crypto-roundtrip.test.ts
+    if($LASTEXITCODE-ne 0){throw 'PHASE 10O-J Node/DB nonce round-trip acceptance failed.'}
+  }
   $tableCount=docker exec $containerName psql -U postgres -d phase10of -tAc "SELECT count(*) FROM pg_catalog.pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='private' AND c.relkind='r'"
-  $expectedPrivateTableCount=if($env:PHASE10O_I_ACCEPTANCE -eq '1'){'6'}else{'5'}
+  $expectedPrivateTableCount=if($env:PHASE10O_J_ACCEPTANCE -eq '1'){'7'}elseif($env:PHASE10O_I_ACCEPTANCE -eq '1'){'6'}else{'5'}
   if($LASTEXITCODE-ne 0-or$tableCount.Trim()-ne$expectedPrivateTableCount){throw "Private table boundary mismatch: $($tableCount.Trim())"}
-  if($env:PHASE10O_I_ACCEPTANCE -eq '1'){if($tableCount.Trim()-ne'6'){throw "Private table boundary mismatch: $($tableCount.Trim())"};Write-Output 'PHASE10O_I_ISOLATED_DB_OK private_tables=6 container_removed=true'}elseif($env:PHASE10O_H_ACCEPTANCE -eq '1'){Write-Output 'PHASE10O_H_ISOLATED_DB_OK private_tables=5 container_removed=true'}elseif($env:PHASE10O_G_ACCEPTANCE -eq '1'){Write-Output 'PHASE10O_G_ISOLATED_DB_OK private_tables=5 container_removed=true'}else{Write-Output 'PHASE10O_G_ISOLATED_DB_MIGRATION_OK private_tables=5 rollback=container_removed'}
+  if($env:PHASE10O_J_ACCEPTANCE -eq '1'){Write-Output 'PHASE10O_J_ISOLATED_DB_OK private_tables=7 container_removed=true'}elseif($env:PHASE10O_I_ACCEPTANCE -eq '1'){if($tableCount.Trim()-ne'6'){throw "Private table boundary mismatch: $($tableCount.Trim())"};Write-Output 'PHASE10O_I_ISOLATED_DB_OK private_tables=6 container_removed=true'}elseif($env:PHASE10O_H_ACCEPTANCE -eq '1'){Write-Output 'PHASE10O_H_ISOLATED_DB_OK private_tables=5 container_removed=true'}elseif($env:PHASE10O_G_ACCEPTANCE -eq '1'){Write-Output 'PHASE10O_G_ISOLATED_DB_OK private_tables=5 container_removed=true'}else{Write-Output 'PHASE10O_G_ISOLATED_DB_MIGRATION_OK private_tables=5 rollback=container_removed'}
 } finally {if($created){$old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';docker rm -f $containerName 2>$null|Out-Null;$ErrorActionPreference=$old}}

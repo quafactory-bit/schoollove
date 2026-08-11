@@ -2031,3 +2031,9 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Added forward migration `20260810182000_social_login_attempt_decision_boundary.sql` and server-only attempt-decision contracts. The applied PHASE 10O-F migration is unchanged.
 - New/cross-provider flows are recovery-first; existing-primary login stays recovery-free; recovery match returns only the primary provider and does not link providers.
 - Production, Auth users/configuration, provider calls, email/OTP, login UI, middleware, launch state, and environment remain unchanged.
+## 2026-08-11 — PHASE 10O-J durable broker authorization-code boundary (LOCAL / DRAFT / FEATURE OFF)
+
+- Added `20260811220000_broker_authorization_code_boundary.sql` without changing any Production-applied migration. The new private code ledger uses RLS/FORCE RLS and no direct table grants; only service-role issue/consume RPCs are executable.
+- Prepared raw 256-bit opaque codes in a `server-only` helper and persist only a domain-separated SHA-256 digest. Codes bind exact S256 PKCE challenge, client ID, redirect URI, durable attempt, and a maximum 60-second TTL; failed exchange transitions persist terminal states and replay is safe.
+- Added separate injected-key AES-256-GCM protection for a downstream authorization nonce, with AAD bound to code UUID/client/redirect/key version. The helper returns raw code separately from DB payload; raw nonce/code/verifier are not DB columns or logs.
+- Fresh disposable PostgreSQL replays the complete 10O-F/G/H/I/J migration chain and validates lifecycle, permission, independent-process consume race, and Node→DB→Node nonce crypto. No Production migration/write, environment change, provider/email call, external Auth user, route, UI, or launch-state mutation occurred.
