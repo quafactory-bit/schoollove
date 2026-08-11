@@ -43,7 +43,10 @@ export async function prepareAndDeliverAttemptRecovery(input: Readonly<{
     await input.database.markSent(reserved.deliveryId)
     return Object.freeze({ state: 'sent', verificationId: reserved.verificationId, deliveryId: reserved.deliveryId })
   } catch {
-    await input.database.fail(reserved.deliveryId)
+    // The transport is never retried here. A stale confirmation may race with
+    // terminalization, so cleanup failure is deliberately coarse and cannot
+    // trigger another external send or resurrect a challenge.
+    try { await input.database.fail(reserved.deliveryId) } catch {}
     return Object.freeze({ state: 'failed', verificationId: reserved.verificationId, deliveryId: reserved.deliveryId })
   }
 }

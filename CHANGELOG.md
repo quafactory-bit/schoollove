@@ -5,6 +5,7 @@
 - Added a forward-only migration with an RLS/FORCE-RLS private recovery-delivery ledger and service-only atomic reserve, sent, and failure transitions.
 - Frozen DB-clock policy: 60-second per-attempt cooldown, three reservation slots per attempt, and five reservations per recovery HMAC/key-version in a rolling 24 hours; failed sends retain their consumed slot.
 - Retired ordinary access to standalone login-decision challenge creation. Reservation limits are evaluated before a pending challenge is superseded, and OTP consume now requires the exact ledger record to be `sent`.
+- Security hardening rejects NULL crypto/key inputs and NULL OTP MACs before decision, terminalizes superseded unsent reservations, and rejects stale sent confirmations without a resend.
 - Added server-only fake in-memory transport orchestration, fresh disposable PostgreSQL lifecycle/permission/concurrency acceptance, and no email provider, network sender, public route, login UI, Auth user, Production migration, or environment change.
 
 ## 2026-08-11 — PHASE 10O-H recovery crypto preallocated-ID binding (local / Draft / feature-off)

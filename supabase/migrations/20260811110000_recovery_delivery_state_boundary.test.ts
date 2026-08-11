@@ -33,9 +33,20 @@ describe('PHASE 10O-I recovery delivery boundary contract', () => {
     ]) { expect(sql).toContain(`REVOKE ALL ON FUNCTION ${signature}`); expect(sql).toContain(`GRANT EXECUTE ON FUNCTION ${signature} TO service_role`) }
   })
   it('requires an exact sent delivery row before OTP consumption and clears failed crypto', () => {
+    expect(sql).toContain('submitted_otp_mac IS NULL OR octet_length(submitted_otp_mac)<>32')
+    expect(sql).toContain('verification.otp_mac IS NULL')
     expect(sql).toContain("delivery.state<>'sent'")
     expect(sql).toContain("UPDATE private.recovery_delivery_attempts SET state='failed'")
     expect(sql).toContain("UPDATE private.recovery_email_verifications SET status='revoked'")
     expect(sql).toContain('RECOVERY_DELIVERY_CONFIRMATION_REJECTED')
+  })
+  it('rejects every NULL required reserve input and terminalizes only superseded reserved deliveries', () => {
+    expect(sql).toContain('requested_hmac IS NULL OR requested_hmac_key_version IS NULL')
+    expect(sql).toContain('requested_ciphertext IS NULL OR requested_nonce IS NULL OR requested_encryption_key_version IS NULL')
+    expect(sql).toContain('requested_otp_mac IS NULL OR requested_otp_key_version IS NULL')
+    const terminalize = sql.indexOf("UPDATE private.recovery_delivery_attempts d SET state='failed',failed_at=issued_at")
+    const supersede = sql.indexOf("UPDATE private.recovery_email_verifications SET status='revoked'")
+    expect(terminalize).toBeGreaterThan(-1); expect(terminalize).toBeLessThan(supersede)
+    expect(sql.slice(terminalize, supersede)).toContain("d.state='reserved'")
   })
 })

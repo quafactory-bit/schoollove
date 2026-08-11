@@ -90,3 +90,64 @@ BEGIN
   IF NOT rejected OR NOT EXISTS(SELECT 1 FROM private.recovery_delivery_attempts WHERE id=delivery AND state='failed') THEN RAISE EXCEPTION 'PHASE10O_I_SENT_AFTER_TERMINAL_ACCEPTED'; END IF;
 END $$;
 SELECT 'PHASE10O_I_SENT_AFTER_TERMINAL_REJECTED_OK' AS status;
+
+DO $$
+DECLARE a uuid; v uuid:='ae000000-0000-4000-8000-000000000001'; r uuid:='af000000-0000-4000-8000-000000000001'; delivery uuid; rejected boolean:=false; accounts_before integer; registry_before integer;
+BEGIN
+  a:=pg_temp.phase10oi_attempt('att_10oi_null_otp_0001',repeat('a7',32));
+  SELECT delivery_id INTO delivery FROM public.create_and_reserve_login_attempt_recovery_delivery(a,v,r,decode(repeat('b7',32),'hex'),1,decode(repeat('c1',17),'hex'),decode(repeat('d1',12),'hex'),1,decode(repeat('e1',32),'hex'),1);
+  PERFORM public.mark_login_attempt_recovery_delivery_sent(delivery);
+  SELECT count(*) INTO accounts_before FROM private.private_accounts;
+  SELECT count(*) INTO registry_before FROM private.social_identity_registry;
+  BEGIN PERFORM public.consume_recovery_and_decide_social_account(a,v,NULL::bytea); EXCEPTION WHEN OTHERS THEN rejected:=SQLERRM LIKE '%SOCIAL_ATTEMPT_OTP_INVALID%'; END;
+  IF NOT rejected OR (SELECT count(*) FROM private.private_accounts)<>accounts_before OR (SELECT count(*) FROM private.social_identity_registry)<>registry_before
+    OR EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=a AND account_id IS NOT NULL)
+    OR NOT EXISTS(SELECT 1 FROM private.recovery_email_verifications WHERE id=v AND status='pending' AND otp_mac IS NOT NULL) THEN RAISE EXCEPTION 'PHASE10O_I_NULL_OTP_FAIL_OPEN'; END IF;
+END $$;
+SELECT 'PHASE10O_I_NULL_OTP_FAIL_CLOSED_OK' AS status;
+
+DO $$
+DECLARE a uuid; old_v uuid:='b0000000-0000-4000-8000-000000000001'; old_r uuid:='b1000000-0000-4000-8000-000000000001'; new_v uuid:='b0000000-0000-4000-8000-000000000002'; new_r uuid:='b1000000-0000-4000-8000-000000000002'; old_delivery uuid; new_delivery uuid; i integer; rejected boolean;
+BEGIN
+  a:=pg_temp.phase10oi_attempt('att_10oi_null_matrix_0001',repeat('a8',32));
+  SELECT delivery_id INTO old_delivery FROM public.create_and_reserve_login_attempt_recovery_delivery(a,old_v,old_r,decode(repeat('b8',32),'hex'),1,decode(repeat('c2',17),'hex'),decode(repeat('d2',12),'hex'),1,decode(repeat('e2',32),'hex'),1);
+  FOR i IN 1..7 LOOP
+    rejected:=false;
+    BEGIN
+      PERFORM outcome FROM public.create_and_reserve_login_attempt_recovery_delivery(
+        a,new_v,new_r,
+        CASE WHEN i=1 THEN NULL::bytea ELSE decode(repeat('b8',32),'hex') END,
+        CASE WHEN i=2 THEN NULL::integer ELSE 1 END,
+        CASE WHEN i=3 THEN NULL::bytea ELSE decode(repeat('c3',17),'hex') END,
+        CASE WHEN i=4 THEN NULL::bytea ELSE decode(repeat('d3',12),'hex') END,
+        CASE WHEN i=5 THEN NULL::integer ELSE 1 END,
+        CASE WHEN i=6 THEN NULL::bytea ELSE decode(repeat('e3',32),'hex') END,
+        CASE WHEN i=7 THEN NULL::integer ELSE 1 END
+      );
+    EXCEPTION WHEN OTHERS THEN rejected:=SQLERRM LIKE '%SOCIAL_ATTEMPT_RECOVERY_CREATE_REJECTED%'; END;
+    IF NOT rejected THEN RAISE EXCEPTION 'PHASE10O_I_NULL_INPUT_NOT_COARSE'; END IF;
+  END LOOP;
+  IF (SELECT count(*) FROM private.recovery_email_verifications WHERE login_attempt_id=a)<>1
+    OR (SELECT count(*) FROM private.recovery_delivery_attempts WHERE login_attempt_id=a)<>1
+    OR NOT EXISTS(SELECT 1 FROM private.recovery_email_verifications WHERE id=old_v AND status='pending' AND otp_mac IS NOT NULL)
+    OR NOT EXISTS(SELECT 1 FROM private.recovery_delivery_attempts WHERE id=old_delivery AND state='reserved') THEN RAISE EXCEPTION 'PHASE10O_I_NULL_INPUT_MUTATED_OLD'; END IF;
+END $$;
+SELECT 'PHASE10O_I_NULL_INPUT_MATRIX_OK' AS status;
+
+DO $$
+DECLARE a uuid; old_v uuid:='b2000000-0000-4000-8000-000000000001'; old_r uuid:='b3000000-0000-4000-8000-000000000001'; new_v uuid:='b2000000-0000-4000-8000-000000000002'; new_r uuid:='b3000000-0000-4000-8000-000000000002'; old_delivery uuid; new_delivery uuid; stale_rejected boolean:=false;
+BEGIN
+  a:=pg_temp.phase10oi_attempt('att_10oi_supersede_reserved_0001',repeat('a9',32));
+  SELECT delivery_id INTO old_delivery FROM public.create_and_reserve_login_attempt_recovery_delivery(a,old_v,old_r,decode(repeat('b9',32),'hex'),1,decode(repeat('c4',17),'hex'),decode(repeat('d4',12),'hex'),1,decode(repeat('e4',32),'hex'),1);
+  UPDATE private.recovery_delivery_attempts SET reserved_at=clock_timestamp()-interval '61 seconds' WHERE id=old_delivery;
+  SELECT delivery_id INTO new_delivery FROM public.create_and_reserve_login_attempt_recovery_delivery(a,new_v,new_r,decode(repeat('b9',32),'hex'),1,decode(repeat('c5',17),'hex'),decode(repeat('d5',12),'hex'),1,decode(repeat('e5',32),'hex'),1);
+  BEGIN PERFORM public.mark_login_attempt_recovery_delivery_sent(old_delivery); EXCEPTION WHEN OTHERS THEN stale_rejected:=SQLERRM LIKE '%RECOVERY_DELIVERY_CONFIRMATION_REJECTED%'; END;
+  IF NOT stale_rejected
+    OR NOT EXISTS(SELECT 1 FROM private.recovery_email_verifications WHERE id=old_v AND status='revoked' AND recovery_email_hmac IS NULL AND destination_ciphertext IS NULL AND otp_mac IS NULL AND reserved_account_id IS NULL)
+    OR NOT EXISTS(SELECT 1 FROM private.recovery_delivery_attempts WHERE id=old_delivery AND state='failed' AND failed_at IS NOT NULL)
+    OR NOT EXISTS(SELECT 1 FROM private.recovery_email_verifications WHERE id=new_v AND status='pending')
+    OR NOT EXISTS(SELECT 1 FROM private.recovery_delivery_attempts WHERE id=new_delivery AND state='reserved')
+    OR (SELECT count(*) FROM private.recovery_email_verifications WHERE login_attempt_id=a AND status='pending')<>1 THEN RAISE EXCEPTION 'PHASE10O_I_SUPERSEDED_RESERVED_NOT_TERMINAL'; END IF;
+END $$;
+SELECT 'PHASE10O_I_SUPERSEDED_RESERVED_TERMINALIZED_OK' AS status;
+SELECT 'PHASE10O_I_STALE_SENT_CONFIRMATION_REJECTED_OK' AS status;

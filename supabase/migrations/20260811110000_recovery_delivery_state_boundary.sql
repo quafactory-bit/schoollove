@@ -68,6 +68,9 @@ BEGIN
   PERFORM private.require_social_attempt_service();
   SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=target_attempt_id FOR UPDATE;
   IF requested_verification_id IS NULL OR requested_reserved_account_id IS NULL
+    OR requested_hmac IS NULL OR requested_hmac_key_version IS NULL
+    OR requested_ciphertext IS NULL OR requested_nonce IS NULL OR requested_encryption_key_version IS NULL
+    OR requested_otp_mac IS NULL OR requested_otp_key_version IS NULL
     OR attempt.id IS NULL OR attempt.state NOT IN ('upstream_verified','recovery_required','recovery_pending')
     OR attempt.account_id IS NOT NULL OR attempt.expires_at<=issued_at OR attempt.recovery_failed_attempts>=5
     OR octet_length(requested_hmac)<>32 OR octet_length(requested_ciphertext)<=16 OR octet_length(requested_nonce)<>12 OR octet_length(requested_otp_mac)<>32
@@ -89,6 +92,12 @@ BEGIN
     OR EXISTS (SELECT 1 FROM private.recovery_email_verifications WHERE reserved_account_id=requested_reserved_account_id AND status='pending') THEN
     RAISE EXCEPTION 'SOCIAL_ATTEMPT_RECOVERY_ID_RESERVATION_REJECTED';
   END IF;
+  -- A superseded unsent reservation can never later become sent.  Retain sent
+  -- and already-failed ledger history for the abuse budget and audit boundary.
+  UPDATE private.recovery_delivery_attempts d SET state='failed',failed_at=issued_at
+    FROM private.recovery_email_verifications v
+    WHERE d.verification_id=v.id AND v.login_attempt_id=target_attempt_id
+      AND v.purpose='login_decision' AND v.status='pending' AND d.state='reserved';
   UPDATE private.recovery_email_verifications SET status='revoked',revoked_at=issued_at
     WHERE login_attempt_id=target_attempt_id AND purpose='login_decision' AND status='pending';
   BEGIN
@@ -143,11 +152,11 @@ RETURNS TABLE(outcome text,primary_provider text) LANGUAGE plpgsql SECURITY DEFI
 DECLARE attempt private.oauth_login_attempts%ROWTYPE; verification private.recovery_email_verifications%ROWTYPE; delivery private.recovery_delivery_attempts%ROWTYPE; matched private.private_accounts%ROWTYPE; identity private.social_identity_registry%ROWTYPE; new_account_id uuid;
 BEGIN
   PERFORM private.require_social_attempt_service();
-  IF octet_length(submitted_otp_mac)<>32 THEN RAISE EXCEPTION 'SOCIAL_ATTEMPT_OTP_INVALID'; END IF;
+  IF submitted_otp_mac IS NULL OR octet_length(submitted_otp_mac)<>32 THEN RAISE EXCEPTION 'SOCIAL_ATTEMPT_OTP_INVALID'; END IF;
   SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=target_attempt_id FOR UPDATE;
   SELECT * INTO verification FROM private.recovery_email_verifications WHERE id=target_verification_id FOR UPDATE;
   SELECT * INTO delivery FROM private.recovery_delivery_attempts WHERE verification_id=target_verification_id FOR UPDATE;
-  IF attempt.id IS NULL OR verification.id IS NULL OR delivery.id IS NULL OR verification.login_attempt_id<>attempt.id OR attempt.state NOT IN ('recovery_pending','recovery_required') OR verification.status<>'pending' OR verification.reserved_account_id IS NULL OR delivery.state<>'sent' THEN RAISE EXCEPTION 'SOCIAL_ATTEMPT_DECISION_REJECTED'; END IF;
+  IF attempt.id IS NULL OR verification.id IS NULL OR delivery.id IS NULL OR verification.login_attempt_id<>attempt.id OR attempt.state NOT IN ('recovery_pending','recovery_required') OR verification.status<>'pending' OR verification.reserved_account_id IS NULL OR verification.otp_mac IS NULL OR delivery.state<>'sent' THEN RAISE EXCEPTION 'SOCIAL_ATTEMPT_DECISION_REJECTED'; END IF;
   IF attempt.expires_at<=clock_timestamp() OR verification.expires_at<=clock_timestamp() THEN UPDATE private.recovery_email_verifications SET status='expired' WHERE id=verification.id; UPDATE private.oauth_login_attempts SET state='expired',coarse_terminal_reason='expired',updated_at=clock_timestamp(),version=version+1 WHERE id=attempt.id; RETURN QUERY SELECT 'EXPIRED'::text,NULL::text; RETURN; END IF;
   IF verification.otp_mac<>submitted_otp_mac THEN
     UPDATE private.oauth_login_attempts SET recovery_failed_attempts=recovery_failed_attempts+1,updated_at=clock_timestamp(),version=version+1 WHERE id=attempt.id RETURNING recovery_failed_attempts INTO attempt.recovery_failed_attempts;

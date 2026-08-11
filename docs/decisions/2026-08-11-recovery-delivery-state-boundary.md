@@ -17,6 +17,11 @@ Approved for local/Draft implementation only. This decision does not approve a p
 
 The only service-role transitions are atomic reserve, sent confirmation, and failed-delivery recording. The old standalone login-decision recovery-create RPC has no ordinary orchestration grant. OTP consumption requires the exact delivery row for that challenge to be `sent`; a `reserved` or `failed` row cannot be consumed.
 
+When a successful resend supersedes a pending challenge, an old `reserved`
+delivery is atomically terminalized as `failed` before the challenge is
+revoked. Historical `sent` and already-`failed` rows remain unchanged. A stale
+sent confirmation for the superseded row is rejected and cannot resurrect it.
+
 ## Transport
 
 The implementation is server-only and exposes only an injected, fake in-memory transport for tests. No email HTTP client, provider SDK, runtime secret, or network call is introduced. Raw email and the eight-digit OTP are ephemeral preparation/delivery values and do not enter the database adapter or ledger.

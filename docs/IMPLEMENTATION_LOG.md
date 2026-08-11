@@ -6,6 +6,7 @@
 - Added `private.recovery_delivery_attempts` with RLS/FORCE RLS and direct CRUD grants removed for anon, authenticated, and service role. The ledger retains only verification/attempt IDs, HMAC/version budget material, state, and timestamps.
 - The service-only reserve RPC locks the attempt and the address HMAC lock domain, verifies the 60-second, three-per-attempt, and five-per-24-hour budgets before superseding any pending challenge, then inserts the exact preallocated verification and a `reserved` ledger record in one transaction.
 - `sent` is an idempotent service transition; `failed` terminally revokes the challenge so existing terminal-secret triggers clear its one-time crypto. The consumed-decision RPC now rejects every delivery state except an exact `sent` row for the supplied challenge.
+- Security review hardening makes all required reserve fields and submitted OTP MAC NULL-safe. A successful resend terminalizes an old unsent `reserved` ledger row as `failed` before revocation; stale sent confirmation is rejected with no resurrection or resend.
 - Added server-only preparation-to-reserve orchestration with only a deterministic in-memory fake transport. The database adapter never receives raw email or OTP; no real sender, provider request, runtime secret, public route, login UI, Auth user, Production migration, or Production data change is included.
 
 ## 2026-08-11 PHASE 10O-H recovery crypto preallocated-ID binding (local/Draft)

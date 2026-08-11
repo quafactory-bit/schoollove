@@ -24,6 +24,12 @@ describe('recovery delivery orchestration', () => {
     await expect(prepareAndDeliverAttemptRecovery({ attemptId: 'attempt', recoveryEmail: 'a@example.com', database, transport, ...keys })).resolves.toMatchObject({ state: 'failed' })
     expect(database.fail).toHaveBeenCalledWith('d'); expect(database.markSent).not.toHaveBeenCalled()
   })
+  it('does not resend or resurrect when sent confirmation and stale cleanup both fail', async () => {
+    const database = db(); database.markSent.mockRejectedValueOnce(new Error('STALE_CONFIRMATION')); database.fail.mockRejectedValueOnce(new Error('STALE_TERMINAL'))
+    const transport = new InMemoryRecoveryOtpDeliveryTransport()
+    await expect(prepareAndDeliverAttemptRecovery({ attemptId: 'attempt', recoveryEmail: 'a@example.com', database, transport, ...keys })).resolves.toMatchObject({ state: 'failed' })
+    expect(transport.deliveries).toHaveLength(1); expect(database.markSent).toHaveBeenCalledTimes(1); expect(database.fail).toHaveBeenCalledTimes(1)
+  })
   it('remains server-only and has no provider transport implementation', async () => {
     const source = await import('node:fs/promises').then(({ readFile }) => readFile(new URL('./recovery-delivery.ts', import.meta.url), 'utf8'))
     expect(source.startsWith("import 'server-only'")).toBe(true)
