@@ -28,7 +28,12 @@ export const LOGIN_ATTEMPT_ACTIVE_STATES = [
   'upstream_pending',
   'upstream_verified',
   'recovery_required',
+  'recovery_pending',
   'recovery_verified',
+  'account_decided',
+  'existing_primary',
+  'existing_account_match',
+  'auth_principal_bound',
   'broker_code_ready',
 ] as const
 

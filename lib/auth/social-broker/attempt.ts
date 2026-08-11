@@ -13,9 +13,14 @@ const terminalFailures = new Set<LoginAttemptState>(LOGIN_ATTEMPT_TERMINAL_FAILU
 const allowedTransitions: Readonly<Record<string, readonly LoginAttemptState[]>> = {
   created: ['upstream_pending'],
   upstream_pending: ['upstream_verified'],
-  upstream_verified: ['recovery_required'],
-  recovery_required: ['recovery_verified'],
-  recovery_verified: ['broker_code_ready'],
+  upstream_verified: ['recovery_required', 'existing_primary'],
+  recovery_required: ['recovery_pending'],
+  recovery_pending: ['recovery_verified'],
+  recovery_verified: ['account_decided', 'existing_account_match'],
+  account_decided: ['auth_principal_bound'],
+  auth_principal_bound: ['broker_code_ready'],
+  existing_primary: ['broker_code_ready'],
+  existing_account_match: [],
   broker_code_ready: ['consumed'],
 }
 export type LoginAttemptSnapshot = Readonly<{
@@ -83,8 +88,17 @@ export class LoginAttempt {
   }
 
   verifyRecovery(now: number): void {
+    this.#transition('recovery_pending', now)
     this.#transition('recovery_verified', now)
   }
+
+  markAccountDecided(now: number): void { this.#transition('account_decided', now) }
+
+  markAuthPrincipalBound(now: number): void { this.#transition('auth_principal_bound', now) }
+
+  markExistingPrimary(now: number): void { this.#transition('existing_primary', now) }
+
+  markExistingAccountMatch(now: number): void { this.#transition('existing_account_match', now) }
 
   markBrokerCodeReady(now: number): void {
     this.#transition('broker_code_ready', now)

@@ -144,3 +144,8 @@
 - 결제·webhook replay·부분 환불·증빙 요청 schema와 service-only 원자 RPC를 추가했다.
 - owner 결제 API/화면과 admin 결제·webhook·환불 운영 화면을 추가했다.
 - Production credential, Production webhook, 실제 결제, migration 적용은 수행하지 않았다.
+## 2026-08-10 — PHASE 10O-G (LOCAL / DRAFT / FEATURE OFF)
+
+- Added the forward-only attempt-first social login decision boundary, including durable safe-id-only attempts, attempt-bound recovery challenges, recovery-first account decision, and hardened Auth-principal bind ordering.
+- Recovery-email matches return the retained primary provider and never attach another provider or create a second identity/account.
+- No public OAuth/OIDC/recovery route, login UI, provider call, real email/OTP, Auth user, Production migration, launch, or environment change is included.
