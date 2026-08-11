@@ -79,3 +79,14 @@ BEGIN
   IF NOT EXISTS(SELECT 1 FROM private.recovery_delivery_attempts WHERE id=delivery AND state='failed') OR NOT EXISTS(SELECT 1 FROM private.recovery_email_verifications WHERE id=v AND status='revoked' AND recovery_email_hmac IS NULL AND destination_ciphertext IS NULL AND otp_mac IS NULL AND reserved_account_id IS NULL) THEN RAISE EXCEPTION 'PHASE10O_I_FAIL_TERMINAL_CLEAR'; END IF;
 END $$;
 SELECT 'PHASE10O_I_FAILURE_TERMINAL_CLEAR_OK' AS status;
+
+DO $$
+DECLARE a uuid; v uuid:='ac000000-0000-4000-8000-000000000001'; r uuid:='ad000000-0000-4000-8000-000000000001'; delivery uuid; rejected boolean:=false;
+BEGIN
+  a:=pg_temp.phase10oi_attempt('att_10oi_sent_after_terminal_0001',repeat('a6',32));
+  SELECT delivery_id INTO delivery FROM public.create_and_reserve_login_attempt_recovery_delivery(a,v,r,decode(repeat('b6',32),'hex'),1,decode(repeat('c9',17),'hex'),decode(repeat('d9',12),'hex'),1,decode(repeat('e9',32),'hex'),1);
+  PERFORM public.fail_login_attempt_recovery_delivery(delivery);
+  BEGIN PERFORM public.mark_login_attempt_recovery_delivery_sent(delivery); EXCEPTION WHEN OTHERS THEN rejected:=SQLERRM LIKE '%RECOVERY_DELIVERY_CONFIRMATION_REJECTED%'; END;
+  IF NOT rejected OR NOT EXISTS(SELECT 1 FROM private.recovery_delivery_attempts WHERE id=delivery AND state='failed') THEN RAISE EXCEPTION 'PHASE10O_I_SENT_AFTER_TERMINAL_ACCEPTED'; END IF;
+END $$;
+SELECT 'PHASE10O_I_SENT_AFTER_TERMINAL_REJECTED_OK' AS status;
