@@ -11,6 +11,7 @@ import {
   recoveryOtpMac,
   verifyRecoveryOtpMac,
 } from './recovery'
+import { generateRecoveryOtp, prepareAttemptRecoveryChallenge } from './recovery-preparation'
 
 const hmacKey = { version: 7, material: Buffer.alloc(32, 0x11) }
 const encryptionKey = { version: 9, material: Buffer.alloc(32, 0x22) }
@@ -80,5 +81,48 @@ describe('recovery-email frozen canonicalization and crypto contract', () => {
     expect(RECOVERY_OTP_DIGITS).toBe(8)
     expect(RECOVERY_VERIFICATION_TTL_SECONDS).toBe(600)
     expect(RECOVERY_VERIFICATION_MAX_FAILURES).toBe(5)
+  })
+
+  it('preallocates the exact challenge and account IDs before preparing DB-only material', () => {
+    const prepared = prepareAttemptRecoveryChallenge({
+      recoveryEmail: '  User.Name+tag@BÜCHER.example ',
+      recoveryHmacKey: hmacKey,
+      recoveryEncryptionKey: encryptionKey,
+      otpMacKey: otpKey,
+    })
+    expect(prepared.delivery.canonicalEmail).toBe('User.Name+tag@xn--bcher-kva.example')
+    expect(prepared.delivery.otp).toMatch(/^\d{8}$/)
+    expect(prepared.database.challengeId).toMatch(/^[0-9a-f-]{36}$/i)
+    expect(prepared.database.reservedAccountId).toMatch(/^[0-9a-f-]{36}$/i)
+    expect(prepared.database.challengeId).not.toBe(prepared.database.reservedAccountId)
+    expect(verifyRecoveryOtpMac({
+      challengeId: prepared.database.challengeId,
+      otp: prepared.delivery.otp,
+      expectedMac: prepared.database.otpMac,
+      key: otpKey,
+    })).toBe(true)
+    expect(decryptRecoveryEmailForAccount({
+      encrypted: {
+        ciphertext: prepared.database.destinationCiphertext,
+        nonce: prepared.database.destinationNonce,
+        keyVersion: prepared.database.encryptionKeyVersion,
+      },
+      key: encryptionKey,
+      accountId: prepared.database.reservedAccountId,
+    })).toBe(prepared.delivery.canonicalEmail)
+    expect(() => decryptRecoveryEmailForAccount({
+      encrypted: {
+        ciphertext: prepared.database.destinationCiphertext,
+        nonce: prepared.database.destinationNonce,
+        keyVersion: prepared.database.encryptionKeyVersion,
+      },
+      key: encryptionKey,
+      accountId: account,
+    })).toThrow('RECOVERY_DECRYPTION_REJECTED')
+  })
+
+  it('uses Node CSPRNG for eight-digit OTPs', () => {
+    const values = Array.from({ length: 32 }, generateRecoveryOtp)
+    expect(values.every(value => /^\d{8}$/.test(value))).toBe(true)
   })
 })

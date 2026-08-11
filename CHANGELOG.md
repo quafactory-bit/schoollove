@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-11 — PHASE 10O-H recovery crypto preallocated-ID binding (local / Draft / feature-off)
+
+- Added a forward-only migration that requires a server-preallocated recovery challenge UUID and NEW-account reservation UUID. OTP MAC therefore binds the exact challenge before the database RPC, while AES-256-GCM durable recovery ciphertext binds the exact eventual account ID before account creation.
+- Pending `login_decision` challenges own exactly one reservation; every terminal outcome clears the HMAC, ciphertext, nonce, OTP MAC, versions, and reservation. Existing/cross-provider recovery matches consume and discard the reservation without creating an account or attaching the provider.
+- Added a server-only preparation helper using `randomUUID` and `crypto.randomInt` for the frozen eight-digit OTP. It returns DB-safe material separately from the ephemeral raw-email/OTP delivery payload and reads no environment secret.
+- Added fresh disposable PostgreSQL, actual Node crypto-to-DB round-trip, negative binding, service-only permission, and independent reservation/challenge/recovery-HMAC concurrency acceptance. No public route, login change, real email/provider/Auth user, environment, Production migration, or Production data change is included.
+
 ## PHASE 10O-F — Social account and recovery data boundary (Draft; Production feature-off)
 
 - Added an unapplied additive migration for private social-account identity, immutable opaque broker-subject registry, protected recovery verification challenges, and database-only Auth-principal cleanup jobs.

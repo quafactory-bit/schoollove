@@ -155,5 +155,6 @@ export function verifyRecoveryOtpMac(input: Readonly<{ challengeId: string; otp:
   return input.expectedMac.byteLength === actual.byteLength && timingSafeEqual(Buffer.from(input.expectedMac), Buffer.from(actual))
 }
 
+/** Generates exactly eight decimal digits from Node's CSPRNG; leading zeros stay significant. */
 export const RECOVERY_VERIFICATION_TTL_SECONDS = 600
 export const RECOVERY_VERIFICATION_MAX_FAILURES = 5

@@ -1,5 +1,13 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-11 PHASE 10O-H recovery crypto preallocated-ID binding (local/Draft)
+
+- Added `20260811090000_social_recovery_crypto_id_binding.sql` as a forward-only, unapplied migration after the Production-applied 10O-G boundary. It does not edit either historical 10O-F/10O-G migration.
+- The service-only recovery creation RPC now consumes supplied `requested_verification_id` and `requested_reserved_account_id` exactly. It rejects an existing challenge, existing account ID, or pending reservation collision; the old DB-generated-ID signature has no service-role execute grant.
+- `reserved_account_id` is explicitly not an account. It exists only on a pending attempt-owned `login_decision` challenge and is removed by the same terminal-material trigger that clears HMAC/ciphertext/nonce/OTP material.
+- A NEW decision inserts `private_accounts.id = verification.reserved_account_id` and checks the returned ID. Existing/cross-provider recovery matches terminally discard the pending crypto/reservation and never attach a second provider.
+- `prepareAttemptRecoveryChallenge` canonicalizes the recovery email, makes the challenge and reservation UUIDs before crypto, uses CSPRNG eight-digit OTP generation, MACs against the challenge UUID, and encrypts against the reservation UUID. Raw email/OTP remain ephemeral delivery-only values.
+
 ## 2026-08-10 PHASE 10O-F final contract closure (local/Draft)
 
 - Replaced generic challenge-record AAD with durable account-bound recovery ciphertext AAD: domain + `private_accounts.id` + fixed column purpose + encryption key version. Challenge purge cannot affect future account decryption.
