@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const sql = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260810182000_social_login_attempt_decision_boundary.sql'), 'utf8')
+const decisionContract = readFileSync(resolve(process.cwd(), 'lib/auth/social-broker/decision.ts'), 'utf8')
 
 describe('PHASE 10O-G attempt-first migration contract', () => {
   it('adds only a forward private attempt table and never changes applied 10O-F', () => {
@@ -71,5 +72,30 @@ describe('PHASE 10O-G attempt-first migration contract', () => {
     }
     expect(sql).toContain("SECURITY DEFINER SET search_path='' AS $$")
     expect(sql).toContain('SOCIAL_ATTEMPT_SERVICE_ROLE_REQUIRED')
+  })
+
+  it('keeps SQL RPC outcomes exactly aligned with the TypeScript orchestration contract', () => {
+    const recordStart = sql.indexOf('CREATE FUNCTION public.record_verified_social_identity')
+    const recordEnd = sql.indexOf('CREATE FUNCTION public.create_login_attempt_recovery_verification')
+    const recordSql = sql.slice(recordStart, recordEnd)
+    const decisionStart = sql.indexOf('CREATE FUNCTION public.consume_recovery_and_decide_social_account')
+    const decisionEnd = sql.indexOf('-- Retire the direct pre-recovery')
+    const decisionSql = sql.slice(decisionStart, decisionEnd)
+
+    const recordOutcomes = ['RECOVERY_REQUIRED', 'EXISTING_PRIMARY', 'IDENTITY_DECISION_IN_PROGRESS']
+    const decisionOutcomes = ['ACCOUNT_DECIDED', 'USE_PRIMARY_PROVIDER', 'EXISTING_PRIMARY', 'ACCOUNT_DECISION_IN_PROGRESS', 'IDENTITY_DECISION_IN_PROGRESS', 'ACCOUNT_UNAVAILABLE', 'EXPIRED', 'OTP_REJECTED', 'LOCKED']
+    const returned = (source: string, allowed: string[]) => [...new Set(
+      [...source.matchAll(/'([A-Z_]+)'/g)].map(([, value]) => value).filter(value => allowed.includes(value)),
+    )].sort()
+    const typeStart = decisionContract.indexOf('export type SocialLoginAttemptStore')
+    const typeEnd = decisionContract.indexOf('export type SocialAccountDecisionService')
+    const typeSql = decisionContract.slice(typeStart, typeEnd)
+
+    expect(returned(recordSql, recordOutcomes)).toEqual([...recordOutcomes].sort())
+    expect(returned(typeSql, recordOutcomes)).toEqual([...recordOutcomes].sort())
+    expect(returned(decisionSql, decisionOutcomes)).toEqual([...decisionOutcomes].sort())
+    expect(returned(typeSql, decisionOutcomes)).toEqual([...decisionOutcomes].sort())
+    expect(decisionContract).toContain("primaryProvider: SocialProvider")
+    expect(decisionContract).toContain("primaryProvider: null")
   })
 })

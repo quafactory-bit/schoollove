@@ -1,6 +1,24 @@
 param([Parameter(Mandatory=$true)][string]$ContainerName)
 $ErrorActionPreference='Stop'
 
+function Get-CoherentBrokerSubject([string]$Provider,[string]$DigestHex) {
+  if($DigestHex.Length -ne 64 -or $DigestHex -notmatch '^[0-9a-fA-F]{64}$') {
+    throw 'PHASE10O_G_FIXTURE_DIGEST_INVALID'
+  }
+  [byte[]]$bytes = [byte[]]::new(32)
+  for($i=0; $i -lt 32; $i++) {
+    $bytes[$i] = [Convert]::ToByte($DigestHex.Substring($i * 2,2),16)
+  }
+  $suffix=[Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_')
+  if($suffix.Length -ne 43) { throw 'PHASE10O_G_FIXTURE_SUFFIX_LENGTH_INVALID' }
+  return "slb:v1:k01:$Provider`:$suffix"
+}
+
+$raceBDigestHex=('f1' * 32) -join ''
+$raceBSubject=Get-CoherentBrokerSubject 'kakao' $raceBDigestHex
+$activeDigestHex=('74' * 32) -join ''
+$activeSubject=Get-CoherentBrokerSubject 'kakao' $activeDigestHex
+
 function Start-RaceSql([string]$Sql) {
   Start-Job -ScriptBlock {
     param($container,$query)
@@ -52,19 +70,19 @@ if($dAccounts -ne '1'){throw "PHASE10O_G_RACE_D_ACCOUNT_COUNT=$dAccounts"}
 
 # Race B claims the subject before recovery.  The loser never receives the tuple,
 # a recovery challenge, an account, or an Auth binding.
-$raceBsql = "SELECT set_config('request.jwt.claim.role','service_role',false); WITH attempt AS MATERIALIZED (SELECT public.create_social_login_attempt('att_racebXPLACEHOLDER','kakao',clock_timestamp()+interval '5 minutes') AS id) SELECT public.record_verified_social_identity(attempt.id,'kakao','slb:v1:k01:kakao:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',decode(repeat('f1',32),'hex'),1) FROM attempt;"
+$raceBsql = "SELECT set_config('request.jwt.claim.role','service_role',false); WITH attempt AS MATERIALIZED (SELECT public.create_social_login_attempt('att_racebXPLACEHOLDER','kakao',clock_timestamp()+interval '5 minutes') AS id) SELECT public.record_verified_social_identity(attempt.id,'kakao','$raceBSubject',decode('$raceBDigestHex','hex'),1) FROM attempt;"
 $raceB=Receive-Race @( (Start-RaceSql ($raceBsql.Replace('XPLACEHOLDER','111111111111'))), (Start-RaceSql ($raceBsql.Replace('XPLACEHOLDER','222222222222'))) )
 Assert-Race 'RACE_B' $raceB 1 1
-$bWinner=(& docker exec $ContainerName psql -U postgres -d phase10of -tAc "SELECT id FROM private.oauth_login_attempts WHERE broker_subject='slb:v1:k01:kakao:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' AND state='recovery_required'").Trim()
+$bWinner=(& docker exec $ContainerName psql -U postgres -d phase10of -tAc "SELECT id FROM private.oauth_login_attempts WHERE broker_subject='$raceBSubject' AND state='recovery_required'").Trim()
 if([string]::IsNullOrWhiteSpace($bWinner)){throw 'PHASE10O_G_RACE_B_WINNER_MISSING'}
 $bLoser=(& docker exec $ContainerName psql -U postgres -d phase10of -tAc "SELECT count(*) FROM private.oauth_login_attempts a LEFT JOIN private.recovery_email_verifications v ON v.login_attempt_id=a.id WHERE a.safe_attempt_id LIKE 'att_raceb%' AND a.state='failed_safe' AND a.broker_subject IS NULL GROUP BY a.id HAVING count(v.id)=0").Trim()
 if($bLoser -ne '1'){throw "PHASE10O_G_RACE_B_LOSER_BOUNDARY=$bLoser"}
-$bFinish="SELECT set_config('request.jwt.claim.role','service_role',false); WITH challenge AS MATERIALIZED (SELECT public.create_login_attempt_recovery_verification('$bWinner'::uuid,decode(repeat('b1',32),'hex'),1,decode(repeat('ab',17),'hex'),decode(repeat('cd',12),'hex'),1,decode(repeat('b2',32),'hex'),1) AS id) SELECT outcome FROM challenge CROSS JOIN LATERAL public.consume_recovery_and_decide_social_account('$bWinner'::uuid,challenge.id,decode(repeat('b2',32),'hex'));"
+$bFinish="SELECT set_config('request.jwt.claim.role','service_role',false); WITH challenge AS MATERIALIZED (SELECT public.create_login_attempt_recovery_verification('$bWinner'::uuid,decode(repeat('e1',32),'hex'),1,decode(repeat('ab',17),'hex'),decode(repeat('cd',12),'hex'),1,decode(repeat('e2',32),'hex'),1) AS id) SELECT outcome FROM challenge CROSS JOIN LATERAL public.consume_recovery_and_decide_social_account('$bWinner'::uuid,challenge.id,decode(repeat('e2',32),'hex'));"
 $bFinishResult=& docker exec $ContainerName psql -U postgres -d phase10of -v ON_ERROR_STOP=1 -tAc $bFinish
 if($LASTEXITCODE-ne 0 -or ($bFinishResult -join ' ') -notmatch 'ACCOUNT_DECIDED'){throw 'PHASE10O_G_RACE_B_WINNER_DECISION'}
-$bRegistry=(& docker exec $ContainerName psql -U postgres -d phase10of -tAc "SELECT count(*) FROM private.social_identity_registry WHERE broker_subject='slb:v1:k01:kakao:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'").Trim()
+$bRegistry=(& docker exec $ContainerName psql -U postgres -d phase10of -tAc "SELECT count(*) FROM private.social_identity_registry WHERE broker_subject='$raceBSubject'").Trim()
 if($bRegistry -ne '1'){throw "PHASE10O_G_RACE_B_REGISTRY_COUNT=$bRegistry"}
-$bLive=(& docker exec $ContainerName psql -U postgres -d phase10of -tAc "SELECT count(*) FROM private.oauth_login_attempts WHERE broker_subject='slb:v1:k01:kakao:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' AND state IN ('upstream_verified','recovery_required','recovery_pending','recovery_verified')").Trim()
+$bLive=(& docker exec $ContainerName psql -U postgres -d phase10of -tAc "SELECT count(*) FROM private.oauth_login_attempts WHERE broker_subject='$raceBSubject' AND state IN ('upstream_verified','recovery_required','recovery_pending','recovery_verified')").Trim()
 if($bLive -ne '0'){throw "PHASE10O_G_RACE_B_LIVE_CLAIM_COUNT=$bLive"}
 
 # Two simultaneous attempts for an already active primary identity are both
@@ -72,7 +90,7 @@ if($bLive -ne '0'){throw "PHASE10O_G_RACE_B_LIVE_CLAIM_COUNT=$bLive"}
 $activeSeed="SELECT set_config('request.jwt.claim.role','service_role',false); SELECT public.create_social_login_attempt('att_racebactive11111','kakao',clock_timestamp()+interval '5 minutes'); SELECT public.create_social_login_attempt('att_racebactive22222','kakao',clock_timestamp()+interval '5 minutes');"
 & docker exec $ContainerName psql -U postgres -d phase10of -v ON_ERROR_STOP=1 -tAc $activeSeed | Out-Null
 if($LASTEXITCODE-ne 0){throw 'PHASE10O_G_RACE_B_ACTIVE_SEED'}
-$activeSql="SELECT set_config('request.jwt.claim.role','service_role',false); SELECT public.record_verified_social_identity((SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_racebactiveXPLACEHOLDER'),'kakao','slb:v1:k01:kakao:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',decode(repeat('74',32),'hex'),1);"
+$activeSql="SELECT set_config('request.jwt.claim.role','service_role',false); SELECT public.record_verified_social_identity((SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_racebactiveXPLACEHOLDER'),'kakao','$activeSubject',decode('$activeDigestHex','hex'),1);"
 $activeRace=Receive-Race @( (Start-RaceSql ($activeSql.Replace('XPLACEHOLDER','11111'))), (Start-RaceSql ($activeSql.Replace('XPLACEHOLDER','22222'))) )
 Assert-Race 'RACE_B_ACTIVE' $activeRace 0 2
 

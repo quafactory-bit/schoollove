@@ -108,7 +108,8 @@ BEGIN
   SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=target_attempt_id FOR UPDATE;
   IF attempt.id IS NULL OR attempt.state<>'created' OR attempt.provider<>requested_provider OR attempt.expires_at<=clock_timestamp() THEN RAISE EXCEPTION 'SOCIAL_ATTEMPT_IDENTITY_REJECTED'; END IF;
   IF requested_provider NOT IN ('kakao','naver','google') OR requested_broker_subject !~ ('^slb:v1:k[0-9]{2}:'||requested_provider||':[A-Za-z0-9_-]{43}$')
-    OR split_part(requested_broker_subject,':',3)<>'k'||lpad(requested_subject_key_version::text,2,'0') OR octet_length(requested_subject_digest)<>32 OR requested_subject_key_version NOT BETWEEN 1 AND 99 THEN RAISE EXCEPTION 'SOCIAL_ATTEMPT_IDENTITY_INVALID'; END IF;
+    OR split_part(requested_broker_subject,':',3)<>'k'||lpad(requested_subject_key_version::text,2,'0') OR octet_length(requested_subject_digest)<>32 OR requested_subject_key_version NOT BETWEEN 1 AND 99
+    OR split_part(requested_broker_subject,':',5)<>replace(replace(replace(encode(requested_subject_digest,'base64'),'+','-'),'/','_'),'=','') THEN RAISE EXCEPTION 'SOCIAL_ATTEMPT_IDENTITY_INVALID'; END IF;
   -- Identity recording acquires broker only; any later decision path keeps the
   -- frozen recovery-lock then broker-lock order and never takes the reverse.
   PERFORM pg_catalog.pg_advisory_xact_lock(hashtextextended('schoollove:10o-g:broker-decision:v1:'||requested_provider||':'||requested_subject_key_version::text||':'||encode(requested_subject_digest,'hex'),0));
@@ -192,11 +193,12 @@ BEGIN
       RETURN QUERY SELECT 'ACCOUNT_UNAVAILABLE'::text,NULL::text; RETURN;
     END IF;
   END IF;
-  SELECT * INTO matched FROM private.private_accounts WHERE recovery_email_hmac=verification.recovery_email_hmac AND recovery_email_hmac_key_version=verification.hmac_key_version AND recovery_email_verified_at IS NOT NULL AND status IN ('provisional','active') FOR UPDATE;
+  SELECT * INTO matched FROM private.private_accounts WHERE recovery_email_hmac=verification.recovery_email_hmac AND recovery_email_hmac_key_version=verification.hmac_key_version AND recovery_email_verified_at IS NOT NULL AND status IN ('provisional','active','deletion_pending','cleanup_failed_safe') FOR UPDATE;
   UPDATE private.recovery_email_verifications SET status='consumed',consumed_at=clock_timestamp() WHERE id=verification.id;
   IF matched.id IS NOT NULL THEN
     IF matched.status='active' THEN UPDATE private.oauth_login_attempts SET state='existing_account_match',updated_at=clock_timestamp(),version=version+1 WHERE id=attempt.id; RETURN QUERY SELECT 'USE_PRIMARY_PROVIDER'::text,matched.primary_provider; RETURN;
-    ELSE UPDATE private.oauth_login_attempts SET state='failed_safe',coarse_terminal_reason='failed_safe',updated_at=clock_timestamp(),version=version+1 WHERE id=attempt.id; RETURN QUERY SELECT 'ACCOUNT_DECISION_IN_PROGRESS'::text,NULL::text; RETURN; END IF;
+    ELSIF matched.status='provisional' THEN UPDATE private.oauth_login_attempts SET state='failed_safe',coarse_terminal_reason='failed_safe',updated_at=clock_timestamp(),version=version+1 WHERE id=attempt.id; RETURN QUERY SELECT 'ACCOUNT_DECISION_IN_PROGRESS'::text,NULL::text; RETURN;
+    ELSE UPDATE private.oauth_login_attempts SET state='failed_safe',coarse_terminal_reason='failed_safe',updated_at=clock_timestamp(),version=version+1 WHERE id=attempt.id; RETURN QUERY SELECT 'ACCOUNT_UNAVAILABLE'::text,NULL::text; RETURN; END IF;
   END IF;
   PERFORM set_config('private.social_transition','approved',true);
   INSERT INTO private.private_accounts(status,primary_provider,primary_broker_subject,recovery_email_hmac,recovery_email_hmac_key_version,recovery_email_ciphertext,recovery_email_nonce,recovery_email_encryption_key_version,recovery_email_verified_at)

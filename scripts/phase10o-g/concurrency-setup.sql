@@ -2,13 +2,15 @@
 SELECT set_config('request.jwt.claim.role','service_role',false);
 
 CREATE OR REPLACE FUNCTION pg_temp.phase10og_seed_attempt(
-  safe_id text, provider_name text, subject_value text, digest_byte text,
+  safe_id text, provider_name text, digest_byte text,
   hmac_byte text, otp_byte text
 ) RETURNS uuid LANGUAGE plpgsql AS $$
-DECLARE attempt_id uuid;
+DECLARE attempt_id uuid; digest_value bytea:=decode(repeat(digest_byte,32),'hex'); subject_value text;
 BEGIN
+  subject_value:='slb:v1:k01:'||provider_name||':'||translate(rtrim(encode(digest_value,'base64'),'='),'+/','-_');
+  IF length(split_part(subject_value,':',5))<>43 THEN RAISE EXCEPTION 'PHASE10O_G_FIXTURE_SUFFIX_LENGTH_INVALID'; END IF;
   attempt_id:=public.create_social_login_attempt(safe_id,provider_name,clock_timestamp()+interval '5 minutes');
-  IF public.record_verified_social_identity(attempt_id,provider_name,subject_value,decode(repeat(digest_byte,32),'hex'),1)<>'RECOVERY_REQUIRED' THEN
+  IF public.record_verified_social_identity(attempt_id,provider_name,subject_value,digest_value,1)<>'RECOVERY_REQUIRED' THEN
     RAISE EXCEPTION 'PHASE10O_G_RACE_FIXTURE_IDENTITY';
   END IF;
   PERFORM public.create_login_attempt_recovery_verification(
@@ -19,15 +21,15 @@ BEGIN
 END $$;
 
 -- Race A: distinct broker identities, one recovery HMAC.
-SELECT pg_temp.phase10og_seed_attempt('att_racea11111111111','google','slb:v1:k01:google:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA','11','a1','a2');
-SELECT pg_temp.phase10og_seed_attempt('att_racea22222222222','naver','slb:v1:k01:naver:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB','12','a1','a3');
+SELECT pg_temp.phase10og_seed_attempt('att_racea11111111111','google','16','a1','a2');
+SELECT pg_temp.phase10og_seed_attempt('att_racea22222222222','naver','17','a1','a3');
 
 -- Race C: one exact fresh pending challenge shared by two independent consumers.
-SELECT pg_temp.phase10og_seed_attempt('att_racec11111111111','kakao','slb:v1:k01:kakao:JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ','13','c1','c2');
+SELECT pg_temp.phase10og_seed_attempt('att_racec11111111111','kakao','18','c1','c2');
 
 -- Race D is intentionally independent from Race A, including its recovery namespace.
-SELECT pg_temp.phase10og_seed_attempt('att_raced11111111111','google','slb:v1:k01:google:KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK','14','d1','d2');
-SELECT pg_temp.phase10og_seed_attempt('att_raced22222222222','naver','slb:v1:k01:naver:LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL','15','d1','d3');
+SELECT pg_temp.phase10og_seed_attempt('att_raced11111111111','google','19','d1','d2');
+SELECT pg_temp.phase10og_seed_attempt('att_raced22222222222','naver','1a','d1','d3');
 
 DO $$
 DECLARE race_name text; attempt_count integer; challenge_count integer;
