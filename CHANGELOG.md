@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-11 PHASE 10O-J durable broker authorization-code boundary (local / Draft / feature-off)
+
+- Added the forward-only `20260811220000_broker_authorization_code_boundary.sql` migration: a private RLS/FORCE-RLS opaque code ledger plus service-only issue/consume RPCs. It stores a domain-separated 32-byte code digest, exact client/redirect/S256 binding, timestamps, and optional encrypted downstream-nonce tuple—never a raw authorization code, verifier, nonce plaintext, subject, email, token, or profile data.
+- Added server-only preparation with a 256-bit base64url code and a separate injected AES-256-GCM downstream-nonce key. The framed AAD binds code UUID, client, redirect URI, and key version; successful Node→DB→Node round-trip and tamper failures are covered in disposable PostgreSQL.
+- Added lifecycle, failed-terminal, replay, expiry, issue-state, RPC permission/RLS, and independent-process concurrent consume acceptance. No public OIDC endpoint, `/login` change, provider call/configuration, environment, Production migration/write, or launch change is included.
+- Draft security review hardening rejects negative or future `authentication_time` against the authoritative DB issue clock, makes expiry terminalize both code and attempt as `expired`, and makes client/redirect/PKCE failures terminalize code as `rejected` plus attempt as `failed_safe`. Near-expiry issue is now explicitly coarse and cannot expose a `created_at` check violation.
+
 ## 2026-08-11 PHASE 10O-I recovery delivery state boundary (local / Draft / feature-off)
 
 - Added a forward-only migration with an RLS/FORCE-RLS private recovery-delivery ledger and service-only atomic reserve, sent, and failure transitions.
