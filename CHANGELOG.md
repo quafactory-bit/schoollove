@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-12 PHASE 10O-M durable upstream login-leg boundary (local / Draft / feature-off)
+
+- Added the unapplied forward-only `20260812160000_upstream_login_leg_boundary.sql`: a private RLS/FORCE-RLS attempt-bound upstream redirect ledger, atomic service-only create/claim/fail/leg-bound-identity RPCs, `upstream_pending` attempt state, committed wrong-state failure, replay closure, and terminal crypto scrub.
+- Added server-only digest-only state/nonce and separate AES-256-GCM PKCE verifier preparation/resume helpers. Exact framed AAD binds attempt, preallocated leg, provider, client binding, challenge, and key version; raw browser values remain ephemeral.
+- Production routes, provider traffic/configuration, credentials, login UI, environment, email, Auth, launch, and migration apply remain unchanged.
+
 ## 2026-08-12 PHASE 10O-L dark upstream provider adapter boundary (local / Draft / feature-off)
 
 - Added server-only, transport-injected Kakao and Google OIDC adapters plus a Naver OAuth2-only adapter. Each returns only provider, upstream subject, and optional authentication time; email, profile fields, authorization codes, and tokens are never identity output or persisted.

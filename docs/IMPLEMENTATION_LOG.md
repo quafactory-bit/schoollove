@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-12 PHASE 10O-M durable upstream login-leg boundary (local/Draft)
+
+- Added a feature-off, durable redirect C-leg after the PHASE 10O-L process-local adapter boundary. The private leg has one attempt binding, digest-only state/nonce, encrypted-only OIDC PKCE resume material, RLS/FORCE RLS, and no direct table grants.
+- The server-only helper preallocates the leg UUID before encryption. Its distinct injected key and framed AAD bind exact client configuration and all durable identifiers; resume revalidates the decrypted verifier's S256 challenge and nonce comparison is constant-time digest-only.
+- Callback claim locks attempt then leg, commits wrong-state/client/provider/expiry terminal outcomes and scrubs C-leg secrets. The direct verified-identity RPC service grant is removed in favor of a callback-claimed leg-bound transition.
+- No Production migration, DB operation, public OIDC route, provider request/configuration, credential, login UI, Auth action, email, environment, or launch change is made.
+
 ## 2026-08-12 PHASE 10O-L dark upstream provider adapter boundary (local/Draft)
 
 - Added server-only provider adapters for Kakao OIDC, Google OIDC, and Naver OAuth2 behind an injected in-memory-test HTTP transport interface. No tracked application route instantiates an adapter or makes a provider call.

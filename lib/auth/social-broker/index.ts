@@ -1,6 +1,7 @@
 import 'server-only'
 
 export * from './attempt'
+export * from './durable-upstream-leg'
 export * from './errors'
 export * from './http'
 export * from './logging'
