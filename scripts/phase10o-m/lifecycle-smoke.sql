@@ -15,6 +15,18 @@ END $$;
 SELECT 'PHASE10O_M_DURABLE_LEG_SCHEMA_OK' AS status;
 
 DO $$
+DECLARE a uuid; rejected boolean:=false;
+BEGIN
+  a:=public.create_social_login_attempt('att_10om_pending_clear_0001','google',clock_timestamp()+interval '10 minutes');
+  UPDATE private.oauth_login_attempts SET state='upstream_pending' WHERE id=a;
+  BEGIN UPDATE private.oauth_login_attempts SET broker_subject='slb:v1:k01:google:'||repeat('A',43) WHERE id=a; EXCEPTION WHEN check_violation THEN rejected:=true; END;
+  IF NOT rejected THEN RAISE EXCEPTION 'PHASE10O_M_UPSTREAM_PENDING_IDENTITY_NOT_CLEAR'; END IF;
+  BEGIN UPDATE private.oauth_login_attempts SET subject_digest=decode(repeat('11',32),'hex'),subject_key_version=1 WHERE id=a; RAISE EXCEPTION 'PHASE10O_M_UPSTREAM_PENDING_SUBJECT_ALLOWED'; EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN UPDATE private.oauth_login_attempts SET account_id=gen_random_uuid() WHERE id=a; RAISE EXCEPTION 'PHASE10O_M_UPSTREAM_PENDING_ACCOUNT_ALLOWED'; EXCEPTION WHEN check_violation THEN NULL; END;
+END $$;
+SELECT 'PHASE10O_M_UPSTREAM_PENDING_IDENTITY_CLEAR_OK' AS status;
+
+DO $$
 DECLARE a uuid; result text; client_digest bytea:=decode(repeat('11',32),'hex'); state_digest bytea:=decode(repeat('12',32),'hex'); nonce_digest bytea:=decode(repeat('13',32),'hex'); leg uuid:='a1000000-0000-4000-8000-000000000001';
 BEGIN
   a:=public.create_social_login_attempt('att_10om_wrong_state_0001','google',clock_timestamp()+interval '10 minutes');

@@ -20,8 +20,10 @@ ALTER TABLE private.oauth_login_attempts DROP CONSTRAINT oauth_login_attempts_st
 ALTER TABLE private.oauth_login_attempts ADD CONSTRAINT oauth_login_attempts_state_check CHECK (state IN (
   'created','upstream_pending','upstream_verified','recovery_required','recovery_pending','recovery_verified',
   'account_decided','existing_primary','existing_account_match','auth_principal_bound','broker_code_ready','consumed',
-  'cancelled','expired','provider_mismatch','replay_rejected','launch_blocked','failed_safe'
+ 'cancelled','expired','provider_mismatch','replay_rejected','launch_blocked','failed_safe'
 ));
+ALTER TABLE private.oauth_login_attempts ADD CONSTRAINT oauth_login_attempts_upstream_pending_identity_clear
+  CHECK (state<>'upstream_pending' OR (broker_subject IS NULL AND subject_digest IS NULL AND subject_key_version IS NULL AND account_id IS NULL));
 
 CREATE TABLE private.upstream_login_legs (
   id uuid PRIMARY KEY,
@@ -153,12 +155,12 @@ END $$;
 CREATE FUNCTION public.record_verified_social_identity_from_upstream_leg(
   target_attempt_id uuid,target_leg_id uuid,requested_provider text,requested_broker_subject text,requested_subject_digest bytea,requested_subject_key_version integer
 ) RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE attempt private.oauth_login_attempts%ROWTYPE; leg private.upstream_login_legs%ROWTYPE; existing private.social_identity_registry%ROWTYPE; competing uuid; now_at timestamptz:=clock_timestamp();
+DECLARE attempt private.oauth_login_attempts%ROWTYPE; leg private.upstream_login_legs%ROWTYPE; existing private.social_identity_registry%ROWTYPE; competing uuid; now_at timestamptz:=clock_timestamp(); violation_constraint text;
 BEGIN
   PERFORM private.require_social_attempt_service();
   SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=target_attempt_id FOR UPDATE;
   SELECT * INTO leg FROM private.upstream_login_legs WHERE id=target_leg_id AND login_attempt_id=target_attempt_id FOR UPDATE;
-  IF attempt.id IS NULL OR leg.id IS NULL OR attempt.state<>'upstream_pending' OR leg.status<>'callback_claimed' THEN RAISE EXCEPTION 'UPSTREAM_LOGIN_LEG_IDENTITY_REJECTED'; END IF;
+  IF attempt.id IS NULL OR leg.id IS NULL OR attempt.state<>'upstream_pending' OR leg.status<>'callback_claimed' THEN RETURN 'IDENTITY_REJECTED'; END IF;
   IF attempt.provider<>requested_provider OR leg.provider<>requested_provider OR attempt.expires_at<=now_at OR leg.expires_at<=now_at OR requested_broker_subject !~ ('^slb:v1:k[0-9]{2}:'||requested_provider||':[A-Za-z0-9_-]{43}$') OR requested_subject_key_version NOT BETWEEN 1 AND 99 OR requested_subject_digest IS NULL OR octet_length(requested_subject_digest)<>32 OR split_part(requested_broker_subject,':',3)<>'k'||lpad(requested_subject_key_version::text,2,'0') OR split_part(requested_broker_subject,':',5)<>replace(replace(replace(encode(requested_subject_digest,'base64'),'+','-'),'/','_'),'=','') THEN
     PERFORM private.scrub_upstream_login_leg(leg.id,CASE WHEN attempt.expires_at<=now_at OR leg.expires_at<=now_at THEN 'expired' ELSE 'rejected' END,now_at);
     UPDATE private.oauth_login_attempts SET state=CASE WHEN attempt.expires_at<=now_at OR leg.expires_at<=now_at THEN 'expired' ELSE 'failed_safe' END,coarse_terminal_reason=CASE WHEN attempt.expires_at<=now_at OR leg.expires_at<=now_at THEN 'expired' ELSE 'failed_safe' END,updated_at=now_at,version=version+1 WHERE id=attempt.id;
@@ -177,6 +179,9 @@ BEGIN
   PERFORM private.scrub_upstream_login_leg(leg.id,'verified',now_at);
   RETURN 'RECOVERY_REQUIRED';
 EXCEPTION WHEN unique_violation THEN
+  GET STACKED DIAGNOSTICS violation_constraint=CONSTRAINT_NAME;
+  IF violation_constraint<>'oauth_login_attempts_live_subject_unique' THEN RAISE; END IF;
+  IF NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts x WHERE x.id<>target_attempt_id AND x.provider=requested_provider AND x.broker_subject=requested_broker_subject AND x.state IN ('upstream_verified','recovery_required','recovery_pending','recovery_verified')) THEN RAISE; END IF;
   PERFORM private.scrub_upstream_login_leg(target_leg_id,'rejected',now_at); UPDATE private.oauth_login_attempts SET state='failed_safe',coarse_terminal_reason='failed_safe',updated_at=now_at,version=version+1 WHERE id=target_attempt_id; RETURN 'IDENTITY_DECISION_IN_PROGRESS';
 END $$;
 

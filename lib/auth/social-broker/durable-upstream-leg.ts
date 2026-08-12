@@ -154,7 +154,12 @@ export function parseDurableUpstreamCallback(input: Readonly<{ provider: SocialP
   assertProvider(input.provider)
   let callback: URL; let redirect: URL
   try { callback = new URL(input.callbackUrl); redirect = new URL(input.redirectUri) } catch { throw new Error('UPSTREAM_CALLBACK_REJECTED') }
-  if (callback.origin !== redirect.origin || callback.pathname !== redirect.pathname || callback.hash) throw new Error('UPSTREAM_CALLBACK_REJECTED')
+  if (redirect.protocol !== 'https:' || redirect.username || redirect.password || redirect.hash || callback.origin !== redirect.origin || callback.pathname !== redirect.pathname || callback.hash) throw new Error('UPSTREAM_CALLBACK_REJECTED')
+  const reserved = new Set(['code', 'state', 'error', 'error_description', 'error_uri'])
+  for (const [key] of redirect.searchParams) if (reserved.has(key)) throw new Error('UPSTREAM_CALLBACK_REJECTED')
+  const callbackKeys = [...callback.searchParams.keys()]
+  if (new Set(callbackKeys).size !== callbackKeys.length || ['provider', 'upstream_provider', 'social_provider'].some(key => callback.searchParams.has(key))) throw new Error('UPSTREAM_CALLBACK_REJECTED')
+  for (const [key, value] of redirect.searchParams) if (callback.searchParams.get(key) !== value || callback.searchParams.getAll(key).length !== 1) throw new Error('UPSTREAM_CALLBACK_REJECTED')
   for (const key of ['code', 'state']) if (callback.searchParams.getAll(key).length !== 1) throw new Error('UPSTREAM_CALLBACK_REJECTED')
   const authorizationCode = callback.searchParams.get('code')!; const rawState = callback.searchParams.get('state')!
   if (!authorizationCode || Buffer.byteLength(authorizationCode, 'utf8') > 2048 || /[\u0000-\u001f\u007f]/.test(authorizationCode)) throw new Error('UPSTREAM_CALLBACK_REJECTED')

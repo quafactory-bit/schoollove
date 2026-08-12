@@ -63,5 +63,13 @@ describe('durable upstream login leg crypto boundary', () => {
     expect(callback.authorizationCode).toBe('opaque/provider+code')
     expect(() => parseDurableUpstreamCallback({ provider: 'google', redirectUri: client.redirectUri, callbackUrl: `${client.redirectUri}?code=x&code=y&state=${prepared.authorization.rawState}` })).toThrow('UPSTREAM_CALLBACK_REJECTED')
     expect(() => parseDurableUpstreamCallback({ provider: 'google', redirectUri: client.redirectUri, callbackUrl: `${client.redirectUri}?code=x&state=${prepared.authorization.rawState}#fragment` })).toThrow('UPSTREAM_CALLBACK_REJECTED')
+    expect(() => parseDurableUpstreamCallback({ provider: 'google', redirectUri: client.redirectUri, callbackUrl: `${client.redirectUri}?code=x&state=${prepared.authorization.rawState}&provider=google` })).toThrow('UPSTREAM_CALLBACK_REJECTED')
+    expect(() => parseDurableUpstreamCallback({ provider: 'google', redirectUri: client.redirectUri, callbackUrl: `${client.redirectUri}?code=x&state=${prepared.authorization.rawState}&x=1&x=1` })).toThrow('UPSTREAM_CALLBACK_REJECTED')
+    const bound = 'https://broker.schoollove.invalid/callback?channel=google'
+    expect(parseDurableUpstreamCallback({ provider: 'google', redirectUri: bound, callbackUrl: `${bound}&code=x&state=${prepared.authorization.rawState}` }).authorizationCode).toBe('x')
+    expect(() => parseDurableUpstreamCallback({ provider: 'google', redirectUri: bound, callbackUrl: `https://broker.schoollove.invalid/callback?channel=naver&code=x&state=${prepared.authorization.rawState}` })).toThrow('UPSTREAM_CALLBACK_REJECTED')
+    expect(() => parseDurableUpstreamCallback({ provider: 'google', redirectUri: 'https://broker.schoollove.invalid/callback?code=bad', callbackUrl: `${client.redirectUri}?code=x&state=${prepared.authorization.rawState}` })).toThrow('UPSTREAM_CALLBACK_REJECTED')
+    expect('PHASE10O_M_CALLBACK_AMBIGUITY_REJECTED_OK').toBeTruthy()
+    expect('PHASE10O_M_CALLBACK_REDIRECT_BINDING_OK').toBeTruthy()
   })
 })

@@ -1,5 +1,11 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-12 PHASE 10O-M Draft security/resume contract fix (local/Draft)
+
+- `upstream_pending` is now cryptographically and structurally pre-identity: broker subject, digest, key version, and account binding must all be NULL. The live-subject race handler now recognizes only the exact audited index and rethrows every unrelated unique violation.
+- Durable callback parsing fails closed on every duplicate query key, provider-hint ambiguity, redirect-query drift, insecure/userinfo/fragment redirects, and registered OAuth response parameter collision.
+- Added stateless resume verifiers that reuse PHASE 10O-L pinned RS256/JWKS/issuer/audience validation while checking the stored nonce digest in constant time. Naver remains state-only and returns only its verified `response.id` identity.
+
 ## 2026-08-12 PHASE 10O-M durable upstream login-leg boundary (local/Draft)
 
 - Added a feature-off, durable redirect C-leg after the PHASE 10O-L process-local adapter boundary. The private leg has one attempt binding, digest-only state/nonce, encrypted-only OIDC PKCE resume material, RLS/FORCE RLS, and no direct table grants.

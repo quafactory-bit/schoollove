@@ -8,6 +8,7 @@ describe('PHASE 10O-M durable upstream leg migration contract', () => {
   it('adds only the forward durable leg boundary and closes the old bypass', () => {
     expect(migration).toContain('CREATE TABLE private.upstream_login_legs')
     expect(migration).toContain("'upstream_pending'")
+    expect(migration).toContain('oauth_login_attempts_upstream_pending_identity_clear')
     expect(migration).toContain('ENABLE ROW LEVEL SECURITY')
     expect(migration).toContain('FORCE ROW LEVEL SECURITY')
     expect(migration).toContain('REVOKE ALL ON FUNCTION public.record_verified_social_identity')
@@ -23,5 +24,7 @@ describe('PHASE 10O-M durable upstream leg migration contract', () => {
     expect(migration).toContain("'REPLAY_REJECTED'")
     expect(migration).toContain('pkce_verifier_ciphertext=NULL')
     expect(migration).toContain('PHASE10O_M_OBJECT_COLLISION')
+    expect(migration).toContain('GET STACKED DIAGNOSTICS violation_constraint=CONSTRAINT_NAME')
+    expect(migration).toContain("violation_constraint<>'oauth_login_attempts_live_subject_unique'")
   })
 })

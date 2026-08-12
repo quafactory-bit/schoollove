@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-12 PHASE 10O-M Draft security/resume contract fix (local / Draft / feature-off)
+
+- Hardened the unapplied durable-leg migration with an `upstream_pending` identity-clear CHECK, exact live-subject unique-violation discrimination, and coarse known-terminal identity replay handling.
+- Added strict durable callback ambiguity and fixed-query redirect binding, plus stateless/resumable pinned OIDC and Naver verification paths. Process-restart acceptance now performs fake token/JWKS/profile verification and derives the broker subject from the verified minimal identity.
+- Expanded independent-process callback, wrong/correct-state, identity-finalization, and fail-vs-verify races. Production remains unchanged and hard-off.
+
 ## 2026-08-12 PHASE 10O-M durable upstream login-leg boundary (local / Draft / feature-off)
 
 - Added the unapplied forward-only `20260812160000_upstream_login_leg_boundary.sql`: a private RLS/FORCE-RLS attempt-bound upstream redirect ledger, atomic service-only create/claim/fail/leg-bound-identity RPCs, `upstream_pending` attempt state, committed wrong-state failure, replay closure, and terminal crypto scrub.

@@ -3,6 +3,7 @@ import { createPublicKey, verify } from 'node:crypto'
 import { createNonceLeg, type NonceBinding } from './nonce'
 import { calculateS256Challenge, createPkceVerifier } from './pkce'
 import { createStateLeg, type StateBinding } from './state'
+import { verifyDurableUpstreamNonce } from './durable-upstream-leg'
 import { brokerFailure } from './errors'
 import type { SocialProvider } from './types'
 
@@ -116,7 +117,7 @@ function decodeJwt(token: string): Readonly<{ header: Record<string, unknown>; p
     })
   } catch { brokerFailure('UPSTREAM_RESPONSE_MALFORMED') }
 }
-function validateJwt(input: Readonly<{ idToken: string; provider: 'kakao' | 'google'; config: OidcProviderConfig; nonce: NonceBinding; transport: UpstreamHttpTransport; now: number }>): Promise<VerifiedProviderIdentity> {
+function validateJwt(input: Readonly<{ idToken: string; provider: 'kakao' | 'google'; config: OidcProviderConfig; nonce?: NonceBinding; nonceDigest?: Uint8Array; transport: UpstreamHttpTransport; now: number }>): Promise<VerifiedProviderIdentity> {
   return (async () => {
     const jwt = decodeJwt(input.idToken)
     if (jwt.header.alg !== 'RS256' || typeof jwt.header.kid !== 'string' || !jwt.header.kid) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
@@ -135,7 +136,7 @@ function validateJwt(input: Readonly<{ idToken: string; provider: 'kakao' | 'goo
     if (!Number.isSafeInteger(exp) || !Number.isSafeInteger(iat)) brokerFailure('UPSTREAM_RESPONSE_EXPIRED')
     const expNumber = exp as number; const iatNumber = iat as number
     if (expNumber <= input.now || iatNumber > input.now + 30 || iatNumber > expNumber) brokerFailure('UPSTREAM_RESPONSE_EXPIRED')
-    if (typeof payload.nonce !== 'string' || !input.nonce.verifyAndConsume(payload.nonce)) brokerFailure('NONCE_REJECTED')
+    if (typeof payload.nonce !== 'string' || !(input.nonce ? input.nonce.verifyAndConsume(payload.nonce) : input.nonceDigest && verifyDurableUpstreamNonce(payload.nonce, input.nonceDigest))) brokerFailure('NONCE_REJECTED')
     const subject = nonEmpty(payload.sub)
     const authenticationTime = payload.auth_time
     if (authenticationTime !== undefined && !Number.isSafeInteger(authenticationTime)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
@@ -143,6 +144,32 @@ function validateJwt(input: Readonly<{ idToken: string; provider: 'kakao' | 'goo
     if (authenticationTimeNumber !== undefined && (authenticationTimeNumber < 0 || authenticationTimeNumber > input.now + 30)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
     return Object.freeze({ provider: input.provider, upstreamSubject: Buffer.from(subject, 'utf8'), ...(authenticationTimeNumber === undefined ? {} : { authenticationTime: authenticationTimeNumber }) })
   })()
+}
+
+function oidcConfig(provider: 'kakao' | 'google', input: ClientCallbackConfig): OidcProviderConfig {
+  if (!input.clientId || !safeHttps(input.redirectUri)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+  return provider === 'kakao'
+    ? { ...input, ...KAKAO_OIDC_METADATA, provider, issuers: [KAKAO_OIDC_METADATA.issuer] }
+    : { ...input, ...GOOGLE_OIDC_METADATA, provider, issuers: GOOGLE_OIDC_METADATA.issuers }
+}
+
+/** Stateless durable-resume verifier: it has no process-local pending state. */
+export async function verifyResumedOidcIdentity(input: Readonly<{ provider: 'kakao' | 'google'; authorizationCode: string; clientId: string; redirectUri: string; codeVerifier: string; nonceDigest: Uint8Array; transport: UpstreamHttpTransport; now: number }>): Promise<VerifiedProviderIdentity> {
+  const config = oidcConfig(input.provider, input)
+  if (!input.authorizationCode || !input.codeVerifier || input.nonceDigest.byteLength !== 32) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+  const response = await input.transport.exchangeCode({ provider: input.provider, tokenEndpoint: config.tokenEndpoint, clientId: config.clientId, redirectUri: config.redirectUri, authorizationCode: opaqueAuthorizationCode(input.authorizationCode), codeVerifier: input.codeVerifier })
+  const token = object(parseExpectedJson(response, config.tokenEndpoint)); const idToken = nonEmpty(token.id_token)
+  return validateJwt({ idToken, provider: input.provider, config, nonceDigest: input.nonceDigest, transport: input.transport, now: input.now })
+}
+
+/** Stateless Naver resume verifier. Raw callback state is request-memory token intent only. */
+export async function verifyResumedNaverIdentity(input: Readonly<{ authorizationCode: string; rawState: string; clientId: string; redirectUri: string; transport: UpstreamHttpTransport }>): Promise<VerifiedProviderIdentity> {
+  if (!input.clientId || !safeHttps(input.redirectUri) || !input.rawState || !input.authorizationCode) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+  const token = object(parseExpectedJson(await input.transport.exchangeCode({ provider: 'naver', tokenEndpoint: NAVER_OAUTH_METADATA.tokenEndpoint, clientId: input.clientId, redirectUri: input.redirectUri, authorizationCode: opaqueAuthorizationCode(input.authorizationCode), state: input.rawState }), NAVER_OAUTH_METADATA.tokenEndpoint))
+  const accessToken = nonEmpty(token.access_token)
+  const profile = object(parseExpectedJson(await input.transport.fetchNaverProfile({ profileEndpoint: NAVER_OAUTH_METADATA.profileEndpoint, accessToken }), NAVER_OAUTH_METADATA.profileEndpoint))
+  if (profile.resultcode !== '00') brokerFailure('UPSTREAM_ERROR')
+  return Object.freeze({ provider: 'naver', upstreamSubject: Buffer.from(nonEmpty(object(profile.response).id), 'utf8') })
 }
 
 abstract class BaseAdapter<TConfig extends OidcProviderConfig | NaverProviderConfig> implements UpstreamProviderAdapter {
@@ -193,10 +220,10 @@ class OidcAdapter extends BaseAdapter<OidcProviderConfig> {
 }
 
 export class KakaoUpstreamAdapter extends OidcAdapter {
-  constructor(input: ClientCallbackConfig, transport: UpstreamHttpTransport) { super({ ...input, ...KAKAO_OIDC_METADATA, provider: 'kakao', issuers: [KAKAO_OIDC_METADATA.issuer] }, transport) }
+  constructor(input: ClientCallbackConfig, transport: UpstreamHttpTransport) { super(oidcConfig('kakao', input), transport) }
 }
 export class GoogleUpstreamAdapter extends OidcAdapter {
-  constructor(input: ClientCallbackConfig, transport: UpstreamHttpTransport) { super({ ...input, ...GOOGLE_OIDC_METADATA, provider: 'google', issuers: GOOGLE_OIDC_METADATA.issuers }, transport) }
+  constructor(input: ClientCallbackConfig, transport: UpstreamHttpTransport) { super(oidcConfig('google', input), transport) }
 }
 
 export class NaverUpstreamAdapter extends BaseAdapter<NaverProviderConfig> {
