@@ -51,6 +51,17 @@ describe('social broker security and feature-off contract', () => {
     expect(read('app/api/auth/verify-otp/route.ts')).not.toContain('social-broker')
   })
 
+  it('keeps dark upstream adapters server-only, transport-injected, and outside the public HTTP surface', () => {
+    const upstream = read('lib/auth/social-broker/upstream-adapters.ts')
+    const appSources = sourceFiles(join(ROOT, 'app')).map((path) => readFileSync(path, 'utf8')).join('\n')
+
+    expect(upstream).toContain("import 'server-only'")
+    expect(upstream).toContain('interface UpstreamProviderAdapter')
+    expect(upstream).toContain('type UpstreamHttpTransport')
+    expect(upstream).not.toMatch(/\bfetch\s*\(|axios|https?\.request|undici|@supabase|Supabase|getSupabase|process\.env|cookie|localStorage|sessionStorage|redis|writeFile/i)
+    expect(appSources).not.toContain('upstream-adapters')
+  })
+
   it('contains no recovery email or identity PII fields in the provider-neutral type contract', () => {
     const types = read('lib/auth/social-broker/types.ts')
     expect(types).not.toMatch(/email_verified|nickname|picture|birthday|gender|phone|recoveryEmail/)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-12 PHASE 10O-L dark upstream provider adapter boundary (local / Draft / feature-off)
+
+- Added server-only, transport-injected Kakao and Google OIDC adapters plus a Naver OAuth2-only adapter. Each returns only provider, upstream subject, and optional authentication time; email, profile fields, authorization codes, and tokens are never identity output or persisted.
+- Added independent C-leg state, OIDC nonce, and S256 PKCE handling, strict RS256/JWKS validation, exact Google issuer allowlisting, callback/provider substitution rejection, Naver `response.id` parsing, and bounded untrusted transport-response handling.
+- Recorded current official Kakao/Google evidence and pinned Naver guide revision in a decision record. The public metadata audit was unauthenticated/read-only; no provider authorization, token, profile, credential, DB, Auth, environment, UI, migration, or Production change is included.
+
 ## 2026-08-11 PHASE 10O-J durable broker authorization-code boundary (local / Draft / feature-off)
 
 - Added the forward-only `20260811220000_broker_authorization_code_boundary.sql` migration: a private RLS/FORCE-RLS opaque code ledger plus service-only issue/consume RPCs. It stores a domain-separated 32-byte code digest, exact client/redirect/S256 binding, timestamps, and optional encrypted downstream-nonce tuple—never a raw authorization code, verifier, nonce plaintext, subject, email, token, or profile data.

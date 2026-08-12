@@ -36,7 +36,7 @@ export type FakeUpstreamResponse = Readonly<{
   upstreamError: boolean
 }>
 
-export interface UpstreamProviderAdapter {
+export interface FakeUpstreamProviderAdapter {
   readonly provider: SocialProvider
   begin(): FakeAuthorizationLeg
   verify(response: FakeUpstreamResponse, now: number): VerifiedUpstreamIdentity
@@ -44,7 +44,7 @@ export interface UpstreamProviderAdapter {
 const otherProvider = (provider: SocialProvider): SocialProvider =>
   provider === 'kakao' ? 'naver' : provider === 'naver' ? 'google' : 'kakao'
 
-abstract class FakeProviderBase implements UpstreamProviderAdapter {
+abstract class FakeProviderBase implements FakeUpstreamProviderAdapter {
   abstract readonly provider: SocialProvider
   abstract readonly protocol: 'oidc' | 'oauth2'
   #stateBinding: StateBinding | null = null
