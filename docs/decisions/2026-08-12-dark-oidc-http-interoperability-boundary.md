@@ -26,7 +26,7 @@ Each registration has its own client secret. The broker derives the upstream pro
 
 ## Dark HTTP boundary
 
-The local injected issuer contract exposes discovery, public JWKS, authorization, and token handlers with a configured canonical issuer. Host and `X-Forwarded-Host` never determine issuer, endpoint base, or ID-token `iss`.
+The local injected issuer contract exposes discovery, public JWKS, authorization, and token handlers with a configured canonical issuer. Host and `X-Forwarded-Host` never determine issuer, endpoint base, or ID-token `iss`. Registry entries require an exact 32-byte client-secret digest and a parseable redirect URI with no userinfo, fragment, or pre-existing OAuth response parameter (`code`, `state`, `error`, `error_description`, `error_uri`).
 
 Production and deployed routes are hard-off: discovery, JWKS, `/oauth/authorize`, and `/oauth/token` return 404 and no environment flag can enable them. Local tests construct the server-only issuer directly using synthetic clients, an ephemeral RSA key, and a synthetic durable-code adapter.
 
@@ -34,9 +34,9 @@ Discovery advertises only `code`, public subjects, `RS256`, `authorization_code`
 
 ## Token exchange ordering
 
-The token endpoint accepts form-urlencoded `authorization_code` requests only. It supports exactly one of `client_secret_basic` or `client_secret_post`; missing or dual methods fail before authorization-code lookup. Basic credentials are base64-decoded, split once on the colon, then each component is URL-query-unescaped exactly once to match the pinned `x/oauth2` shape. Client secrets are verified through a domain-separated fixed-length digest using constant-time comparison; raw secrets are not logged, persisted, returned, or committed.
+The token endpoint accepts only the exact `application/x-www-form-urlencoded` media type (parameters such as `charset=UTF-8` are allowed) and `authorization_code` requests. It supports exactly one of `client_secret_basic` or `client_secret_post`; missing or dual methods fail before authorization-code lookup. Basic credentials are base64-decoded, split once on the colon, then each component is URL-query-unescaped exactly once to match the pinned `x/oauth2` shape. Client secrets are verified through a domain-separated fixed-length digest using constant-time comparison; raw secrets are not logged, persisted, returned, or committed.
 
-Only after client authentication, syntax, grant, and redirect checks does the adapter receive the durable code digest and computed S256 challenge. On success it decrypts the code-bound downstream nonce exactly once for the minimal RS256 ID token. The token response has only a 60-second opaque access token, `Bearer`, `expires_in`, and the minimal ID token; no refresh token or identity/recovery claims are issued.
+Only after client authentication, syntax, grant, and redirect checks does the adapter receive the durable code digest and computed S256 challenge. The authorize adapter returns only a validated 43-character authorization code; the HTTP layer itself builds the redirect from the registered URI and exact original state. On success it decrypts the code-bound downstream nonce exactly once for the minimal RS256 ID token. The token response has only a 60-second opaque access token, `Bearer`, `expires_in`, and the minimal ID token; no refresh token or identity/recovery claims are issued. Only fixed OAuth protocol errors are returned to callers. Unexpected adapter, database, or crypto errors return HTTP 500 `{ "error": "server_error" }` without internal detail.
 
 ## Explicit exclusions
 

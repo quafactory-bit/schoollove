@@ -5,23 +5,29 @@ import { calculateS256Challenge } from './pkce'
 import { isSocialProvider, type SocialProvider } from './types'
 
 type ClientAuthMethod = 'client_secret_basic' | 'client_secret_post'
-type BrokerClient = Readonly<{ clientId: string; secretDigest: Uint8Array; redirectUri: string; provider: SocialProvider }>
+export type DarkOidcClient = Readonly<{ clientId: string; secretDigest: Uint8Array; redirectUri: string; provider: SocialProvider }>
 type ConsumedCode = Readonly<{ outcome: 'AUTHORIZATION_CODE_CONSUMED'; subject: string; authenticationTime: number; codeId: string; downstreamNonce: DurableDownstreamNonce | null }>
 
 export type DarkOidcRegistry = Readonly<{
-  clients: readonly BrokerClient[]
+  clients: readonly DarkOidcClient[]
   nonceKey: BrokerAuthorizationCodeNonceKey
   /** Injectable only for verification that client authentication precedes code lookup. */
   digestCode?: (code: string) => Uint8Array
   /** Called only after syntax/client authentication has succeeded. */
   consumeCode(input: Readonly<{ codeDigest: Uint8Array; clientId: string; redirectUri: string; pkceS256Challenge: string }>): Promise<ConsumedCode | null>
-  /** Test-only upstream/account completion; it owns durable code creation and redirect. */
-  authorize(input: Readonly<{ clientId: string; provider: SocialProvider; redirectUri: string; state: string; pkceS256Challenge: string; nonce?: string }>): Promise<string>
+  /** Test-only upstream/account completion; HTTP owns the registered redirect and state echo. */
+  authorize(input: Readonly<{ clientId: string; provider: SocialProvider; redirectUri: string; pkceS256Challenge: string; nonce?: string }>): Promise<Readonly<{ authorizationCode: string }>>
 }>
 
 const MAX_PARAMETER_BYTES = 2048
 const PROVIDER_LIKE_PARAMETERS = new Set(['provider', 'upstream_provider', 'social_provider'])
+const RESERVED_RESPONSE_PARAMETERS = new Set(['code', 'state', 'error', 'error_description', 'error_uri'])
+const PUBLIC_PROTOCOL_ERRORS = new Set(['invalid_request', 'invalid_client', 'invalid_grant', 'invalid_scope', 'unsupported_response_type', 'unsupported_grant_type'])
 const safeError = (code: string, status = 400) => Response.json({ error: code }, { status, headers: { 'cache-control': 'no-store' } })
+function protocolError(error: unknown, tokenEndpoint = false): Response {
+  const code = error instanceof Error && PUBLIC_PROTOCOL_ERRORS.has(error.message) ? error.message : 'server_error'
+  return safeError(code, code === 'server_error' ? 500 : tokenEndpoint && code === 'invalid_client' ? 401 : 400)
+}
 const exactIssuer = (issuer: string) => {
   const parsed = new URL(issuer)
   // This is a configured value injected when constructing the local harness;
@@ -45,6 +51,15 @@ function noAmbiguity(params: URLSearchParams): void {
     if (seen.has(name) || PROVIDER_LIKE_PARAMETERS.has(name)) throw new Error('invalid_request')
     seen.add(name)
   }
+}
+function validRedirectUri(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    return !parsed.username && !parsed.password && !parsed.hash && [...parsed.searchParams.keys()].every(key => !RESERVED_RESPONSE_PARAMETERS.has(key))
+  } catch { return false }
+}
+function exactFormUrlEncoded(contentType: string | null): boolean {
+  return contentType !== null && contentType.split(';', 1)[0].trim().toLowerCase() === 'application/x-www-form-urlencoded'
 }
 function parseBasic(header: string): Readonly<{ clientId: string; secret: string }> {
   if (!/^Basic\s+/i.test(header)) throw new Error('invalid_client')
@@ -74,7 +89,7 @@ export class DarkOidcHttpIssuer {
     this.#registry = input.registry
     const ids = new Set<string>()
     for (const client of input.registry.clients) {
-      if (!client.clientId || ids.has(client.clientId) || !isSocialProvider(client.provider) || !client.redirectUri) throw new Error('OIDC_CLIENT_REGISTRY_INVALID')
+      if (!client.clientId || ids.has(client.clientId) || !isSocialProvider(client.provider) || client.secretDigest.byteLength !== 32 || !validRedirectUri(client.redirectUri)) throw new Error('OIDC_CLIENT_REGISTRY_INVALID')
       ids.add(client.clientId)
     }
     const pair = generateKeyPairSync('rsa', { modulusLength: 2048, publicExponent: 0x10001 })
@@ -95,12 +110,17 @@ export class DarkOidcHttpIssuer {
       if (single(url.searchParams, 'code_challenge_method') !== 'S256' || !/^[A-Za-z0-9_-]{43}$/.test(challenge)) throw new Error('invalid_request')
       if (!single(url.searchParams, 'scope')!.split(/\s+/).includes('openid')) throw new Error('invalid_scope')
       const nonce = single(url.searchParams, 'nonce', false)
-      return Response.redirect(await this.#registry.authorize({ clientId, provider: client.provider, redirectUri, state, pkceS256Challenge: challenge, ...(nonce === undefined ? {} : { nonce }) }), 302)
-    } catch (error) { return safeError(error instanceof Error ? error.message : 'invalid_request') }
+      const result = await this.#registry.authorize({ clientId, provider: client.provider, redirectUri, pkceS256Challenge: challenge, ...(nonce === undefined ? {} : { nonce }) })
+      if (!/^[A-Za-z0-9_-]{43}$/.test(result.authorizationCode)) throw new Error('OIDC_ADAPTER_AUTHORIZATION_CODE_INVALID')
+      const destination = new URL(client.redirectUri)
+      destination.searchParams.append('code', result.authorizationCode)
+      destination.searchParams.append('state', state)
+      return Response.redirect(destination, 302)
+    } catch (error) { return protocolError(error) }
   }
   async tokenRequest(request: Request): Promise<Response> {
     try {
-      if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/x-www-form-urlencoded')) throw new Error('invalid_request')
+      if (!exactFormUrlEncoded(request.headers.get('content-type'))) throw new Error('invalid_request')
       const body = new URLSearchParams(await request.text()); noAmbiguity(body)
       if (single(body, 'grant_type') !== 'authorization_code') throw new Error('unsupported_grant_type')
       const basic = request.headers.get('authorization'); const postId = single(body, 'client_id', false); const postSecret = single(body, 'client_secret', false)
@@ -116,11 +136,11 @@ export class DarkOidcHttpIssuer {
       const now = Math.floor(Date.now() / 1000); const payload = { iss: this.issuer, aud: client.clientId, sub: consumed.subject, iat: now, exp: now + 300, auth_time: consumed.authenticationTime, ...(nonce === undefined ? {} : { nonce }) }
       const head = b64({ alg: 'RS256', typ: 'JWT', kid: this.#kid }); const encoded = b64(payload); const idToken = `${head}.${encoded}.${sign('RSA-SHA256', Buffer.from(`${head}.${encoded}`, 'ascii'), this.#privateKey).toString('base64url')}`
       return Response.json({ access_token: randomBytes(32).toString('base64url'), token_type: 'Bearer', expires_in: 60, id_token: idToken }, { headers: { 'cache-control': 'no-store' } })
-    } catch (error) { return safeError(error instanceof Error ? error.message : 'invalid_request', error instanceof Error && error.message === 'invalid_client' ? 401 : 400) }
+    } catch (error) { return protocolError(error, true) }
   }
   #client(id: string) { const client = this.#registry.clients.find(value => value.clientId === id); if (!client) throw new Error('invalid_client'); return client }
 }
 
-export function createSyntheticClient(clientId: string, secret: string, redirectUri: string, provider: SocialProvider): BrokerClient { return { clientId, secretDigest: digestSecret(secret), redirectUri, provider } }
+export function createSyntheticClient(clientId: string, secret: string, redirectUri: string, provider: SocialProvider): DarkOidcClient { return { clientId, secretDigest: digestSecret(secret), redirectUri, provider } }
 /** Routes may never be activated by environment. Local tests instantiate the issuer explicitly. */
 export function darkOidcRouteNotFound(): Response { return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } }) }

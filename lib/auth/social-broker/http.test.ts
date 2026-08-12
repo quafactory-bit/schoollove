@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 import { brokerAuthorizationCodeDigest, encryptBrokerDownstreamNonce } from './durable-code'
-import { DarkOidcHttpIssuer, createSyntheticClient, darkOidcRouteNotFound } from './http'
+import { DarkOidcHttpIssuer, createSyntheticClient, darkOidcRouteNotFound, type DarkOidcRegistry } from './http'
 import { calculateS256Challenge, createPkceVerifier } from './pkce'
 import { GET as discoveryGet } from '@/app/.well-known/openid-configuration/route'
 import { GET as jwksGet } from '@/app/.well-known/jwks.json/route'
@@ -18,19 +18,21 @@ const clients = [
   createSyntheticClient('slb-supabase-google', 'google secret+/=', redirect, 'google'),
 ] as const
 
-function fixture() {
+function fixture(overrides: Partial<DarkOidcRegistry> = {}) {
   let consumeCount = 0
   let digestCount = 0
   const code = randomBytes(32).toString('base64url')
   const codeId = 'a1000000-0000-4000-8000-000000000001'
   const verifier = createPkceVerifier(); const challenge = calculateS256Challenge(verifier)
   const nonce = encryptBrokerDownstreamNonce({ nonce: 'exact-downstream-nonce', key: nonceKey, codeId, clientId: clients[2].clientId, redirectUri: redirect, iv: Buffer.alloc(12, 4) })
-  const service = new DarkOidcHttpIssuer({ issuer, registry: {
+  const registry: DarkOidcRegistry = {
     clients, nonceKey,
     digestCode: input => { digestCount += 1; return brokerAuthorizationCodeDigest(input) },
-    authorize: async input => `${input.redirectUri}?code=ephemeral&state=${encodeURIComponent(input.state)}`,
+    authorize: async () => ({ authorizationCode: 'A'.repeat(43) }),
     consumeCode: async input => { consumeCount += 1; return Buffer.from(input.codeDigest).equals(Buffer.from(brokerAuthorizationCodeDigest(code))) && input.clientId === clients[2].clientId && input.redirectUri === redirect && input.pkceS256Challenge === challenge ? { outcome: 'AUTHORIZATION_CODE_CONSUMED', subject: 'slb:v1:k01:google:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', authenticationTime: 1_800_000_000, codeId, downstreamNonce: nonce } : null },
-  } })
+    ...overrides,
+  }
+  const service = new DarkOidcHttpIssuer({ issuer, registry })
   return { service, code, verifier, get consumeCount() { return consumeCount }, get digestCount() { return digestCount } }
 }
 
@@ -41,9 +43,30 @@ describe('dark OIDC HTTP boundary', () => {
     for (const client of clients) {
       const response = await f.service.authorizeRequest(new Request(`${issuer}/oauth/authorize?response_type=code&client_id=${client.clientId}&redirect_uri=${encodeURIComponent(redirect)}&state=state-${client.provider}&scope=openid&code_challenge=${'A'.repeat(43)}&code_challenge_method=S256`))
       expect(response.status).toBe(302)
+      const location = new URL(response.headers.get('location')!)
+      expect(location.origin + location.pathname).toBe(redirect)
+      expect(location.searchParams.get('code')).toMatch(/^[A-Za-z0-9_-]{43}$/)
     }
     const rejected = await f.service.authorizeRequest(new Request(`${issuer}/oauth/authorize?response_type=code&client_id=${clients[2].clientId}&redirect_uri=${encodeURIComponent(redirect)}&state=x&scope=openid&code_challenge=${'A'.repeat(43)}&code_challenge_method=S256&provider=kakao`))
     expect(rejected.status).toBe(400)
+  })
+
+  it('PHASE10O_K_AUTHORIZE_EXACT_REDIRECT_ONLY_OK and PHASE10O_K_AUTHORIZE_STATE_EXACT_ECHO_OK', async () => {
+    const f = fixture({ authorize: async () => ({ authorizationCode: 'Z'.repeat(43) }) })
+    const state = 'state +/%?&= 한글'
+    const response = await f.service.authorizeRequest(new Request(`${issuer}/oauth/authorize?response_type=code&client_id=${clients[2].clientId}&redirect_uri=${encodeURIComponent(redirect)}&state=${encodeURIComponent(state)}&scope=openid&code_challenge=${'A'.repeat(43)}&code_challenge_method=S256`))
+    const location = new URL(response.headers.get('location')!)
+    expect(response.status).toBe(302)
+    expect(location.origin + location.pathname).toBe(redirect)
+    expect(location.searchParams.get('code')).toBe('Z'.repeat(43))
+    expect(location.searchParams.get('state')).toBe(state)
+  })
+
+  it('rejects an adapter authorization code outside the exact 43-character base64url contract', async () => {
+    const f = fixture({ authorize: async () => ({ authorizationCode: 'not-a-durable-code' }) })
+    const response = await f.service.authorizeRequest(new Request(`${issuer}/oauth/authorize?response_type=code&client_id=${clients[2].clientId}&redirect_uri=${encodeURIComponent(redirect)}&state=x&scope=openid&code_challenge=${'A'.repeat(43)}&code_challenge_method=S256`))
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ error: 'server_error' })
   })
 
   it('handles Go QueryEscape-compatible Basic decoding exactly once and exchanges a durable code', async () => {
@@ -79,6 +102,38 @@ describe('dark OIDC HTTP boundary', () => {
     expect(malformed.status).toBe(401); expect(f.consumeCount).toBe(0); expect(f.digestCount).toBe(0)
     const duplicate = await f.service.authorizeRequest(new Request(`${issuer}/oauth/authorize?response_type=code&response_type=code&client_id=${clients[2].clientId}&redirect_uri=${encodeURIComponent(redirect)}&state=x&scope=openid&code_challenge=${'A'.repeat(43)}&code_challenge_method=S256`))
     expect(duplicate.status).toBe(400)
+  })
+
+  it('PHASE10O_K_TOKEN_CONTENT_TYPE_EXACT_OK accepts only the exact form media type', async () => {
+    const f = fixture()
+    const request = (contentType: string) => new Request(`${issuer}/oauth/token`, { method: 'POST', headers: { 'content-type': contentType }, body: new URLSearchParams({ grant_type: 'authorization_code', code: f.code, redirect_uri: redirect, code_verifier: f.verifier, client_id: clients[2].clientId, client_secret: 'google secret+/=' }) })
+    expect((await f.service.tokenRequest(request('application/x-www-form-urlencoded; charset=UTF-8'))).status).toBe(200)
+    expect((await f.service.tokenRequest(request('application/x-www-form-urlencodedevil'))).status).toBe(400)
+  })
+
+  it('rejects malformed registry entries before HTTP handling', () => {
+    expect(() => fixture({ clients: [{ ...clients[0], secretDigest: Buffer.alloc(31) }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'https://user:password@local.supabase.invalid/callback' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'https://local.supabase.invalid/callback#fragment' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'https://local.supabase.invalid/callback?code=reserved' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
+  })
+
+  it('PHASE10O_K_TOKEN_INTERNAL_ERROR_COARSE_OK and PHASE10O_K_AUTHORIZE_INTERNAL_ERROR_COARSE_OK never expose adapter errors', async () => {
+    const authorize = fixture({ authorize: async () => { throw new Error('private_table_constraint_detail') } })
+    const authorizeResponse = await authorize.service.authorizeRequest(new Request(`${issuer}/oauth/authorize?response_type=code&client_id=${clients[2].clientId}&redirect_uri=${encodeURIComponent(redirect)}&state=x&scope=openid&code_challenge=${'A'.repeat(43)}&code_challenge_method=S256`))
+    expect(authorizeResponse.status).toBe(500)
+    expect(await authorizeResponse.json()).toEqual({ error: 'server_error' })
+    const token = fixture({ consumeCode: async () => { throw new Error('SQLSTATE 23505 private_accounts') } })
+    const tokenResponse = await token.service.tokenRequest(new Request(`${issuer}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', code: token.code, redirect_uri: redirect, code_verifier: token.verifier, client_id: clients[2].clientId, client_secret: 'google secret+/=' }) }))
+    expect(tokenResponse.status).toBe(500)
+    expect(await tokenResponse.json()).toEqual({ error: 'server_error' })
+  })
+
+  it('PHASE10O_K_CRYPTO_ERRORS_COARSE_OK returns only server_error for nonce decryption failure', async () => {
+    const f = fixture({ consumeCode: async () => ({ outcome: 'AUTHORIZATION_CODE_CONSUMED', subject: 'slb:v1:k01:google:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', authenticationTime: 1_800_000_000, codeId: 'a1000000-0000-4000-8000-000000000001', downstreamNonce: { digest: Buffer.alloc(32), ciphertext: Buffer.alloc(17), iv: Buffer.alloc(12), keyVersion: 1 } }) })
+    const response = await f.service.tokenRequest(new Request(`${issuer}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', code: f.code, redirect_uri: redirect, code_verifier: f.verifier, client_id: clients[2].clientId, client_secret: 'google secret+/=' }) }))
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ error: 'server_error' })
   })
 
   it('PHASE10O_K_PRODUCTION_HTTP_SURFACE_404_OK: keeps every deployed protocol route hard-off', async () => {
