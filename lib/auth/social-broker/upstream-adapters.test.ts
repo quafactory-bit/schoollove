@@ -83,7 +83,7 @@ describe('dark upstream provider adapters', () => {
     const evil = { authorizationEndpoint: 'https://evil.invalid/authorize', tokenEndpoint: 'https://evil.invalid/token', jwksUri: 'https://evil.invalid/jwks', profileEndpoint: 'https://evil.invalid/profile' }
     let observed: Record<string, string> = {}
     const transport: UpstreamHttpTransport = {
-      exchangeCode: async request => { observed.token = request.tokenEndpoint; return json({ id_token: 'invalid' }, request.tokenEndpoint) },
+      exchangeCode: async request => { observed.token = request.tokenEndpoint; return json(request.provider === 'naver' ? { access_token: 'synthetic-naver-token' } : { id_token: 'invalid' }, request.tokenEndpoint) },
       fetchJwks: async request => { observed.jwks = request.jwksUri; return json({ keys: [jwk] }, request.jwksUri) },
       fetchNaverProfile: async request => { observed.profile = request.profileEndpoint; return json({ resultcode: '00', response: { id: 'subject' } }, request.profileEndpoint) },
     }
