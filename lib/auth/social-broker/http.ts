@@ -55,11 +55,12 @@ function noAmbiguity(params: URLSearchParams): void {
 function validRedirectUri(value: string): boolean {
   try {
     const parsed = new URL(value)
-    return !parsed.username && !parsed.password && !parsed.hash && [...parsed.searchParams.keys()].every(key => !RESERVED_RESPONSE_PARAMETERS.has(key))
+    const loopbackHttp = parsed.protocol === 'http:' && new Set(['localhost', '127.0.0.1', '::1', '[::1]']).has(parsed.hostname.toLowerCase())
+    return (parsed.protocol === 'https:' || loopbackHttp) && !parsed.username && !parsed.password && !parsed.hash && [...parsed.searchParams.keys()].every(key => !RESERVED_RESPONSE_PARAMETERS.has(key))
   } catch { return false }
 }
 function exactFormUrlEncoded(contentType: string | null): boolean {
-  return contentType !== null && contentType.split(';', 1)[0].trim().toLowerCase() === 'application/x-www-form-urlencoded'
+  return contentType !== null && /^application\/x-www-form-urlencoded(?:\s*;\s*charset\s*=\s*utf-8\s*)?$/i.test(contentType)
 }
 function parseBasic(header: string): Readonly<{ clientId: string; secret: string }> {
   if (!/^Basic\s+/i.test(header)) throw new Error('invalid_client')

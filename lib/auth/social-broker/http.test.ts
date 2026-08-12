@@ -104,11 +104,16 @@ describe('dark OIDC HTTP boundary', () => {
     expect(duplicate.status).toBe(400)
   })
 
-  it('PHASE10O_K_TOKEN_CONTENT_TYPE_EXACT_OK accepts only the exact form media type', async () => {
+  it('PHASE10O_K_TOKEN_CONTENT_TYPE_EXACT_OK and PHASE10O_K_TOKEN_CONTENT_TYPE_PARAMETERS_FAIL_CLOSED_OK accept only the exact form media type and UTF-8 charset', async () => {
     const f = fixture()
     const request = (contentType: string) => new Request(`${issuer}/oauth/token`, { method: 'POST', headers: { 'content-type': contentType }, body: new URLSearchParams({ grant_type: 'authorization_code', code: f.code, redirect_uri: redirect, code_verifier: f.verifier, client_id: clients[2].clientId, client_secret: 'google secret+/=' }) })
     expect((await f.service.tokenRequest(request('application/x-www-form-urlencoded; charset=UTF-8'))).status).toBe(200)
+    expect((await f.service.tokenRequest(request('application/x-www-form-urlencoded; Charset=utf-8'))).status).toBe(200)
     expect((await f.service.tokenRequest(request('application/x-www-form-urlencodedevil'))).status).toBe(400)
+    expect((await f.service.tokenRequest(request('application/x-www-form-urlencoded; evil=yes'))).status).toBe(400)
+    expect((await f.service.tokenRequest(request('application/x-www-form-urlencoded; charset=UTF-8; evil=yes'))).status).toBe(400)
+    expect((await f.service.tokenRequest(request('application/x-www-form-urlencoded; charset=UTF-8; charset=UTF-8'))).status).toBe(400)
+    expect((await f.service.tokenRequest(request('application/x-www-form-urlencoded; charset'))).status).toBe(400)
   })
 
   it('rejects malformed registry entries before HTTP handling', () => {
@@ -116,6 +121,18 @@ describe('dark OIDC HTTP boundary', () => {
     expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'https://user:password@local.supabase.invalid/callback' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
     expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'https://local.supabase.invalid/callback#fragment' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
     expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'https://local.supabase.invalid/callback?code=reserved' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
+  })
+
+  it('PHASE10O_K_REDIRECT_SCHEME_FAIL_CLOSED_OK permits HTTPS and loopback HTTP only', () => {
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'https://local.supabase.invalid/callback' }] })).not.toThrow()
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'http://localhost/callback' }] })).not.toThrow()
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'http://127.0.0.1/callback' }] })).not.toThrow()
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'http://[::1]/callback' }] })).not.toThrow()
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'http://evil.example/callback' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'javascript:alert(1)' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'data:text/plain,nope' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'ftp://example.invalid/callback' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
+    expect(() => fixture({ clients: [{ ...clients[0], redirectUri: 'file:///callback' }] })).toThrow('OIDC_CLIENT_REGISTRY_INVALID')
   })
 
   it('PHASE10O_K_TOKEN_INTERNAL_ERROR_COARSE_OK and PHASE10O_K_AUTHORIZE_INTERNAL_ERROR_COARSE_OK never expose adapter errors', async () => {
