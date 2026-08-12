@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-12 PHASE 10O-L dark upstream provider adapter boundary (local/Draft)
+
+- Added server-only provider adapters for Kakao OIDC, Google OIDC, and Naver OAuth2 behind an injected in-memory-test HTTP transport interface. No tracked application route instantiates an adapter or makes a provider call.
+- Kakao/Google prepare an exact-client/exact-redirect code flow with independent state, nonce, and S256 PKCE. Their verifier accepts only configured HTTPS JWKS responses, exact `kid` RSA `RS256` keys, exact issuer/audience, valid `iat`/`exp`, exact nonce, and non-empty `sub`.
+- Naver remains explicitly OAuth2-only: it uses state but no OIDC nonce or assumed PKCE, and its minimal successful identity is only non-empty `response.id`. Live client-secret transport is deferred.
+- The adapters retain authorization codes and all token material only in request memory, and tests cover provider substitution, replay, malformed/oversize transport responses, exact provider namespace derivation, and public HTTP feature-off isolation. No migration, DB change, provider credential/action, Auth configuration, login UI, email, environment, or Production change was made.
+
 ## 2026-08-11 PHASE 10O-I recovery delivery state boundary (local/Draft)
 
 - Added `20260811110000_recovery_delivery_state_boundary.sql` as a new forward-only migration after the Production-applied 10O-H migration; prior migrations remain unchanged.
