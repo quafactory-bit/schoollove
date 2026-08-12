@@ -1,6 +1,9 @@
 -- Local-only bridge for schema history that predates repository migrations.
 -- Never run this file against Production. Production already owns these columns.
 ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS current_level integer NOT NULL DEFAULT 1;
+-- Production's legacy school shape includes this pre-migration column; later
+-- reset/preflight migrations assert it before any PHASE 10O fixture runs.
+ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS level_updated_at timestamptz;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS description text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_self boolean NOT NULL DEFAULT false;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS message text;

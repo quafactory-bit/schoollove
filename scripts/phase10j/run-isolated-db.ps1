@@ -18,8 +18,15 @@ try {
     Start-Sleep -Seconds 1
   }
   if (-not $ready) { throw 'Isolated PostgreSQL did not become ready.' }
-  $files=@((Resolve-Path 'supabase-schema.sql').Path,(Resolve-Path 'scripts/phase10f/bootstrap-legacy.sql').Path)+(Get-ChildItem -LiteralPath 'supabase/migrations' -Filter '*.sql'|Sort-Object Name|ForEach-Object FullName)
+  $migrations=@(Get-ChildItem -LiteralPath 'supabase/migrations' -Filter '*.sql'|Sort-Object Name)
+  $reset=$migrations|Where-Object Name -eq '20260802120000_legacy_person_data_reset.sql'
+  $beforeReset=$migrations|Where-Object Name -lt '20260802120000_legacy_person_data_reset.sql'
+  $afterReset=$migrations|Where-Object Name -gt '20260802120000_legacy_person_data_reset.sql'
+  $files=@((Resolve-Path 'supabase-schema.sql').Path,(Resolve-Path 'scripts/phase10f/bootstrap-legacy.sql').Path)+($beforeReset|ForEach-Object FullName)
   foreach($file in $files){Get-Content -LiteralPath $file -Raw -Encoding UTF8|docker exec -i $containerName psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q;if($LASTEXITCODE-ne 0){throw "Migration failed: $file"}}
+  Get-Content -LiteralPath 'scripts/phase10l/seed-production-shape.sql' -Raw -Encoding UTF8|docker exec -i $containerName psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q
+  if($LASTEXITCODE-ne 0){throw 'Production-shape fixture failed.'}
+  foreach($file in @($reset.FullName)+($afterReset|ForEach-Object FullName)){Get-Content -LiteralPath $file -Raw -Encoding UTF8|docker exec -i $containerName psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q;if($LASTEXITCODE-ne 0){throw "Migration failed: $file"}}
   foreach($smoke in @('scripts/phase10j/lifecycle-smoke.sql','scripts/phase10j/permission-smoke.sql')){Get-Content -LiteralPath $smoke -Raw -Encoding UTF8|docker exec -i $containerName psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q;if($LASTEXITCODE-ne 0){throw "Smoke failed: $smoke"}}
   Write-Output 'PHASE10J_ISOLATED_DB_OK'
 } finally {

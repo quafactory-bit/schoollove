@@ -146,15 +146,12 @@ BEGIN
   PERFORM set_config('request.jwt.claim.role','authenticated',true);
   PERFORM set_config('role','authenticated',true);
   BEGIN
-    INSERT INTO public.profile_school_memberships(profile_id,owner_user_id,school_id,graduation_year)
-    VALUES(profile_id,'41000000-0000-4000-8000-000000000001',other_school,2020);
+    PERFORM public.add_own_school_membership(other_school,2020,NULL);
     RAISE EXCEPTION 'out-of-scope school accepted';
   EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'SCHOOL_OUTSIDE_BETA_SCOPE' THEN RAISE; END IF; END;
-  INSERT INTO public.profile_school_memberships(profile_id,owner_user_id,school_id,graduation_year)
-  VALUES(profile_id,'41000000-0000-4000-8000-000000000001',target_school,2020);
+  PERFORM public.add_own_school_membership(target_school,2020,NULL);
   BEGIN
-    INSERT INTO public.profile_school_memberships(profile_id,owner_user_id,school_id,graduation_year)
-    VALUES(profile_id,'41000000-0000-4000-8000-000000000001',target_school,2019);
+    PERFORM public.add_own_school_membership(target_school,2019,NULL);
     RAISE EXCEPTION 'second school history accepted';
   EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'SECOND_SCHOOL_NOT_ALLOWED' THEN RAISE; END IF; END;
   PERFORM set_config('role','none',true);
