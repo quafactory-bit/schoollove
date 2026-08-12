@@ -8,8 +8,6 @@ import type { SocialProvider } from './types'
 
 const MAX_RESPONSE_BYTES = 16 * 1024
 const MAX_JWKS_KEYS = 16
-const AUTH_CODE_PATTERN = /^[A-Za-z0-9._~-]{8,2048}$/
-const OIDC_CODE_PATTERN = /^[A-Za-z0-9._~-]{8,2048}$/
 
 export type UpstreamHttpResponse = Readonly<{ status: number; contentType: string; body: string; url: string }>
 export type UpstreamHttpTransport = Readonly<{
@@ -39,6 +37,7 @@ type OidcProviderConfig = Readonly<{
   jwksUri: string
   issuers: readonly string[]
 }>
+type ClientCallbackConfig = Readonly<{ clientId: string; redirectUri: string }>
 type NaverProviderConfig = Readonly<{
   provider: 'naver'
   clientId: string
@@ -87,6 +86,10 @@ function object(value: unknown): Record<string, unknown> {
 }
 function nonEmpty(value: unknown): string {
   if (typeof value !== 'string' || value.length === 0 || Buffer.byteLength(value, 'utf8') > 2048) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+  return value
+}
+function opaqueAuthorizationCode(value: string): string {
+  if (Buffer.byteLength(value, 'utf8') > 2048 || /[\u0000-\u001F\u007F]/.test(value)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
   return value
 }
 function callbackParameters(callbackUrl: string, redirectUri: string): URLSearchParams {
@@ -160,8 +163,9 @@ abstract class BaseAdapter<TConfig extends OidcProviderConfig | NaverProviderCon
   validateCallback(input: Readonly<{ provider: SocialProvider; callbackUrl: string }>): ValidatedUpstreamCallback {
     if (input.provider !== this.provider || !this.#pending) brokerFailure('PROVIDER_MISMATCH')
     const params = callbackParameters(input.callbackUrl, this.config.redirectUri)
-    const state = single(params, 'state'); const code = single(params, 'code')
-    if (!AUTH_CODE_PATTERN.test(code) || !this.#pending.state.verifyAndConsume(state)) brokerFailure('STATE_REJECTED')
+    const state = single(params, 'state')
+    if (!this.#pending.state.verifyAndConsume(state)) brokerFailure('STATE_REJECTED')
+    const code = opaqueAuthorizationCode(single(params, 'code'))
     this.#pending = { ...this.#pending, callbackCode: code }
     return Object.freeze({ provider: this.provider, authorizationCode: code })
   }
@@ -189,16 +193,15 @@ class OidcAdapter extends BaseAdapter<OidcProviderConfig> {
 }
 
 export class KakaoUpstreamAdapter extends OidcAdapter {
-  constructor(input: Omit<OidcProviderConfig, 'provider' | 'issuers'>, transport: UpstreamHttpTransport) { super({ ...input, provider: 'kakao', issuers: [KAKAO_OIDC_METADATA.issuer] }, transport) }
+  constructor(input: ClientCallbackConfig, transport: UpstreamHttpTransport) { super({ ...input, ...KAKAO_OIDC_METADATA, provider: 'kakao', issuers: [KAKAO_OIDC_METADATA.issuer] }, transport) }
 }
 export class GoogleUpstreamAdapter extends OidcAdapter {
-  constructor(input: Omit<OidcProviderConfig, 'provider' | 'issuers'>, transport: UpstreamHttpTransport) { super({ ...input, provider: 'google', issuers: GOOGLE_OIDC_METADATA.issuers }, transport) }
+  constructor(input: ClientCallbackConfig, transport: UpstreamHttpTransport) { super({ ...input, ...GOOGLE_OIDC_METADATA, provider: 'google', issuers: GOOGLE_OIDC_METADATA.issuers }, transport) }
 }
 
 export class NaverUpstreamAdapter extends BaseAdapter<NaverProviderConfig> {
-  constructor(config: Omit<NaverProviderConfig, 'provider'>, transport: UpstreamHttpTransport) {
-    if (!safeHttps(config.profileEndpoint)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
-    super({ ...config, provider: 'naver' }, transport)
+  constructor(input: ClientCallbackConfig, transport: UpstreamHttpTransport) {
+    super({ ...input, ...NAVER_OAUTH_METADATA, provider: 'naver' }, transport)
   }
   prepareAuthorization(): PreparedUpstreamAuthorization {
     const stateLeg = createStateLeg(); this.createPending({ state: stateLeg.binding, rawState: stateLeg.rawState })

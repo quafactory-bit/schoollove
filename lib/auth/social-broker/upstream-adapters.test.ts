@@ -35,8 +35,8 @@ function oidcTransport(input: Readonly<{ provider: 'kakao' | 'google'; idToken: 
   }
 }
 function oidcConfig(provider: 'kakao' | 'google') {
-  const metadata = provider === 'kakao' ? KAKAO_OIDC_METADATA : GOOGLE_OIDC_METADATA
-  return { clientId, redirectUri: redirect, authorizationEndpoint: metadata.authorizationEndpoint, tokenEndpoint: metadata.tokenEndpoint, jwksUri: metadata.jwksUri }
+  void provider
+  return { clientId, redirectUri: redirect }
 }
 function authorizeCallback(adapter: KakaoUpstreamAdapter | GoogleUpstreamAdapter, provider: 'kakao' | 'google') {
   const prepared = adapter.prepareAuthorization(); const url = new URL(prepared.authorizationUrl)
@@ -70,13 +70,57 @@ describe('dark upstream provider adapters', () => {
   it('PHASE10O_L_UPSTREAM_STATE_ISOLATION_OK, PHASE10O_L_OIDC_NONCE_ISOLATION_OK, and PHASE10O_L_UPSTREAM_PKCE_ISOLATION_OK', () => {
     const kakao = new KakaoUpstreamAdapter(oidcConfig('kakao'), oidcTransport({ provider: 'kakao', idToken: 'unused' }))
     const google = new GoogleUpstreamAdapter(oidcConfig('google'), oidcTransport({ provider: 'google', idToken: 'unused' }))
-    const naver = new NaverUpstreamAdapter({ clientId, redirectUri: redirect, ...NAVER_OAUTH_METADATA }, { exchangeCode: async () => { throw new Error('unused') }, fetchJwks: async () => { throw new Error('unused') }, fetchNaverProfile: async () => { throw new Error('unused') } })
+    const naver = new NaverUpstreamAdapter({ clientId, redirectUri: redirect }, { exchangeCode: async () => { throw new Error('unused') }, fetchJwks: async () => { throw new Error('unused') }, fetchNaverProfile: async () => { throw new Error('unused') } })
     const k = new URL(kakao.prepareAuthorization().authorizationUrl).searchParams
     const g = new URL(google.prepareAuthorization().authorizationUrl).searchParams
     const n = new URL(naver.prepareAuthorization().authorizationUrl).searchParams
     expect(k.get('state')).not.toBe(g.get('state')); expect(k.get('state')).not.toBe(n.get('state')); expect(g.get('state')).not.toBe(n.get('state'))
     expect(k.get('nonce')).not.toBe(g.get('nonce')); expect(k.get('code_challenge')).not.toBe(g.get('code_challenge'))
     expect(n.has('nonce')).toBe(false); expect(n.has('code_challenge')).toBe(false); expect(n.has('code_challenge_method')).toBe(false)
+  })
+
+  it('PHASE10O_L_PROVIDER_ENDPOINT_PINNING_OK ignores endpoint substitution and cannot use a forged endpoint JWKS', async () => {
+    const evil = { authorizationEndpoint: 'https://evil.invalid/authorize', tokenEndpoint: 'https://evil.invalid/token', jwksUri: 'https://evil.invalid/jwks', profileEndpoint: 'https://evil.invalid/profile' }
+    let observed: Record<string, string> = {}
+    const transport: UpstreamHttpTransport = {
+      exchangeCode: async request => { observed.token = request.tokenEndpoint; return json({ id_token: 'invalid' }, request.tokenEndpoint) },
+      fetchJwks: async request => { observed.jwks = request.jwksUri; return json({ keys: [jwk] }, request.jwksUri) },
+      fetchNaverProfile: async request => { observed.profile = request.profileEndpoint; return json({ resultcode: '00', response: { id: 'subject' } }, request.profileEndpoint) },
+    }
+    const kakao = new KakaoUpstreamAdapter({ clientId, redirectUri: redirect, ...evil } as never, transport)
+    const google = new GoogleUpstreamAdapter({ clientId, redirectUri: redirect, ...evil } as never, transport)
+    const naver = new NaverUpstreamAdapter({ clientId, redirectUri: redirect, ...evil } as never, transport)
+    const kakaoUrl = new URL(kakao.prepareAuthorization().authorizationUrl)
+    expect(kakaoUrl.origin).toBe('https://kauth.kakao.com')
+    expect(new URL(google.prepareAuthorization().authorizationUrl).origin).toBe('https://accounts.google.com')
+    const naverUrl = new URL(naver.prepareAuthorization().authorizationUrl)
+    expect(naverUrl.origin).toBe('https://nid.naver.com')
+    const callback = kakao.validateCallback({ provider: 'kakao', callbackUrl: `${redirect}?code=4/P7q7W91a-oMsCeLvIaQm6bTrgtp7&state=${kakaoUrl.searchParams.get('state')}` })
+    await expect(kakao.exchangeAndVerifyIdentity(callback, NOW)).rejects.toThrowError(new SocialBrokerError('UPSTREAM_RESPONSE_MALFORMED'))
+    expect(observed.token).toBe(KAKAO_OIDC_METADATA.tokenEndpoint)
+    expect(observed.jwks).toBeUndefined()
+    const naverCallback = naver.validateCallback({ provider: 'naver', callbackUrl: `${redirect}?code=4/P7q7W91a-oMsCeLvIaQm6bTrgtp7&state=${naverUrl.searchParams.get('state')}` })
+    await naver.exchangeAndVerifyIdentity(naverCallback, NOW)
+    expect(observed.token).toBe(NAVER_OAUTH_METADATA.tokenEndpoint); expect(observed.profile).toBe(NAVER_OAUTH_METADATA.profileEndpoint)
+  })
+
+  it('PHASE10O_L_OPAQUE_AUTHORIZATION_CODE_OK preserves Google-shaped and exactly-once decoded opaque codes', async () => {
+    let passedCode = ''
+    const adapter = new GoogleUpstreamAdapter(oidcConfig('google'), {
+      exchangeCode: async request => { passedCode = request.authorizationCode; return json({ id_token: 'invalid' }, request.tokenEndpoint) },
+      fetchJwks: async () => { throw new Error('not reached') }, fetchNaverProfile: async () => { throw new Error('not used') },
+    })
+    const first = new URL(adapter.prepareAuthorization().authorizationUrl)
+    const firstCallback = adapter.validateCallback({ provider: 'google', callbackUrl: `${redirect}?code=4/P7q7W91a-oMsCeLvIaQm6bTrgtp7&state=${first.searchParams.get('state')}` })
+    expect(firstCallback.authorizationCode).toBe('4/P7q7W91a-oMsCeLvIaQm6bTrgtp7')
+    await expect(adapter.exchangeAndVerifyIdentity(firstCallback, NOW)).rejects.toThrowError(new SocialBrokerError('UPSTREAM_RESPONSE_MALFORMED'))
+    expect(passedCode).toBe('4/P7q7W91a-oMsCeLvIaQm6bTrgtp7')
+    const decoded = new GoogleUpstreamAdapter(oidcConfig('google'), { exchangeCode: async request => { passedCode = request.authorizationCode; return json({ id_token: 'invalid' }, request.tokenEndpoint) }, fetchJwks: async () => { throw new Error('not reached') }, fetchNaverProfile: async () => { throw new Error('not used') } })
+    const second = new URL(decoded.prepareAuthorization().authorizationUrl)
+    const secondCallback = decoded.validateCallback({ provider: 'google', callbackUrl: `${redirect}?code=abc%2Bdef%2Fghi%3D&state=${second.searchParams.get('state')}` })
+    expect(secondCallback.authorizationCode).toBe('abc+def/ghi=')
+    await expect(decoded.exchangeAndVerifyIdentity(secondCallback, NOW)).rejects.toThrowError(new SocialBrokerError('UPSTREAM_RESPONSE_MALFORMED'))
+    expect(passedCode).toBe('abc+def/ghi=')
   })
 
   it.each(['kakao', 'google'] as const)('rejects the full OIDC verification matrix for %s', async provider => {
@@ -112,7 +156,7 @@ describe('dark upstream provider adapters', () => {
 
   it('PHASE10O_L_NAVER_OAUTH_IDENTITY_OK keeps Naver OAuth2-only and parses only response.id', async () => {
     let tokenIntent: Record<string, unknown> | undefined; let profileAccessToken: string | undefined
-    const adapter = new NaverUpstreamAdapter({ clientId, redirectUri: redirect, ...NAVER_OAUTH_METADATA }, {
+    const adapter = new NaverUpstreamAdapter({ clientId, redirectUri: redirect }, {
       exchangeCode: async request => { tokenIntent = request; return json({ access_token: 'synthetic-naver-access-token', refresh_token: 'synthetic-refresh-token' }, request.tokenEndpoint) },
       fetchJwks: async () => { throw new Error('not used') },
       fetchNaverProfile: async request => { profileAccessToken = request.accessToken; return json({ resultcode: '00', message: 'success', response: { id: 'synthetic-naver-subject', email: 'synthetic@example.invalid', nickname: 'ignored' } }, request.profileEndpoint) },
@@ -127,7 +171,7 @@ describe('dark upstream provider adapters', () => {
   })
 
   it('rejects Naver missing/malformed response.id and provider substitution', async () => {
-    const create = (profile: unknown) => new NaverUpstreamAdapter({ clientId, redirectUri: redirect, ...NAVER_OAUTH_METADATA }, {
+    const create = (profile: unknown) => new NaverUpstreamAdapter({ clientId, redirectUri: redirect }, {
       exchangeCode: async request => json({ access_token: 'synthetic-access-token' }, request.tokenEndpoint),
       fetchJwks: async () => { throw new Error('not used') },
       fetchNaverProfile: async request => json(profile, request.profileEndpoint),
@@ -172,5 +216,12 @@ describe('dark upstream provider adapters', () => {
     expect(source).not.toMatch(/\bfetch\s*\(|axios|https?\.request|undici/i)
     expect(source).not.toMatch(/clientSecret|process\.env|cookie|localStorage|sessionStorage|redis|writeFile/i)
     expect(app).not.toContain('UpstreamAdapter')
+  })
+
+  it('PHASE10O_L_PROCESS_LOCAL_PENDING_NOT_PRODUCTION_WIRABLE_OK documents the dark harness boundary', () => {
+    const decision = readFileSync(new URL('../../../docs/decisions/2026-08-12-dark-upstream-provider-adapter-boundary.md', import.meta.url), 'utf8')
+    expect(decision).toMatch(/process-local protocol harness/i)
+    expect(decision).toMatch(/durable\/resumable boundary/i)
+    expect(decision).toMatch(/must not.*route singleton or session state/i)
   })
 })
