@@ -11,10 +11,11 @@ import { calculateS256Challenge, createPkceVerifier } from './pkce'
 const key = { version: 7, material: Buffer.alloc(32, 0x71) }
 const clientId = 'supabase-social-broker'
 const redirectUri = 'https://auth.schoollove.invalid/callback'
+const authenticationTime = () => Math.floor(Date.now() / 1000) - 1
 
 describe('durable broker authorization-code preparation', () => {
   it('keeps raw code only in the ephemeral response and stores a domain-separated 32-byte digest', () => {
-    const prepared = prepareBrokerAuthorizationCode({ clientId, redirectUri, pkceS256Challenge: calculateS256Challenge(createPkceVerifier()), authenticationTime: 1_800_000_000 })
+    const prepared = prepareBrokerAuthorizationCode({ clientId, redirectUri, pkceS256Challenge: calculateS256Challenge(createPkceVerifier()), authenticationTime: authenticationTime() })
     expect(prepared.response.authorizationCode).toMatch(/^[A-Za-z0-9_-]{43}$/)
     expect(prepared.database.codeDigest).toHaveLength(32)
     expect(Buffer.from(prepared.database.codeDigest)).toEqual(Buffer.from(brokerAuthorizationCodeDigest(prepared.response.authorizationCode)))
@@ -27,7 +28,7 @@ describe('durable broker authorization-code preparation', () => {
       clientId,
       redirectUri,
       pkceS256Challenge: calculateS256Challenge(createPkceVerifier()),
-      authenticationTime: 1_800_000_000,
+      authenticationTime: authenticationTime(),
       downstreamNonce: 'Exact downstream nonce: /?=+_~',
       downstreamNonceKey: key,
     })
@@ -46,6 +47,7 @@ describe('durable broker authorization-code preparation', () => {
 
   it('requires an S256 challenge and a nonce key iff a downstream nonce is supplied', () => {
     expect(() => prepareBrokerAuthorizationCode({ clientId, redirectUri, pkceS256Challenge: 'not-s256', authenticationTime: 1 })).toThrow('BROKER_AUTHORIZATION_CODE_PREPARATION_REJECTED')
+    expect(() => prepareBrokerAuthorizationCode({ clientId, redirectUri, pkceS256Challenge: calculateS256Challenge(createPkceVerifier()), authenticationTime: -1 })).toThrow('BROKER_AUTHORIZATION_CODE_PREPARATION_REJECTED')
     expect(() => prepareBrokerAuthorizationCode({ clientId, redirectUri, pkceS256Challenge: calculateS256Challenge(createPkceVerifier()), authenticationTime: 1, downstreamNonce: 'nonce' })).toThrow('BROKER_AUTHORIZATION_CODE_PREPARATION_REJECTED')
   })
 })

@@ -71,7 +71,8 @@ BEGIN
     OR requested_client_id IS NULL OR length(requested_client_id) NOT BETWEEN 1 AND 512
     OR requested_redirect_uri IS NULL OR length(requested_redirect_uri) NOT BETWEEN 1 AND 2048
     OR requested_pkce_s256_challenge IS NULL OR requested_pkce_s256_challenge !~ '^[A-Za-z0-9_-]{43}$'
-    OR requested_authentication_time IS NULL
+    OR requested_authentication_time IS NULL OR requested_authentication_time<0
+    OR requested_authentication_time>floor(extract(epoch FROM issued_at))::bigint
     OR ((requested_downstream_nonce_digest IS NULL) <> (requested_downstream_nonce_ciphertext IS NULL))
     OR ((requested_downstream_nonce_digest IS NULL) <> (requested_downstream_nonce_iv IS NULL))
     OR ((requested_downstream_nonce_digest IS NULL) <> (requested_downstream_nonce_key_version IS NULL))
@@ -96,9 +97,14 @@ BEGIN
     RETURN;
   END IF;
   terminal_at:=LEAST(attempt.expires_at,issued_at+interval '60 seconds');
+  IF terminal_at<=issued_at THEN
+    UPDATE private.oauth_login_attempts SET state='expired',coarse_terminal_reason='expired',updated_at=issued_at,version=version+1 WHERE id=attempt.id;
+    RETURN QUERY SELECT 'AUTHORIZATION_CODE_EXPIRED'::text,NULL::uuid,NULL::timestamptz;
+    RETURN;
+  END IF;
   BEGIN
-    INSERT INTO private.broker_authorization_codes(id,login_attempt_id,code_digest,client_id,redirect_uri,pkce_s256_challenge,authentication_time,state,expires_at,downstream_nonce_digest,downstream_nonce_ciphertext,downstream_nonce_iv,downstream_nonce_key_version)
-    VALUES(requested_code_id,attempt.id,requested_code_digest,requested_client_id,requested_redirect_uri,requested_pkce_s256_challenge,requested_authentication_time,'ready',terminal_at,requested_downstream_nonce_digest,requested_downstream_nonce_ciphertext,requested_downstream_nonce_iv,requested_downstream_nonce_key_version);
+    INSERT INTO private.broker_authorization_codes(id,login_attempt_id,code_digest,client_id,redirect_uri,pkce_s256_challenge,authentication_time,state,created_at,expires_at,downstream_nonce_digest,downstream_nonce_ciphertext,downstream_nonce_iv,downstream_nonce_key_version)
+    VALUES(requested_code_id,attempt.id,requested_code_digest,requested_client_id,requested_redirect_uri,requested_pkce_s256_challenge,requested_authentication_time,'ready',issued_at,terminal_at,requested_downstream_nonce_digest,requested_downstream_nonce_ciphertext,requested_downstream_nonce_iv,requested_downstream_nonce_key_version);
   EXCEPTION WHEN unique_violation THEN
     RETURN QUERY SELECT 'AUTHORIZATION_CODE_REJECTED'::text,NULL::uuid,NULL::timestamptz;
     RETURN;
@@ -142,11 +148,13 @@ BEGIN
   SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=code.login_attempt_id FOR UPDATE;
   IF code.expires_at<=now_at OR attempt.id IS NULL OR attempt.expires_at<=now_at THEN
     UPDATE private.broker_authorization_codes SET state='expired',rejected_at=now_at WHERE id=code.id;
+    UPDATE private.oauth_login_attempts SET state='expired',coarse_terminal_reason='expired',updated_at=now_at,version=version+1 WHERE id=code.login_attempt_id AND state='broker_code_ready';
     RETURN QUERY SELECT 'AUTHORIZATION_CODE_EXPIRED'::text,NULL::text,NULL::bigint,NULL::text,NULL::bytea,NULL::bytea,NULL::bytea,NULL::integer,NULL::uuid;
     RETURN;
   END IF;
   IF attempt.state<>'broker_code_ready' OR requested_client_id<>code.client_id OR requested_redirect_uri<>code.redirect_uri OR requested_pkce_s256_challenge<>code.pkce_s256_challenge THEN
     UPDATE private.broker_authorization_codes SET state='rejected',rejected_at=now_at WHERE id=code.id;
+    UPDATE private.oauth_login_attempts SET state='failed_safe',coarse_terminal_reason='failed_safe',updated_at=now_at,version=version+1 WHERE id=code.login_attempt_id AND state='broker_code_ready';
     RETURN QUERY SELECT 'AUTHORIZATION_CODE_REJECTED'::text,NULL::text,NULL::bigint,NULL::text,NULL::bytea,NULL::bytea,NULL::bytea,NULL::integer,NULL::uuid;
     RETURN;
   END IF;

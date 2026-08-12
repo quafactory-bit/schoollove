@@ -23,7 +23,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION pg_temp.phase10oj_issue(a uuid, code_id uuid, digest_hex text, client text DEFAULT 'client-a', redirect text DEFAULT 'https://auth.invalid/cb', challenge text DEFAULT repeat('A',43))
 RETURNS text LANGUAGE sql AS $$
-  SELECT outcome FROM public.create_broker_authorization_code(a,code_id,decode(digest_hex,'hex'),client,redirect,challenge,1800000000,NULL,NULL,NULL,NULL)
+  SELECT outcome FROM public.create_broker_authorization_code(a,code_id,decode(digest_hex,'hex'),client,redirect,challenge,floor(extract(epoch FROM clock_timestamp()))::bigint-1,NULL,NULL,NULL,NULL)
 $$;
 
 DO $$
@@ -45,11 +45,12 @@ BEGIN
   a:=pg_temp.phase10oj_account_decided('att_10oj_wrong_client_0001',decode(repeat('12',32),'hex'));
   IF pg_temp.phase10oj_issue(a,c,repeat('22',32))<>'AUTHORIZATION_CODE_CREATED' THEN RAISE EXCEPTION 'PHASE10O_J_WRONG_CLIENT_SETUP'; END IF;
   SELECT x.outcome INTO outcome FROM public.consume_broker_authorization_code(decode(repeat('22',32),'hex'),'wrong-client','https://auth.invalid/cb',repeat('A',43)) x;
-  IF outcome<>'AUTHORIZATION_CODE_REJECTED' OR NOT EXISTS(SELECT 1 FROM private.broker_authorization_codes WHERE id=c AND state='rejected' AND rejected_at IS NOT NULL) THEN RAISE EXCEPTION 'PHASE10O_J_CLIENT_NOT_TERMINAL'; END IF;
+  IF outcome<>'AUTHORIZATION_CODE_REJECTED' OR NOT EXISTS(SELECT 1 FROM private.broker_authorization_codes WHERE id=c AND state='rejected' AND rejected_at IS NOT NULL)
+    OR NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=a AND state='failed_safe' AND coarse_terminal_reason='failed_safe') THEN RAISE EXCEPTION 'PHASE10O_J_CLIENT_NOT_TERMINAL'; END IF;
   SELECT x.outcome INTO outcome FROM public.consume_broker_authorization_code(decode(repeat('22',32),'hex'),'client-a','https://auth.invalid/cb',repeat('A',43)) x;
-  IF outcome<>'REPLAY_REJECTED' THEN RAISE EXCEPTION 'PHASE10O_J_TERMINAL_REUSE'; END IF;
+  IF outcome<>'REPLAY_REJECTED' OR NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=a AND state='failed_safe' AND coarse_terminal_reason='failed_safe') THEN RAISE EXCEPTION 'PHASE10O_J_TERMINAL_REUSE'; END IF;
 END $$;
-SELECT 'PHASE10O_J_FAILURE_TERMINAL_OK' AS status;
+SELECT 'PHASE10O_J_BINDING_FAILURE_TERMINALIZES_ATTEMPT_OK' AS status;
 
 DO $$
 DECLARE a uuid; c uuid:='a1000000-0000-4000-8000-000000000003'; outcome text;
@@ -71,9 +72,57 @@ BEGIN
   IF pg_temp.phase10oj_issue(a,c,repeat('24',32))<>'AUTHORIZATION_CODE_CREATED' THEN RAISE EXCEPTION 'PHASE10O_J_EXPIRED_SETUP'; END IF;
   UPDATE private.broker_authorization_codes SET created_at=clock_timestamp()-interval '2 minutes',expires_at=clock_timestamp()-interval '1 second' WHERE id=c;
   SELECT x.outcome INTO outcome FROM public.consume_broker_authorization_code(decode(repeat('24',32),'hex'),'client-a','https://auth.invalid/cb',repeat('A',43)) x;
-  IF outcome<>'AUTHORIZATION_CODE_EXPIRED' OR NOT EXISTS(SELECT 1 FROM private.broker_authorization_codes WHERE id=c AND state='expired' AND rejected_at IS NOT NULL) THEN RAISE EXCEPTION 'PHASE10O_J_EXPIRED_NOT_TERMINAL'; END IF;
+  IF outcome<>'AUTHORIZATION_CODE_EXPIRED' OR NOT EXISTS(SELECT 1 FROM private.broker_authorization_codes WHERE id=c AND state='expired' AND rejected_at IS NOT NULL)
+    OR NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=a AND state='expired' AND coarse_terminal_reason='expired') THEN RAISE EXCEPTION 'PHASE10O_J_EXPIRED_NOT_TERMINAL'; END IF;
+  SELECT x.outcome INTO outcome FROM public.consume_broker_authorization_code(decode(repeat('24',32),'hex'),'client-a','https://auth.invalid/cb',repeat('A',43)) x;
+  IF outcome<>'REPLAY_REJECTED' OR NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=a AND state='expired') THEN RAISE EXCEPTION 'PHASE10O_J_EXPIRED_REPLAY'; END IF;
 END $$;
-SELECT 'PHASE10O_J_EXPIRY_OK' AS status;
+SELECT 'PHASE10O_J_EXPIRY_TERMINALIZES_ATTEMPT_OK' AS status;
+
+DO $$
+DECLARE a uuid; before_codes integer; before_state text; future_rejected boolean:=false; negative_rejected boolean:=false;
+BEGIN
+  a:=pg_temp.phase10oj_account_decided('att_10oj_future_auth_0001',decode(repeat('18',32),'hex'));
+  SELECT count(*),(SELECT state FROM private.oauth_login_attempts WHERE id=a) INTO before_codes,before_state FROM private.broker_authorization_codes;
+  BEGIN
+    PERFORM public.create_broker_authorization_code(a,'a1000000-0000-4000-8000-000000000008',decode(repeat('28',32),'hex'),'client-a','https://auth.invalid/cb',repeat('A',43),floor(extract(epoch FROM clock_timestamp()))::bigint+60,NULL,NULL,NULL,NULL);
+  EXCEPTION WHEN OTHERS THEN future_rejected:=SQLERRM LIKE '%BROKER_AUTHORIZATION_CODE_ISSUE_REJECTED%'; END;
+  BEGIN
+    PERFORM public.create_broker_authorization_code(a,'a1000000-0000-4000-8000-000000000009',decode(repeat('29',32),'hex'),'client-a','https://auth.invalid/cb',repeat('A',43),-1,NULL,NULL,NULL,NULL);
+  EXCEPTION WHEN OTHERS THEN negative_rejected:=SQLERRM LIKE '%BROKER_AUTHORIZATION_CODE_ISSUE_REJECTED%'; END;
+  IF NOT future_rejected OR NOT negative_rejected OR (SELECT count(*) FROM private.broker_authorization_codes)<>before_codes
+    OR (SELECT state FROM private.oauth_login_attempts WHERE id=a)<>before_state OR EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=a AND state='broker_code_ready') THEN RAISE EXCEPTION 'PHASE10O_J_FUTURE_AUTH_TIME_FAIL_OPEN'; END IF;
+END $$;
+SELECT 'PHASE10O_J_FUTURE_AUTH_TIME_REJECTED_OK' AS status;
+
+DO $$
+DECLARE a uuid; c uuid:='a1000000-0000-4000-8000-000000000010'; outcome text;
+BEGIN
+  a:=pg_temp.phase10oj_account_decided('att_10oj_near_expiry_0001',decode(repeat('19',32),'hex'));
+  UPDATE private.oauth_login_attempts SET expires_at=clock_timestamp()+interval '1 millisecond' WHERE id=a;
+  SELECT pg_temp.phase10oj_issue(a,c,repeat('2a',32)) INTO outcome;
+  IF outcome='AUTHORIZATION_CODE_CREATED' THEN
+    IF NOT EXISTS(SELECT 1 FROM private.broker_authorization_codes WHERE id=c AND created_at<expires_at AND expires_at<=created_at+interval '60 seconds') THEN RAISE EXCEPTION 'PHASE10O_J_NEAR_EXPIRY_INVALID_ROW'; END IF;
+  ELSIF outcome='AUTHORIZATION_CODE_EXPIRED' THEN
+    IF NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=a AND state='expired' AND coarse_terminal_reason='expired') THEN RAISE EXCEPTION 'PHASE10O_J_NEAR_EXPIRY_NOT_TERMINAL'; END IF;
+  ELSE RAISE EXCEPTION 'PHASE10O_J_NEAR_EXPIRY_RAW_OUTCOME %',outcome;
+  END IF;
+END $$;
+SELECT 'PHASE10O_J_NEAR_EXPIRY_COARSE_OK' AS status;
+
+DO $$
+DECLARE a uuid; c uuid; outcome text;
+BEGIN
+  a:=pg_temp.phase10oj_account_decided('att_10oj_redirect_0001',decode(repeat('1a',32),'hex')); c:='a1000000-0000-4000-8000-000000000011';
+  IF pg_temp.phase10oj_issue(a,c,repeat('2b',32))<>'AUTHORIZATION_CODE_CREATED' THEN RAISE EXCEPTION 'PHASE10O_J_REDIRECT_SETUP'; END IF;
+  SELECT x.outcome INTO outcome FROM public.consume_broker_authorization_code(decode(repeat('2b',32),'hex'),'client-a','https://auth.invalid/wrong',repeat('A',43)) x;
+  IF outcome<>'AUTHORIZATION_CODE_REJECTED' OR NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=a AND state='failed_safe') THEN RAISE EXCEPTION 'PHASE10O_J_REDIRECT_TERMINAL'; END IF;
+  a:=pg_temp.phase10oj_account_decided('att_10oj_pkce_00000001',decode(repeat('1b',32),'hex')); c:='a1000000-0000-4000-8000-000000000012';
+  IF pg_temp.phase10oj_issue(a,c,repeat('2c',32))<>'AUTHORIZATION_CODE_CREATED' THEN RAISE EXCEPTION 'PHASE10O_J_PKCE_SETUP'; END IF;
+  SELECT x.outcome INTO outcome FROM public.consume_broker_authorization_code(decode(repeat('2c',32),'hex'),'client-a','https://auth.invalid/cb',repeat('Z',43)) x;
+  IF outcome<>'AUTHORIZATION_CODE_REJECTED' OR NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=a AND state='failed_safe') THEN RAISE EXCEPTION 'PHASE10O_J_PKCE_TERMINAL'; END IF;
+END $$;
+SELECT 'PHASE10O_J_REDIRECT_PKCE_TERMINAL_OK' AS status;
 
 DO $$
 DECLARE unbound uuid; active_attempt uuid; existing_match uuid; active_account uuid; active_subject text; active_digest bytea:=decode(repeat('15',32),'hex'); rejected boolean:=false;

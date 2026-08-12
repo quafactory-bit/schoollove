@@ -9,7 +9,7 @@ BEGIN
   PERFORM public.mark_login_attempt_recovery_delivery_sent((SELECT id FROM private.recovery_delivery_attempts WHERE verification_id=v));
   IF (SELECT outcome FROM public.consume_recovery_and_decide_social_account(a,v,decode(repeat('a3',32),'hex')))<>'ACCOUNT_DECIDED' THEN RAISE EXCEPTION 'PHASE10O_J_RACE_DECISION'; END IF;
   INSERT INTO auth.users(id,email) VALUES(auth_id,NULL); PERFORM public.bind_social_auth_principal(account,auth_id);
-  IF (SELECT outcome FROM public.create_broker_authorization_code(a,'a1000000-0000-4000-8000-000000000099',decode(repeat('32',32),'hex'),'race-client','https://auth.invalid/race',repeat('C',43),1800000000,NULL,NULL,NULL,NULL))<>'AUTHORIZATION_CODE_CREATED' THEN RAISE EXCEPTION 'PHASE10O_J_RACE_ISSUE'; END IF;
+  IF (SELECT outcome FROM public.create_broker_authorization_code(a,'a1000000-0000-4000-8000-000000000099',decode(repeat('32',32),'hex'),'race-client','https://auth.invalid/race',repeat('C',43),floor(extract(epoch FROM clock_timestamp()))::bigint-1,NULL,NULL,NULL,NULL))<>'AUTHORIZATION_CODE_CREATED' THEN RAISE EXCEPTION 'PHASE10O_J_RACE_ISSUE'; END IF;
   RETURN a;
 END $$;
 SELECT pg_temp.phase10oj_race_attempt();

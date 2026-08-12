@@ -130,7 +130,7 @@ export function prepareBrokerAuthorizationCode(input: Readonly<{
   downstreamNonce?: string
   downstreamNonceKey?: BrokerAuthorizationCodeNonceKey
 }>): PreparedBrokerAuthorizationCode {
-  if (!input.clientId || !input.redirectUri || !PKCE_S256_PATTERN.test(input.pkceS256Challenge) || !Number.isSafeInteger(input.authenticationTime) || (input.downstreamNonce === undefined) !== (input.downstreamNonceKey === undefined)) {
+  if (!input.clientId || !input.redirectUri || !PKCE_S256_PATTERN.test(input.pkceS256Challenge) || !Number.isSafeInteger(input.authenticationTime) || input.authenticationTime < 0 || (input.downstreamNonce === undefined) !== (input.downstreamNonceKey === undefined)) {
     throw new Error('BROKER_AUTHORIZATION_CODE_PREPARATION_REJECTED')
   }
   const codeId = randomUUID()

@@ -36,7 +36,7 @@ describe('PHASE 10O-J durable downstream nonce Node/DB/Node round trip', () => {
       clientId,
       redirectUri,
       pkceS256Challenge: calculateS256Challenge(createPkceVerifier()),
-      authenticationTime: 1_800_000_000,
+      authenticationTime: Math.floor(Date.now() / 1000) - 1,
       downstreamNonce: 'Node→DB→Node exact downstream nonce',
       downstreamNonceKey: key,
     })
