@@ -11,6 +11,8 @@ import {
   GoogleUpstreamAdapter,
   KakaoUpstreamAdapter,
   NaverUpstreamAdapter,
+  verifyResumedNaverIdentity,
+  verifyResumedOidcIdentity,
   type UpstreamHttpResponse,
   type UpstreamHttpTransport,
 } from './upstream-adapters'
@@ -47,6 +49,17 @@ function expectedClaims(provider: 'kakao' | 'google', nonce: string): Record<str
 }
 
 describe('dark upstream provider adapters', () => {
+  it('PHASE10O_M_STATELESS_OIDC_RESUME_VERIFY_OK verifies pinned OIDC after process-local state is discarded', async () => {
+    const nonce = 'A'.repeat(43)
+    const { upstreamNonceDigest } = await import('./durable-upstream-leg')
+    const identity = await verifyResumedOidcIdentity({ provider: 'google', authorizationCode: 'opaque/google/code', clientId, redirectUri: redirect, codeVerifier: 'B'.repeat(43), nonceDigest: upstreamNonceDigest(nonce), transport: oidcTransport({ provider: 'google', idToken: jwt(expectedClaims('google', nonce)) }), now: NOW })
+    expect(identity).toEqual({ provider: 'google', upstreamSubject: Buffer.from('synthetic-google-subject'), authenticationTime: NOW - 2 })
+  })
+
+  it('PHASE10O_M_STATELESS_NAVER_RESUME_VERIFY_OK verifies Naver without a pending adapter object', async () => {
+    const identity = await verifyResumedNaverIdentity({ authorizationCode: 'opaque-naver-code', rawState: 'A'.repeat(43), clientId, redirectUri: redirect, transport: { exchangeCode: async request => json({ access_token: 'synthetic-token' }, request.tokenEndpoint), fetchJwks: async () => { throw new Error('unused') }, fetchNaverProfile: async request => json({ resultcode: '00', response: { id: 'synthetic-naver-resumed', email: 'ignored@example.invalid' } }, request.profileEndpoint) } })
+    expect(identity).toEqual({ provider: 'naver', upstreamSubject: Buffer.from('synthetic-naver-resumed') })
+  })
   it.each([
     ['PHASE10O_L_KAKAO_OIDC_VERIFY_OK', 'kakao'],
     ['PHASE10O_L_GOOGLE_OIDC_VERIFY_OK', 'google'],
