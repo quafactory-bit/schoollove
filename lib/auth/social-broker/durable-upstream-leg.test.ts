@@ -17,7 +17,7 @@ const client = { provider: 'google' as const, clientId: 'slb-supabase-google', r
 describe('durable upstream login leg crypto boundary', () => {
   it('retains the compile-time server-only boundary', () => {
     const source = readFileSync(resolve(process.cwd(), 'lib/auth/social-broker/durable-upstream-leg.ts'), 'utf8')
-    expect(source.startsWith("import 'server-only'\n")).toBe(true)
+    expect(source).toMatch(/^import 'server-only'\r?\n/)
   })
 
   it('persists only digest/encrypted material and resumes an OIDC leg', () => {

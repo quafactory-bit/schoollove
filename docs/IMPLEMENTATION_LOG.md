@@ -1,5 +1,11 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-12 PHASE 10O-N opaque public callback correlation boundary (local/Draft)
+
+- Added a feature-off state-only callback primitive. The raw 43-character OAuth state remains browser-only and only its domain-separated digest is persisted; there are no browser-supplied attempt or leg IDs, cookies, sessions, or local storage correlation values.
+- Candidate lookup is non-authoritative, followed by attempt then leg locks and re-read. Unknown state is a zero-mutation rejection; a proven state atomically resolves trusted IDs, clears the digest, and makes replay reject. Provider/client/expiry mismatches terminalize and scrub.
+- The old by-ID callback claim lost every execute grant. The new state-only RPC is service-only. No public callback route or durable downstream authorization transaction is implemented.
+
 ## 2026-08-12 PHASE 10O-M Draft security/resume contract fix (local/Draft)
 
 - `upstream_pending` is now cryptographically and structurally pre-identity: broker subject, digest, key version, and account binding must all be NULL. The live-subject race handler now recognizes only the exact audited index and rethrows every unrelated unique violation.

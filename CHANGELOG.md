@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-12 PHASE 10O-N opaque public callback correlation boundary (local / Draft / feature-off)
+
+- Added forward-only `20260812190000_upstream_callback_correlation_boundary.sql`: pending upstream-state digest uniqueness, state-only service claim, canonical attempt→leg lock/re-read, no-mutation unknown-state handling, and exact terminal mismatch/expiry semantics.
+- Removed service execution from the old browser-ID-shaped callback claim. Callback parsing rejects browser attempt, leg, transaction, and provider hints; server-only orchestration turns the opaque state proof into database-resolved trusted internal IDs.
+- Public callback/OIDC routes remain hard-off and downstream Broker authorization-transaction persistence remains deferred.
+
 ## 2026-08-12 PHASE 10O-M Draft security/resume contract fix (local / Draft / feature-off)
 
 - Hardened the unapplied durable-leg migration with an `upstream_pending` identity-clear CHECK, exact live-subject unique-violation discrimination, and coarse known-terminal identity replay handling.
