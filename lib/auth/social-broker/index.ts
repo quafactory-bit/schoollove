@@ -2,6 +2,7 @@ import 'server-only'
 
 export * from './attempt'
 export * from './errors'
+export * from './http'
 export * from './logging'
 export * from './nonce'
 export * from './oidc'

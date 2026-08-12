@@ -35,7 +35,7 @@ describe('social broker security and feature-off contract', () => {
     expect(Object.keys(JSON.parse(output)).sort()).toEqual(['at', 'attemptId', 'event', 'provider', 'state'])
   })
 
-  it('keeps the broker server-only, route-free, and disconnected from Supabase and network clients', () => {
+  it('keeps the broker server-only, hard-off in deployed routes, and disconnected from Supabase and network clients', () => {
     const index = read('lib/auth/social-broker/index.ts')
     const providers = read('lib/auth/social-broker/providers.ts')
     const oidc = read('lib/auth/social-broker/oidc.ts')
@@ -43,7 +43,9 @@ describe('social broker security and feature-off contract', () => {
 
     expect(index).toContain("import 'server-only'")
     expect(`${providers}\n${oidc}`).not.toMatch(/\bfetch\s*\(|axios|https?\.request|@supabase|Supabase|getSupabase/i)
-    expect(appSources).not.toContain('social-broker')
+    expect(appSources).toContain('darkOidcRouteNotFound')
+    expect(read('lib/auth/social-broker/http.ts')).toContain("import 'server-only'")
+    expect(read('lib/auth/social-broker/http.ts')).toContain('return new Response(null, { status: 404')
     expect(read('app/login/page.tsx')).not.toMatch(/kakao|naver|google|social-broker/i)
     expect(read('app/api/auth/request-otp/route.ts')).not.toContain('social-broker')
     expect(read('app/api/auth/verify-otp/route.ts')).not.toContain('social-broker')
