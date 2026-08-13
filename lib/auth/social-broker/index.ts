@@ -2,6 +2,7 @@ import 'server-only'
 
 export * from './attempt'
 export * from './durable-upstream-leg'
+export * from './authorization-transaction'
 export * from './errors'
 export * from './http'
 export * from './logging'

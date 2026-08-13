@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-08-13 PHASE 10O-O downstream authorization transaction persistence (local / Draft / feature-off)
+
+- Added forward-only `20260813100000_downstream_authorization_transaction_persistence.sql`: one private immutable downstream request ledger with RLS/FORCE RLS, digest-only opaque handle correlation, service-only claim/bind primitives, and attempt/leg substitution rejection.
+- Added server-only transaction preparation that normalizes scopes, requires S256-shaped PKCE context, separates the raw continuity handle from the DB payload, and exposes no public route or token/code issuance.
+
 ## 2026-08-12 PHASE 10O-N opaque public callback correlation boundary (local / Draft / feature-off)
 
 - Added forward-only `20260812190000_upstream_callback_correlation_boundary.sql`: pending upstream-state digest uniqueness, state-only service claim, canonical attempt→leg lock/re-read, no-mutation unknown-state handling, and exact terminal mismatch/expiry semantics.
