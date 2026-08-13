@@ -158,7 +158,7 @@ export function parseDurableUpstreamCallback(input: Readonly<{ provider: SocialP
   const reserved = new Set(['code', 'state', 'error', 'error_description', 'error_uri'])
   for (const [key] of redirect.searchParams) if (reserved.has(key)) throw new Error('UPSTREAM_CALLBACK_REJECTED')
   const callbackKeys = [...callback.searchParams.keys()]
-  if (new Set(callbackKeys).size !== callbackKeys.length || ['provider', 'upstream_provider', 'social_provider'].some(key => callback.searchParams.has(key))) throw new Error('UPSTREAM_CALLBACK_REJECTED')
+  if (new Set(callbackKeys).size !== callbackKeys.length || ['provider', 'upstream_provider', 'social_provider', 'attempt', 'attempt_id', 'safe_attempt_id', 'leg', 'leg_id', 'transaction', 'transaction_id', 'login_attempt_id'].some(key => callback.searchParams.has(key))) throw new Error('UPSTREAM_CALLBACK_REJECTED')
   for (const [key, value] of redirect.searchParams) if (callback.searchParams.get(key) !== value || callback.searchParams.getAll(key).length !== 1) throw new Error('UPSTREAM_CALLBACK_REJECTED')
   for (const key of ['code', 'state']) if (callback.searchParams.getAll(key).length !== 1) throw new Error('UPSTREAM_CALLBACK_REJECTED')
   const authorizationCode = callback.searchParams.get('code')!; const rawState = callback.searchParams.get('state')!
