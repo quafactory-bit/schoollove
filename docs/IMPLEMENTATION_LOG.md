@@ -1,5 +1,11 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-13 PHASE 10O-O downstream authorization transaction persistence (local/Draft)
+
+- Added a single private durable transaction table. The database keeps only a domain-separated handle digest; the raw opaque browser handle is ephemeral and cannot select a private transaction ID directly.
+- Creation freezes client, exact redirect, response contract, normalized scopes, S256 challenge/method, optional nonce/state, attempt binding, and expiry. A claimed transaction can bind only its own pending upstream leg; a foreign or stale leg is rejected without consuming the valid claimed transaction.
+- No Production DB activity, migration apply, public OIDC route, authorization-code issuance, token minting, provider traffic/configuration, Auth, environment, login UI, email, or launch-state action was performed.
+
 ## 2026-08-12 PHASE 10O-N opaque public callback correlation boundary (local/Draft)
 
 - Added a feature-off state-only callback primitive. The raw 43-character OAuth state remains browser-only and only its domain-separated digest is persisted; there are no browser-supplied attempt or leg IDs, cookies, sessions, or local storage correlation values.
