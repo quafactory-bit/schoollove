@@ -13,9 +13,24 @@ describe('downstream authorization transaction preparation', () => {
     expect(prepared.correlation.brokerHandle).toHaveLength(43)
   })
 
+  it.each([
+    'https://example.invalid',
+    'https://example.invalid:443/callback',
+    'https://example.invalid/callback?channel=broker&ui=dark',
+  ])('preserves the registered, exact redirect URI without URL serialization: %s', (registeredRedirectUri) => {
+    // The HTTP issuer performs the registered-client exact comparison before this
+    // layer. This boundary must freeze that exact value, not choose a new one.
+    const authorizationRequestRedirectUri = registeredRedirectUri
+    const prepared = prepareDownstreamAuthorizationTransaction({ ...input, redirectUri: authorizationRequestRedirectUri })
+
+    expect(authorizationRequestRedirectUri).toBe(registeredRedirectUri)
+    expect(prepared.database.redirectUri).toBe(registeredRedirectUri)
+  })
+
   it('rejects non-S256-shaped challenge, non-UUID trusted IDs, and malformed handles', () => {
     expect(() => prepareDownstreamAuthorizationTransaction({ ...input, pkceS256Challenge: 'plain' })).toThrow('DOWNSTREAM_AUTHORIZATION_TRANSACTION_INVALID')
     expect(() => prepareDownstreamAuthorizationTransaction({ ...input, loginAttemptId: 'browser-id' })).toThrow('DOWNSTREAM_AUTHORIZATION_TRANSACTION_INVALID')
+    expect(() => prepareDownstreamAuthorizationTransaction({ ...input, redirectUri: 'not a URI' })).toThrow('DOWNSTREAM_AUTHORIZATION_TRANSACTION_INVALID')
     expect(() => downstreamAuthorizationTransactionHandleDigest('short')).toThrow('DOWNSTREAM_AUTHORIZATION_HANDLE_INVALID')
   })
 })

@@ -65,7 +65,9 @@ export function prepareDownstreamAuthorizationTransaction(input: Readonly<{
   return Object.freeze({
     database: Object.freeze({
       transactionId, loginAttemptId: input.loginAttemptId, brokerHandleDigest: downstreamAuthorizationTransactionHandleDigest(brokerHandle),
-      clientId: input.clientId, redirectUri: redirect.toString(), responseType: 'code', requestedScopes: normalizedScopes(input.scopes),
+      // The HTTP issuer already exact-matches the registered redirect. Preserve that
+      // validated string verbatim for all later authorization-code bindings.
+      clientId: input.clientId, redirectUri: input.redirectUri, responseType: 'code', requestedScopes: normalizedScopes(input.scopes),
       pkceS256Challenge: input.pkceS256Challenge, pkceMethod: 'S256', downstreamNonce: input.downstreamNonce ?? null,
       downstreamState: input.downstreamState ?? null, expiresAt: input.expiresAt,
     }),
