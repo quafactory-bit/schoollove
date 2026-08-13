@@ -27,6 +27,21 @@ BEGIN
 END $$;
 
 DO $$
+DECLARE a uuid; tx uuid:='f1000000-0000-4000-8000-000000000030'; leg uuid:='f1000000-0000-4000-8000-000000000040'; state_digest bytea:=decode(repeat('10',32),'hex'); result text;
+BEGIN
+  a:=public.create_social_login_attempt('att_10or_claimed_unbound','naver',clock_timestamp()+interval '10 minutes');
+  PERFORM public.create_downstream_authorization_transaction(tx,a,decode(repeat('20',32),'hex'),'slb-supabase-naver','https://consumer.invalid/return','code','openid',repeat('A',43),'S256','nonce-unbound','state-unbound',clock_timestamp()+interval '5 minutes');
+  PERFORM public.claim_downstream_authorization_transaction_by_handle(decode(repeat('20',32),'hex'));
+  PERFORM public.create_upstream_login_leg(a,leg,'naver',decode(repeat('a1',32),'hex'),state_digest,NULL,NULL,NULL,NULL,NULL);
+  SELECT outcome INTO result FROM public.claim_upstream_login_callback_by_state('naver',decode(repeat('a1',32),'hex'),state_digest);
+  IF result<>'CORRELATION_REJECTED' OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=tx AND status='claimed' AND upstream_login_leg_id IS NULL) OR NOT EXISTS(SELECT 1 FROM private.upstream_login_legs l WHERE l.id=leg AND l.status='pending' AND l.state_digest=decode(repeat('10',32),'hex')) THEN RAISE EXCEPTION 'PHASE10O_R_CALLBACK_UNBOUND_MUTATED'; END IF;
+  IF public.bind_downstream_authorization_transaction_upstream_leg(tx,leg)<>'UPSTREAM_BOUND' THEN RAISE EXCEPTION 'PHASE10O_R_CALLBACK_UNBOUND_BIND'; END IF;
+  SELECT outcome INTO result FROM public.claim_upstream_login_callback_by_state('naver',decode(repeat('a1',32),'hex'),state_digest);
+  IF result<>'CALLBACK_CLAIMED' OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=tx AND status='upstream_bound' AND upstream_login_leg_id=leg) THEN RAISE EXCEPTION 'PHASE10O_R_CALLBACK_UNBOUND_SUCCESS'; END IF;
+END $$;
+SELECT 'PHASE10O_R_CLAIMED_UNBOUND_CALLBACK_REJECTS_THEN_BOUND_SUCCEEDS_OK' AS status;
+
+DO $$
 DECLARE a uuid; tx uuid:='f1000000-0000-4000-8000-000000000001'; leg uuid:='f1000000-0000-4000-8000-000000000011'; state_digest bytea:=decode(repeat('11',32),'hex'); result text;
 BEGIN
   a:=pg_temp.phase10or_bound('att_10or_provider_failure',tx,leg,decode(repeat('21',32),'hex'),state_digest);
@@ -145,6 +160,23 @@ END $$;
 SELECT 'PHASE10O_R_TERMINAL_SCRUB_CHECK_STRUCTURAL_OK' AS status;
 
 -- The direct-TCP race starts from this callback-claimed, transaction-bound row.
+CREATE FUNCTION private.phase10or_test_live_collision_delay()
+RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
+BEGIN
+  IF NEW.safe_attempt_id='att_10or_live_collision' AND NEW.state='upstream_verified' THEN PERFORM pg_sleep(1); END IF;
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION private.phase10or_test_live_collision_delay() FROM PUBLIC,anon,authenticated,service_role;
+CREATE TRIGGER phase10or_test_live_collision_delay BEFORE UPDATE OF state ON private.oauth_login_attempts
+  FOR EACH ROW EXECUTE FUNCTION private.phase10or_test_live_collision_delay();
+
+DO $$
+DECLARE a uuid; tx uuid:='f1000000-0000-4000-8000-000000000050'; leg uuid:='f1000000-0000-4000-8000-000000000060'; state_digest bytea:=decode(repeat('50',32),'hex');
+BEGIN
+  a:=pg_temp.phase10or_bound('att_10or_live_collision',tx,leg,decode(repeat('60',32),'hex'),state_digest); PERFORM pg_temp.phase10or_callback(a,state_digest);
+END $$;
+SELECT 'PHASE10O_R_LIVE_SUBJECT_UNIQUENESS_RACE_SETUP_OK' AS status;
+
 DO $$
 DECLARE a uuid; tx uuid:='f1000000-0000-4000-8000-000000000010'; leg uuid:='f1000000-0000-4000-8000-000000000020'; state_digest bytea:=decode(repeat('20',32),'hex');
 BEGIN

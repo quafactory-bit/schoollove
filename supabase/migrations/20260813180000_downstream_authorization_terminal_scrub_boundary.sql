@@ -106,16 +106,20 @@ CREATE OR REPLACE FUNCTION public.claim_upstream_login_callback_by_state(
   requested_provider text, requested_client_binding_digest bytea, submitted_state_digest bytea
 ) RETURNS TABLE(outcome text,attempt_id uuid,leg_id uuid,provider text,nonce_digest bytea,pkce_s256_challenge text,pkce_verifier_ciphertext bytea,pkce_verifier_iv bytea,pkce_verifier_key_version integer)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE candidate_attempt_id uuid; attempt private.oauth_login_attempts%ROWTYPE; leg private.upstream_login_legs%ROWTYPE; now_at timestamptz:=clock_timestamp(); next_tx_status text;
+DECLARE candidate_attempt_id uuid; tx private.downstream_authorization_transactions%ROWTYPE; attempt private.oauth_login_attempts%ROWTYPE; leg private.upstream_login_legs%ROWTYPE; now_at timestamptz:=clock_timestamp(); next_tx_status text;
 BEGIN
   PERFORM private.require_social_attempt_service();
   IF requested_provider NOT IN ('kakao','naver','google') OR submitted_state_digest IS NULL OR octet_length(submitted_state_digest)<>32 THEN RETURN QUERY SELECT 'CORRELATION_REJECTED',NULL::uuid,NULL::uuid,NULL::text,NULL::bytea,NULL::text,NULL::bytea,NULL::bytea,NULL::integer; RETURN; END IF;
   SELECT login_attempt_id INTO candidate_attempt_id FROM private.upstream_login_legs WHERE status='pending' AND state_digest=submitted_state_digest LIMIT 1;
   IF candidate_attempt_id IS NULL THEN RETURN QUERY SELECT 'CORRELATION_REJECTED',NULL::uuid,NULL::uuid,NULL::text,NULL::bytea,NULL::text,NULL::bytea,NULL::bytea,NULL::integer; RETURN; END IF;
-  PERFORM private.lock_downstream_authorization_transaction_for_attempt(candidate_attempt_id);
+  SELECT * INTO tx FROM private.downstream_authorization_transactions WHERE login_attempt_id=candidate_attempt_id FOR UPDATE;
   SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=candidate_attempt_id FOR UPDATE;
-  SELECT * INTO leg FROM private.upstream_login_legs WHERE login_attempt_id=candidate_attempt_id FOR UPDATE;
+  SELECT * INTO leg FROM private.upstream_login_legs WHERE login_attempt_id=candidate_attempt_id AND status='pending' AND state_digest=submitted_state_digest FOR UPDATE;
   IF attempt.id IS NULL OR leg.id IS NULL OR leg.status<>'pending' OR leg.state_digest IS DISTINCT FROM submitted_state_digest OR attempt.state<>'upstream_pending' THEN RETURN QUERY SELECT 'CORRELATION_REJECTED',NULL::uuid,NULL::uuid,NULL::text,NULL::bytea,NULL::text,NULL::bytea,NULL::bytea,NULL::integer; RETURN; END IF;
+  -- A transaction is optional for pre-O compatibility.  When it exists, only
+  -- its exact bound leg may claim this callback; a claimed/unbound row is not
+  -- a substitute authority and must remain untouched for its valid bind path.
+  IF tx.id IS NOT NULL AND (tx.status<>'upstream_bound' OR tx.upstream_login_leg_id IS DISTINCT FROM leg.id) THEN RETURN QUERY SELECT 'CORRELATION_REJECTED',NULL::uuid,NULL::uuid,NULL::text,NULL::bytea,NULL::text,NULL::bytea,NULL::bytea,NULL::integer; RETURN; END IF;
   IF attempt.expires_at<=now_at OR leg.expires_at<=now_at THEN next_tx_status:='expired';
   ELSIF attempt.provider<>requested_provider OR leg.provider<>requested_provider THEN next_tx_status:='rejected';
   ELSIF requested_client_binding_digest IS NULL OR octet_length(requested_client_binding_digest)<>32 OR leg.client_binding_digest<>requested_client_binding_digest THEN next_tx_status:='rejected';
@@ -132,13 +136,16 @@ END $$;
 CREATE OR REPLACE FUNCTION public.record_verified_social_identity_from_upstream_leg(
   target_attempt_id uuid,target_leg_id uuid,requested_provider text,requested_broker_subject text,requested_subject_digest bytea,requested_subject_key_version integer
 ) RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE attempt private.oauth_login_attempts%ROWTYPE; leg private.upstream_login_legs%ROWTYPE; existing private.social_identity_registry%ROWTYPE; competing uuid; now_at timestamptz:=clock_timestamp(); violation_constraint text; next_tx_status text;
+DECLARE tx private.downstream_authorization_transactions%ROWTYPE; attempt private.oauth_login_attempts%ROWTYPE; leg private.upstream_login_legs%ROWTYPE; existing private.social_identity_registry%ROWTYPE; competing uuid; now_at timestamptz:=clock_timestamp(); violation_constraint text; next_tx_status text;
 BEGIN
   PERFORM private.require_social_attempt_service();
-  PERFORM private.lock_downstream_authorization_transaction_for_attempt(target_attempt_id);
+  SELECT * INTO tx FROM private.downstream_authorization_transactions WHERE login_attempt_id=target_attempt_id FOR UPDATE;
   SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=target_attempt_id FOR UPDATE;
   SELECT * INTO leg FROM private.upstream_login_legs WHERE id=target_leg_id AND login_attempt_id=target_attempt_id FOR UPDATE;
   IF attempt.id IS NULL OR leg.id IS NULL OR attempt.state<>'upstream_pending' OR leg.status<>'callback_claimed' THEN RETURN 'IDENTITY_REJECTED'; END IF;
+  -- Success must be authorized by the exact transaction↔attempt↔leg tuple.
+  -- Pre-O attempts have no transaction and retain their compatible lifecycle.
+  IF tx.id IS NOT NULL AND (tx.status<>'upstream_bound' OR tx.upstream_login_leg_id IS DISTINCT FROM leg.id) THEN RETURN 'IDENTITY_REJECTED'; END IF;
   IF attempt.provider<>requested_provider OR leg.provider<>requested_provider OR attempt.expires_at<=now_at OR leg.expires_at<=now_at OR requested_broker_subject !~ ('^slb:v1:k[0-9]{2}:'||requested_provider||':[A-Za-z0-9_-]{43}$') OR requested_subject_key_version NOT BETWEEN 1 AND 99 OR requested_subject_digest IS NULL OR octet_length(requested_subject_digest)<>32 OR split_part(requested_broker_subject,':',3)<>'k'||lpad(requested_subject_key_version::text,2,'0') OR split_part(requested_broker_subject,':',5)<>replace(replace(replace(encode(requested_subject_digest,'base64'),'+','-'),'/','_'),'=','') THEN
     next_tx_status:=CASE WHEN attempt.expires_at<=now_at OR leg.expires_at<=now_at THEN 'expired' ELSE 'rejected' END;
     IF NOT private.terminalize_bound_downstream_authorization_transaction(attempt.id,leg.id,next_tx_status,now_at) THEN RETURN 'IDENTITY_REJECTED'; END IF;
@@ -162,6 +169,13 @@ BEGIN
 EXCEPTION WHEN unique_violation THEN
   GET STACKED DIAGNOSTICS violation_constraint=CONSTRAINT_NAME;
   IF violation_constraint<>'oauth_login_attempts_live_subject_unique' THEN RAISE; END IF;
+  -- Preserve the original defensive re-read: only a committed competing live
+  -- attempt turns this narrow index race into the approved safe outcome.
+  SELECT id INTO competing FROM private.oauth_login_attempts
+    WHERE id<>target_attempt_id AND provider=requested_provider AND broker_subject=requested_broker_subject
+      AND state IN ('upstream_verified','recovery_required','recovery_pending','recovery_verified')
+    FOR KEY SHARE LIMIT 1;
+  IF competing IS NULL THEN RAISE; END IF;
   IF NOT private.terminalize_bound_downstream_authorization_transaction(target_attempt_id,target_leg_id,'rejected',now_at) THEN RAISE EXCEPTION 'PHASE10O_R_TRANSACTION_BINDING_REJECTED'; END IF;
   PERFORM private.scrub_upstream_login_leg(target_leg_id,'rejected',now_at); UPDATE private.oauth_login_attempts SET state='failed_safe',coarse_terminal_reason='failed_safe',updated_at=now_at,version=version+1 WHERE id=target_attempt_id; RETURN 'IDENTITY_DECISION_IN_PROGRESS';
 END $$;
