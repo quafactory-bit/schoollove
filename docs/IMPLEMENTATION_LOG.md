@@ -1,5 +1,11 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-13 PHASE 10O-P transaction-bound broker-code issuance (local/Draft)
+
+- Added a forward-only code-to-transaction relationship without adding a private table. It is mandatory, one-to-one, and structurally same-attempt constrained. The trusted transaction—not an issuing caller—supplies exact client, redirect, S256 PKCE, nonce/state context, and expiry.
+- Bound issuance accepts raw nonce only as a transient equality proof for the frozen transaction and persists only the existing encrypted nonce tuple. Success atomically creates one ready code, advances the attempt and transaction, returns the response state once, and scrubs raw nonce/state. The legacy unbound service path is revoked.
+- Disposable lifecycle, permissions, collision/retry, fresh-process restart, and independent backend concurrency acceptance were run locally. No Production migration/write, provider call, public route, UI, Auth, environment, email, or launch-state action was performed.
+
 ## 2026-08-13 PHASE 10O-O downstream authorization transaction persistence (local/Draft)
 
 - Added a single private durable transaction table. The database keeps only a domain-separated handle digest; the raw opaque browser handle is ephemeral and cannot select a private transaction ID directly.
