@@ -9,7 +9,8 @@ BEGIN
     OR to_regprocedure('private.require_social_attempt_service()') IS NULL THEN
     RAISE EXCEPTION 'PHASE10O_P_BASELINE_MISSING';
   END IF;
-  IF to_regprocedure('public.issue_transaction_bound_broker_authorization_code(uuid,uuid,bytea,bigint,text,bytea,bytea,bytea,integer)') IS NOT NULL THEN
+  IF to_regprocedure('public.issue_transaction_bound_broker_authorization_code(uuid,uuid,bytea,bigint,text,bytea,bytea,bytea,integer)') IS NOT NULL
+    OR to_regprocedure('public.get_transaction_bound_broker_code_issuance_context(uuid)') IS NOT NULL THEN
     RAISE EXCEPTION 'PHASE10O_P_OBJECT_COLLISION';
   END IF;
 END $$;
@@ -136,11 +137,47 @@ BEGIN
   RETURN QUERY SELECT 'AUTHORIZATION_CODE_CREATED'::text,requested_code_id,final_expiry,tx.downstream_state;
 END $$;
 
+-- The durable callback/account flow has only a trusted attempt ID after a
+-- process restart. This narrow resolver returns its one immutable issuance
+-- context and nothing that can identify or contact an upstream provider.
+CREATE FUNCTION public.get_transaction_bound_broker_code_issuance_context(target_attempt_id uuid)
+RETURNS TABLE(
+  authorization_transaction_id uuid,
+  login_attempt_id uuid,
+  client_id text,
+  redirect_uri text,
+  pkce_s256_challenge text,
+  downstream_nonce text,
+  downstream_state text,
+  expires_at timestamptz
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE tx private.downstream_authorization_transactions%ROWTYPE; attempt private.oauth_login_attempts%ROWTYPE; leg private.upstream_login_legs%ROWTYPE; now_at timestamptz:=clock_timestamp();
+BEGIN
+  PERFORM private.require_social_attempt_service();
+  IF target_attempt_id IS NULL THEN RETURN; END IF;
+  SELECT t.* INTO tx FROM private.downstream_authorization_transactions t WHERE t.login_attempt_id=target_attempt_id;
+  SELECT a.* INTO attempt FROM private.oauth_login_attempts a WHERE a.id=target_attempt_id;
+  IF tx.id IS NULL OR attempt.id IS NULL OR tx.status<>'upstream_bound' OR tx.upstream_login_leg_id IS NULL
+    OR tx.expires_at<=now_at OR attempt.expires_at<=now_at OR attempt.state NOT IN ('auth_principal_bound','existing_primary') THEN RETURN; END IF;
+  SELECT l.* INTO leg FROM private.upstream_login_legs l WHERE l.id=tx.upstream_login_leg_id;
+  IF leg.id IS NULL OR leg.login_attempt_id<>target_attempt_id OR leg.status<>'verified' OR leg.expires_at<=now_at THEN RETURN; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM private.private_accounts a JOIN private.social_identity_registry r ON r.account_id=a.id
+    WHERE a.id=attempt.account_id AND a.primary_provider=attempt.provider AND a.primary_broker_subject=attempt.broker_subject
+      AND r.broker_subject=attempt.broker_subject AND r.provider=attempt.provider AND r.auth_user_id=a.auth_user_id
+      AND ((attempt.state='auth_principal_bound' AND a.status='provisional' AND a.auth_user_id IS NOT NULL)
+        OR (attempt.state='existing_primary' AND a.status='active' AND a.auth_user_id IS NOT NULL))
+  ) THEN RETURN; END IF;
+  RETURN QUERY SELECT tx.id,tx.login_attempt_id,tx.client_id,tx.redirect_uri,tx.pkce_s256_challenge,tx.downstream_nonce,tx.downstream_state,tx.expires_at;
+END $$;
+
 -- The legacy function is intentionally retained only for historical schema
 -- compatibility.  No service principal can issue through its unbound signature.
 REVOKE ALL ON FUNCTION public.create_broker_authorization_code(uuid,uuid,bytea,text,text,text,bigint,bytea,bytea,bytea,integer) FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION public.issue_transaction_bound_broker_authorization_code(uuid,uuid,bytea,bigint,text,bytea,bytea,bytea,integer) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.get_transaction_bound_broker_code_issuance_context(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.issue_transaction_bound_broker_authorization_code(uuid,uuid,bytea,bigint,text,bytea,bytea,bytea,integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_transaction_bound_broker_code_issuance_context(uuid) TO service_role;
 REVOKE ALL ON TABLE private.broker_authorization_codes FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON TABLE private.downstream_authorization_transactions FROM PUBLIC,anon,authenticated,service_role;
 COMMENT ON FUNCTION public.issue_transaction_bound_broker_authorization_code(uuid,uuid,bytea,bigint,text,bytea,bytea,bytea,integer) IS 'PHASE 10O-P service-only issuance: immutable downstream transaction is authority for client, exact redirect, S256 PKCE, nonce and state; successful issuance atomically consumes transaction and scrubs raw nonce/state.';

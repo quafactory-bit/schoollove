@@ -20,7 +20,6 @@ export type TrustedAuthorizationTransactionIssuanceContext = Readonly<{
   pkceS256Challenge: string
   downstreamNonce: string | null
   downstreamState: string | null
-  authenticationTime: number
 }>
 
 export type PreparedTransactionBoundBrokerCode = Readonly<{
@@ -39,32 +38,35 @@ export type PreparedTransactionBoundBrokerCode = Readonly<{
 }>
 
 export function prepareTransactionBoundBrokerCode(input: Readonly<{
-  trusted: TrustedAuthorizationTransactionIssuanceContext
+  /** Returned only by the service-only attempt-ID context resolver. */
+  context: TrustedAuthorizationTransactionIssuanceContext
+  /** Trusted server/provider verification time; never a downstream-request value. */
+  authenticationTime: number
   downstreamNonceKey?: BrokerAuthorizationCodeNonceKey
 }>): PreparedTransactionBoundBrokerCode {
-  const { trusted } = input
-  if (!UUID_PATTERN.test(trusted.authorizationTransactionId) || !UUID_PATTERN.test(trusted.loginAttemptId)
-    || !trusted.clientId || !trusted.redirectUri || !PKCE_S256_PATTERN.test(trusted.pkceS256Challenge)
-    || !Number.isSafeInteger(trusted.authenticationTime) || trusted.authenticationTime < 0
-    || (trusted.downstreamNonce === null) !== (input.downstreamNonceKey === undefined)) {
+  const { context } = input
+  if (!UUID_PATTERN.test(context.authorizationTransactionId) || !UUID_PATTERN.test(context.loginAttemptId)
+    || !context.clientId || !context.redirectUri || !PKCE_S256_PATTERN.test(context.pkceS256Challenge)
+    || !Number.isSafeInteger(input.authenticationTime) || input.authenticationTime < 0
+    || (context.downstreamNonce === null) !== (input.downstreamNonceKey === undefined)) {
     throw new Error('TRANSACTION_BOUND_BROKER_CODE_PREPARATION_REJECTED')
   }
   const prepared = prepareBrokerAuthorizationCode({
-    clientId: trusted.clientId,
-    redirectUri: trusted.redirectUri,
-    pkceS256Challenge: trusted.pkceS256Challenge,
-    authenticationTime: trusted.authenticationTime,
-    ...(trusted.downstreamNonce === null
+    clientId: context.clientId,
+    redirectUri: context.redirectUri,
+    pkceS256Challenge: context.pkceS256Challenge,
+    authenticationTime: input.authenticationTime,
+    ...(context.downstreamNonce === null
       ? {}
-      : { downstreamNonce: trusted.downstreamNonce, downstreamNonceKey: input.downstreamNonceKey! }),
+      : { downstreamNonce: context.downstreamNonce, downstreamNonceKey: input.downstreamNonceKey! }),
   })
   return Object.freeze({
     database: Object.freeze({
-      authorizationTransactionId: trusted.authorizationTransactionId,
-      loginAttemptId: trusted.loginAttemptId,
+      authorizationTransactionId: context.authorizationTransactionId,
+      loginAttemptId: context.loginAttemptId,
       code: prepared.database,
-      downstreamNonceProof: trusted.downstreamNonce,
+      downstreamNonceProof: context.downstreamNonce,
     }),
-    response: Object.freeze({ authorizationCode: prepared.response.authorizationCode, downstreamState: trusted.downstreamState }),
+    response: Object.freeze({ authorizationCode: prepared.response.authorizationCode, downstreamState: context.downstreamState }),
   })
 }

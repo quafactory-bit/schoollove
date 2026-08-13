@@ -54,10 +54,14 @@ RETURNS text LANGUAGE sql AS $$
 $$;
 
 DO $$
-DECLARE a uuid; account uuid; outcome text; state_value text; tx uuid:='e1000000-0000-4000-8000-000000000001'; code uuid:='e1000000-0000-4000-8000-000000000001'; digest_value bytea:=decode(repeat('11',32),'hex');
+DECLARE a uuid; account uuid; outcome text; state_value text; resolved record; tx uuid:='e1000000-0000-4000-8000-000000000001'; code uuid:='e1000000-0000-4000-8000-000000000001'; digest_value bytea:=decode(repeat('11',32),'hex');
 BEGIN
   a:=pg_temp.phase10op_ready_auth_bound('att_10op_bound_00000001',digest_value,tx,'e1000000-0000-4000-8000-000000000011',decode(repeat('21',32),'hex'),'nonce-A','state +/%? exact');
   SELECT account_id INTO account FROM private.oauth_login_attempts WHERE id=a;
+  SELECT * INTO resolved FROM public.get_transaction_bound_broker_code_issuance_context(a);
+  IF resolved.authorization_transaction_id<>tx OR resolved.login_attempt_id<>a OR resolved.client_id<>'slb-supabase-naver'
+    OR resolved.redirect_uri<>'https://consumer.invalid/return?fixed=1' OR resolved.pkce_s256_challenge<>repeat('A',43)
+    OR resolved.downstream_nonce<>'nonce-A' OR resolved.downstream_state<>'state +/%? exact' THEN RAISE EXCEPTION 'PHASE10O_P_CONTEXT_RESOLVER_BOUND'; END IF;
   IF pg_temp.phase10op_issue(tx,code,decode(repeat('31',32),'hex'),'nonce-B')<>'AUTHORIZATION_CODE_REJECTED'
     OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=tx AND status='upstream_bound' AND downstream_nonce='nonce-A') THEN RAISE EXCEPTION 'PHASE10O_P_NONCE_SUBSTITUTION'; END IF;
   SELECT x.outcome,x.downstream_state INTO outcome,state_value FROM public.issue_transaction_bound_broker_authorization_code(tx,code,decode(repeat('31',32),'hex'),floor(extract(epoch FROM clock_timestamp()))::bigint-1,'nonce-A',extensions.digest(convert_to('schoollove:broker-code-downstream-nonce-digest:v1','UTF8')||decode('00','hex')||convert_to('nonce-A','UTF8'),'sha256'),decode(repeat('ab',17),'hex'),decode(repeat('cd',12),'hex'),1) x;
@@ -75,17 +79,21 @@ SELECT 'PHASE10O_P_AUTH_BOUND_TRANSACTION_ISSUANCE_OK' AS status;
 SELECT 'PHASE10O_P_NONCE_SUBSTITUTION_REJECTED_OK' AS status;
 SELECT 'PHASE10O_P_EXACT_CLIENT_REDIRECT_PKCE_AND_SCRUB_OK' AS status;
 SELECT 'PHASE10O_P_CONSUME_REGRESSION_OK' AS status;
+SELECT 'PHASE10O_P_CONTEXT_RESOLVER_AUTH_BOUND_OK' AS status;
 
 DO $$
-DECLARE a uuid; outcome text; issued text; tx uuid:='e1000000-0000-4000-8000-000000000002'; digest_value bytea:=decode(repeat('11',32),'hex');
+DECLARE a uuid; outcome text; issued text; resolved record; tx uuid:='e1000000-0000-4000-8000-000000000002'; digest_value bytea:=decode(repeat('11',32),'hex');
 BEGIN
   a:=pg_temp.phase10op_ready_existing_primary('att_10op_existing_000001',digest_value,tx,'e1000000-0000-4000-8000-000000000012',decode(repeat('22',32),'hex'));
+  SELECT * INTO resolved FROM public.get_transaction_bound_broker_code_issuance_context(a);
+  IF resolved.authorization_transaction_id<>tx OR resolved.downstream_nonce IS NOT NULL OR resolved.downstream_state<>'exact state /+%?' THEN RAISE EXCEPTION 'PHASE10O_P_CONTEXT_RESOLVER_EXISTING'; END IF;
   issued:=pg_temp.phase10op_issue(tx,'e1000000-0000-4000-8000-000000000002',decode(repeat('32',32),'hex'));
   IF issued<>'AUTHORIZATION_CODE_CREATED'
     OR (SELECT state FROM private.oauth_login_attempts WHERE id=a)<>'broker_code_ready'
     OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=tx AND status='consumed') THEN RAISE EXCEPTION 'PHASE10O_P_EXISTING_PRIMARY outcome=% attempt=% tx=%',issued,(SELECT state FROM private.oauth_login_attempts WHERE id=a),(SELECT status FROM private.downstream_authorization_transactions WHERE id=tx); END IF;
 END $$;
 SELECT 'PHASE10O_P_EXISTING_PRIMARY_TRANSACTION_ISSUANCE_OK' AS status;
+SELECT 'PHASE10O_P_CONTEXT_RESOLVER_EXISTING_PRIMARY_OK' AS status;
 
 DO $$
 DECLARE a uuid; tx uuid:='e1000000-0000-4000-8000-000000000003'; code uuid:='e1000000-0000-4000-8000-000000000003'; result text;
@@ -119,3 +127,25 @@ BEGIN
     OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=tx AND status='expired' AND downstream_nonce IS NULL AND downstream_state IS NULL) THEN RAISE EXCEPTION 'PHASE10O_P_EXPIRY'; END IF;
 END $$;
 SELECT 'PHASE10O_P_EXPIRY_NO_RESURRECTION_OK' AS status;
+
+DO $$
+DECLARE a uuid; tx uuid:='e1000000-0000-4000-8000-000000000008'; resolved record;
+BEGIN
+  a:=public.create_social_login_attempt('att_10op_context_reject_1','naver',clock_timestamp()+interval '9 minutes');
+  PERFORM public.create_downstream_authorization_transaction(tx,a,decode(repeat('81',32),'hex'),'slb-supabase-naver','https://consumer.invalid/return?fixed=1','code','openid',repeat('A',43),'S256',NULL,NULL,clock_timestamp()+interval '5 minutes');
+  SELECT * INTO resolved FROM public.get_transaction_bound_broker_code_issuance_context(a);
+  IF FOUND OR EXISTS(SELECT 1 FROM public.get_transaction_bound_broker_code_issuance_context(gen_random_uuid())) THEN RAISE EXCEPTION 'PHASE10O_P_CONTEXT_REJECT_PENDING'; END IF;
+END $$;
+SELECT 'PHASE10O_P_CONTEXT_RESOLVER_COARSE_REJECTION_OK' AS status;
+
+-- These rows are deliberately left eligible. The direct-TCP harness starts
+-- fresh OS processes that know only each trusted attempt ID, test nonce key,
+-- and DB connection, then must resolve context through the service RPC.
+DO $$
+DECLARE a uuid;
+BEGIN
+  a:=pg_temp.phase10op_ready_auth_bound('att_10op_restart_nonce_01',decode(repeat('91',32),'hex'),'e1000000-0000-4000-8000-000000000009','e1000000-0000-4000-8000-000000000019',decode(repeat('29',32),'hex'),'restart-nonce','restart state +/%?');
+  a:=pg_temp.phase10op_ready_auth_bound('att_10op_restart_plain_01',decode(repeat('92',32),'hex'),'e1000000-0000-4000-8000-000000000010','e1000000-0000-4000-8000-000000000020',decode(repeat('2a',32),'hex'),NULL,'restart plain state');
+  a:=pg_temp.phase10op_ready_auth_bound('att_10op_expiry_race_001',decode(repeat('93',32),'hex'),'e1000000-0000-4000-8000-000000000011','e1000000-0000-4000-8000-000000000021',decode(repeat('2b',32),'hex'),NULL,NULL);
+END $$;
+SELECT 'PHASE10O_P_FRESH_PROCESS_RESUME_SETUP_OK' AS status;

@@ -30,7 +30,7 @@ CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE SET sear
   Invoke-SqlFile (Resolve-Path 'supabase/migrations/20260813120000_transaction_bound_broker_code_issuance.sql').Path
   Invoke-SqlFile (Resolve-Path 'scripts/phase10o-p/lifecycle-smoke.sql').Path
   Invoke-SqlFile (Resolve-Path 'scripts/phase10o-p/permissions-smoke.sql').Path
-  $env:PHASE10O_P_CONTAINER=$containerName;node scripts/phase10o-p/race-runner.mjs;if($LASTEXITCODE-ne 0){throw 'PHASE 10O-P concurrency acceptance failed.'};Remove-Item Env:PHASE10O_P_CONTAINER -ErrorAction SilentlyContinue
+  $mapping=(docker port $containerName 5432/tcp).Trim();if($mapping -notmatch ':(\d+)$'){throw 'Host TCP port discovery failed.'};$env:PGHOST='127.0.0.1';$env:PGPORT=$Matches[1];$env:PGDATABASE='phase10op';$env:PGUSER='postgres';$env:PGPASSWORD=$testPassword;node scripts/phase10o-p/race-runner.mjs;if($LASTEXITCODE-ne 0){throw 'PHASE 10O-P direct-TCP concurrency acceptance failed.'};Remove-Item Env:PGHOST,Env:PGPORT,Env:PGDATABASE,Env:PGUSER,Env:PGPASSWORD -ErrorAction SilentlyContinue
   $tableCount=(docker exec $containerName psql -U postgres -d phase10op -tAc "SELECT count(*) FROM pg_catalog.pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='private' AND c.relkind='r'").Trim();if($tableCount-ne'9'){throw "Private table boundary mismatch: $tableCount"}
   Write-Output 'PHASE10O_P_ISOLATED_DB_OK private_tables=9 container_removed=true'
 } finally {if($created){$old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';docker rm -f $containerName 2>$null|Out-Null;$ErrorActionPreference=$old}}

@@ -13,12 +13,11 @@ const context = Object.freeze({
   pkceS256Challenge: 'A'.repeat(43),
   downstreamNonce: 'trusted nonce exactly',
   downstreamState: 'state +/%? exact',
-  authenticationTime: 1,
 })
 
 describe('transaction-bound broker code preparation', () => {
   it('derives code bindings exclusively from trusted durable context', () => {
-    const prepared = prepareTransactionBoundBrokerCode({ trusted: context, downstreamNonceKey: key })
+    const prepared = prepareTransactionBoundBrokerCode({ context, authenticationTime: 1, downstreamNonceKey: key })
     expect(prepared.database.authorizationTransactionId).toBe(context.authorizationTransactionId)
     expect(prepared.database.loginAttemptId).toBe(context.loginAttemptId)
     expect(prepared.database.code.clientId).toBe(context.clientId)
@@ -34,15 +33,16 @@ describe('transaction-bound broker code preparation', () => {
   })
 
   it('accepts no nonce tuple when the trusted transaction has no nonce', () => {
-    const prepared = prepareTransactionBoundBrokerCode({ trusted: { ...context, downstreamNonce: null, downstreamState: null } })
+    const prepared = prepareTransactionBoundBrokerCode({ context: { ...context, downstreamNonce: null, downstreamState: null }, authenticationTime: 1 })
     expect(prepared.database.code.downstreamNonce).toBeNull()
     expect(prepared.database.downstreamNonceProof).toBeNull()
     expect(prepared.response.downstreamState).toBeNull()
   })
 
   it('rejects malformed trusted context and nonce-key mismatches', () => {
-    expect(() => prepareTransactionBoundBrokerCode({ trusted: { ...context, authorizationTransactionId: 'browser-value' }, downstreamNonceKey: key })).toThrow('TRANSACTION_BOUND_BROKER_CODE_PREPARATION_REJECTED')
-    expect(() => prepareTransactionBoundBrokerCode({ trusted: context })).toThrow('TRANSACTION_BOUND_BROKER_CODE_PREPARATION_REJECTED')
-    expect(() => prepareTransactionBoundBrokerCode({ trusted: { ...context, downstreamNonce: null }, downstreamNonceKey: key })).toThrow('TRANSACTION_BOUND_BROKER_CODE_PREPARATION_REJECTED')
+    expect(() => prepareTransactionBoundBrokerCode({ context: { ...context, authorizationTransactionId: 'browser-value' }, authenticationTime: 1, downstreamNonceKey: key })).toThrow('TRANSACTION_BOUND_BROKER_CODE_PREPARATION_REJECTED')
+    expect(() => prepareTransactionBoundBrokerCode({ context, authenticationTime: 1 })).toThrow('TRANSACTION_BOUND_BROKER_CODE_PREPARATION_REJECTED')
+    expect(() => prepareTransactionBoundBrokerCode({ context: { ...context, downstreamNonce: null }, authenticationTime: 1, downstreamNonceKey: key })).toThrow('TRANSACTION_BOUND_BROKER_CODE_PREPARATION_REJECTED')
+    expect(() => prepareTransactionBoundBrokerCode({ context, authenticationTime: -1, downstreamNonceKey: key })).toThrow('TRANSACTION_BOUND_BROKER_CODE_PREPARATION_REJECTED')
   })
 })

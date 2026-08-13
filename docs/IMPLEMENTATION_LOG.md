@@ -6,6 +6,8 @@
 - Bound issuance accepts raw nonce only as a transient equality proof for the frozen transaction and persists only the existing encrypted nonce tuple. Success atomically creates one ready code, advances the attempt and transaction, returns the response state once, and scrubs raw nonce/state. The legacy unbound service path is revoked.
 - Disposable lifecycle, permissions, collision/retry, fresh-process restart, and independent backend concurrency acceptance were run locally. No Production migration/write, provider call, public route, UI, Auth, environment, email, or launch-state action was performed.
 
+- The same unapplied migration now includes a minimal service-only trusted-attempt resolver for restart-safe issuance preparation. Fresh Node processes rehydrate both nonce-bearing and no-nonce frozen context; the direct-TCP READY/GO workers also cover expiry-versus-issuance with distinct OS and PostgreSQL backend PIDs.
+
 ## 2026-08-13 PHASE 10O-O downstream authorization transaction persistence (local/Draft)
 
 - Added a single private durable transaction table. The database keeps only a domain-separated handle digest; the raw opaque browser handle is ephemeral and cannot select a private transaction ID directly.
