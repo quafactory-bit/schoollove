@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-08-13 PHASE 10O-R downstream terminal scrub boundary (local / Draft / feature-off)
+
+- Added a forward-only terminal-context check: expired, rejected, and consumed downstream authorization transactions retain neither raw nonce nor raw state.
+- Closed provider/identity/callback terminal paths and O-level expiry paths atomically without enabling public OAuth.
+
 ## 2026-08-13 PHASE 10O-P transaction-bound broker-code issuance (local / Draft / feature-off)
 
 - Added forward-only `20260813120000_transaction_bound_broker_code_issuance.sql`: every future broker code must link uniquely to its immutable downstream authorization transaction and its exact login attempt; client ID, exact redirect URI, S256 PKCE, nonce proof, state, expiry, and verified-leg authority cannot be caller-substituted.

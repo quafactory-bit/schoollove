@@ -1,5 +1,10 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-13 PHASE 10O-R downstream authorization terminal scrub boundary (Draft)
+
+- Added the terminal-context CHECK and transaction-first terminalization helpers, plus disposable lifecycle, permission, and direct-TCP race acceptance coverage.
+- No Production migration/write, provider call, credential, email, Auth, UI, or launch-state change was made.
+
 ## 2026-08-13 PHASE 10O-P transaction-bound broker-code issuance (local/Draft)
 
 - Added a forward-only code-to-transaction relationship without adding a private table. It is mandatory, one-to-one, and structurally same-attempt constrained. The trusted transaction—not an issuing caller—supplies exact client, redirect, S256 PKCE, nonce/state context, and expiry.
