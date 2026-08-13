@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-13 PHASE 10O-P transaction-bound broker-code issuance (local / Draft / feature-off)
+
+- Added forward-only `20260813120000_transaction_bound_broker_code_issuance.sql`: every future broker code must link uniquely to its immutable downstream authorization transaction and its exact login attempt; client ID, exact redirect URI, S256 PKCE, nonce proof, state, expiry, and verified-leg authority cannot be caller-substituted.
+- Closed service access to the legacy unbound issuance RPC. The new service-only transaction-bound issuance RPC inserts the code then atomically advances attempt → `broker_code_ready`, transaction → `consumed`, and scrubs raw downstream nonce/state; collision rejection leaves an eligible transaction retryable.
+
+- Added the narrow service-only trusted-attempt context resolver and direct PostgreSQL TCP READY/GO acceptance workers. A fresh process can rehydrate only frozen transaction context; nonce-bearing/no-nonce restart and expiry-versus-issuance races are checked without Docker-exec session reuse.
+
 ## 2026-08-13 PHASE 10O-O downstream authorization transaction persistence (local / Draft / feature-off)
 
 - Added forward-only `20260813100000_downstream_authorization_transaction_persistence.sql`: one private immutable downstream request ledger with RLS/FORCE RLS, digest-only opaque handle correlation, service-only claim/bind primitives, and attempt/leg substitution rejection.

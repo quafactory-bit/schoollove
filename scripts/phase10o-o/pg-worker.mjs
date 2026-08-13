@@ -5,7 +5,11 @@ const required = ['PGHOST', 'PGPORT', 'PGDATABASE', 'PGUSER', 'PGPASSWORD']
 if (required.some(key => !process.env[key]) || typeof process.send !== 'function') process.exit(2)
 
 const cstring = value => Buffer.from(`${value}\0`, 'utf8')
-const message = (kind, body = Buffer.alloc(0)) => Buffer.concat([Buffer.from(kind), Buffer.from([0, 0, 0, body.length + 4]), body])
+const message = (kind, body = Buffer.alloc(0)) => {
+  const length = Buffer.allocUnsafe(4)
+  length.writeUInt32BE(body.length + 4)
+  return Buffer.concat([Buffer.from(kind), length, body])
+}
 const xor = (left, right) => Buffer.from(left.map((value, index) => value ^ right[index]))
 const hmac = (key, value) => crypto.createHmac('sha256', key).update(value).digest()
 const sqlState = body => {
@@ -14,6 +18,16 @@ const sqlState = body => {
     const field = String.fromCharCode(body[offset]); offset += 1
     const end = body.indexOf(0, offset); if (end < 0) break
     if (field === 'C') return body.subarray(offset, end).toString('ascii')
+    offset = end + 1
+  }
+  return 'UNKNOWN'
+}
+const errorText = body => {
+  let offset = 0
+  while (offset < body.length && body[offset] !== 0) {
+    const field = String.fromCharCode(body[offset]); offset += 1
+    const end = body.indexOf(0, offset); if (end < 0) break
+    if (field === 'M') return body.subarray(offset, end).toString('utf8').slice(0, 160)
     offset = end + 1
   }
   return 'UNKNOWN'
@@ -49,7 +63,7 @@ async function connect() {
       const packet = await next()
       if (packet.kind === 'T') { let offset = 2; columns = []; for (let index = 0; index < packet.body.readUInt16BE(0); index += 1) { const end = packet.body.indexOf(0, offset); columns.push(packet.body.subarray(offset, end).toString('utf8')); offset = end + 19 } }
       else if (packet.kind === 'D') { let offset = 2; const row = {}; for (let index = 0; index < packet.body.readUInt16BE(0); index += 1) { const size = packet.body.readInt32BE(offset); offset += 4; row[columns[index]] = size < 0 ? null : packet.body.subarray(offset, offset + size).toString('utf8'); offset += Math.max(size, 0) } rows.push(row) }
-      else if (packet.kind === 'E') { const error = new Error('SQL_REJECTED'); error.sqlState = sqlState(packet.body); throw error }
+      else if (packet.kind === 'E') { const error = new Error('SQL_REJECTED'); error.sqlState = sqlState(packet.body); error.sqlMessage = errorText(packet.body); throw error }
       else if (packet.kind === 'Z') return rows
     }
   }
@@ -64,6 +78,6 @@ try {
       if (!input || input.type !== 'GO' || typeof input.sql !== 'string') throw new Error('WORKER_PROTOCOL')
       const rows = await session.query(input.sql)
       process.send({ type: 'RESULT', workerPid: process.pid, backendPid: Number(backend), rows }, () => { session.socket.destroy(); process.disconnect(); process.exit(0) })
-    } catch (error) { session.socket.destroy(); const code = error instanceof Error && error.message === 'SQL_REJECTED' ? `SQLSTATE_${error.sqlState ?? 'UNKNOWN'}` : 'SQL_OR_WORKER_FAILURE'; process.send({ type: 'ERROR', workerPid: process.pid, code }, () => process.exit(1)) }
+    } catch (error) { session.socket.destroy(); const code = error instanceof Error && error.message === 'SQL_REJECTED' ? `SQLSTATE_${error.sqlState ?? 'UNKNOWN'}_${error.sqlMessage ?? 'UNKNOWN'}` : 'SQL_OR_WORKER_FAILURE'; process.send({ type: 'ERROR', workerPid: process.pid, code }, () => process.exit(1)) }
   })
 } catch { process.send?.({ type: 'ERROR', workerPid: process.pid, code: 'CONNECTION_OR_AUTH_FAILURE' }); process.exit(1) }
