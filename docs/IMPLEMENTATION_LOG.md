@@ -5,6 +5,11 @@
 - Added the terminal-context CHECK and transaction-first terminalization helpers, plus disposable lifecycle, permission, and direct-TCP race acceptance coverage.
 - No Production migration/write, provider call, credential, email, Auth, UI, or launch-state change was made.
 
+## 2026-08-13 PHASE 10O-Q dark broker orchestration (local/blocked)
+
+- Started the dark-only validator/orchestrator integration. It freezes a validated client/redirect/S256/state/nonce request into the existing transaction boundary, returns only the opaque broker handle to browser continuity, and keeps direct private-table access out of the orchestration port. Google and Kakao durable OIDC plus Naver recovery isolated flows reached their dark token exchanges without a public route.
+- Post-correlation provider failure was blocked because the approved `fail_upstream_login_leg()` path terminalized the attempt as `failed_safe` and the upstream leg as `rejected`, while leaving its bound downstream transaction `upstream_bound` with raw downstream nonce/state. PHASE 10O-R later supplied the approved terminalization/scrub boundary; Q acceptance now resumes against that baseline. No public-route activation is included.
+
 ## 2026-08-13 PHASE 10O-P transaction-bound broker-code issuance (local/Draft)
 
 - Added a forward-only code-to-transaction relationship without adding a private table. It is mandatory, one-to-one, and structurally same-attempt constrained. The trusted transaction—not an issuing caller—supplies exact client, redirect, S256 PKCE, nonce/state context, and expiry.

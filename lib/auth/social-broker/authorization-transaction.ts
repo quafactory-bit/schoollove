@@ -2,6 +2,7 @@ import 'server-only'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 
 const HANDLE_DOMAIN = 'schoollove:downstream-authorization-transaction-handle:v1\0'
+const BROWSER_BOUND_HANDLE_DOMAIN = 'schoollove:downstream-authorization-browser-bound-handle:v1'
 const HANDLE_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const PKCE_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -25,9 +26,27 @@ export type PreparedDownstreamAuthorizationTransaction = Readonly<{
   correlation: Readonly<{ brokerHandle: string }>
 }>
 
+/** Q-only browser-bound continuation; raw material stays in the browser session, never in the database. */
+export type PreparedBrowserBoundDownstreamAuthorizationTransaction = Readonly<{
+  database: PreparedDownstreamAuthorizationTransaction['database']
+  correlation: Readonly<{ brokerHandle: string; browserBindingSecret: string }>
+}>
+
 export function downstreamAuthorizationTransactionHandleDigest(rawHandle: string): Uint8Array {
   if (typeof rawHandle !== 'string' || !HANDLE_PATTERN.test(rawHandle)) throw new Error('DOWNSTREAM_AUTHORIZATION_HANDLE_INVALID')
   return createHash('sha256').update(HANDLE_DOMAIN, 'utf8').update(rawHandle, 'ascii').digest()
+}
+
+function framed(value: string): Buffer {
+  const bytes = Buffer.from(value, 'utf8'); const length = Buffer.allocUnsafe(4)
+  length.writeUInt32BE(bytes.byteLength)
+  return Buffer.concat([length, bytes])
+}
+
+/** Binds the bearer handle to a separate ephemeral browser-session secret without changing the legacy O digest. */
+export function downstreamAuthorizationBoundHandleDigest(rawHandle: string, browserBindingSecret: string): Uint8Array {
+  if (typeof rawHandle !== 'string' || !HANDLE_PATTERN.test(rawHandle) || typeof browserBindingSecret !== 'string' || !HANDLE_PATTERN.test(browserBindingSecret)) throw new Error('DOWNSTREAM_AUTHORIZATION_BROWSER_BINDING_INVALID')
+  return createHash('sha256').update(Buffer.concat([framed(BROWSER_BOUND_HANDLE_DOMAIN), framed(rawHandle), framed(browserBindingSecret)])).digest()
 }
 
 function normalizedScopes(scopes: readonly string[]): string {
@@ -72,5 +91,32 @@ export function prepareDownstreamAuthorizationTransaction(input: Readonly<{
       downstreamState: input.downstreamState ?? null, expiresAt: input.expiresAt,
     }),
     correlation: Object.freeze({ brokerHandle }),
+  })
+}
+
+/**
+ * Q application boundary: a continuation requires both the opaque handle and
+ * a separately-held browser binding. The database stores only their bound digest.
+ */
+export function prepareBrowserBoundDownstreamAuthorizationTransaction(input: Readonly<{
+  loginAttemptId: string
+  clientId: string
+  redirectUri: string
+  scopes: readonly string[]
+  pkceS256Challenge: string
+  downstreamNonce?: string
+  downstreamState?: string
+  now: number
+  expiresAt: number
+  transactionId?: string
+  brokerHandle?: string
+  browserBindingSecret?: string
+}>): PreparedBrowserBoundDownstreamAuthorizationTransaction {
+  const prepared = prepareDownstreamAuthorizationTransaction(input)
+  const browserBindingSecret = input.browserBindingSecret ?? randomBytes(32).toString('base64url')
+  const boundHandleDigest = downstreamAuthorizationBoundHandleDigest(prepared.correlation.brokerHandle, browserBindingSecret)
+  return Object.freeze({
+    database: Object.freeze({ ...prepared.database, brokerHandleDigest: boundHandleDigest }),
+    correlation: Object.freeze({ brokerHandle: prepared.correlation.brokerHandle, browserBindingSecret }),
   })
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
-import { downstreamAuthorizationTransactionHandleDigest, prepareDownstreamAuthorizationTransaction } from './authorization-transaction'
+import { downstreamAuthorizationBoundHandleDigest, downstreamAuthorizationTransactionHandleDigest, prepareBrowserBoundDownstreamAuthorizationTransaction, prepareDownstreamAuthorizationTransaction } from './authorization-transaction'
 
 const input = { loginAttemptId: '10000000-0000-4000-8000-000000000001', clientId: 'slb-supabase-google', redirectUri: 'https://example.invalid/callback', scopes: ['openid', 'openid', 'profile'], pkceS256Challenge: 'A'.repeat(43), downstreamNonce: 'nonce-value', downstreamState: 'state-value', now: 1_800_000_000, expiresAt: 1_800_000_600, transactionId: '10000000-0000-4000-8000-000000000002', brokerHandle: 'B'.repeat(43) } as const
 
@@ -32,5 +32,24 @@ describe('downstream authorization transaction preparation', () => {
     expect(() => prepareDownstreamAuthorizationTransaction({ ...input, loginAttemptId: 'browser-id' })).toThrow('DOWNSTREAM_AUTHORIZATION_TRANSACTION_INVALID')
     expect(() => prepareDownstreamAuthorizationTransaction({ ...input, redirectUri: 'not a URI' })).toThrow('DOWNSTREAM_AUTHORIZATION_TRANSACTION_INVALID')
     expect(() => downstreamAuthorizationTransactionHandleDigest('short')).toThrow('DOWNSTREAM_AUTHORIZATION_HANDLE_INVALID')
+  })
+
+  it('PHASE10O_Q_BROWSER_BOUND_HANDLE_DIGEST_FAILS_CLOSED_AND_IS_DOMAIN_SEPARATE', () => {
+    const bindingA = 'C'.repeat(43); const bindingB = 'D'.repeat(43); const handleB = 'E'.repeat(43)
+    const same = downstreamAuthorizationBoundHandleDigest(input.brokerHandle, bindingA)
+    expect(Buffer.from(same)).toEqual(Buffer.from(downstreamAuthorizationBoundHandleDigest(input.brokerHandle, bindingA)))
+    expect(Buffer.from(same)).not.toEqual(Buffer.from(downstreamAuthorizationBoundHandleDigest(input.brokerHandle, bindingB)))
+    expect(Buffer.from(same)).not.toEqual(Buffer.from(downstreamAuthorizationBoundHandleDigest(handleB, bindingA)))
+    expect(Buffer.from(same)).not.toEqual(Buffer.from(downstreamAuthorizationTransactionHandleDigest(input.brokerHandle)))
+    expect(same).toHaveLength(32)
+    expect(() => downstreamAuthorizationBoundHandleDigest('short', bindingA)).toThrow('DOWNSTREAM_AUTHORIZATION_BROWSER_BINDING_INVALID')
+    expect(() => downstreamAuthorizationBoundHandleDigest(input.brokerHandle, 'short')).toThrow('DOWNSTREAM_AUTHORIZATION_BROWSER_BINDING_INVALID')
+  })
+
+  it('keeps browser continuation separate from the database payload', () => {
+    const prepared = prepareBrowserBoundDownstreamAuthorizationTransaction({ ...input, browserBindingSecret: 'C'.repeat(43) })
+    expect(Buffer.from(prepared.database.brokerHandleDigest)).toEqual(Buffer.from(downstreamAuthorizationBoundHandleDigest(input.brokerHandle, 'C'.repeat(43))))
+    expect(JSON.stringify(prepared.database)).not.toContain(prepared.correlation.browserBindingSecret)
+    expect(prepared.correlation).toMatchObject({ brokerHandle: input.brokerHandle, browserBindingSecret: 'C'.repeat(43) })
   })
 })
