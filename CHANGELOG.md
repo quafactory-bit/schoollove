@@ -212,3 +212,9 @@
 - Added the forward-only attempt-first social login decision boundary, including durable safe-id-only attempts, attempt-bound recovery challenges, recovery-first account decision, and hardened Auth-principal bind ordering.
 - Recovery-email matches return the retained primary provider and never attach another provider or create a second identity/account.
 - No public OAuth/OIDC/recovery route, login UI, provider call, real email/OTP, Auth user, Production migration, launch, or environment change is included.
+## 2026-08-14 — PHASE 10O-S (LOCAL / DRAFT / FEATURE OFF)
+
+- Added a forward-only durable continuation recovery boundary after the Q claim/bind crash audit: an additive browser-bound continuation digest, atomic create-or-resume upstream leg binding, encrypted state/optional-nonce recovery material, and a service-only abandoned-context expiry path.
+- The original O handle-only claim contract remains compatible. No public social/OIDC route, provider call, login UI, Production migration, database mutation, environment change, or launch change is included.
+- Route-surface acceptance uses reproducible exact frozen-baseline parity: baseline `99efcd22c3d048a2eb545f3811069fba62291821` and S each expose 95 canonical public routes, with zero additions or removals. The historical absolute `58 pages/routes` record is retained, but is not reproducible on that frozen baseline and is not an executable S assertion.
+- Hardened the durable continuation selector with a partial unique live-authority index and coarse collision handling; the existing authority remains resumable under duplicate creation attempts. No public activation or Production change is included.
