@@ -6,6 +6,17 @@ import { isSocialProvider, type SocialProvider } from './types'
 
 type ClientAuthMethod = 'client_secret_basic' | 'client_secret_post'
 export type DarkOidcClient = Readonly<{ clientId: string; secretDigest: Uint8Array; redirectUri: string; provider: SocialProvider }>
+/** A fully validated downstream request. Browser strings are frozen only after registry validation. */
+export type ValidatedDownstreamAuthorizationRequest = Readonly<{
+  clientId: string
+  provider: SocialProvider
+  redirectUri: string
+  responseType: 'code'
+  scopes: readonly string[]
+  pkceS256Challenge: string
+  downstreamState: string
+  downstreamNonce: string | null
+}>
 type ConsumedCode = Readonly<{ outcome: 'AUTHORIZATION_CODE_CONSUMED'; subject: string; authenticationTime: number; codeId: string; downstreamNonce: DurableDownstreamNonce | null }>
 
 export type DarkOidcRegistry = Readonly<{
@@ -62,6 +73,21 @@ function validRedirectUri(value: string): boolean {
 function exactFormUrlEncoded(contentType: string | null): boolean {
   return contentType !== null && /^application\/x-www-form-urlencoded(?:\s*;\s*charset\s*=\s*utf-8\s*)?$/i.test(contentType)
 }
+/** The one parser for dark HTTP and server-only orchestration. It never trusts a browser provider value. */
+export function validateDownstreamAuthorizationRequest(input: Readonly<{ url: URL; clients: readonly DarkOidcClient[] }>): ValidatedDownstreamAuthorizationRequest {
+  const params = input.url.searchParams
+  noAmbiguity(params)
+  if (single(params, 'response_type') !== 'code') throw new Error('unsupported_response_type')
+  const clientId = single(params, 'client_id')!; const client = input.clients.find(value => value.clientId === clientId)
+  if (!client) throw new Error('invalid_client')
+  const redirectUri = single(params, 'redirect_uri')!; if (redirectUri !== client.redirectUri) throw new Error('invalid_request')
+  const downstreamState = single(params, 'state')!; const pkceS256Challenge = single(params, 'code_challenge')!
+  if (single(params, 'code_challenge_method') !== 'S256' || !/^[A-Za-z0-9_-]{43}$/.test(pkceS256Challenge)) throw new Error('invalid_request')
+  const scopes = single(params, 'scope')!.split(/\s+/).filter(Boolean)
+  if (!scopes.includes('openid')) throw new Error('invalid_scope')
+  const downstreamNonce = single(params, 'nonce', false) ?? null
+  return Object.freeze({ clientId, provider: client.provider, redirectUri, responseType: 'code', scopes: Object.freeze(scopes), pkceS256Challenge, downstreamState, downstreamNonce })
+}
 function parseBasic(header: string): Readonly<{ clientId: string; secret: string }> {
   if (!/^Basic\s+/i.test(header)) throw new Error('invalid_client')
   const encoded = header.replace(/^Basic\s+/i, '')
@@ -103,19 +129,12 @@ export class DarkOidcHttpIssuer {
   jwks() { const jwk = this.#publicKey.export({ format: 'jwk' }) as Record<string, unknown>; return { keys: [{ ...jwk, kid: this.#kid, use: 'sig', alg: 'RS256' }] } }
   async authorizeRequest(request: Request): Promise<Response> {
     try {
-      const url = new URL(request.url); noAmbiguity(url.searchParams)
-      if (single(url.searchParams, 'response_type') !== 'code') throw new Error('unsupported_response_type')
-      const clientId = single(url.searchParams, 'client_id')!; const client = this.#client(clientId)
-      const redirectUri = single(url.searchParams, 'redirect_uri')!; if (redirectUri !== client.redirectUri) throw new Error('invalid_request')
-      const state = single(url.searchParams, 'state')!; const challenge = single(url.searchParams, 'code_challenge')!
-      if (single(url.searchParams, 'code_challenge_method') !== 'S256' || !/^[A-Za-z0-9_-]{43}$/.test(challenge)) throw new Error('invalid_request')
-      if (!single(url.searchParams, 'scope')!.split(/\s+/).includes('openid')) throw new Error('invalid_scope')
-      const nonce = single(url.searchParams, 'nonce', false)
-      const result = await this.#registry.authorize({ clientId, provider: client.provider, redirectUri, pkceS256Challenge: challenge, ...(nonce === undefined ? {} : { nonce }) })
+      const validated = validateDownstreamAuthorizationRequest({ url: new URL(request.url), clients: this.#registry.clients })
+      const result = await this.#registry.authorize({ clientId: validated.clientId, provider: validated.provider, redirectUri: validated.redirectUri, pkceS256Challenge: validated.pkceS256Challenge, ...(validated.downstreamNonce === null ? {} : { nonce: validated.downstreamNonce }) })
       if (!/^[A-Za-z0-9_-]{43}$/.test(result.authorizationCode)) throw new Error('OIDC_ADAPTER_AUTHORIZATION_CODE_INVALID')
-      const destination = new URL(client.redirectUri)
+      const destination = new URL(validated.redirectUri)
       destination.searchParams.append('code', result.authorizationCode)
-      destination.searchParams.append('state', state)
+      destination.searchParams.append('state', validated.downstreamState)
       return Response.redirect(destination, 302)
     } catch (error) { return protocolError(error) }
   }
