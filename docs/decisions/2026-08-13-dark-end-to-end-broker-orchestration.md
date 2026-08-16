@@ -1,6 +1,13 @@
 # PHASE 10O-Q — Dark end-to-end broker orchestration
 
-## Current acceptance status: IN PROGRESS
+## Current acceptance status: Q/S integration accepted locally; Draft review pending
+
+### PHASE 10O-S integration closure
+
+- PHASE 10O-S merged at `1ca8fd1d9b74fd66130e2f09ab88d21eae4c1615`; its durable-continuation migration is applied in Production with the feature still hard-off.
+- Q now resolves and atomically creates/resumes continuation through `resolve_durable_continuation_by_digest` and `create_or_resume_durable_upstream_continuation`. The prior destructive O claim/create-leg/bind sequence is not the active Q application continuation path.
+- Fresh disposable acceptance passed pre/post-resolve recovery, response-loss canonical resume, two-process race with one canonical leg, binding/session rejection and survival, callback scrub, replay rejection, and abandoned-expiry scrub.
+- Google, Naver recovery, and Kakao dark A→E flows passed along with provider failure, callback/private-ID, session isolation, token-negative, and premature-finalization matrices. Q adds no migration and no public activation or live provider call.
 
 PHASE 10O-Q composes the existing durable dark broker boundaries without
 activating a public endpoint, adding a migration, or changing Production.

@@ -10,6 +10,11 @@
 - Started the dark-only validator/orchestrator integration. It freezes a validated client/redirect/S256/state/nonce request into the existing transaction boundary, returns only the opaque broker handle to browser continuity, and keeps direct private-table access out of the orchestration port. Google and Kakao durable OIDC plus Naver recovery isolated flows reached their dark token exchanges without a public route.
 - Post-correlation provider failure was blocked because the approved `fail_upstream_login_leg()` path terminalized the attempt as `failed_safe` and the upstream leg as `rejected`, while leaving its bound downstream transaction `upstream_bound` with raw downstream nonce/state. PHASE 10O-R later supplied the approved terminalization/scrub boundary; Q acceptance now resumes against that baseline. No public-route activation is included.
 
+## 2026-08-16 PHASE 10O-Q/S integration (Draft / feature-off)
+
+- PHASE 10O-S is merged at `1ca8fd1d9b74fd66130e2f09ab88d21eae4c1615` and its Production migration is applied feature-off. Q uses its durable resolve/create-or-resume RPCs as the active continuation authority.
+- Q/S acceptance passed canonical one-leg recovery across process loss and response loss, two-process races, callback/expiry scrub, Google/Naver/Kakao dark A→E, and provider/callback/session/token failure matrices. Migrations, public activation, login UI, and live provider calls remain zero.
+
 ## 2026-08-13 PHASE 10O-P transaction-bound broker-code issuance (local/Draft)
 
 - Added a forward-only code-to-transaction relationship without adding a private table. It is mandatory, one-to-one, and structurally same-attempt constrained. The trusted transaction—not an issuing caller—supplies exact client, redirect, S256 PKCE, nonce/state context, and expiry.

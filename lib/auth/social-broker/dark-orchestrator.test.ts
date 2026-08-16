@@ -10,12 +10,19 @@ const client = createSyntheticClient('slb-supabase-google', 'secret', redirect, 
 const context = { authorizationTransactionId: 'd1000000-0000-4000-8000-000000000001', loginAttemptId: 'd1000000-0000-4000-8000-000000000002', clientId: client.clientId, redirectUri: redirect, pkceS256Challenge: 'A'.repeat(43), downstreamNonce: 'downstream-nonce', downstreamState: 'exact state +/%?' } as const
 
 function persistence(): DarkBrokerPersistence {
-  let claimed = false
+  let stored: Awaited<ReturnType<DarkBrokerPersistence['createOrResumeDurableContinuation']>> | null = null
+  const pending = () => ({ outcome: 'CONTINUATION_PENDING' as const, transactionId: context.authorizationTransactionId, attemptId: context.loginAttemptId, provider: 'google' as const, clientId: client.clientId, redirectUri: redirect, legId: null, clientBindingDigest: null, stateDigest: null, nonceDigest: null, pkceS256Challenge: null, pkceVerifierCiphertext: null, pkceVerifierIv: null, pkceVerifierKeyVersion: null, continuationCiphertext: null, continuationIv: null, continuationKeyVersion: null })
   return {
     createAttempt: async () => context.loginAttemptId,
     createTransaction: async () => 'TRANSACTION_CREATED',
-    claimTransaction: async () => claimed ? { outcome: 'CORRELATION_REJECTED', transactionId: null, attemptId: null, clientId: null, redirectUri: null, scopes: null, pkceS256Challenge: null } : (claimed = true, { outcome: 'TRANSACTION_CLAIMED', transactionId: context.authorizationTransactionId, attemptId: context.loginAttemptId, clientId: client.clientId, redirectUri: redirect, scopes: 'openid', pkceS256Challenge: context.pkceS256Challenge }),
-    createUpstreamLeg: async () => 'UPSTREAM_LEG_CREATED', bindTransactionLeg: async () => 'UPSTREAM_BOUND', failClaimedUpstreamLeg: async () => 'REJECTED',
+    resolveDurableContinuation: async () => stored ?? pending(),
+    createOrResumeDurableContinuation: async input => stored ?? (stored = {
+      ...pending(), outcome: 'CONTINUATION_BOUND', legId: input.leg.legId, clientBindingDigest: input.leg.clientBindingDigest,
+      stateDigest: input.leg.stateDigest, nonceDigest: input.leg.nonceDigest, pkceS256Challenge: input.leg.pkce?.challenge ?? null,
+      pkceVerifierCiphertext: input.leg.pkce?.ciphertext ?? null, pkceVerifierIv: input.leg.pkce?.iv ?? null, pkceVerifierKeyVersion: input.leg.pkce?.keyVersion ?? null,
+      continuationCiphertext: input.continuation.ciphertext, continuationIv: input.continuation.iv, continuationKeyVersion: input.continuation.keyVersion,
+    }),
+    failClaimedUpstreamLeg: async () => 'REJECTED',
     claimCallback: async () => ({ outcome: 'REPLAY_REJECTED', attemptId: null, legId: null, provider: null, nonceDigest: null, pkceS256Challenge: null, pkceVerifierCiphertext: null, pkceVerifierIv: null, pkceVerifierKeyVersion: null }),
     recordVerifiedIdentity: async () => 'EXISTING_PRIMARY', resolveIssuanceContext: async () => context,
     issueTransactionBoundCode: async () => 'AUTHORIZATION_CODE_CREATED',
@@ -23,7 +30,7 @@ function persistence(): DarkBrokerPersistence {
 }
 
 function orchestrator(port = persistence()) {
-  return new DarkBrokerOrchestrator({ clients: [client], persistence: port, upstream: { google: { clientId: 'google-upstream', redirectUri: 'https://broker.invalid/google/callback' }, kakao: { clientId: 'kakao-upstream', redirectUri: 'https://broker.invalid/kakao/callback' }, naver: { clientId: 'naver-upstream', redirectUri: 'https://broker.invalid/naver/callback' } }, keys: { upstreamPkce: { version: 1, material: Buffer.alloc(32, 1) }, downstreamNonce: { version: 1, material: Buffer.alloc(32, 2) }, brokerSubject: Buffer.alloc(32, 3), brokerSubjectKeyVersion: 1 }, now: () => 1_800_000_000 })
+  return new DarkBrokerOrchestrator({ clients: [client], persistence: port, upstream: { google: { clientId: 'google-upstream', redirectUri: 'https://broker.invalid/google/callback' }, kakao: { clientId: 'kakao-upstream', redirectUri: 'https://broker.invalid/kakao/callback' }, naver: { clientId: 'naver-upstream', redirectUri: 'https://broker.invalid/naver/callback' } }, keys: { upstreamPkce: { version: 1, material: Buffer.alloc(32, 1) }, upstreamContinuation: { version: 1, material: Buffer.alloc(32, 4) }, downstreamNonce: { version: 1, material: Buffer.alloc(32, 2) }, brokerSubject: Buffer.alloc(32, 3), brokerSubjectKeyVersion: 1 }, now: () => 1_800_000_000 })
 }
 
 describe('dark end-to-end broker orchestration', () => {
@@ -34,18 +41,19 @@ describe('dark end-to-end broker orchestration', () => {
     expect(result).toMatchObject({ provider: 'google' }); expect(result.brokerHandle).toMatch(/^[A-Za-z0-9_-]{43}$/); expect(result.browserBindingSecret).toMatch(/^[A-Za-z0-9_-]{43}$/); expect(result.browserBindingSecret).not.toBe(result.brokerHandle)
   })
 
-  it('PHASE10O_Q_HANDLE_RESTART_REPLAY_REJECTED', async () => {
+  it('PHASE10O_Q_HANDLE_RESPONSE_LOSS_RESUMES_CANONICAL_CONTEXT', async () => {
     const q = orchestrator(); const started = await q.begin(authorizeUrl())
     const continued = await q.continueFromHandle({ brokerHandle: started.brokerHandle, browserBindingSecret: started.browserBindingSecret })
     expect(continued.authorization).toMatchObject({ rawNonce: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/), pkceChallenge: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) })
-    await expect(q.continueFromHandle({ brokerHandle: started.brokerHandle, browserBindingSecret: started.browserBindingSecret })).rejects.toThrow('DARK_CONTINUATION_REJECTED')
+    await expect(q.continueFromHandle({ brokerHandle: started.brokerHandle, browserBindingSecret: started.browserBindingSecret })).resolves.toEqual(continued)
   })
 
   it('PHASE10O_Q_BROWSER_BOUND_CONTINUATION_REJECTS_WRONG_OR_MISSING_BINDING', async () => {
     let expected: Uint8Array | null = null
-    const port: DarkBrokerPersistence = { ...persistence(), claimTransaction: async value => {
-      if (!expected || !Buffer.from(value).equals(Buffer.from(expected))) return { outcome: 'CORRELATION_REJECTED', transactionId: null, attemptId: null, clientId: null, redirectUri: null, scopes: null, pkceS256Challenge: null }
-      return { outcome: 'TRANSACTION_CLAIMED', transactionId: context.authorizationTransactionId, attemptId: context.loginAttemptId, clientId: client.clientId, redirectUri: redirect, scopes: 'openid', pkceS256Challenge: context.pkceS256Challenge }
+    const base = persistence()
+    const port: DarkBrokerPersistence = { ...base, resolveDurableContinuation: async value => {
+      if (!expected || !Buffer.from(value).equals(Buffer.from(expected))) return { outcome: 'CORRELATION_REJECTED', transactionId: null, attemptId: null, provider: null, clientId: null, redirectUri: null, legId: null, clientBindingDigest: null, stateDigest: null, nonceDigest: null, pkceS256Challenge: null, pkceVerifierCiphertext: null, pkceVerifierIv: null, pkceVerifierKeyVersion: null, continuationCiphertext: null, continuationIv: null, continuationKeyVersion: null }
+      return base.resolveDurableContinuation(value)
     } }
     const q = orchestrator(port); const started = await q.begin(authorizeUrl()); expected = downstreamAuthorizationBoundHandleDigest(started.brokerHandle, started.browserBindingSecret)
     await expect(q.continueFromHandle({ brokerHandle: started.brokerHandle, browserBindingSecret: 'A'.repeat(43) })).rejects.toThrow('DARK_CONTINUATION_REJECTED')

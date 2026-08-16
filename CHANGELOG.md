@@ -10,6 +10,11 @@
 - Began a server-only orchestration seam that shares the existing downstream authorization validator with the dark HTTP issuer and uses only service-RPC persistence ports. Public OIDC routes remain hard-off; no migration or Production action is included.
 - Disposable post-correlation provider-failure acceptance found a lifecycle gap: `fail_upstream_login_leg()` correctly left the attempt `failed_safe` and leg `rejected`, while the associated downstream transaction remained `upstream_bound` with raw downstream nonce/state. This finding was closed by the separately approved PHASE 10O-R terminal-scrub boundary; Q acceptance resumes on that R baseline and remains feature-off.
 
+## 2026-08-16 PHASE 10O-Q/S integration (local / Draft / feature-off)
+
+- Integrated the merged S durable-continuation authority into Q's active dark path. Q now resolves and atomically creates/resumes continuation through the S RPCs rather than the destructive O claim/create-leg/bind sequence.
+- Fresh crash/restart/race, Google/Naver/Kakao A→E, provider-failure, callback/session, token, and premature-finalization acceptance passed. Q adds no migration, public activation, or live provider call.
+
 ## 2026-08-13 PHASE 10O-P transaction-bound broker-code issuance (local / Draft / feature-off)
 
 - Added forward-only `20260813120000_transaction_bound_broker_code_issuance.sql`: every future broker code must link uniquely to its immutable downstream authorization transaction and its exact login attempt; client ID, exact redirect URI, S256 PKCE, nonce proof, state, expiry, and verified-leg authority cannot be caller-substituted.

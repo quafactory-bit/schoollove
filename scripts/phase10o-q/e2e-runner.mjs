@@ -13,7 +13,9 @@ const nowSql = "clock_timestamp()+interval '9 minutes'"
 const here = path.dirname(fileURLToPath(import.meta.url))
 const stageFile = path.join(here, 'orchestrator-stage.mjs')
 const loader = pathToFileURL(path.join(here, '..', 'phase10o-p', 'server-only-loader.mjs')).href
-const qKeys = { upstreamPkce: randomBytes(32), downstreamNonce: randomBytes(32), brokerSubject: randomBytes(32) }
+// Synthetic test-only custody: upstream continuation is deliberately independent
+// from upstream PKCE, downstream nonce, and broker-subject material.
+const qKeys = { upstreamPkce: randomBytes(32), upstreamContinuation: randomBytes(32), downstreamNonce: randomBytes(32), brokerSubject: randomBytes(32) }
 const ipcKeys = Object.fromEntries(Object.entries(qKeys).map(([key, value]) => [key, value.toString('base64')]))
 function stage(input) { return new Promise((resolve, reject) => { const child = fork(stageFile, [], { env: process.env, silent: true, execArgv: ['--experimental-strip-types', '--experimental-loader', loader] }); let settled = false; let stderr = ''; const finish = (error, value) => { if (settled) return; settled = true; clearTimeout(timer); error ? reject(error) : resolve(value) }; const timer = setTimeout(() => { child.kill(); finish(new Error('PHASE10O_Q_STAGE_TIMEOUT')) }, 20_000); child.stderr?.on('data', value => { stderr += value.toString('utf8').slice(0, 240) }); child.on('message', message => message?.ok ? finish(null, message.value) : finish(new Error(`PHASE10O_Q_STAGE_${message?.error ?? 'FAILURE'}`))); child.on('error', error => finish(error)); child.on('exit', code => { if (!settled) finish(new Error(`PHASE10O_Q_STAGE_EXIT_${code}_${stderr.replace(/[A-Za-z0-9_-]{43,}/g, '[redacted]')}`)) }); child.send({ ...input, keys: ipcKeys }) }) }
 function hmacSubjectDigest(provider, upstreamSubject) { const frame = value => { const bytes = Buffer.from(value); const length = Buffer.allocUnsafe(4); length.writeUInt32BE(bytes.byteLength); return Buffer.concat([length, bytes]) }; return createHmac('sha256', qKeys.brokerSubject).update(Buffer.concat([frame('schoollove:broker-subject:v1'), frame(provider), frame(upstreamSubject)])).digest() }
@@ -39,23 +41,15 @@ async function createActiveFixture(provider, identityDigest) {
   return { brokerSubject, recoveryHmac }
 }
 
-async function durableSession({ provider, identityDigest, expected, nonce }) {
-  const attemptSafe = `att_${opaque().slice(0, 20)}`; const transaction = randomUUID(); const leg = randomUUID(); const handle = opaque(); const state = opaque()
-  const downstreamVerifier = opaque(); const downstreamChallenge = createHash('sha256').update(downstreamVerifier, 'ascii').digest('base64url')
-  const providerClient = `q-${provider}-upstream`; const providerRedirect = `https://broker.invalid/${provider}/callback`; const clientDigest = digest('schoollove:upstream-client-binding:v1\0', `${provider}${providerClient}${providerRedirect}v1`)
-  const stateDigest = digest('schoollove:upstream-state:v1\0', state); const handleDigest = digest('schoollove:downstream-authorization-transaction-handle:v1\0', handle)
-  const attempt = await scalar(`${provider}_A_START`, `SELECT public.create_social_login_attempt(${quote(attemptSafe)},${quote(provider)},${nowSql}) AS attempt_id`, 'attempt_id')
-  if (await scalar(`${provider}_A_TRANSACTION`, `SELECT outcome FROM public.create_downstream_authorization_transaction(${quote(transaction)},${quote(attempt)},decode(${quote(hex(handleDigest))},'hex'),${quote(`slb-supabase-${provider}`)},${quote(`https://consumer.invalid/${provider}/return`)},'code','openid',${quote(downstreamChallenge)},'S256',${nonce ? quote('q-downstream-nonce') : 'NULL'},${quote('q exact state +/%?')},clock_timestamp()+interval '5 minutes')`) !== 'TRANSACTION_CREATED') throw new Error('PHASE10O_Q_A_CREATE')
-  const claimed = await rows(`${provider}_B_HANDLE`, `SELECT * FROM public.claim_downstream_authorization_transaction_by_handle(decode(${quote(hex(handleDigest))},'hex'))`)
-  if (claimed[0]?.outcome !== 'TRANSACTION_CLAIMED' || claimed[0]?.login_attempt_id !== attempt) throw new Error('PHASE10O_Q_B_CLAIM')
-  const oidc = provider !== 'naver'; const nonceDigest = oidc ? randomBytes(32) : null; const pkceCipher = oidc ? randomBytes(48) : null; const pkceIv = oidc ? randomBytes(12) : null
-  if (await scalar(`${provider}_B_LEG`, `SELECT outcome FROM public.create_upstream_login_leg(${quote(attempt)},${quote(leg)},${quote(provider)},decode(${quote(hex(clientDigest))},'hex'),decode(${quote(hex(stateDigest))},'hex'),${nonceDigest ? `decode(${quote(hex(nonceDigest))},'hex')` : 'NULL'},${oidc ? quote(opaque()) : 'NULL'},${pkceCipher ? `decode(${quote(hex(pkceCipher))},'hex')` : 'NULL'},${pkceIv ? `decode(${quote(hex(pkceIv))},'hex')` : 'NULL'},${oidc ? '1' : 'NULL'})`) !== 'UPSTREAM_LEG_CREATED') throw new Error('PHASE10O_Q_B_LEG')
-  if (await scalar(`${provider}_B_BIND`, `SELECT public.bind_downstream_authorization_transaction_upstream_leg(${quote(transaction)},${quote(leg)}) AS outcome`) !== 'UPSTREAM_BOUND') throw new Error('PHASE10O_Q_B_BIND')
-  const correlated = await rows(`${provider}_C_CORRELATE`, `SELECT * FROM public.claim_upstream_login_callback_by_state(${quote(provider)},decode(${quote(hex(clientDigest))},'hex'),decode(${quote(hex(stateDigest))},'hex'))`)
-  if (correlated[0]?.outcome !== 'CALLBACK_CLAIMED' || correlated[0]?.attempt_id !== attempt || correlated[0]?.leg_id !== leg) throw new Error('PHASE10O_Q_C_CORRELATION')
-  const identity = await scalar(`${provider}_C_IDENTITY`, `SELECT public.record_verified_social_identity_from_upstream_leg(${quote(attempt)},${quote(leg)},${quote(provider)},${quote(subject(provider, identityDigest))},decode(${quote(hex(identityDigest))},'hex'),1) AS outcome`)
-  if (identity !== expected) throw new Error(`PHASE10O_Q_C_IDENTITY_${identity}`)
-  return { attempt, transaction, leg, downstreamVerifier, downstreamChallenge, clientId: `slb-supabase-${provider}`, redirectUri: `https://consumer.invalid/${provider}/return`, downstreamNonce: nonce ? 'q-downstream-nonce' : null }
+async function durableSession({ provider, expected, nonce, upstreamSubject }) {
+  const downstreamVerifier = opaque(); const request = new URL('https://broker.invalid/oauth/authorize')
+  request.search = new URLSearchParams({ response_type: 'code', client_id: `slb-supabase-${provider}`, redirect_uri: `https://consumer.invalid/${provider}/return`, scope: 'openid', state: `q-durable-${provider}-${opaque().slice(0, 8)}`, ...(nonce ? { nonce: `q-durable-nonce-${opaque().slice(0, 8)}` } : {}), code_challenge: createHash('sha256').update(downstreamVerifier, 'ascii').digest('base64url'), code_challenge_method: 'S256' }).toString()
+  const started = await stage({ stage: 'A', url: request.toString() }); const continued = await stage({ stage: 'B', brokerHandle: started.brokerHandle, browserBindingSecret: started.browserBindingSecret }); const providerCode = opaque()
+  const callback = await stage({ stage: 'C', provider, authorizationCode: providerCode, upstreamSubject, rawNonce: continued.authorization.rawNonce, callbackUrl: `https://broker.invalid/${provider}/callback?code=${encodeURIComponent(providerCode)}&state=${encodeURIComponent(continued.authorization.rawState)}` })
+  if (callback.outcome !== expected || !callback.trustedAttemptId) throw new Error(`PHASE10O_Q_C_IDENTITY_${callback.outcome}`)
+  const identifiers = (await rows(`${provider}_DURABLE_IDENTIFIERS`, `SELECT t.id::text AS transaction,l.id::text AS leg FROM private.downstream_authorization_transactions t JOIN private.upstream_login_legs l ON l.id=t.upstream_login_leg_id WHERE t.login_attempt_id=${quote(callback.trustedAttemptId)}`))[0]
+  if (!identifiers) throw new Error('PHASE10O_Q_DURABLE_IDENTIFIERS')
+  return { attempt: callback.trustedAttemptId, transaction: identifiers.transaction, leg: identifiers.leg, downstreamVerifier, downstreamChallenge: createHash('sha256').update(downstreamVerifier, 'ascii').digest('base64url'), clientId: `slb-supabase-${provider}`, redirectUri: `https://consumer.invalid/${provider}/return`, downstreamNonce: nonce ? request.searchParams.get('nonce') : null }
 }
 
 function framed(value) { const raw = Buffer.from(value, 'utf8'); const size = Buffer.allocUnsafe(4); size.writeUInt32BE(raw.byteLength); return Buffer.concat([size, raw]) }
@@ -105,6 +99,32 @@ const innocentFinalization = await stage({ stage: 'D', trustedAttemptId: innocen
 await stage({ stage: 'E', provider: 'google', clientId: 'slb-supabase-google', authorizationCode: innocentFinalization.authorizationCode, redirectUri: innocentFinalization.redirectUri, downstreamVerifier: crossVerifierB })
 if (!crossAContinuation.authorization.rawState || !innocentFinalization.authorizationCode) throw new Error('PHASE10O_Q_CROSS_SESSION_LEGITIMATE_CONTINUATION_FAILED')
 process.stdout.write('PHASE10O_Q_CROSS_SESSION_BROWSER_BOUND_CONTINUATION_OK attacks=4 legitimate_fresh_process=2 innocent=consumed cross_row_binding=0\n')
+
+// Q/S restart matrix: resolve is non-mutating, the atomic RPC establishes one
+// canonical leg, and every fresh process reconstructs only that stored context.
+const crashBefore = await stage({ stage: 'A', url: crossUrl('q-s-crash-before', opaque()) })
+const crashBeforeRecovered = await stage({ stage: 'B', brokerHandle: crashBefore.brokerHandle, browserBindingSecret: crashBefore.browserBindingSecret })
+if (!crashBeforeRecovered.authorization.rawState) throw new Error('PHASE10O_Q_S_CRASH_BEFORE_RESOLVE')
+const resolveOnly = await stage({ stage: 'A', url: crossUrl('q-s-resolve-only', opaque()) })
+if ((await stage({ stage: 'B_RESOLVE_ONLY', brokerHandle: resolveOnly.brokerHandle, browserBindingSecret: resolveOnly.browserBindingSecret })).outcome !== 'CONTINUATION_PENDING') throw new Error('PHASE10O_Q_S_RESOLVE_ONLY_MUTATED')
+if (!(await stage({ stage: 'B', brokerHandle: resolveOnly.brokerHandle, browserBindingSecret: resolveOnly.browserBindingSecret })).authorization.rawState) throw new Error('PHASE10O_Q_S_RESOLVE_RETRY_FAILED')
+const raceStart = await stage({ stage: 'A', url: crossUrl('q-s-atomic-race', opaque()) })
+const [raceOne, raceTwo] = await Promise.all([
+  stage({ stage: 'B', brokerHandle: raceStart.brokerHandle, browserBindingSecret: raceStart.browserBindingSecret }),
+  stage({ stage: 'B', brokerHandle: raceStart.brokerHandle, browserBindingSecret: raceStart.browserBindingSecret }),
+])
+if (new Set([raceOne.durableOutcome, raceTwo.durableOutcome]).size !== 2 || ![raceOne.durableOutcome, raceTwo.durableOutcome].includes('CONTINUATION_BOUND') || ![raceOne.durableOutcome, raceTwo.durableOutcome].includes('CONTINUATION_RESUMED') || raceOne.authorization.rawState !== raceTwo.authorization.rawState || raceOne.authorization.rawNonce !== raceTwo.authorization.rawNonce || raceOne.authorization.pkceChallenge !== raceTwo.authorization.pkceChallenge) throw new Error('PHASE10O_Q_S_ATOMIC_RACE_NOT_CANONICAL')
+const raceContext = await rows('S_RACE_CANONICAL_AUDIT', `SELECT count(l.id)::text AS legs,(count(t.id) FILTER (WHERE t.continuation_handle_digest IS NOT NULL))::text AS live_authorities FROM private.downstream_authorization_transactions t LEFT JOIN private.upstream_login_legs l ON l.id=t.upstream_login_leg_id WHERE t.downstream_state='q-s-atomic-race'`)
+if (raceContext[0]?.legs !== '1' || raceContext[0]?.live_authorities !== '1') throw new Error('PHASE10O_Q_S_ATOMIC_RACE_ROWS')
+const raceResponseLost = await stage({ stage: 'B', brokerHandle: raceStart.brokerHandle, browserBindingSecret: raceStart.browserBindingSecret })
+if (raceResponseLost.authorization.rawState !== raceOne.authorization.rawState || raceResponseLost.authorization.rawNonce !== raceOne.authorization.rawNonce || raceResponseLost.authorization.pkceChallenge !== raceOne.authorization.pkceChallenge) throw new Error('PHASE10O_Q_S_RESPONSE_LOSS_NOT_RESUMABLE')
+const raceProviderCode = opaque(); const raceCallback = await stage({ stage: 'C', provider: 'google', authorizationCode: raceProviderCode, rawNonce: raceOne.authorization.rawNonce, callbackUrl: `https://broker.invalid/google/callback?code=${encodeURIComponent(raceProviderCode)}&state=${encodeURIComponent(raceOne.authorization.rawState)}` })
+if (raceCallback.outcome !== 'EXISTING_PRIMARY') throw new Error('PHASE10O_Q_S_CALLBACK_FAILED')
+const raceScrub = await rows('S_CALLBACK_SCRUB_AUDIT', `SELECT (t.continuation_handle_digest IS NULL)::text AS digest_scrubbed,(l.continuation_ciphertext IS NULL AND l.continuation_iv IS NULL AND l.continuation_key_version IS NULL)::text AS envelope_scrubbed FROM private.downstream_authorization_transactions t JOIN private.upstream_login_legs l ON l.id=t.upstream_login_leg_id WHERE t.downstream_state='q-s-atomic-race'`)
+if (raceScrub[0]?.digest_scrubbed !== 'true' || raceScrub[0]?.envelope_scrubbed !== 'true') throw new Error('PHASE10O_Q_S_CALLBACK_SCRUB_FAILED')
+let postCallbackReplayRejected = false; try { await stage({ stage: 'B', brokerHandle: raceStart.brokerHandle, browserBindingSecret: raceStart.browserBindingSecret }) } catch { postCallbackReplayRejected = true }
+if (!postCallbackReplayRejected) throw new Error('PHASE10O_Q_S_POST_CALLBACK_REPLAY_ACCEPTED')
+process.stdout.write('PHASE10O_Q_S_CRASH_RESTART_CANONICAL_CONTINUATION_OK resolve_nonmutating=true atomic_race=bound_and_resumed one_leg=true callback_scrub=true replay_rejected=true\n')
 
 async function createReadyGoogleCode(label) {
   const verifier = opaque(); const request = new URL('https://broker.invalid/oauth/authorize')
@@ -248,13 +268,13 @@ await stage({ stage: 'E', provider: 'google', clientId: 'slb-supabase-google', a
 const crossBindingViolations = await scalar('CROSS_SESSION_ROW_BINDING', `SELECT CASE WHEN EXISTS(SELECT 1 FROM private.downstream_authorization_transactions t JOIN private.upstream_login_legs l ON l.id=t.upstream_login_leg_id WHERE l.login_attempt_id<>t.login_attempt_id) OR EXISTS(SELECT 1 FROM private.broker_authorization_codes c JOIN private.downstream_authorization_transactions t ON t.id=c.authorization_transaction_id WHERE c.login_attempt_id<>t.login_attempt_id) THEN 'VIOLATION' ELSE 'OK' END AS outcome`)
 if (crossBindingViolations !== 'OK') throw new Error('PHASE10O_Q_CROSS_SESSION_ROW_BINDING_VIOLATION')
 process.stdout.write('PHASE10O_Q_CROSS_SESSION_ISOLATION_MATRIX_OK upstream_state=reject provider_code=reject downstream_state=exact broker_code_client_redirect_pkce=reject innocent_completion=true cross_row_binding=0\n')
-const googleDigest = randomBytes(32); await createActiveFixture('google', googleDigest)
-const google = await durableSession({ provider: 'google', identityDigest: googleDigest, expected: 'EXISTING_PRIMARY', nonce: true })
+const durableGoogleSubject = 'q-durable-google-subject'; await createActiveFixture('google', hmacSubjectDigest('google', durableGoogleSubject))
+const google = await durableSession({ provider: 'google', upstreamSubject: durableGoogleSubject, expected: 'EXISTING_PRIMARY', nonce: true })
 await issueAndConsumeGoogle(google)
 const replay = await scalar('GOOGLE_CALLBACK_REPLAY', `SELECT outcome FROM public.claim_upstream_login_callback_by_state('google',decode(repeat('00',32),'hex'),decode(repeat('00',32),'hex'))`)
 if (replay !== 'CORRELATION_REJECTED') throw new Error('PHASE10O_Q_CALLBACK_REPLAY')
-const naver = await durableSession({ provider: 'naver', identityDigest: randomBytes(32), expected: 'RECOVERY_REQUIRED', nonce: false })
-const kakao = await durableSession({ provider: 'kakao', identityDigest: randomBytes(32), expected: 'RECOVERY_REQUIRED', nonce: true })
+const naver = await durableSession({ provider: 'naver', upstreamSubject: 'q-durable-naver-subject', expected: 'RECOVERY_REQUIRED', nonce: false })
+const kakao = await durableSession({ provider: 'kakao', upstreamSubject: 'q-durable-kakao-subject', expected: 'RECOVERY_REQUIRED', nonce: true })
 const states = await rows('FINAL_STATES', `SELECT state FROM private.oauth_login_attempts WHERE id IN (${quote(google.attempt)},${quote(naver.attempt)},${quote(kakao.attempt)}) ORDER BY state`)
 if (states.length !== 3 || !states.some(row => row.state === 'consumed') || states.filter(row => row.state === 'recovery_required').length !== 2) throw new Error('PHASE10O_Q_FINAL_STATES')
 
@@ -286,7 +306,7 @@ await assertPrematureFinalization('ACCOUNT_DECIDED', kakao.attempt, kakao.transa
 // consume RPC atomically validates it and transitions to account_decided.
 const recoveryVerifiedRows = await scalar('PREMATURE_RECOVERY_VERIFIED_UNREACHABLE', `SELECT CASE WHEN count(*)=0 THEN 'OK' ELSE 'VIOLATION' END AS outcome FROM private.oauth_login_attempts WHERE state='recovery_verified'`)
 if (recoveryVerifiedRows !== 'OK') throw new Error('PHASE10O_Q_PREMATURE_RECOVERY_VERIFIED_UNEXPECTED_ROW')
-const retained = await createActiveFixture('kakao', randomBytes(32)); const existingMatch = await durableSession({ provider: 'kakao', identityDigest: randomBytes(32), expected: 'RECOVERY_REQUIRED', nonce: true }); const matchVerification = randomUUID(); const matchAccount = randomUUID()
+const retained = await createActiveFixture('kakao', randomBytes(32)); const existingMatch = await durableSession({ provider: 'kakao', upstreamSubject: 'q-durable-kakao-existing-match', expected: 'RECOVERY_REQUIRED', nonce: true }); const matchVerification = randomUUID(); const matchAccount = randomUUID()
 const matchReservation = await rows('PREMATURE_EXISTING_MATCH_RESERVE', `SELECT * FROM public.create_and_reserve_login_attempt_recovery_delivery(${quote(existingMatch.attempt)},${quote(matchVerification)},${quote(matchAccount)},decode(${quote(hex(retained.recoveryHmac))},'hex'),1,decode(repeat('e1',17),'hex'),decode(repeat('e2',12),'hex'),1,decode(repeat('e3',32),'hex'),1)`)
 if (matchReservation[0]?.outcome !== 'RECOVERY_DELIVERY_RESERVED' || await scalar('PREMATURE_EXISTING_MATCH_SENT', `SELECT public.mark_login_attempt_recovery_delivery_sent((SELECT id FROM private.recovery_delivery_attempts WHERE verification_id=${quote(matchVerification)})) AS outcome`) !== 'RECOVERY_DELIVERY_SENT' || await scalar('PREMATURE_EXISTING_MATCH', `SELECT outcome FROM public.consume_recovery_and_decide_social_account(${quote(existingMatch.attempt)},${quote(matchVerification)},decode(repeat('e3',32),'hex'))`) !== 'USE_PRIMARY_PROVIDER') throw new Error('PHASE10O_Q_PREMATURE_EXISTING_MATCH_FIXTURE')
 await assertPrematureFinalization('EXISTING_ACCOUNT_MATCH', existingMatch.attempt, existingMatch.transaction)
