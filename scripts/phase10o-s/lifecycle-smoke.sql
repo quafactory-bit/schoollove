@@ -51,6 +51,29 @@ END $$;
 SELECT 'PHASE10O_S_CASE2_RESPONSE_LOSS_CANONICAL_RESUME_OK' AS status;
 
 DO $$
+DECLARE a uuid; b uuid; tx_a uuid:='51000000-0000-4000-8000-000000000021'; tx_b uuid:='51000000-0000-4000-8000-000000000022'; leg uuid:='51000000-0000-4000-8000-000000000121'; h bytea:=decode(repeat('16',32),'hex'); collision text; resumed text;
+BEGIN
+  a:=pg_temp.phase10os_attempt('att_10os_authority_owner');
+  PERFORM pg_temp.phase10os_tx(a,tx_a,h);
+  b:=pg_temp.phase10os_attempt('att_10os_authority_duplicate');
+  BEGIN
+    PERFORM public.create_downstream_authorization_transaction(tx_b,b,h,'slb-supabase-naver','https://consumer.invalid/callback','code','openid',repeat('A',43),'S256','n','s',clock_timestamp()+interval '4 minutes');
+  EXCEPTION WHEN OTHERS THEN collision:=SQLERRM;
+  END;
+  resumed:=pg_temp.phase10os_bind(h,leg);
+  IF collision<>'DOWNSTREAM_AUTHORIZATION_TRANSACTION_COLLISION'
+    OR resumed<>'CONTINUATION_BOUND'
+    OR (SELECT count(*) FROM private.downstream_authorization_transactions WHERE continuation_handle_digest=h)<>1
+    OR EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=tx_b)
+    OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=tx_a AND status='upstream_bound' AND broker_handle_digest IS NULL AND continuation_handle_digest=h)
+    OR (SELECT count(*) FROM private.upstream_login_legs WHERE login_attempt_id=a)<>1
+    OR (SELECT state FROM private.oauth_login_attempts WHERE id=b)<>'created' THEN
+    RAISE EXCEPTION 'PHASE10O_S_DUPLICATE_AUTHORITY_NO_DOS';
+  END IF;
+END $$;
+SELECT 'PHASE10O_S_DUPLICATE_AUTHORITY_COARSE_COLLISION_FIRST_AUTHORITY_SURVIVES_OK' AS status;
+
+DO $$
 DECLARE a uuid; tx uuid:='51000000-0000-4000-8000-000000000003'; leg uuid:='51000000-0000-4000-8000-000000000013'; h bytea:=decode(repeat('13',32),'hex'); wrong text; good text;
 BEGIN
   a:=pg_temp.phase10os_attempt('att_10os_wrong_binding'); PERFORM pg_temp.phase10os_tx(a,tx,h);

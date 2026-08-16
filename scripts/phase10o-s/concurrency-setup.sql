@@ -11,4 +11,6 @@ END $$;
 SELECT pg_temp.phase10os_race_tx('att_10os_race_double','52000000-0000-4000-8000-000000000001',decode(repeat('21',32),'hex'));
 SELECT pg_temp.phase10os_race_tx('att_10os_race_expiry','52000000-0000-4000-8000-000000000002',decode(repeat('22',32),'hex'),clock_timestamp()+interval '1 second');
 SELECT pg_temp.phase10os_race_tx('att_10os_race_callback','52000000-0000-4000-8000-000000000003',decode(repeat('23',32),'hex'),clock_timestamp()+interval '1 second');
+SELECT public.create_social_login_attempt('att_10os_race_authority_a','naver',clock_timestamp()+interval '5 minutes');
+SELECT public.create_social_login_attempt('att_10os_race_authority_b','naver',clock_timestamp()+interval '5 minutes');
 SELECT 'PHASE10O_S_RACE_SETUP_OK' AS status;

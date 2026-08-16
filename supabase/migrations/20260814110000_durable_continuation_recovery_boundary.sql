@@ -21,6 +21,7 @@ BEGIN
     OR EXISTS (SELECT 1 FROM information_schema.columns
       WHERE table_schema='private' AND table_name='upstream_login_legs'
         AND column_name IN ('continuation_ciphertext','continuation_iv','continuation_key_version'))
+    OR to_regclass('private.downstream_auth_tx_continuation_digest_live_key') IS NOT NULL
     OR to_regprocedure('public.resolve_durable_continuation_by_digest(bytea)') IS NOT NULL
     OR to_regprocedure('public.create_or_resume_durable_upstream_continuation(bytea,uuid,text,bytea,bytea,bytea,text,bytea,bytea,integer,bytea,bytea,integer)') IS NOT NULL
     OR to_regprocedure('public.expire_abandoned_downstream_authorization_transaction(uuid)') IS NOT NULL THEN
@@ -50,6 +51,12 @@ ALTER TABLE private.upstream_login_legs
     (continuation_ciphertext IS NULL) = (continuation_iv IS NULL)
     AND (continuation_ciphertext IS NULL) = (continuation_key_version IS NULL)
   );
+
+-- The continuation digest is a browser-bound authority selector.  A live
+-- authority must name exactly one durable transaction; terminal rows clear it.
+CREATE UNIQUE INDEX downstream_auth_tx_continuation_digest_live_key
+  ON private.downstream_authorization_transactions (continuation_handle_digest)
+  WHERE continuation_handle_digest IS NOT NULL;
 
 -- Existing O callers remain compatible.  New rows get a second, independently
 -- named continuation authority; legacy destructive claim still clears both.
