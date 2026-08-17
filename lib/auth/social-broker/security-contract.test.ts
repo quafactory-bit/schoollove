@@ -49,6 +49,10 @@ describe('social broker security and feature-off contract', () => {
     expect(read('app/login/page.tsx')).not.toMatch(/kakao|naver|google|social-broker/i)
     expect(read('app/api/auth/request-otp/route.ts')).not.toContain('social-broker')
     expect(read('app/api/auth/verify-otp/route.ts')).not.toContain('social-broker')
+    for (const route of [
+      'app/auth/social/callback/google/route.ts', 'app/auth/social/callback/kakao/route.ts', 'app/auth/social/callback/naver/route.ts',
+      'app/.well-known/openid-configuration/route.ts', 'app/.well-known/jwks.json/route.ts', 'app/oauth/authorize/route.ts', 'app/oauth/token/route.ts',
+    ]) expect(read(route)).toContain('darkOidcRouteNotFound')
   })
 
   it('keeps dark upstream adapters server-only, transport-injected, and outside the public HTTP surface', () => {

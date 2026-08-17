@@ -37,6 +37,7 @@ type OidcProviderConfig = Readonly<{
   tokenEndpoint: string
   jwksUri: string
   issuers: readonly string[]
+  scope: 'openid' | 'openid profile'
 }>
 type ClientCallbackConfig = Readonly<{ clientId: string; redirectUri: string }>
 type NaverProviderConfig = Readonly<{
@@ -149,8 +150,8 @@ function validateJwt(input: Readonly<{ idToken: string; provider: 'kakao' | 'goo
 function oidcConfig(provider: 'kakao' | 'google', input: ClientCallbackConfig): OidcProviderConfig {
   if (!input.clientId || !safeHttps(input.redirectUri)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
   return provider === 'kakao'
-    ? { ...input, ...KAKAO_OIDC_METADATA, provider, issuers: [KAKAO_OIDC_METADATA.issuer] }
-    : { ...input, ...GOOGLE_OIDC_METADATA, provider, issuers: GOOGLE_OIDC_METADATA.issuers }
+    ? { ...input, ...KAKAO_OIDC_METADATA, provider, issuers: [KAKAO_OIDC_METADATA.issuer], scope: 'openid' }
+    : { ...input, ...GOOGLE_OIDC_METADATA, provider, issuers: GOOGLE_OIDC_METADATA.issuers, scope: 'openid profile' }
 }
 
 /** Stateless durable-resume verifier: it has no process-local pending state. */
@@ -207,7 +208,7 @@ class OidcAdapter extends BaseAdapter<OidcProviderConfig> {
   prepareAuthorization(): PreparedUpstreamAuthorization {
     const verifier = createPkceVerifier(); const nonce = createNonceLeg(); const state = createStateLeg(); this.createPending({ state: state.binding, rawState: state.rawState, verifier, nonce: nonce.binding })
     const url = new URL(this.config.authorizationEndpoint)
-    url.search = new URLSearchParams({ response_type: 'code', client_id: this.config.clientId, redirect_uri: this.config.redirectUri, scope: 'openid', state: state.rawState, nonce: nonce.rawNonce, code_challenge: calculateS256Challenge(verifier), code_challenge_method: 'S256' }).toString()
+    url.search = new URLSearchParams({ response_type: 'code', client_id: this.config.clientId, redirect_uri: this.config.redirectUri, scope: this.config.scope, state: state.rawState, nonce: nonce.rawNonce, code_challenge: calculateS256Challenge(verifier), code_challenge_method: 'S256' }).toString()
     return Object.freeze({ provider: this.provider, authorizationUrl: url.toString() })
   }
   async exchangeAndVerifyIdentity(callback: ValidatedUpstreamCallback, now: number): Promise<VerifiedProviderIdentity> {

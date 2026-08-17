@@ -74,7 +74,7 @@ describe('dark upstream provider adapters', () => {
     expect(identity).toEqual({ provider, upstreamSubject: Buffer.from(`synthetic-${provider}-subject`), authenticationTime: NOW - 2 })
     expect(Object.keys(identity).sort()).toEqual(['authenticationTime', 'provider', 'upstreamSubject'])
     expect(JSON.stringify(identity)).not.toMatch(/email|name|token/i)
-    expect(url.searchParams.get('scope')).toBe('openid')
+    expect(url.searchParams.get('scope')).toBe(provider === 'google' ? 'openid profile' : 'openid')
     expect(url.searchParams.get('code_challenge_method')).toBe('S256')
     expect(url.searchParams.has('email')).toBe(false)
     expect(url.searchParams.has('profile')).toBe(false)

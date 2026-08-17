@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 const privacy = readFileSync(join(process.cwd(), 'app/privacy/page.tsx'), 'utf8')
 const terms = readFileSync(join(process.cwd(), 'app/terms/page.tsx'), 'utf8')
 const invite = readFileSync(join(process.cwd(), 'app/invite/page.tsx'), 'utf8')
+const home = readFileSync(join(process.cwd(), 'app/page.tsx'), 'utf8')
 
 describe('PHASE 10A public notices', () => {
   it('states the actual public-list and registration suspension', () => {
@@ -25,6 +26,15 @@ describe('PHASE 10A public notices', () => {
   it('does not present either notice as completed legal advice', () => {
     expect(privacy).toContain('최종 법률 검토를 대체하지 않습니다')
     expect(terms).toContain('최종 법률 검토를 대체하지 않습니다')
+  })
+
+  it('keeps the public Google-branding notice paths as rendered Next pages and links to those exact canonical paths from Home', () => {
+    for (const source of [privacy, terms]) {
+      expect(source).toContain('export default function')
+      expect(source).not.toMatch(/notFound\(|redirect\(/)
+    }
+    expect(home).toContain('href="/privacy"')
+    expect(home).toContain('href="/terms"')
   })
 
   it('disables the former invite/share registration funnel', () => {

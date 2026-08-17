@@ -16,7 +16,7 @@ The canonical public origin is `https://www.schoollove.kr`. Register these provi
 | Kakao | `https://www.schoollove.kr/auth/social/callback/kakao` |
 | Naver | `https://www.schoollove.kr/auth/social/callback/naver` |
 
-These paths are frozen here because the current dark implementation has no public callback route. Registering a different path, normalizing a trailing slash, or later substituting a Preview URL is forbidden; Preview and Production use separate provider applications with the same canonical path on their respective owned origins only when a future activation approval explicitly enables that route.
+These paths are frozen here because the implementation now contains hard-off callback adapters, not an enabled social surface. Registering a different path, normalizing a trailing slash, or later substituting a Preview URL is forbidden; Preview and Production use separate provider applications with the same canonical path on their respective owned origins only when a future activation approval explicitly enables that route.
 
 The future SchoolLove-to-Supabase/custom-OIDC public surface is also frozen but remains hard-off:
 
@@ -100,9 +100,16 @@ SCHOOLLOVE_KAKAO_CLIENT_SECRET
 SCHOOLLOVE_NAVER_CLIENT_ID
 SCHOOLLOVE_NAVER_CLIENT_SECRET
 SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1
+SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1
 ```
 
 Each Preview secret is distinct from its Production counterpart and is stored only in the server-side secret store. None may enter Git, test fixtures, browser JavaScript, `NEXT_PUBLIC_*`, logs, or provider redirect URLs. `SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1` is a dedicated, versioned encryption key for restart-safe continuation envelopes; it must never be a provider secret, downstream client secret, nonce key, PKCE key, broker-subject key, or recovery-email key. Rotation is versioned and retains old material only for the bounded decrypt window.
+
+`SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1` is a separate, versioned 32-byte server-only key for an opaque, AES-GCM-sealed browser-continuity cookie. The cookie is `__Host-` scoped, `HttpOnly`, `Secure`, `SameSite=Lax`, path `/`, and has a 10-minute maximum lifetime. It carries only the opaque broker handle and independent browser-binding secret; it carries no provider token, authorization code, state, nonce, PKCE verifier, or database plaintext. It must never reuse any provider secret, continuation key, PKCE key, downstream nonce key, broker-subject key, or recovery-email key.
+
+## Stable Preview callback-origin prerequisite
+
+No stable, owned Preview callback origin is recorded in this repository. Random `*.vercel.app` deployment hosts are not an acceptable provider callback authority. Before Preview credentials or the `preview` broker-exposure mode can be enabled, an operator must bind one stable owned HTTPS origin — recommended: `https://preview.schoollove.kr` — to the intended Vercel Preview deployment and configure its DNS/TLS ownership. Register the three Preview callbacks with that origin and the same frozen paths. This repository change does not create DNS, Vercel domain bindings, or environment values.
 
 ## Frozen Preview-first activation order
 
