@@ -1,17 +1,30 @@
 import 'server-only'
-import { timingSafeEqual } from 'node:crypto'
+import { createPrivateKey, createPublicKey, timingSafeEqual, type KeyObject } from 'node:crypto'
+import { createDarkOidcClient, type DarkOidcClient } from './http'
 import type { SocialProvider } from './types'
 
 const KEY_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const VALUE_PATTERN = /^[^\u0000-\u001f\u007f]{1,2048}$/
+const JWK_PATTERN = /^[A-Za-z0-9_-]{64,16384}$/
+
+export const PREVIEW_BROKER_ISSUER = 'https://preview.schoollove.kr'
+export const PREVIEW_SUPABASE_CALLBACK = 'https://hukokfyphyrpfouazxhq.supabase.co/auth/v1/callback'
+const DOWNSTREAM_CLIENT_IDS: Readonly<Record<SocialProvider, string>> = Object.freeze({
+  google: 'slb-supabase-google', kakao: 'slb-supabase-kakao', naver: 'slb-supabase-naver',
+})
 
 export type BrokerExposureMode = 'off' | 'preview'
 export type ProviderCredential = Readonly<{ clientId: string; clientSecret: string }>
 export type BrokerPreviewConfig = Readonly<{
   exposure: 'preview'
   providers: Readonly<Record<SocialProvider, ProviderCredential>>
+  downstreamClients: readonly DarkOidcClient[]
   upstreamContinuationKey: Readonly<{ version: 1; material: Uint8Array }>
   browserSessionKey: Readonly<{ version: 1; material: Uint8Array }>
+  upstreamPkceKey: Readonly<{ version: 1; material: Uint8Array }>
+  downstreamNonceKey: Readonly<{ version: 1; material: Uint8Array }>
+  brokerSubjectKey: Readonly<{ version: 1; material: Uint8Array }>
+  oidcSigningKey: Readonly<{ kid: 'preview-rs256-v1'; privateKey: KeyObject }>
 }>
 
 export type BrokerConfigResult = Readonly<{ exposure: 'off' }> | BrokerPreviewConfig
@@ -31,6 +44,20 @@ function key(env: Environment, name: string): Readonly<{ version: 1; material: U
   return Object.freeze({ version: 1, material })
 }
 
+function signingKey(env: Environment): Readonly<{ kid: 'preview-rs256-v1'; privateKey: KeyObject }> {
+  const serialized = env.SCHOOLLOVE_SOCIAL_BROKER_OIDC_SIGNING_PRIVATE_JWK_V1
+  if (!serialized) invalid()
+  if (!JWK_PATTERN.test(serialized) || Buffer.from(serialized, 'base64url').toString('base64url') !== serialized) invalid()
+  try {
+    const jwk = JSON.parse(Buffer.from(serialized, 'base64url').toString('utf8')) as Record<string, unknown>
+    if (jwk.kty !== 'RSA' || typeof jwk.n !== 'string' || typeof jwk.e !== 'string' || typeof jwk.d !== 'string') invalid()
+    const privateKey = createPrivateKey({ key: jwk, format: 'jwk' })
+    const publicJwk = createPublicKey(privateKey).export({ format: 'jwk' }) as Record<string, unknown>
+    if (publicJwk.kty !== 'RSA' || typeof publicJwk.n !== 'string' || typeof publicJwk.e !== 'string') invalid()
+    return Object.freeze({ kid: 'preview-rs256-v1' as const, privateKey })
+  } catch { invalid() }
+}
+
 /**
  * The only environment-controlled exposure switch. `off` is the unconditional
  * default; Production refuses `preview` even if an operator accidentally sets it.
@@ -45,10 +72,29 @@ export function loadBrokerPreviewConfig(env: Environment = process.env): BrokerC
     kakao: Object.freeze({ clientId: required(env, 'SCHOOLLOVE_KAKAO_CLIENT_ID'), clientSecret: required(env, 'SCHOOLLOVE_KAKAO_CLIENT_SECRET') }),
     naver: Object.freeze({ clientId: required(env, 'SCHOOLLOVE_NAVER_CLIENT_ID'), clientSecret: required(env, 'SCHOOLLOVE_NAVER_CLIENT_SECRET') }),
   })
+  const downstreamSecrets = Object.freeze((['google', 'kakao', 'naver'] as const).map(provider => required(env, `SCHOOLLOVE_SUPABASE_${provider.toUpperCase()}_CLIENT_SECRET`)))
+  if (new Set(downstreamSecrets).size !== downstreamSecrets.length) invalid()
+  const downstreamClients = Object.freeze((['google', 'kakao', 'naver'] as const).map((provider, index) => createDarkOidcClient(
+    DOWNSTREAM_CLIENT_IDS[provider],
+    downstreamSecrets[index]!,
+    PREVIEW_SUPABASE_CALLBACK,
+    provider,
+  )))
+  const upstreamContinuationKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1')
+  const browserSessionKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1')
+  const upstreamPkceKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1')
+  const downstreamNonceKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_DOWNSTREAM_NONCE_KEY_V1')
+  const brokerSubjectKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_SUBJECT_KEY_K01')
+  if (new Set([upstreamContinuationKey, browserSessionKey, upstreamPkceKey, downstreamNonceKey, brokerSubjectKey].map(value => Buffer.from(value.material).toString('hex'))).size !== 5) invalid()
   return Object.freeze({
     exposure: 'preview', providers,
-    upstreamContinuationKey: key(env, 'SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1'),
-    browserSessionKey: key(env, 'SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1'),
+    upstreamContinuationKey,
+    browserSessionKey,
+    upstreamPkceKey,
+    downstreamNonceKey,
+    brokerSubjectKey,
+    downstreamClients,
+    oidcSigningKey: signingKey(env),
   })
 }
 

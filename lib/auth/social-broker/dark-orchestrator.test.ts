@@ -34,7 +34,7 @@ function orchestrator(port = persistence()) {
 }
 
 describe('dark end-to-end broker orchestration', () => {
-  const authorizeUrl = () => new URL(`https://broker.invalid/oauth/authorize?response_type=code&client_id=${client.clientId}&redirect_uri=${encodeURIComponent(redirect)}&scope=openid%20profile&state=${encodeURIComponent(context.downstreamState)}&nonce=${context.downstreamNonce}&code_challenge=${context.pkceS256Challenge}&code_challenge_method=S256`)
+  const authorizeUrl = () => new URL(`https://broker.invalid/oauth/authorize?response_type=code&client_id=${client.clientId}&redirect_uri=${encodeURIComponent(redirect)}&scope=openid&state=${encodeURIComponent(context.downstreamState)}&nonce=${context.downstreamNonce}&code_challenge=${context.pkceS256Challenge}&code_challenge_method=S256`)
 
   it('PHASE10O_Q_VALIDATED_DOWNSTREAM_TO_DURABLE_HANDLE_OK', async () => {
     const result = await orchestrator().begin(authorizeUrl())

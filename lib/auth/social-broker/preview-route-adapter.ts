@@ -45,6 +45,11 @@ export function createPreviewRouteAdapter(runtime: PreviewRouteRuntime) {
       try {
         const session = openBrowserContinuity(value, runtime.browserSessionKey, runtime.now())
         if (session.provider !== provider) return rejected()
+        // The cookie is not merely a presence proof: bind this callback's exact
+        // state to the same durable browser-bound continuation before state claim.
+        const continuation = await runtime.orchestrator.continueFromHandle({ brokerHandle: session.brokerHandle, browserBindingSecret: session.browserBindingSecret })
+        const states = new URL(request.url).searchParams.getAll('state')
+        if (continuation.provider !== provider || states.length !== 1 || states[0] !== continuation.authorization.rawState) return rejected()
         await runtime.orchestrator.callback({ provider, callbackUrl: request.url, verifier: runtime.verifier })
         const response = new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } })
         response.headers.set('set-cookie', cookie(socialContinuityCookie.name, '', clearCookie))
