@@ -1,11 +1,13 @@
 import 'server-only'
-import { createHash, generateKeyPairSync, randomBytes, sign, timingSafeEqual, type KeyObject } from 'node:crypto'
+import { createHash, createPublicKey, generateKeyPairSync, randomBytes, sign, timingSafeEqual, type KeyObject } from 'node:crypto'
 import { brokerAuthorizationCodeDigest, decryptBrokerDownstreamNonce, type BrokerAuthorizationCodeNonceKey, type DurableDownstreamNonce } from './durable-code'
 import { calculateS256Challenge } from './pkce'
 import { isSocialProvider, type SocialProvider } from './types'
 
 type ClientAuthMethod = 'client_secret_basic' | 'client_secret_post'
 export type DarkOidcClient = Readonly<{ clientId: string; secretDigest: Uint8Array; redirectUri: string; provider: SocialProvider }>
+/** Durable custody for deployed runtimes. Test harnesses may still omit it. */
+export type DarkOidcSigningKey = Readonly<{ kid: string; privateKey: KeyObject }>
 /** A fully validated downstream request. Browser strings are frozen only after registry validation. */
 export type ValidatedDownstreamAuthorizationRequest = Readonly<{
   clientId: string
@@ -84,7 +86,7 @@ export function validateDownstreamAuthorizationRequest(input: Readonly<{ url: UR
   const downstreamState = single(params, 'state')!; const pkceS256Challenge = single(params, 'code_challenge')!
   if (single(params, 'code_challenge_method') !== 'S256' || !/^[A-Za-z0-9_-]{43}$/.test(pkceS256Challenge)) throw new Error('invalid_request')
   const scopes = single(params, 'scope')!.split(/\s+/).filter(Boolean)
-  if (!scopes.includes('openid')) throw new Error('invalid_scope')
+  if (scopes.length !== 1 || scopes[0] !== 'openid') throw new Error('invalid_scope')
   const downstreamNonce = single(params, 'nonce', false) ?? null
   return Object.freeze({ clientId, provider: client.provider, redirectUri, responseType: 'code', scopes: Object.freeze(scopes), pkceS256Challenge, downstreamState, downstreamNonce })
 }
@@ -111,7 +113,7 @@ export class DarkOidcHttpIssuer {
   #publicKey: KeyObject
   #kid = `test-${randomBytes(8).toString('hex')}`
 
-  constructor(input: Readonly<{ issuer: string; registry: DarkOidcRegistry }>) {
+  constructor(input: Readonly<{ issuer: string; registry: DarkOidcRegistry; signingKey?: DarkOidcSigningKey }>) {
     this.issuer = exactIssuer(input.issuer)
     this.#registry = input.registry
     const ids = new Set<string>()
@@ -119,8 +121,14 @@ export class DarkOidcHttpIssuer {
       if (!client.clientId || ids.has(client.clientId) || !isSocialProvider(client.provider) || client.secretDigest.byteLength !== 32 || !validRedirectUri(client.redirectUri)) throw new Error('OIDC_CLIENT_REGISTRY_INVALID')
       ids.add(client.clientId)
     }
-    const pair = generateKeyPairSync('rsa', { modulusLength: 2048, publicExponent: 0x10001 })
-    this.#privateKey = pair.privateKey; this.#publicKey = pair.publicKey
+    if (input.signingKey) {
+      if (!/^[A-Za-z0-9._-]{1,128}$/.test(input.signingKey.kid)) throw new Error('OIDC_SIGNING_KEY_INVALID')
+      this.#privateKey = input.signingKey.privateKey; this.#publicKey = createPublicKey(this.#privateKey); this.#kid = input.signingKey.kid
+    } else {
+      // Explicitly test-only fallback. Deployed Preview construction injects durable custody.
+      const pair = generateKeyPairSync('rsa', { modulusLength: 2048, publicExponent: 0x10001 })
+      this.#privateKey = pair.privateKey; this.#publicKey = pair.publicKey
+    }
   }
 
   discovery() {
@@ -161,6 +169,9 @@ export class DarkOidcHttpIssuer {
   #client(id: string) { const client = this.#registry.clients.find(value => value.clientId === id); if (!client) throw new Error('invalid_client'); return client }
 }
 
-export function createSyntheticClient(clientId: string, secret: string, redirectUri: string, provider: SocialProvider): DarkOidcClient { return { clientId, secretDigest: digestSecret(secret), redirectUri, provider } }
+/** Creates an in-memory registry entry; callers retain the raw secret outside this value. */
+export function createDarkOidcClient(clientId: string, secret: string, redirectUri: string, provider: SocialProvider): DarkOidcClient { return { clientId, secretDigest: digestSecret(secret), redirectUri, provider } }
+/** Compatibility alias for explicitly synthetic test fixtures. */
+export const createSyntheticClient = createDarkOidcClient
 /** Routes may never be activated by environment. Local tests instantiate the issuer explicitly. */
 export function darkOidcRouteNotFound(): Response { return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } }) }

@@ -103,6 +103,42 @@ SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1
 SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1
 ```
 
+### Preview downstream OIDC and durable custody
+
+The isolated Preview Supabase project uses the exact callback URI
+`https://hukokfyphyrpfouazxhq.supabase.co/auth/v1/callback` for all three
+confidential downstream clients: `slb-supabase-google`,
+`slb-supabase-kakao`, and `slb-supabase-naver`. Each has a distinct secret in
+its corresponding server-only slot:
+
+```
+SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET
+SCHOOLLOVE_SUPABASE_KAKAO_CLIENT_SECRET
+SCHOOLLOVE_SUPABASE_NAVER_CLIENT_SECRET
+```
+
+The Preview broker issuer is exactly `https://preview.schoollove.kr`. Its
+runtime additionally requires independently generated 32-byte base64url keys:
+
+```
+SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1
+SCHOOLLOVE_SOCIAL_BROKER_DOWNSTREAM_NONCE_KEY_V1
+SCHOOLLOVE_SOCIAL_BROKER_SUBJECT_KEY_K01
+```
+
+`SCHOOLLOVE_SOCIAL_BROKER_OIDC_SIGNING_PRIVATE_JWK_V1` is a base64url-encoded
+UTF-8 RSA private JWK. It is parsed only in a server-only module, must include
+RSA private material, and publishes only its public JWK with stable
+`kid=preview-rs256-v1`. It is never generated at runtime in a deployed Preview
+process, logged, committed, or included in JWKS. These keys must not be reused
+or derived from provider secrets, continuation/session keys, or recovery keys.
+
+Preview activation additionally requires `SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE`
+to be exactly `preview` and `VERCEL_ENV` not to be `production`. Any missing,
+malformed, foreign-origin, off, or Production request remains 404. Downstream
+scope is exactly `openid`; email remains optional downstream and is never
+requested upstream.
+
 Each Preview secret is distinct from its Production counterpart and is stored only in the server-side secret store. None may enter Git, test fixtures, browser JavaScript, `NEXT_PUBLIC_*`, logs, or provider redirect URLs. `SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1` is a dedicated, versioned encryption key for restart-safe continuation envelopes; it must never be a provider secret, downstream client secret, nonce key, PKCE key, broker-subject key, or recovery-email key. Rotation is versioned and retains old material only for the bounded decrypt window.
 
 `SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1` is a separate, versioned 32-byte server-only key for an opaque, AES-GCM-sealed browser-continuity cookie. The cookie is `__Host-` scoped, `HttpOnly`, `Secure`, `SameSite=Lax`, path `/`, and has a 10-minute maximum lifetime. It carries only the opaque broker handle and independent browser-binding secret; it carries no provider token, authorization code, state, nonce, PKCE verifier, or database plaintext. It must never reuse any provider secret, continuation key, PKCE key, downstream nonce key, broker-subject key, or recovery-email key.

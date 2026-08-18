@@ -1,21 +1,31 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
+import { generateKeyPairSync } from 'node:crypto'
 import { openBrowserContinuity, sealBrowserContinuity, socialContinuityCookie } from './browser-continuity-session'
 import { buildProviderAuthorizationRequest } from './provider-authorization-request'
-import { loadBrokerPreviewConfig } from './preview-config'
+import { PREVIEW_BROKER_ISSUER, PREVIEW_SUPABASE_CALLBACK, loadBrokerPreviewConfig } from './preview-config'
+import { activePreviewRouteAdapter, createActivePreviewRuntime } from './preview-runtime'
 import { createServerUpstreamTransport } from './server-transport'
 import { GOOGLE_OIDC_METADATA } from './upstream-adapters'
 import { createPreviewRouteAdapter } from './preview-route-adapter'
 
-const key = 'A'.repeat(43)
+const key = (value: number) => Buffer.alloc(32, value).toString('base64url')
+const signingKey = Buffer.from(JSON.stringify(generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ format: 'jwk' })), 'utf8').toString('base64url')
 const env = (overrides: Record<string, string | undefined> = {}) => ({
   SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'preview',
   VERCEL_ENV: 'preview',
   SCHOOLLOVE_GOOGLE_CLIENT_ID: 'google-client', SCHOOLLOVE_GOOGLE_CLIENT_SECRET: 'google-secret',
   SCHOOLLOVE_KAKAO_CLIENT_ID: 'kakao-client', SCHOOLLOVE_KAKAO_CLIENT_SECRET: 'kakao-secret',
   SCHOOLLOVE_NAVER_CLIENT_ID: 'naver-client', SCHOOLLOVE_NAVER_CLIENT_SECRET: 'naver-secret',
-  SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1: key,
-  SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1: key,
+  SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET: 'downstream-google-secret',
+  SCHOOLLOVE_SUPABASE_KAKAO_CLIENT_SECRET: 'downstream-kakao-secret',
+  SCHOOLLOVE_SUPABASE_NAVER_CLIENT_SECRET: 'downstream-naver-secret',
+  SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1: key(1),
+  SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1: key(2),
+  SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1: key(3),
+  SCHOOLLOVE_SOCIAL_BROKER_DOWNSTREAM_NONCE_KEY_V1: key(4),
+  SCHOOLLOVE_SOCIAL_BROKER_SUBJECT_KEY_K01: key(5),
+  SCHOOLLOVE_SOCIAL_BROKER_OIDC_SIGNING_PRIVATE_JWK_V1: signingKey,
   ...overrides,
 })
 
@@ -24,7 +34,53 @@ describe('PHASE 10P preview provider foundation', () => {
     expect(loadBrokerPreviewConfig({})).toEqual({ exposure: 'off' })
     expect(() => loadBrokerPreviewConfig(env({ SCHOOLLOVE_GOOGLE_CLIENT_SECRET: '' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
     expect(() => loadBrokerPreviewConfig(env({ VERCEL_ENV: 'production' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
-    expect(loadBrokerPreviewConfig(env()).providers.google.clientId).toBe('google-client')
+    const config = loadBrokerPreviewConfig(env())
+    if (config.exposure !== 'preview') throw new Error('expected preview config')
+    expect(config.providers.google.clientId).toBe('google-client')
+    expect(config.downstreamClients).toEqual(expect.arrayContaining([
+      expect.objectContaining({ clientId: 'slb-supabase-google', provider: 'google', redirectUri: PREVIEW_SUPABASE_CALLBACK }),
+      expect.objectContaining({ clientId: 'slb-supabase-kakao', provider: 'kakao', redirectUri: PREVIEW_SUPABASE_CALLBACK }),
+      expect.objectContaining({ clientId: 'slb-supabase-naver', provider: 'naver', redirectUri: PREVIEW_SUPABASE_CALLBACK }),
+    ]))
+    expect(() => loadBrokerPreviewConfig(env({ SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET: 'same-secret', SCHOOLLOVE_SUPABASE_KAKAO_CLIENT_SECRET: 'same-secret' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+    expect(() => loadBrokerPreviewConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1: key(1) }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+  })
+
+  it('PHASE10P_DURABLE_SIGNING_CUSTODY_OK keeps RS256 JWKS public and stable across runtime reconstruction', async () => {
+    const config = loadBrokerPreviewConfig(env())
+    if (config.exposure !== 'preview') throw new Error('expected preview config')
+    const client = { rpc: vi.fn(async () => ({ data: null, error: null })) }
+    const first = createActivePreviewRuntime(config, client)
+    const second = createActivePreviewRuntime(config, client)
+    const firstJwks = await first.jwks().json() as { keys: Array<Record<string, unknown>> }
+    const secondJwks = await second.jwks().json() as { keys: Array<Record<string, unknown>> }
+    const discovery = await first.discovery().json() as { issuer: string }
+    expect(discovery.issuer).toBe(PREVIEW_BROKER_ISSUER)
+    expect(firstJwks.keys[0]).toMatchObject({ kty: 'RSA', use: 'sig', alg: 'RS256', kid: 'preview-rs256-v1' })
+    expect(firstJwks.keys[0]).not.toHaveProperty('d'); expect(firstJwks.keys[0]).not.toHaveProperty('p')
+    expect(firstJwks).toEqual(secondJwks)
+  })
+
+  it('PHASE10P_PREVIEW_ORIGIN_AND_CALLBACK_FAIL_CLOSED_OK rejects a foreign origin and all missing, tampered, expired, or wrong-provider continuity callbacks', async () => {
+    expect(await activePreviewRouteAdapter(new Request('https://evil.example/oauth/authorize'))).toBeNull()
+    const callback = vi.fn(async () => 'IDENTITY_REJECTED')
+    const adapter = createPreviewRouteAdapter({
+      now: () => 100,
+      browserSessionKey: { version: 1, material: Buffer.alloc(32, 9) },
+      orchestrator: { callback, continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState: 'T'.repeat(43) } })) } as never,
+      verifier: {} as never,
+      oidc: {} as never,
+    })
+    const base = 'https://preview.schoollove.kr/auth/social/callback/kakao?code=opaque&state=' + 'S'.repeat(43)
+    expect((await adapter.callback('kakao', new Request(base))).status).toBe(400)
+    const validGoogle = sealBrowserContinuity({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, { version: 1, material: Buffer.alloc(32, 9) })
+    expect((await adapter.callback('kakao', new Request(base, { headers: { cookie: `${socialContinuityCookie.name}=${validGoogle}` } }))).status).toBe(400)
+    expect((await adapter.callback('google', new Request(base, { headers: { cookie: `${socialContinuityCookie.name}=${validGoogle}x` } }))).status).toBe(400)
+    const expired = sealBrowserContinuity({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 100 }, { version: 1, material: Buffer.alloc(32, 9) })
+    expect((await adapter.callback('google', new Request(base, { headers: { cookie: `${socialContinuityCookie.name}=${expired}` } }))).status).toBe(400)
+    const googleBase = 'https://preview.schoollove.kr/auth/social/callback/google?code=opaque&state=' + 'S'.repeat(43)
+    expect((await adapter.callback('google', new Request(googleBase, { headers: { cookie: `${socialContinuityCookie.name}=${validGoogle}` } }))).status).toBe(400)
+    expect(callback).not.toHaveBeenCalled()
   })
 
   it('PHASE10P_BROWSER_CONTINUITY_SERVER_ONLY_OK seals a short-lived HttpOnly browser binding and rejects tamper or expiry', () => {
