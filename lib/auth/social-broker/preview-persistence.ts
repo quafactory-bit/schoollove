@@ -3,6 +3,9 @@ import type { DarkBrokerPersistence, DurableContinuationCreate, DurableContinuat
 import type { ClaimByState } from './callback-correlation'
 import type { TrustedAuthorizationTransactionIssuanceContext } from './transaction-bound-code-issuance'
 import type { SocialProvider } from './types'
+import type { PreparedAttemptRecoveryChallenge } from '../social-account/recovery-preparation'
+import type { RecoveryDeliveryDatabase } from '../social-account/recovery-delivery'
+import type { SocialAccountDecision } from './decision'
 
 /** Minimal server-side RPC port. It deliberately has no table access. */
 export type PreviewRpcClient = Readonly<{
@@ -97,4 +100,58 @@ export function createPreviewCodeConsumer(client: PreviewRpcClient) {
     const downstreamNonce = digest && ciphertext && iv && keyVersion !== null ? Object.freeze({ digest, ciphertext, iv, keyVersion }) : null
     return Object.freeze({ outcome: 'AUTHORIZATION_CODE_CONSUMED' as const, subject, authenticationTime, codeId, downstreamNonce })
   }
+}
+
+/** Recovery adapter sends only crypto envelopes and IDs through service RPCs. */
+export function createPreviewRecoveryDatabase(client: PreviewRpcClient): RecoveryDeliveryDatabase {
+  return Object.freeze({
+    async createAndReserve(input: PreparedAttemptRecoveryChallenge['database'] & Readonly<{ attemptId: string }>) {
+      const row = first(await rpc(client, 'create_and_reserve_login_attempt_recovery_delivery', {
+        target_attempt_id: input.attemptId,
+        requested_verification_id: input.challengeId,
+        requested_reserved_account_id: input.reservedAccountId,
+        requested_hmac: bytea(input.recoveryEmailHmac),
+        requested_hmac_key_version: input.recoveryEmailHmacKeyVersion,
+        requested_ciphertext: bytea(input.destinationCiphertext),
+        requested_nonce: bytea(input.destinationNonce),
+        requested_encryption_key_version: input.encryptionKeyVersion,
+        requested_otp_mac: bytea(input.otpMac),
+        requested_otp_key_version: input.otpKeyVersion,
+      }))
+      const outcome = text(row?.outcome)
+      if (outcome === 'RECOVERY_DELIVERY_LIMITED') return Object.freeze({ outcome })
+      const verificationId = text(row?.verification_id); const deliveryId = text(row?.delivery_id)
+      if (outcome !== 'RECOVERY_DELIVERY_RESERVED' || !verificationId || !deliveryId) throw new Error('SOCIAL_RECOVERY_PERSISTENCE_REJECTED')
+      return Object.freeze({ outcome, verificationId, deliveryId })
+    },
+    async markSent(deliveryId: string) {
+      if (await rpc(client, 'mark_login_attempt_recovery_delivery_sent', { target_delivery_id: deliveryId }) !== 'RECOVERY_DELIVERY_SENT') throw new Error('SOCIAL_RECOVERY_PERSISTENCE_REJECTED')
+    },
+    async fail(deliveryId: string) {
+      if (await rpc(client, 'fail_login_attempt_recovery_delivery', { target_delivery_id: deliveryId }) !== 'RECOVERY_DELIVERY_FAILED') throw new Error('SOCIAL_RECOVERY_PERSISTENCE_REJECTED')
+    },
+  })
+}
+
+export async function consumePreviewRecoveryDecision(client: PreviewRpcClient, input: Readonly<{ attemptId: string; verificationId: string; otpMac: Uint8Array }>): Promise<SocialAccountDecision> {
+  const row = first(await rpc(client, 'consume_recovery_and_decide_social_account', {
+    target_attempt_id: input.attemptId,
+    target_verification_id: input.verificationId,
+    submitted_otp_mac: bytea(input.otpMac),
+  }))
+  const outcome = text(row?.outcome) as SocialAccountDecision['outcome'] | null
+  const primaryProvider = text(row?.primary_provider)
+  if (outcome && ['ACCOUNT_DECIDED', 'USE_PRIMARY_PROVIDER', 'EXISTING_PRIMARY'].includes(outcome) && (primaryProvider === 'google' || primaryProvider === 'kakao' || primaryProvider === 'naver')) {
+    return Object.freeze({ outcome: outcome as 'ACCOUNT_DECIDED' | 'USE_PRIMARY_PROVIDER' | 'EXISTING_PRIMARY', primaryProvider })
+  }
+  if (outcome && ['ACCOUNT_DECISION_IN_PROGRESS', 'IDENTITY_DECISION_IN_PROGRESS', 'ACCOUNT_UNAVAILABLE', 'EXPIRED', 'OTP_REJECTED', 'LOCKED'].includes(outcome)) {
+    return Object.freeze({ outcome: outcome as 'ACCOUNT_DECISION_IN_PROGRESS' | 'IDENTITY_DECISION_IN_PROGRESS' | 'ACCOUNT_UNAVAILABLE' | 'EXPIRED' | 'OTP_REJECTED' | 'LOCKED', primaryProvider: null })
+  }
+  throw new Error('SOCIAL_RECOVERY_PERSISTENCE_REJECTED')
+}
+
+export async function bindPreviewAuthPrincipal(client: PreviewRpcClient, input: Readonly<{ attemptId: string; authUserId: string }>): Promise<'AUTH_PRINCIPAL_BOUND' | 'AUTH_PRINCIPAL_ALREADY_BOUND'> {
+  const result = await rpc(client, 'bind_social_auth_principal_from_attempt', { target_attempt_id: input.attemptId, target_auth_user_id: input.authUserId })
+  if (result !== 'AUTH_PRINCIPAL_BOUND' && result !== 'AUTH_PRINCIPAL_ALREADY_BOUND') throw new Error('SOCIAL_PRINCIPAL_BINDING_REJECTED')
+  return result
 }

@@ -30,7 +30,7 @@ describe('recovery delivery orchestration', () => {
     await expect(prepareAndDeliverAttemptRecovery({ attemptId: 'attempt', recoveryEmail: 'a@example.com', database, transport, ...keys })).resolves.toMatchObject({ state: 'failed' })
     expect(transport.deliveries).toHaveLength(1); expect(database.markSent).toHaveBeenCalledTimes(1); expect(database.fail).toHaveBeenCalledTimes(1)
   })
-  it('remains server-only and has no provider transport implementation', async () => {
+  it('remains a server-only provider-agnostic orchestration boundary', async () => {
     const source = await import('node:fs/promises').then(({ readFile }) => readFile(new URL('./recovery-delivery.ts', import.meta.url), 'utf8'))
     expect(source.startsWith("import 'server-only'")).toBe(true)
     expect(source).not.toMatch(/sendgrid|resend|smtp|postmark|mailgun|fetch\(/i)

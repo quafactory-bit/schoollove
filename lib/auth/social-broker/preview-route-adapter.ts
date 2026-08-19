@@ -4,6 +4,8 @@ import { DarkBrokerOrchestrator, type DurableProviderVerifier } from './dark-orc
 import { DarkOidcHttpIssuer } from './http'
 import { buildProviderAuthorizationRequest } from './provider-authorization-request'
 import type { SocialProvider } from './types'
+import { PREVIEW_SUPABASE_CALLBACK } from './preview-config'
+import { recoveryContinuityCookie, sealRecoveryContinuity } from './recovery-continuity-session'
 
 const clearCookie = Object.freeze({ ...socialContinuityCookie.options, maxAge: 0 })
 const rejected = () => new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } })
@@ -50,12 +52,33 @@ export function createPreviewRouteAdapter(runtime: PreviewRouteRuntime) {
         const continuation = await runtime.orchestrator.continueFromHandle({ brokerHandle: session.brokerHandle, browserBindingSecret: session.browserBindingSecret })
         const states = new URL(request.url).searchParams.getAll('state')
         if (continuation.provider !== provider || states.length !== 1 || states[0] !== continuation.authorization.rawState) return rejected()
-        await runtime.orchestrator.callback({ provider, callbackUrl: request.url, verifier: runtime.verifier })
-        const response = new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } })
-        response.headers.set('set-cookie', cookie(socialContinuityCookie.name, '', clearCookie))
+        const trusted = await runtime.orchestrator.callback({ provider, callbackUrl: request.url, verifier: runtime.verifier })
+        if (trusted.outcome === 'RECOVERY_REQUIRED') {
+          const response = new Response(null, { status: 302, headers: { location: '/auth/social/recovery', 'cache-control': 'no-store' } })
+          response.headers.append('set-cookie', cookie(socialContinuityCookie.name, '', clearCookie))
+          response.headers.append('set-cookie', cookie(recoveryContinuityCookie.name, sealRecoveryContinuity({
+            stage: 'recovery_required', provider, trustedAttemptId: trusted.trustedAttemptId,
+            brokerSubject: trusted.brokerSubject, authenticationTime: trusted.authenticationTime,
+            verificationId: null, issuedAt: runtime.now(), expiresAt: runtime.now() + 600,
+          }, runtime.browserSessionKey), recoveryContinuityCookie.options))
+          return response
+        }
+        if (trusted.outcome !== 'EXISTING_PRIMARY') throw new Error('DARK_CALLBACK_REJECTED')
+        const finalized = await runtime.orchestrator.finalizeReadyAttempt({ trustedAttemptId: trusted.trustedAttemptId, authenticationTime: trusted.authenticationTime })
+        if (finalized.redirectUri !== PREVIEW_SUPABASE_CALLBACK) throw new Error('DARK_FINALIZATION_REJECTED')
+        const destination = new URL(PREVIEW_SUPABASE_CALLBACK)
+        destination.searchParams.set('code', finalized.authorizationCode)
+        if (finalized.downstreamState !== null) destination.searchParams.set('state', finalized.downstreamState)
+        const response = new Response(null, { status: 302, headers: { location: destination.toString(), 'cache-control': 'no-store' } })
+        response.headers.append('set-cookie', cookie(socialContinuityCookie.name, '', clearCookie))
+        response.headers.append('set-cookie', cookie(recoveryContinuityCookie.name, sealRecoveryContinuity({
+          stage: 'downstream_finalized', provider, trustedAttemptId: trusted.trustedAttemptId,
+          brokerSubject: trusted.brokerSubject, authenticationTime: trusted.authenticationTime,
+          verificationId: null, issuedAt: runtime.now(), expiresAt: runtime.now() + 600,
+        }, runtime.browserSessionKey), recoveryContinuityCookie.options))
         return response
       } catch {
-        const response = rejected(); response.headers.set('set-cookie', cookie(socialContinuityCookie.name, '', clearCookie)); return response
+        const response = rejected(); response.headers.append('set-cookie', cookie(socialContinuityCookie.name, '', clearCookie)); response.headers.append('set-cookie', cookie(recoveryContinuityCookie.name, '', { ...recoveryContinuityCookie.options, maxAge: 0 })); return response
       }
     },
     discovery: () => Response.json(runtime.oidc.discovery(), { headers: { 'cache-control': 'no-store' } }),

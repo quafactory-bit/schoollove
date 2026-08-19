@@ -54,6 +54,12 @@ export type DurableContinuationCreate = Readonly<{
   leg: PreparedDurableUpstreamLoginLeg['database']
   continuation: Readonly<{ ciphertext: Uint8Array; iv: Uint8Array; keyVersion: number }>
 }>
+export type TrustedCallbackResult = Readonly<{
+  outcome: 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'
+  trustedAttemptId: string
+  authenticationTime: number
+  brokerSubject: string
+}>
 /** Provider verification consumes only the callback-correlated durable context, never browser IDs. */
 export type DurableProviderVerifier = Readonly<{
   verify(input: Readonly<{ provider: SocialProvider; authorizationCode: string; rawState: string; attemptId: string; legId: string; nonceDigest: Uint8Array | null; pkce: Readonly<{ challenge: string; ciphertext: Uint8Array; iv: Uint8Array; keyVersion: number }> | null }>): Promise<Readonly<{ provider: SocialProvider; upstreamSubject: Uint8Array; authenticationTime: number }>>
@@ -91,6 +97,18 @@ export class DarkBrokerOrchestrator {
     return this.canonicalAuthorization(bound)
   }
 
+  /** Resolves opaque browser continuity to server-only authority. The durable ID
+   * returned here must never be serialized outside an authenticated server cookie. */
+  async resolveTrustedAttempt(input: Readonly<{ brokerHandle: string; browserBindingSecret: string }>): Promise<Readonly<{ attemptId: string; provider: SocialProvider }>> {
+    const resolved = await this.input.persistence.resolveDurableContinuation(
+      downstreamAuthorizationBoundHandleDigest(input.brokerHandle, input.browserBindingSecret),
+    )
+    if ((resolved.outcome !== 'CONTINUATION_BOUND' && resolved.outcome !== 'CONTINUATION_RESUMED') || !resolved.attemptId || !resolved.provider) {
+      throw new Error('DARK_CONTINUATION_REJECTED')
+    }
+    return Object.freeze({ attemptId: resolved.attemptId, provider: resolved.provider })
+  }
+
   private canonicalAuthorization(result: DurableContinuationResult): Readonly<{ provider: SocialProvider; authorization: PreparedDurableUpstreamLoginLeg['authorization'] }> {
     if (!result.attemptId || !result.clientId || !result.provider || !result.legId || !result.clientBindingDigest || !result.stateDigest || !result.continuationCiphertext || !result.continuationIv || !result.continuationKeyVersion) throw new Error('DARK_CONTINUATION_REJECTED')
     const client = this.input.clients.find(value => value.clientId === result.clientId)
@@ -103,7 +121,7 @@ export class DarkBrokerOrchestrator {
     return Object.freeze({ provider: result.provider, authorization: Object.freeze({ rawState: restored.rawState, rawNonce: restored.rawNonce, pkceChallenge: result.pkceS256Challenge }) })
   }
 
-  async callback(input: Readonly<{ provider: SocialProvider; callbackUrl: string; verifier: DurableProviderVerifier }>): Promise<'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'> {
+  async callback(input: Readonly<{ provider: SocialProvider; callbackUrl: string; verifier: DurableProviderVerifier }>): Promise<TrustedCallbackResult> {
     const correlated = await correlateUpstreamCallback({ provider: input.provider, callbackUrl: input.callbackUrl, registry: this.input.upstream as UpstreamCallbackRegistry, claimByState: this.input.persistence.claimCallback })
     if (!correlated.context || correlated.context.provider !== input.provider) throw new Error('DARK_CALLBACK_REJECTED')
     let verifiedUpstream: Readonly<{ provider: SocialProvider; upstreamSubject: Uint8Array; authenticationTime: number }>
@@ -117,7 +135,8 @@ export class DarkBrokerOrchestrator {
     if (verifiedUpstream.provider !== input.provider || !Number.isSafeInteger(verifiedUpstream.authenticationTime) || verifiedUpstream.authenticationTime < 0) throw new Error('DARK_CALLBACK_REJECTED')
     const brokerSubject = deriveBrokerSubject({ provider: input.provider, upstreamSubject: verifiedUpstream.upstreamSubject, keyVersion: `k${String(this.input.keys.brokerSubjectKeyVersion).padStart(2, '0')}`, key: this.input.keys.brokerSubject })
     const digest = Buffer.from(brokerSubject.split(':').at(-1)!, 'base64url')
-    return this.input.persistence.recordVerifiedIdentity({ attemptId: correlated.context.attemptId, legId: correlated.context.legId, provider: input.provider, brokerSubject, subjectDigest: digest, subjectKeyVersion: this.input.keys.brokerSubjectKeyVersion })
+    const outcome = await this.input.persistence.recordVerifiedIdentity({ attemptId: correlated.context.attemptId, legId: correlated.context.legId, provider: input.provider, brokerSubject, subjectDigest: digest, subjectKeyVersion: this.input.keys.brokerSubjectKeyVersion })
+    return Object.freeze({ outcome, trustedAttemptId: correlated.context.attemptId, authenticationTime: verifiedUpstream.authenticationTime, brokerSubject })
   }
 
   async finalizeReadyAttempt(input: Readonly<{ trustedAttemptId: string; authenticationTime: number }>): Promise<Readonly<{ redirectUri: string; authorizationCode: string; downstreamState: string | null }>> {

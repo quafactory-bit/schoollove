@@ -8,6 +8,13 @@ import { createPreviewRouteAdapter } from './preview-route-adapter'
 import { createServerUpstreamTransport } from './server-transport'
 
 export type ActivePreviewRouteAdapter = ReturnType<typeof createPreviewRouteAdapter>
+export type ActivePreviewServices = Readonly<{
+  adapter: ActivePreviewRouteAdapter
+  orchestrator: DarkBrokerOrchestrator
+  config: BrokerPreviewConfig
+  client: PreviewRpcClient
+  now: () => number
+}>
 const now = () => Math.floor(Date.now() / 1000)
 
 /**
@@ -15,7 +22,7 @@ const now = () => Math.floor(Date.now() / 1000)
  * request Host/forwarded headers and callback query fields never select origin,
  * provider credentials, durable IDs, or downstream clients.
  */
-export function createActivePreviewRuntime(config: BrokerPreviewConfig, client: PreviewRpcClient, clock: () => number = now): ActivePreviewRouteAdapter {
+export function createActivePreviewServices(config: BrokerPreviewConfig, client: PreviewRpcClient, clock: () => number = now): ActivePreviewServices {
   const persistence = createPreviewBrokerPersistence(client)
   const upstream = Object.freeze({
     google: Object.freeze({ clientId: config.providers.google.clientId, redirectUri: `${PREVIEW_BROKER_ISSUER}/auth/social/callback/google` }),
@@ -43,7 +50,12 @@ export function createActivePreviewRuntime(config: BrokerPreviewConfig, client: 
       authorize: async () => { throw new Error('PREVIEW_AUTHORIZATION_ROUTE_REQUIRED') },
     }),
   })
-  return createPreviewRouteAdapter({ orchestrator, verifier, browserSessionKey: config.browserSessionKey, now: clock, oidc })
+  const adapter = createPreviewRouteAdapter({ orchestrator, verifier, browserSessionKey: config.browserSessionKey, now: clock, oidc })
+  return Object.freeze({ adapter, orchestrator, config, client, now: clock })
+}
+
+export function createActivePreviewRuntime(config: BrokerPreviewConfig, client: PreviewRpcClient, clock: () => number = now): ActivePreviewRouteAdapter {
+  return createActivePreviewServices(config, client, clock).adapter
 }
 
 /**
