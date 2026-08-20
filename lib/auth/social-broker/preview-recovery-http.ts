@@ -127,12 +127,12 @@ export async function completeSocialSession(request: Request): Promise<Response>
   })
 }
 
-type CompletionIdentity = Readonly<{ provider?: string; identity_data?: Readonly<{ sub?: unknown }> }>
+type CompletionIdentity = Readonly<{ id?: string; provider?: string; identity_data?: Readonly<{ sub?: unknown }> }>
 type CompletionUser = Readonly<{ id: string; identities?: readonly CompletionIdentity[] }>
 type CompletionSession = Readonly<{ access_token: string; refresh_token: string; expires_in?: number }>
 type CompletionAuthClient = Readonly<{ auth: Readonly<{
-  setSession(tokens: Readonly<{ access_token: string; refresh_token: string }>): Promise<Readonly<{ data: Readonly<{ session: CompletionSession | null; user?: CompletionUser | null }>; error: unknown }>>
   getUser(accessToken: string): Promise<Readonly<{ data: Readonly<{ user: CompletionUser | null }>; error: unknown }>>
+  refreshSession(session: Readonly<{ refresh_token: string }>): Promise<Readonly<{ data: Readonly<{ session: CompletionSession | null; user?: CompletionUser | null }>; error: unknown }>>
 }> }>
 
 export type SocialSessionCompletionDependencies = Readonly<{
@@ -160,17 +160,21 @@ export async function completeSocialSessionWithServices(
   if (!accessToken || !refreshToken || accessToken.length > MAX_SESSION_TOKEN_LENGTH || refreshToken.length > MAX_SESSION_TOKEN_LENGTH) return coarse(400, '잘못된 요청입니다.')
   try {
     const auth = dependencies.createAuthClient()
-    const validated = await auth.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-    const session = validated.data.session
-    if (validated.error || !session?.access_token || !session.refresh_token) throw new Error('SOCIAL_COMPLETION_SESSION_REJECTED')
-    const verified = await auth.auth.getUser(session.access_token)
-    const user = verified.data.user
-    const expectedProvider = `schoollove-${continuity.provider}`
+    const submittedAccess = await auth.auth.getUser(accessToken)
+    const accessUser = submittedAccess.data.user
+    if (submittedAccess.error || !accessUser) throw new Error('SOCIAL_COMPLETION_SESSION_REJECTED')
+    const refreshed = await auth.auth.refreshSession({ refresh_token: refreshToken })
+    const session = refreshed.data.session
+    if (refreshed.error || !session?.access_token || !session.refresh_token) throw new Error('SOCIAL_COMPLETION_SESSION_REJECTED')
+    const refreshedAccess = await auth.auth.getUser(session.access_token)
+    const user = refreshedAccess.data.user
+    const expectedProvider = `custom:schoollove-${continuity.provider}`
     const identityMatches = user?.identities?.some(identity =>
       identity.provider === expectedProvider
+      && identity.id === continuity.brokerSubject
       && identity.identity_data?.sub === continuity.brokerSubject
     ) ?? false
-    if (verified.error || !user || !identityMatches) throw new Error('SOCIAL_COMPLETION_SESSION_REJECTED')
+    if (refreshedAccess.error || !user || accessUser.id !== user.id || !identityMatches) throw new Error('SOCIAL_COMPLETION_SESSION_REJECTED')
     await dependencies.bindPrincipal(services.client, { attemptId: continuity.trustedAttemptId, authUserId: user.id })
     const response = dependencies.createSuccessResponse()
     dependencies.setSessionCookies(response, {

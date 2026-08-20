@@ -3,7 +3,7 @@ SELECT set_config('request.jwt.claim.role','service_role',false);
 DO $$
 DECLARE
   attempt_id uuid; recovery_verification_id uuid:=gen_random_uuid(); reserved_account_id uuid:=gen_random_uuid();
-  transaction_id uuid:=gen_random_uuid(); leg_id uuid:=gen_random_uuid(); code_id uuid:=gen_random_uuid(); auth_id uuid:=gen_random_uuid(); other_auth_id uuid:=gen_random_uuid(); wrong_provider_auth_id uuid:=gen_random_uuid(); wrong_provider_id_auth_id uuid:=gen_random_uuid();
+  transaction_id uuid:=gen_random_uuid(); leg_id uuid:=gen_random_uuid(); code_id uuid:=gen_random_uuid(); auth_id uuid:=gen_random_uuid(); other_auth_id uuid:=gen_random_uuid(); wrong_provider_auth_id uuid:=gen_random_uuid(); wrong_provider_id_auth_id uuid:=gen_random_uuid(); wrong_sub_auth_id uuid:=gen_random_uuid();
   retained_attempt uuid; retained_verification uuid:=gen_random_uuid(); retained_reserved uuid:=gen_random_uuid(); retained_tx uuid:=gen_random_uuid(); retained_leg uuid:=gen_random_uuid(); retained_digest bytea:=decode(repeat('e1',32),'hex'); retained_subject text; retained_provider text;
   subject_digest bytea:=decode(repeat('d1',32),'hex'); subject_value text; outcome text; context_row record; rejected boolean:=false;
 BEGIN
@@ -30,18 +30,21 @@ BEGIN
   IF outcome<>'AUTHORIZATION_CODE_CREATED' THEN RAISE EXCEPTION 'PHASE10P_ISSUE'; END IF;
   SELECT x.outcome INTO outcome FROM public.consume_broker_authorization_code(decode(repeat('dc',32),'hex'),'slb-supabase-google','https://hukokfyphyrpfouazxhq.supabase.co/auth/v1/callback',repeat('A',43)) x;
   IF outcome<>'AUTHORIZATION_CODE_CONSUMED' THEN RAISE EXCEPTION 'PHASE10P_CODE_CONSUME'; END IF;
-  INSERT INTO auth.users(id,email) VALUES(auth_id,NULL),(other_auth_id,NULL),(wrong_provider_auth_id,NULL),(wrong_provider_id_auth_id,NULL);
+  INSERT INTO auth.users(id,email) VALUES(auth_id,NULL),(other_auth_id,NULL),(wrong_provider_auth_id,NULL),(wrong_provider_id_auth_id,NULL),(wrong_sub_auth_id,NULL);
   INSERT INTO auth.identities(id,user_id,provider_id,provider,identity_data) VALUES
-    (gen_random_uuid(),auth_id,subject_value,'schoollove-google',jsonb_build_object('sub',subject_value)),
-    (gen_random_uuid(),other_auth_id,'wrong-subject','schoollove-google',jsonb_build_object('sub','wrong-subject')),
-    (gen_random_uuid(),wrong_provider_auth_id,subject_value,'schoollove-kakao',jsonb_build_object('sub',subject_value)),
-    (gen_random_uuid(),wrong_provider_id_auth_id,'wrong-provider-id','schoollove-google',jsonb_build_object('sub',subject_value));
+    (gen_random_uuid(),auth_id,subject_value,'custom:schoollove-google',jsonb_build_object('sub',subject_value)),
+    (gen_random_uuid(),other_auth_id,'wrong-subject','custom:schoollove-google',jsonb_build_object('sub','wrong-subject')),
+    (gen_random_uuid(),wrong_provider_auth_id,subject_value,'custom:schoollove-kakao',jsonb_build_object('sub',subject_value)),
+    (gen_random_uuid(),wrong_provider_id_auth_id,'wrong-provider-id','custom:schoollove-google',jsonb_build_object('sub',subject_value)),
+    (gen_random_uuid(),wrong_sub_auth_id,subject_value,'custom:schoollove-google',jsonb_build_object('sub','wrong-subject'));
   BEGIN PERFORM public.bind_social_auth_principal_from_attempt(attempt_id,other_auth_id); EXCEPTION WHEN OTHERS THEN rejected:=SQLERRM LIKE '%SOCIAL_PRINCIPAL_BINDING_REJECTED%'; END;
   IF NOT rejected THEN RAISE EXCEPTION 'PHASE10P_WRONG_SESSION'; END IF;
   rejected:=false; BEGIN PERFORM public.bind_social_auth_principal_from_attempt(attempt_id,wrong_provider_auth_id); EXCEPTION WHEN OTHERS THEN rejected:=SQLERRM LIKE '%SOCIAL_PRINCIPAL_BINDING_REJECTED%'; END;
   IF NOT rejected THEN RAISE EXCEPTION 'PHASE10P_WRONG_CUSTOM_PROVIDER'; END IF;
   rejected:=false; BEGIN PERFORM public.bind_social_auth_principal_from_attempt(attempt_id,wrong_provider_id_auth_id); EXCEPTION WHEN OTHERS THEN rejected:=SQLERRM LIKE '%SOCIAL_PRINCIPAL_BINDING_REJECTED%'; END;
   IF NOT rejected THEN RAISE EXCEPTION 'PHASE10P_WRONG_PROVIDER_SUBJECT'; END IF;
+  rejected:=false; BEGIN PERFORM public.bind_social_auth_principal_from_attempt(attempt_id,wrong_sub_auth_id); EXCEPTION WHEN OTHERS THEN rejected:=SQLERRM LIKE '%SOCIAL_PRINCIPAL_BINDING_REJECTED%'; END;
+  IF NOT rejected THEN RAISE EXCEPTION 'PHASE10P_WRONG_IDENTITY_SUB'; END IF;
   rejected:=false; BEGIN PERFORM public.bind_social_auth_principal_from_attempt(gen_random_uuid(),auth_id); EXCEPTION WHEN OTHERS THEN rejected:=SQLERRM LIKE '%SOCIAL_PRINCIPAL_BINDING_REJECTED%'; END;
   IF NOT rejected THEN RAISE EXCEPTION 'PHASE10P_WRONG_ATTEMPT'; END IF;
   IF public.bind_social_auth_principal_from_attempt(attempt_id,auth_id)<>'AUTH_PRINCIPAL_BOUND' OR public.bind_social_auth_principal_from_attempt(attempt_id,auth_id)<>'AUTH_PRINCIPAL_ALREADY_BOUND' THEN RAISE EXCEPTION 'PHASE10P_PRINCIPAL'; END IF;

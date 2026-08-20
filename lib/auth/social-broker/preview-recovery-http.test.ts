@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { createClient } from '@supabase/supabase-js'
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 import {
@@ -17,11 +18,21 @@ const browserSessionKey = Object.freeze({ version: 1 as const, material: new Uin
 const brokerSubject = `slb:v1:k01:google:${Buffer.alloc(32, 23).toString('base64url')}`
 const attemptId = '11111111-1111-4111-8111-111111111111'
 const authUserId = '22222222-2222-4222-8222-222222222222'
+const otherAuthUserId = '33333333-3333-4333-8333-333333333333'
 
-function completionRequest(accessToken = 'submitted-access', refreshToken = 'submitted-refresh'): Request {
+function subject(provider: 'google' | 'kakao' | 'naver'): string {
+  return `slb:v1:k01:${provider}:${Buffer.alloc(32, provider === 'google' ? 23 : provider === 'kakao' ? 24 : 25).toString('base64url')}`
+}
+
+function completionRequest(
+  accessToken = 'submitted-access',
+  refreshToken = 'submitted-refresh',
+  provider: 'google' | 'kakao' | 'naver' = 'google',
+): Request {
+  const expectedSubject = subject(provider)
   const continuity = sealRecoveryContinuity({
-    stage: 'downstream_finalized', provider: 'google', trustedAttemptId: attemptId,
-    brokerSubject, authenticationTime: now - 10, verificationId: null,
+    stage: 'downstream_finalized', provider, trustedAttemptId: attemptId,
+    brokerSubject: expectedSubject, authenticationTime: now - 10, verificationId: null,
     issuedAt: now - 5, expiresAt: now + 300,
   }, browserSessionKey)
   return new Request('https://preview.schoollove.kr/auth/social/complete/session', {
@@ -35,10 +46,14 @@ function completionServices(): ActivePreviewServices {
 }
 
 function completionDependencies(input: Readonly<{
-  setSessionError?: unknown
+  accessUserId?: string
+  refreshUserId?: string
+  submittedAccessError?: unknown
+  refreshError?: unknown
+  refreshedAccessError?: unknown
   session?: Readonly<{ access_token: string; refresh_token: string; expires_in?: number }> | null
-  getUserError?: unknown
   identityProvider?: string
+  identityProviderId?: string
   identitySubject?: string
   bindError?: unknown
 }> = {}) {
@@ -47,13 +62,17 @@ function completionDependencies(input: Readonly<{
   const session = input.session === undefined ? Object.freeze({ access_token: 'rotated-access', refresh_token: 'rotated-refresh', expires_in: 3600 }) : input.session
   const dependencies: SocialSessionCompletionDependencies = {
     createAuthClient: () => ({ auth: {
-      setSession: async tokens => {
-        calls.push(`setSession:${tokens.access_token}:${tokens.refresh_token}`)
-        return { data: { session, user: null }, error: input.setSessionError ?? null }
-      },
       getUser: async accessToken => {
         calls.push(`getUser:${accessToken}`)
-        return { data: { user: input.getUserError ? null : { id: authUserId, identities: [{ provider: input.identityProvider ?? 'schoollove-google', identity_data: { sub: input.identitySubject ?? brokerSubject } }] } }, error: input.getUserError ?? null }
+        if (accessToken !== 'rotated-access') {
+          return { data: { user: input.submittedAccessError ? null : { id: input.accessUserId ?? authUserId, identities: [] } }, error: input.submittedAccessError ?? null }
+        }
+        const identitySubject = input.identitySubject ?? brokerSubject
+        return { data: { user: input.refreshedAccessError ? null : { id: input.refreshUserId ?? authUserId, identities: [{ id: input.identityProviderId ?? brokerSubject, provider: input.identityProvider ?? 'custom:schoollove-google', identity_data: { sub: identitySubject } }] } }, error: input.refreshedAccessError ?? null }
+      },
+      refreshSession: async tokens => {
+        calls.push(`refreshSession:${tokens.refresh_token}`)
+        return { data: { session, user: null }, error: input.refreshError ?? null }
       },
     } }),
     bindPrincipal: async (_client, binding) => {
@@ -84,6 +103,7 @@ describe('Preview first-login HTTP boundary', () => {
     expect(recoverySource).not.toMatch(/console\.|localStorage|sessionStorage/)
     expect(recoverySource).toContain("request.headers.get('origin') !== PREVIEW_BROKER_ISSUER")
     expect(recoverySource).toContain("identity.provider === expectedProvider")
+    expect(recoverySource).toContain("identity.id === continuity.brokerSubject")
     expect(recoverySource).toContain("identity.identity_data?.sub === continuity.brokerSubject")
   })
 
@@ -93,12 +113,13 @@ describe('Preview first-login HTTP boundary', () => {
     expect(completeSource).not.toMatch(/attempt_id|account_id|transaction_id|broker_subject/)
   })
 
-  it('validates the submitted token pair, verifies the returned access token, then binds once and writes only rotated tokens', async () => {
+  it('forces a refresh exchange, verifies both users, then binds once and writes only rotated tokens', async () => {
     const harness = completionDependencies()
     const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
     expect(response.status).toBe(200)
     expect(harness.calls).toEqual([
-      'setSession:submitted-access:submitted-refresh',
+      'getUser:submitted-access',
+      'refreshSession:submitted-refresh',
       'getUser:rotated-access',
       `bind:${attemptId}:${authUserId}`,
       'cookies',
@@ -111,36 +132,62 @@ describe('Preview first-login HTTP boundary', () => {
   })
 
   it.each([
-    ['valid access with invalid refresh', 'valid-access', 'invalid-refresh'],
-    ['invalid access with valid refresh', 'invalid-access', 'valid-refresh'],
-  ])('rejects %s before user verification, binding, or cookie persistence', async (_label, accessToken, refreshToken) => {
-    const harness = completionDependencies({ setSessionError: new Error('PAIR_REJECTED'), session: null })
-    const response = await completeSocialSessionWithServices(completionRequest(accessToken, refreshToken), completionServices(), harness.dependencies)
+    ['A access plus B refresh', authUserId, otherAuthUserId],
+    ['B access plus A refresh', otherAuthUserId, authUserId],
+  ])('rejects individually valid but incoherent %s before binding or cookies', async (_label, accessUserId, refreshUserId) => {
+    const harness = completionDependencies({ accessUserId, refreshUserId })
+    const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
     expect(response.status).toBe(400)
-    expect(harness.calls).toEqual([`setSession:${accessToken}:${refreshToken}`])
+    expect(harness.calls).toEqual(['getUser:submitted-access', 'refreshSession:submitted-refresh', 'getUser:rotated-access'])
     expect(harness.written).toEqual([])
   })
 
-  it('rejects setSession errors and missing sessions before binding', async () => {
-    for (const input of [{ setSessionError: new Error('AUTH_ERROR') }, { session: null }]) {
+  it('rejects a valid access token with an invalid refresh token', async () => {
+    const harness = completionDependencies({ refreshError: new Error('REFRESH_REJECTED'), session: null })
+    const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
+    expect(response.status).toBe(400)
+    expect(harness.calls).toEqual(['getUser:submitted-access', 'refreshSession:submitted-refresh'])
+    expect(harness.written).toEqual([])
+  })
+
+  it('rejects an invalid access token without accepting an independently valid refresh token', async () => {
+    const harness = completionDependencies({ submittedAccessError: new Error('ACCESS_REJECTED') })
+    const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
+    expect(response.status).toBe(400)
+    expect(harness.calls).toEqual(['getUser:submitted-access'])
+    expect(harness.written).toEqual([])
+  })
+
+  it('rejects refresh errors and missing refresh-derived sessions before binding', async () => {
+    for (const input of [{ refreshError: new Error('AUTH_ERROR') }, { session: null }]) {
       const harness = completionDependencies(input)
       const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
       expect(response.status).toBe(400)
-      expect(harness.calls).toHaveLength(1)
+      expect(harness.calls).toHaveLength(2)
       expect(harness.written).toEqual([])
     }
   })
 
   it.each([
     ['broker subject mismatch', { identitySubject: `slb:v1:k01:google:${Buffer.alloc(32, 24).toString('base64url')}` }],
-    ['custom provider mismatch', { identityProvider: 'schoollove-kakao' }],
-    ['authenticated user missing', { getUserError: new Error('USER_REJECTED') }],
+    ['custom provider mismatch', { identityProvider: 'custom:schoollove-kakao' }],
+    ['provider ID mismatch', { identityProviderId: `slb:v1:k01:google:${Buffer.alloc(32, 26).toString('base64url')}` }],
+    ['authenticated user missing', { refreshedAccessError: new Error('USER_REJECTED') }],
   ])('rejects %s after authoritative verification but before binding', async (_label, input) => {
     const harness = completionDependencies(input)
     const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
     expect(response.status).toBe(400)
-    expect(harness.calls).toEqual(['setSession:submitted-access:submitted-refresh', 'getUser:rotated-access'])
+    expect(harness.calls).toEqual(['getUser:submitted-access', 'refreshSession:submitted-refresh', 'getUser:rotated-access'])
     expect(harness.written).toEqual([])
+  })
+
+  it('rejects a Kakao attempt presented with an exact Google custom identity', async () => {
+    const kakaoSubject = subject('kakao')
+    const harness = completionDependencies({ identityProvider: 'custom:schoollove-google', identityProviderId: kakaoSubject, identitySubject: kakaoSubject })
+    const response = await completeSocialSessionWithServices(completionRequest('submitted-access', 'submitted-refresh', 'kakao'), completionServices(), harness.dependencies)
+    expect(response.status).toBe(400)
+    expect(harness.calls).not.toContain('cookies')
+    expect(harness.calls.some(call => call.startsWith('bind:'))).toBe(false)
   })
 
   it('does not persist session cookies when the principal binding rejects', async () => {
@@ -148,10 +195,41 @@ describe('Preview first-login HTTP boundary', () => {
     const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
     expect(response.status).toBe(400)
     expect(harness.calls).toEqual([
-      'setSession:submitted-access:submitted-refresh',
+      'getUser:submitted-access',
+      'refreshSession:submitted-refresh',
       'getUser:rotated-access',
       `bind:${attemptId}:${authUserId}`,
     ])
     expect(harness.written).toEqual([])
+  })
+
+  it('uses auth-js 2.106.1 refreshSession to call the refresh endpoint even when the submitted access token is valid', async () => {
+    const requests: Array<Readonly<{ method: string; path: string; authorization: string | null }>> = []
+    const identity = { id: brokerSubject, identity_id: '44444444-4444-4444-8444-444444444444', user_id: authUserId, provider: 'custom:schoollove-google', identity_data: { sub: brokerSubject } }
+    const user = { id: authUserId, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: new Date(0).toISOString(), identities: [identity] }
+    const fetcher: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === 'string' || input instanceof URL ? input.toString() : input.url)
+      const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
+      requests.push({ method: init?.method ?? 'GET', path: `${url.pathname}${url.search}`, authorization: headers.get('authorization') })
+      if (url.pathname.endsWith('/token') && url.searchParams.get('grant_type') === 'refresh_token') {
+        return Response.json({ access_token: 'rotated-access', refresh_token: 'rotated-refresh', expires_in: 3600, expires_at: now + 3600, token_type: 'bearer', user })
+      }
+      if (url.pathname.endsWith('/user')) return Response.json({ user })
+      return Response.json({ error: 'unexpected_request' }, { status: 500 })
+    }
+    const client = createClient('https://adapter-contract.invalid', 'synthetic-anon-key', {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      global: { fetch: fetcher },
+    })
+    const harness = completionDependencies()
+    const dependencies: SocialSessionCompletionDependencies = { ...harness.dependencies, createAuthClient: () => client }
+    const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), dependencies)
+    expect(response.status).toBe(200)
+    expect(requests).toEqual([
+      { method: 'GET', path: '/auth/v1/user', authorization: 'Bearer submitted-access' },
+      { method: 'POST', path: '/auth/v1/token?grant_type=refresh_token', authorization: 'Bearer synthetic-anon-key' },
+      { method: 'GET', path: '/auth/v1/user', authorization: 'Bearer rotated-access' },
+    ])
+    expect(harness.written).toEqual([{ access_token: 'rotated-access', refresh_token: 'rotated-refresh', expires_in: 3600 }])
   })
 })

@@ -136,7 +136,7 @@ BEGIN
     OR identity.account_id<>account.id OR identity.provider<>attempt.provider
     OR account.primary_provider<>attempt.provider OR account.primary_broker_subject<>attempt.broker_subject
     OR NOT EXISTS(SELECT 1 FROM auth.users u WHERE u.id=target_auth_user_id)
-    OR NOT EXISTS(SELECT 1 FROM auth.identities i WHERE i.user_id=target_auth_user_id AND i.provider='schoollove-'||attempt.provider AND i.provider_id=attempt.broker_subject AND i.identity_data->>'sub'=attempt.broker_subject)
+    OR NOT EXISTS(SELECT 1 FROM auth.identities i WHERE i.user_id=target_auth_user_id AND i.provider='custom:schoollove-'||attempt.provider AND i.provider_id=attempt.broker_subject AND i.identity_data->>'sub'=attempt.broker_subject)
   THEN RAISE EXCEPTION 'SOCIAL_PRINCIPAL_BINDING_REJECTED'; END IF;
   IF account.auth_user_id=target_auth_user_id AND identity.auth_user_id=target_auth_user_id THEN RETURN 'AUTH_PRINCIPAL_ALREADY_BOUND'; END IF;
   IF account.status<>'provisional' OR identity.status<>'provisional' OR account.auth_user_id IS NOT NULL OR identity.auth_user_id IS NOT NULL

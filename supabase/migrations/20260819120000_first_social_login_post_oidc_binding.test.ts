@@ -13,7 +13,7 @@ describe('PHASE 10P first social login DB boundary', () => {
 
   it('binds from a consumed trusted attempt and the exact Supabase OIDC subject', () => {
     expect(sql).toContain("attempt.state<>'consumed'")
-    expect(sql).toContain("i.provider='schoollove-'||attempt.provider")
+    expect(sql).toContain("i.provider='custom:schoollove-'||attempt.provider")
     expect(sql).toContain('i.provider_id=attempt.broker_subject')
     expect(sql).toContain("i.identity_data->>'sub'=attempt.broker_subject")
     expect(sql).toContain("AUTH_PRINCIPAL_ALREADY_BOUND")
