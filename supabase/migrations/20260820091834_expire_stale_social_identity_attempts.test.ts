@@ -27,8 +27,14 @@ describe('PHASE 10P stale social identity attempt expiry boundary', () => {
 
   it('scrubs live downstream context without rewriting terminal transactions', () => {
     expect(sql).toContain("status IN ('pending','claimed','upstream_bound')")
-    expect(sql).toContain("broker_handle_digest=NULL,downstream_nonce=NULL,downstream_state=NULL")
+    expect(sql).toContain('broker_handle_digest=NULL,continuation_handle_digest=NULL')
+    expect(sql).toContain('downstream_nonce=NULL,downstream_state=NULL')
     expect(sql).toContain('terminal_at=at_time,version=version+1')
+  })
+
+  it('fails closed when the terminal scrub helpers required by the reachable function are absent', () => {
+    expect(sql).toContain("to_regprocedure('private.terminalize_bound_downstream_authorization_transaction(uuid,uuid,text,timestamp with time zone)')")
+    expect(sql).toContain("to_regprocedure('private.scrub_upstream_login_leg(uuid,text,timestamp with time zone)')")
   })
 
   it('keeps the partial unique index and private helper permissions fail closed', () => {

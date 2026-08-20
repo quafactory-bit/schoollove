@@ -57,6 +57,10 @@ BEGIN
     decode(repeat('13',17),'hex'),decode(repeat('14',12),'hex'),1,decode(repeat('15',32),'hex'),1
   ) x;
   IF outcome<>'RECOVERY_DELIVERY_RESERVED' OR public.mark_login_attempt_recovery_delivery_sent(delivery_id)<>'RECOVERY_DELIVERY_SENT' THEN RAISE EXCEPTION 'PHASE10P_EXPIRY_REAL_DELIVERY'; END IF;
+  UPDATE private.downstream_authorization_transactions
+    SET continuation_handle_digest=decode(repeat('16',32),'hex')
+    WHERE id=old_tx AND status='upstream_bound';
+  IF NOT FOUND THEN RAISE EXCEPTION 'PHASE10P_EXPIRY_REAL_CONTINUATION_FIXTURE'; END IF;
   PERFORM pg_sleep(2.2);
   new_tx:='62000000-0000-4000-8000-000000000011'; new_leg:='62000000-0000-4000-8000-000000000012';
   new_attempt:=pg_temp.phase10p_prepare_callback_claimed('att_10p_expiry_real_new_01','google',new_tx,new_leg,'t1-new',clock_timestamp()+interval '10 minutes');
@@ -65,7 +69,7 @@ BEGIN
     OR NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=new_attempt AND state='recovery_required')
     OR NOT EXISTS(SELECT 1 FROM private.upstream_login_legs WHERE id=old_leg AND status='verified')
     OR NOT EXISTS(SELECT 1 FROM private.upstream_login_legs WHERE id=new_leg AND status='verified')
-    OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=old_tx AND status='expired' AND downstream_nonce IS NULL AND downstream_state IS NULL AND terminal_at IS NOT NULL)
+    OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=old_tx AND status='expired' AND broker_handle_digest IS NULL AND continuation_handle_digest IS NULL AND downstream_nonce IS NULL AND downstream_state IS NULL AND terminal_at IS NOT NULL)
     OR NOT EXISTS(SELECT 1 FROM private.recovery_email_verifications v WHERE v.id=verification_id AND v.status='expired' AND v.recovery_email_hmac IS NULL AND v.hmac_key_version IS NULL AND v.destination_ciphertext IS NULL AND v.destination_nonce IS NULL AND v.encryption_key_version IS NULL AND v.otp_mac IS NULL AND v.otp_key_version IS NULL AND v.reserved_account_id IS NULL)
     OR NOT EXISTS(SELECT 1 FROM private.recovery_delivery_attempts WHERE id=delivery_id AND state='sent' AND sent_at IS NOT NULL)
     OR (SELECT count(*) FROM private.oauth_login_attempts WHERE broker_subject=subject_value AND state IN ('upstream_verified','recovery_required','recovery_pending','recovery_verified'))<>1
@@ -87,7 +91,7 @@ BEGIN
   IF public.record_verified_social_identity_from_upstream_leg(new_attempt,new_leg,'google',subject_value,digest_value,1)<>'IDENTITY_DECISION_IN_PROGRESS' THEN RAISE EXCEPTION 'PHASE10P_EXPIRY_LIVE_OUTCOME'; END IF;
   IF NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=old_attempt AND state='recovery_pending' AND expires_at>clock_timestamp())
     OR NOT EXISTS(SELECT 1 FROM private.oauth_login_attempts WHERE id=new_attempt AND state='failed_safe')
-    OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=new_tx AND status='rejected' AND downstream_nonce IS NULL AND downstream_state IS NULL)
+    OR NOT EXISTS(SELECT 1 FROM private.downstream_authorization_transactions WHERE id=new_tx AND status='rejected' AND broker_handle_digest IS NULL AND continuation_handle_digest IS NULL AND downstream_nonce IS NULL AND downstream_state IS NULL)
     OR NOT EXISTS(SELECT 1 FROM private.upstream_login_legs WHERE id=new_leg AND status='rejected')
     OR NOT EXISTS(SELECT 1 FROM private.recovery_delivery_attempts WHERE id=delivery_id AND state='reserved')
   THEN RAISE EXCEPTION 'PHASE10P_EXPIRY_LIVE_INVARIANT'; END IF;

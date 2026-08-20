@@ -13,6 +13,8 @@ BEGIN
     OR to_regprocedure('private.require_social_attempt_service()') IS NULL
     OR to_regprocedure('private.lock_downstream_authorization_transaction_for_attempt(uuid)') IS NULL
     OR to_regprocedure('private.clear_terminal_recovery_challenge_material()') IS NULL
+    OR to_regprocedure('private.terminalize_bound_downstream_authorization_transaction(uuid,uuid,text,timestamp with time zone)') IS NULL
+    OR to_regprocedure('private.scrub_upstream_login_leg(uuid,text,timestamp with time zone)') IS NULL
     OR to_regprocedure('public.record_verified_social_identity_from_upstream_leg(uuid,uuid,text,text,bytea,integer)') IS NULL
   THEN
     RAISE EXCEPTION 'PHASE10P_STALE_IDENTITY_BASELINE_MISSING';
@@ -97,7 +99,8 @@ BEGIN
       AND status='pending';
 
   UPDATE private.downstream_authorization_transactions
-    SET status='expired',broker_handle_digest=NULL,downstream_nonce=NULL,downstream_state=NULL,
+    SET status='expired',broker_handle_digest=NULL,continuation_handle_digest=NULL,
+      downstream_nonce=NULL,downstream_state=NULL,
       terminal_at=at_time,version=version+1
     WHERE login_attempt_id=attempt.id
       AND status IN ('pending','claimed','upstream_bound');

@@ -31,6 +31,10 @@ BEGIN
     decode(repeat('c9',17),'hex'),decode(repeat('ca',12),'hex'),1,decode(repeat('cb',32),'hex'),1
   ) x;
   IF outcome<>'RECOVERY_DELIVERY_RESERVED' OR public.mark_login_attempt_recovery_delivery_sent(delivery_id)<>'RECOVERY_DELIVERY_SENT' THEN RAISE EXCEPTION 'PHASE10P_EXPIRY_PREAPPLY_DELIVERY'; END IF;
+  UPDATE private.downstream_authorization_transactions
+    SET continuation_handle_digest=decode(repeat('cc',32),'hex')
+    WHERE id=tx_id AND status='upstream_bound';
+  IF NOT FOUND THEN RAISE EXCEPTION 'PHASE10P_EXPIRY_PREAPPLY_CONTINUATION_FIXTURE'; END IF;
   PERFORM pg_sleep(2.2);
 END $$;
 
