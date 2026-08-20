@@ -1,5 +1,11 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-20 PHASE 10P stale social-attempt expiry (Draft)
+
+- Added forward-only migration `20260820091834_expire_stale_social_identity_attempts.sql`. An expired identity-live attempt is moved to `expired` under deterministic transaction/attempt/recovery/broker locking before a new exact broker subject can enter the unchanged partial unique index.
+- The private helper expires pending recovery verification through the existing terminal-material trigger, fails only unsent `reserved` delivery work, retains `sent`/`failed` ledger history, expires and scrubs live downstream authorization context, and leaves terminal upstream legs and already-terminal history unchanged.
+- Fresh disposable DB acceptance covers one-time existing-row cleanup, the observed stale `recovery_pending` case, live-owner fail-closed behavior, recovery-required/recovery-verified expiry, terminal immutability, permissions, uniqueness, normal first login, and two-process same-subject concurrency. No remote database, provider, Resend, Vercel, Auth, UI, or Production action was performed.
+
 ## 2026-08-19 PHASE 10P first social login recovery/finalization (Draft)
 
 - Replaced the deployed callback's terminal 204 gap with explicit `EXISTING_PRIMARY` finalization and `RECOVERY_REQUIRED` continuity. Recovery uses encrypted HttpOnly authority, existing recovery cryptography/RPC budgets, and a server-only idempotent Resend boundary.
