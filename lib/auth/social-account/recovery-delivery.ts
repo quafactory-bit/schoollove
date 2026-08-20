@@ -2,9 +2,9 @@ import 'server-only'
 import { prepareAttemptRecoveryChallenge, type PreparedAttemptRecoveryChallenge } from './recovery-preparation'
 import type { VersionedKey } from './recovery'
 
-/** Fake-only transport boundary. A real email provider is intentionally absent. */
+/** Server-only transport boundary implemented by injected fake or real delivery adapters. */
 export interface RecoveryOtpDeliveryTransport {
-  send(input: Readonly<{ canonicalEmail: string; otp: string }>): Promise<void>
+  send(input: Readonly<{ canonicalEmail: string; otp: string }>, context?: Readonly<{ deliveryId: string }>): Promise<void>
 }
 
 export type RecoveryDeliveryReservation = Readonly<{
@@ -39,7 +39,7 @@ export async function prepareAndDeliverAttemptRecovery(input: Readonly<{
   const reserved = await input.database.createAndReserve({ attemptId: input.attemptId, ...prepared.database })
   if (reserved.outcome !== 'RECOVERY_DELIVERY_RESERVED' || !reserved.verificationId || !reserved.deliveryId) return Object.freeze({ state: 'limited' })
   try {
-    await input.transport.send(prepared.delivery)
+    await input.transport.send(prepared.delivery, { deliveryId: reserved.deliveryId })
     await input.database.markSent(reserved.deliveryId)
     return Object.freeze({ state: 'sent', verificationId: reserved.verificationId, deliveryId: reserved.deliveryId })
   } catch {

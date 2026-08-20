@@ -1,5 +1,11 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-19 PHASE 10P first social login recovery/finalization (Draft)
+
+- Replaced the deployed callback's terminal 204 gap with explicit `EXISTING_PRIMARY` finalization and `RECOVERY_REQUIRED` continuity. Recovery uses encrypted HttpOnly authority, existing recovery cryptography/RPC budgets, and a server-only idempotent Resend boundary.
+- Added a hidden Preview-only recovery form and Supabase completion route. The completion route validates the Supabase user and exact OIDC subject before a service-only attempt-derived principal bind; browser account/attempt input is not accepted.
+- Added one forward-only migration and no private table. No remote database, provider, email, environment, Auth configuration, login UI, Production, or launch mutation was performed.
+
 ## 2026-08-13 PHASE 10O-R downstream authorization terminal scrub boundary (Draft)
 
 - Added the terminal-context CHECK and transaction-first terminalization helpers, plus disposable lifecycle, permission, and direct-TCP race acceptance coverage.

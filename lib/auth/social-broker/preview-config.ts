@@ -2,6 +2,7 @@ import 'server-only'
 import { createPrivateKey, createPublicKey, timingSafeEqual, type KeyObject } from 'node:crypto'
 import { createDarkOidcClient, type DarkOidcClient } from './http'
 import type { SocialProvider } from './types'
+import type { VersionedKey } from '../social-account/recovery'
 
 const KEY_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const VALUE_PATTERN = /^[^\u0000-\u001f\u007f]{1,2048}$/
@@ -25,6 +26,13 @@ export type BrokerPreviewConfig = Readonly<{
   downstreamNonceKey: Readonly<{ version: 1; material: Uint8Array }>
   brokerSubjectKey: Readonly<{ version: 1; material: Uint8Array }>
   oidcSigningKey: Readonly<{ kid: 'preview-rs256-v1'; privateKey: KeyObject }>
+  recovery: Readonly<{
+    hmacKey: VersionedKey
+    encryptionKey: VersionedKey
+    otpMacKey: VersionedKey
+    resendApiKey: string
+    emailFrom: string
+  }>
 }>
 
 export type BrokerConfigResult = Readonly<{ exposure: 'off' }> | BrokerPreviewConfig
@@ -85,7 +93,15 @@ export function loadBrokerPreviewConfig(env: Environment = process.env): BrokerC
   const upstreamPkceKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1')
   const downstreamNonceKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_DOWNSTREAM_NONCE_KEY_V1')
   const brokerSubjectKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_SUBJECT_KEY_K01')
-  if (new Set([upstreamContinuationKey, browserSessionKey, upstreamPkceKey, downstreamNonceKey, brokerSubjectKey].map(value => Buffer.from(value.material).toString('hex'))).size !== 5) invalid()
+  const recovery = Object.freeze({
+    hmacKey: key(env, 'SCHOOLLOVE_RECOVERY_EMAIL_HMAC_KEY_V1'),
+    encryptionKey: key(env, 'SCHOOLLOVE_RECOVERY_EMAIL_ENCRYPTION_KEY_V1'),
+    otpMacKey: key(env, 'SCHOOLLOVE_RECOVERY_OTP_MAC_KEY_V1'),
+    resendApiKey: required(env, 'SCHOOLLOVE_RECOVERY_RESEND_API_KEY'),
+    emailFrom: required(env, 'SCHOOLLOVE_RECOVERY_EMAIL_FROM'),
+  })
+  const separated = [upstreamContinuationKey, browserSessionKey, upstreamPkceKey, downstreamNonceKey, brokerSubjectKey, recovery.hmacKey, recovery.encryptionKey, recovery.otpMacKey]
+  if (new Set(separated.map(value => Buffer.from(value.material).toString('hex'))).size !== separated.length) invalid()
   return Object.freeze({
     exposure: 'preview', providers,
     upstreamContinuationKey,
@@ -95,6 +111,7 @@ export function loadBrokerPreviewConfig(env: Environment = process.env): BrokerC
     brokerSubjectKey,
     downstreamClients,
     oidcSigningKey: signingKey(env),
+    recovery,
   })
 }
 

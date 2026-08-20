@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-19 PHASE 10P first social login recovery/finalization (local / Draft / Preview-only)
+
+- Wired verified callback outcomes to exact transaction-bound downstream finalization or an encrypted, browser-bound recovery route; `RECOVERY_REQUIRED` can no longer end as a false 204 success.
+- Added reserve-before-send Resend transport, OTP decision handling, and a server-authoritative Supabase session/principal completion boundary. A forward-only migration permits only recovery-decided provisional identities to complete the OIDC exchange before exact post-exchange binding.
+- Production remains hard-off. No credential value, provider call, email, Preview/Production mutation, Custom Provider change, social control, or launch-state change is included.
+
 ## 2026-08-13 PHASE 10O-R downstream terminal scrub boundary (local / Draft / feature-off)
 
 - Added a forward-only terminal-context check: expired, rejected, and consumed downstream authorization transactions retain neither raw nonce nor raw state.

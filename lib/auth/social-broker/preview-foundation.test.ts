@@ -26,6 +26,11 @@ const env = (overrides: Record<string, string | undefined> = {}) => ({
   SCHOOLLOVE_SOCIAL_BROKER_DOWNSTREAM_NONCE_KEY_V1: key(4),
   SCHOOLLOVE_SOCIAL_BROKER_SUBJECT_KEY_K01: key(5),
   SCHOOLLOVE_SOCIAL_BROKER_OIDC_SIGNING_PRIVATE_JWK_V1: signingKey,
+  SCHOOLLOVE_RECOVERY_EMAIL_HMAC_KEY_V1: key(6),
+  SCHOOLLOVE_RECOVERY_EMAIL_ENCRYPTION_KEY_V1: key(7),
+  SCHOOLLOVE_RECOVERY_OTP_MAC_KEY_V1: key(8),
+  SCHOOLLOVE_RECOVERY_RESEND_API_KEY: 'synthetic-resend-key',
+  SCHOOLLOVE_RECOVERY_EMAIL_FROM: 'SchoolLove <recovery@schoollove.invalid>',
   ...overrides,
 })
 
@@ -134,5 +139,49 @@ describe('PHASE 10P preview provider foundation', () => {
     const session = response.headers.get('set-cookie')!
     expect(session).toContain('HttpOnly'); expect(session).toContain('Secure'); expect(session).toContain('SameSite=Lax')
     expect(session).not.toContain('H'.repeat(43)); expect(session).not.toContain('B'.repeat(43)); expect(response.headers.get('location')).not.toContain('B'.repeat(43))
+  })
+
+  it('PHASE10P_CALLBACK_EXISTING_PRIMARY_FINALIZES_EXACTLY and preserves downstream state', async () => {
+    const sessionKey = { version: 1 as const, material: Buffer.alloc(32, 31) }
+    const rawState = 'S'.repeat(43)
+    const browserCookie = sealBrowserContinuity({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
+    const finalizeReadyAttempt = vi.fn(async () => ({ redirectUri: PREVIEW_SUPABASE_CALLBACK, authorizationCode: 'C'.repeat(43), downstreamState: 'exact + state/&=한글' }))
+    const adapter = createPreviewRouteAdapter({
+      now: () => 100, browserSessionKey: sessionKey,
+      orchestrator: {
+        continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
+        callback: vi.fn(async () => ({ outcome: 'EXISTING_PRIMARY', trustedAttemptId: '11111111-1111-4111-8111-111111111111', authenticationTime: 90, brokerSubject: `slb:v1:k01:google:${'A'.repeat(43)}` })),
+        finalizeReadyAttempt,
+      } as never, verifier: {} as never, oidc: {} as never,
+    })
+    const response = await adapter.callback('google', new Request(`${PREVIEW_BROKER_ISSUER}/auth/social/callback/google?code=opaque&state=${rawState}`, { headers: { cookie: `${socialContinuityCookie.name}=${browserCookie}` } }))
+    expect(response.status).toBe(302)
+    const destination = new URL(response.headers.get('location')!)
+    expect(destination.origin + destination.pathname).toBe(PREVIEW_SUPABASE_CALLBACK)
+    expect(destination.searchParams.get('code')).toBe('C'.repeat(43))
+    expect(destination.searchParams.get('state')).toBe('exact + state/&=한글')
+    expect(finalizeReadyAttempt).toHaveBeenCalledWith({ trustedAttemptId: '11111111-1111-4111-8111-111111111111', authenticationTime: 90 })
+    expect(response.headers.get('set-cookie')).not.toContain('11111111-1111-4111-8111-111111111111')
+    expect(response.headers.get('set-cookie')).not.toContain('slb:v1:')
+  })
+
+  it('PHASE10P_CALLBACK_RECOVERY_REQUIRED issues no code and exposes only opaque recovery continuity', async () => {
+    const sessionKey = { version: 1 as const, material: Buffer.alloc(32, 32) }
+    const rawState = 'T'.repeat(43)
+    const browserCookie = sealBrowserContinuity({ provider: 'naver', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
+    const finalizeReadyAttempt = vi.fn()
+    const adapter = createPreviewRouteAdapter({
+      now: () => 100, browserSessionKey: sessionKey,
+      orchestrator: {
+        continueFromHandle: vi.fn(async () => ({ provider: 'naver', authorization: { rawState } })),
+        callback: vi.fn(async () => ({ outcome: 'RECOVERY_REQUIRED', trustedAttemptId: '22222222-2222-4222-8222-222222222222', authenticationTime: 90, brokerSubject: `slb:v1:k01:naver:${'B'.repeat(43)}` })),
+        finalizeReadyAttempt,
+      } as never, verifier: {} as never, oidc: {} as never,
+    })
+    const response = await adapter.callback('naver', new Request(`${PREVIEW_BROKER_ISSUER}/auth/social/callback/naver?code=opaque&state=${rawState}`, { headers: { cookie: `${socialContinuityCookie.name}=${browserCookie}` } }))
+    expect(response.status).toBe(302); expect(response.headers.get('location')).toBe('/auth/social/recovery')
+    expect(finalizeReadyAttempt).not.toHaveBeenCalled()
+    expect(response.headers.get('set-cookie')).not.toContain('22222222-2222-4222-8222-222222222222')
+    expect(response.headers.get('set-cookie')).not.toContain('slb:v1:')
   })
 })
