@@ -10,6 +10,7 @@ import { openRecoveryContinuity, recoveryContinuityCookie, sealRecoveryContinuit
 const COOKIE_OPTIONS = recoveryContinuityCookie.options
 const clearCookie = { ...COOKIE_OPTIONS, maxAge: 0 }
 const OTP = /^[0-9]{8}$/
+const MAX_SESSION_TOKEN_LENGTH = 8192
 
 function cookieHeader(name: string, value: string, options: typeof COOKIE_OPTIONS | typeof clearCookie): string {
   return `${name}=${value}; Max-Age=${options.maxAge}; Path=${options.path}; HttpOnly; Secure; SameSite=Lax`
@@ -117,6 +118,36 @@ export async function recoveryPost(request: Request): Promise<Response> {
 export async function completeSocialSession(request: Request): Promise<Response> {
   const services = await activePreviewRecoveryServices(request)
   if (!services || request.headers.get('origin') !== PREVIEW_BROKER_ISSUER) return new Response(null, { status: services ? 400 : 404 })
+  const [{ createPublicAuthClient, setUserSessionCookies }, { NextResponse }] = await Promise.all([import('@/lib/user-auth'), import('next/server')])
+  return completeSocialSessionWithServices(request, services, {
+    createAuthClient: createPublicAuthClient,
+    bindPrincipal: bindPreviewAuthPrincipal,
+    createSuccessResponse: () => NextResponse.json({ authenticated: true, redirect: '/account' }, { headers: { 'cache-control': 'no-store' } }),
+    setSessionCookies: setUserSessionCookies,
+  })
+}
+
+type CompletionIdentity = Readonly<{ provider?: string; identity_data?: Readonly<{ sub?: unknown }> }>
+type CompletionUser = Readonly<{ id: string; identities?: readonly CompletionIdentity[] }>
+type CompletionSession = Readonly<{ access_token: string; refresh_token: string; expires_in?: number }>
+type CompletionAuthClient = Readonly<{ auth: Readonly<{
+  setSession(tokens: Readonly<{ access_token: string; refresh_token: string }>): Promise<Readonly<{ data: Readonly<{ session: CompletionSession | null; user?: CompletionUser | null }>; error: unknown }>>
+  getUser(accessToken: string): Promise<Readonly<{ data: Readonly<{ user: CompletionUser | null }>; error: unknown }>>
+}> }>
+
+export type SocialSessionCompletionDependencies = Readonly<{
+  createAuthClient(): CompletionAuthClient
+  bindPrincipal(client: PreviewRpcClient, input: Readonly<{ attemptId: string; authUserId: string }>): Promise<unknown>
+  createSuccessResponse(): Response
+  setSessionCookies(response: Response, session: CompletionSession): void
+}>
+
+/** Server-only, dependency-injected completion boundary used by executable security tests. */
+export async function completeSocialSessionWithServices(
+  request: Request,
+  services: ActivePreviewServices,
+  dependencies: SocialSessionCompletionDependencies,
+): Promise<Response> {
   let continuity: RecoveryContinuity
   try {
     continuity = openRecoveryContinuity(readCookie(request, recoveryContinuityCookie.name), services.config.browserSessionKey, services.now())
@@ -126,17 +157,27 @@ export async function completeSocialSession(request: Request): Promise<Response>
   try { body = await request.json() } catch { return coarse(400, '잘못된 요청입니다.') }
   const accessToken = typeof body === 'object' && body !== null && typeof (body as Record<string, unknown>).access_token === 'string' ? (body as Record<string, string>).access_token : ''
   const refreshToken = typeof body === 'object' && body !== null && typeof (body as Record<string, unknown>).refresh_token === 'string' ? (body as Record<string, string>).refresh_token : ''
-  if (!accessToken || !refreshToken || accessToken.length > 8192 || refreshToken.length > 8192) return coarse(400, '잘못된 요청입니다.')
+  if (!accessToken || !refreshToken || accessToken.length > MAX_SESSION_TOKEN_LENGTH || refreshToken.length > MAX_SESSION_TOKEN_LENGTH) return coarse(400, '잘못된 요청입니다.')
   try {
-    const [{ createPublicAuthClient, setUserSessionCookies }, { NextResponse }] = await Promise.all([import('@/lib/user-auth'), import('next/server')])
-    const auth = createPublicAuthClient()
-    const { data, error } = await auth.auth.getUser(accessToken)
-    const user = data.user
-    const subjectMatches = user?.identities?.some(identity => identity.identity_data?.sub === continuity.brokerSubject) ?? false
-    if (error || !user || !subjectMatches) throw new Error('SOCIAL_COMPLETION_SESSION_REJECTED')
-    await bindPreviewAuthPrincipal(services.client, { attemptId: continuity.trustedAttemptId, authUserId: user.id })
-    const response = NextResponse.json({ authenticated: true, redirect: '/account' }, { headers: { 'cache-control': 'no-store' } })
-    setUserSessionCookies(response, { access_token: accessToken, refresh_token: refreshToken })
+    const auth = dependencies.createAuthClient()
+    const validated = await auth.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+    const session = validated.data.session
+    if (validated.error || !session?.access_token || !session.refresh_token) throw new Error('SOCIAL_COMPLETION_SESSION_REJECTED')
+    const verified = await auth.auth.getUser(session.access_token)
+    const user = verified.data.user
+    const expectedProvider = `schoollove-${continuity.provider}`
+    const identityMatches = user?.identities?.some(identity =>
+      identity.provider === expectedProvider
+      && identity.identity_data?.sub === continuity.brokerSubject
+    ) ?? false
+    if (verified.error || !user || !identityMatches) throw new Error('SOCIAL_COMPLETION_SESSION_REJECTED')
+    await dependencies.bindPrincipal(services.client, { attemptId: continuity.trustedAttemptId, authUserId: user.id })
+    const response = dependencies.createSuccessResponse()
+    dependencies.setSessionCookies(response, {
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+      ...(typeof session.expires_in === 'number' && Number.isFinite(session.expires_in) ? { expires_in: session.expires_in } : {}),
+    })
     response.headers.append('set-cookie', cookieHeader(recoveryContinuityCookie.name, '', clearCookie))
     return response
   } catch {

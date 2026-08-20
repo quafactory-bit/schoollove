@@ -2,7 +2,7 @@ import 'server-only'
 import { prepareAttemptRecoveryChallenge, type PreparedAttemptRecoveryChallenge } from './recovery-preparation'
 import type { VersionedKey } from './recovery'
 
-/** Fake-only transport boundary. A real email provider is intentionally absent. */
+/** Server-only transport boundary implemented by injected fake or real delivery adapters. */
 export interface RecoveryOtpDeliveryTransport {
   send(input: Readonly<{ canonicalEmail: string; otp: string }>, context?: Readonly<{ deliveryId: string }>): Promise<void>
 }
