@@ -87,6 +87,24 @@ BEGIN
     'schoollove:10o-g:broker-decision:v1:'||requested_provider||':'||requested_subject_key_version::text||':'||encode(requested_subject_digest,'hex'),0
   ));
 
+  -- The advisory wait may outlive the entry timestamp. Refresh actual wall
+  -- clock time and fail the current target before any orphan candidate work.
+  now_at:=clock_timestamp();
+  IF attempt.id IS DISTINCT FROM target_attempt_id OR attempt.state<>'upstream_pending' OR attempt.expires_at<=now_at
+    OR tx.id IS NULL OR tx.login_attempt_id IS DISTINCT FROM attempt.id OR tx.status<>'upstream_bound'
+    OR tx.upstream_login_leg_id IS DISTINCT FROM leg.id OR tx.expires_at<=now_at
+    OR leg.id IS DISTINCT FROM target_leg_id OR leg.login_attempt_id IS DISTINCT FROM attempt.id
+    OR leg.provider<>requested_provider OR leg.status<>'callback_claimed' OR leg.expires_at<=now_at
+  THEN
+    next_tx_status:=CASE WHEN attempt.expires_at<=now_at OR tx.expires_at<=now_at OR leg.expires_at<=now_at THEN 'expired' ELSE 'rejected' END;
+    IF NOT private.terminalize_bound_downstream_authorization_transaction(attempt.id,leg.id,next_tx_status,now_at) THEN RETURN 'IDENTITY_REJECTED'; END IF;
+    PERFORM private.scrub_upstream_login_leg(leg.id,next_tx_status,now_at);
+    UPDATE private.oauth_login_attempts SET state=CASE WHEN next_tx_status='expired' THEN 'expired' ELSE 'failed_safe' END,
+      coarse_terminal_reason=CASE WHEN next_tx_status='expired' THEN 'expired' ELSE 'failed_safe' END,updated_at=now_at,version=version+1
+      WHERE id=attempt.id AND state='upstream_pending';
+    RETURN CASE WHEN next_tx_status='expired' THEN 'EXPIRED' ELSE 'IDENTITY_REJECTED' END;
+  END IF;
+
   SELECT r.* INTO active_identity
     FROM private.social_identity_registry r JOIN private.private_accounts a ON a.id=r.account_id
     WHERE r.broker_subject=requested_broker_subject AND r.status='active' AND a.status='active'
@@ -131,6 +149,25 @@ BEGIN
       SELECT * INTO source_attempt FROM private.oauth_login_attempts a WHERE a.id=source_attempt_id FOR UPDATE;
       SELECT * INTO orphan_account FROM private.private_accounts a WHERE a.id=candidate_account_id FOR UPDATE;
       SELECT * INTO orphan_identity FROM private.social_identity_registry r WHERE r.broker_subject=requested_broker_subject FOR UPDATE;
+
+      -- This is the authoritative adoption decision time. A current target may
+      -- have expired while waiting for any canonical source row lock. Reject
+      -- and scrub only that current target before touching the source orphan.
+      now_at:=clock_timestamp();
+      IF attempt.id IS DISTINCT FROM target_attempt_id OR attempt.state<>'upstream_pending' OR attempt.expires_at<=now_at
+        OR tx.id IS NULL OR tx.login_attempt_id IS DISTINCT FROM attempt.id OR tx.status<>'upstream_bound'
+        OR tx.upstream_login_leg_id IS DISTINCT FROM leg.id OR tx.expires_at<=now_at
+        OR leg.id IS DISTINCT FROM target_leg_id OR leg.login_attempt_id IS DISTINCT FROM attempt.id
+        OR leg.provider<>requested_provider OR leg.status<>'callback_claimed' OR leg.expires_at<=now_at
+      THEN
+        next_tx_status:=CASE WHEN attempt.expires_at<=now_at OR tx.expires_at<=now_at OR leg.expires_at<=now_at THEN 'expired' ELSE 'rejected' END;
+        IF NOT private.terminalize_bound_downstream_authorization_transaction(attempt.id,leg.id,next_tx_status,now_at) THEN RETURN 'IDENTITY_REJECTED'; END IF;
+        PERFORM private.scrub_upstream_login_leg(leg.id,next_tx_status,now_at);
+        UPDATE private.oauth_login_attempts SET state=CASE WHEN next_tx_status='expired' THEN 'expired' ELSE 'failed_safe' END,
+          coarse_terminal_reason=CASE WHEN next_tx_status='expired' THEN 'expired' ELSE 'failed_safe' END,updated_at=now_at,version=version+1
+          WHERE id=attempt.id AND state='upstream_pending';
+        RETURN CASE WHEN next_tx_status='expired' THEN 'EXPIRED' ELSE 'IDENTITY_REJECTED' END;
+      END IF;
 
       -- Re-read every structural count and Auth binding only after all canonical
       -- locks are held; pre-lock discovery is never sufficient for adoption.
