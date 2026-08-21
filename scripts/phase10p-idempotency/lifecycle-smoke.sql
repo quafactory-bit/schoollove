@@ -59,6 +59,19 @@ BEGIN
     OR (SELECT to_jsonb(d) FROM private.recovery_delivery_attempts d WHERE id=delivery_one) IS DISTINCT FROM delivery_before
   THEN RAISE EXCEPTION 'PHASE10P_IDEMPOTENCY_EXACT_REPLAY_MUTATED'; END IF;
 
+  SELECT x.outcome,x.verification_id,x.delivery_id INTO outcome_value,verification_value,delivery_value
+    FROM public.create_and_reserve_login_attempt_recovery_delivery(
+      attempt_one,'71000000-0000-4000-8000-000000000016','71000000-0000-4000-8000-000000000026',same_hmac,1,
+      decode(repeat('18',17),'hex'),decode(repeat('19',12),'hex'),1,decode(repeat('1a',32),'hex'),1
+    ) x;
+  IF outcome_value<>'RECOVERY_DELIVERY_ALREADY_SENT' OR verification_value<>verification_one OR delivery_value<>delivery_one
+    OR (SELECT count(*) FROM private.recovery_email_verifications)<>verification_count
+    OR (SELECT count(*) FROM private.recovery_delivery_attempts)<>delivery_count
+    OR (SELECT version FROM private.oauth_login_attempts WHERE id=attempt_one)<>attempt_version
+    OR (SELECT to_jsonb(v) FROM private.recovery_email_verifications v WHERE id=verification_one) IS DISTINCT FROM verification_before
+    OR (SELECT to_jsonb(d) FROM private.recovery_delivery_attempts d WHERE id=delivery_one) IS DISTINCT FROM delivery_before
+  THEN RAISE EXCEPTION 'PHASE10P_IDEMPOTENCY_REPEATED_REPLAY_MUTATED'; END IF;
+
   SELECT x.outcome INTO outcome_value FROM public.create_and_reserve_login_attempt_recovery_delivery(
     attempt_one,'71000000-0000-4000-8000-000000000013','71000000-0000-4000-8000-000000000023',decode(repeat('21',32),'hex'),1,
     decode(repeat('22',17),'hex'),decode(repeat('23',12),'hex'),1,decode(repeat('24',32),'hex'),1
@@ -146,7 +159,46 @@ BEGIN
   END LOOP;
 END $$;
 
+DO $$
+DECLARE
+  attempt_id uuid:='73000000-0000-4000-8000-000000000001';
+  verification_id uuid:='73000000-0000-4000-8100-000000000001';
+  delivery_id uuid;
+  hmac_value bytea:=decode(repeat('51',32),'hex');
+  outcome_value text;
+  verification_count integer;
+  delivery_count integer;
+  rejected boolean:=false;
+BEGIN
+  PERFORM pg_temp.phase10p_idempotency_attempt(attempt_id,'att_10p_idem_expired_attempt');
+  SELECT x.outcome,x.delivery_id INTO outcome_value,delivery_id FROM public.create_and_reserve_login_attempt_recovery_delivery(
+    attempt_id,verification_id,'73000000-0000-4000-8200-000000000001',hmac_value,1,
+    decode(repeat('52',17),'hex'),decode(repeat('53',12),'hex'),1,decode(repeat('54',32),'hex'),1
+  ) x;
+  IF outcome_value<>'RECOVERY_DELIVERY_RESERVED' OR public.mark_login_attempt_recovery_delivery_sent(delivery_id)<>'RECOVERY_DELIVERY_SENT'
+  THEN RAISE EXCEPTION 'PHASE10P_IDEMPOTENCY_EXPIRED_ATTEMPT_SETUP'; END IF;
+  UPDATE private.oauth_login_attempts
+    SET created_at=clock_timestamp()-interval '2 minutes',expires_at=clock_timestamp()-interval '1 second'
+    WHERE id=attempt_id;
+  SELECT count(*) INTO verification_count FROM private.recovery_email_verifications;
+  SELECT count(*) INTO delivery_count FROM private.recovery_delivery_attempts;
+  BEGIN
+    PERFORM * FROM public.create_and_reserve_login_attempt_recovery_delivery(
+      attempt_id,gen_random_uuid(),gen_random_uuid(),hmac_value,1,
+      decode(repeat('55',17),'hex'),decode(repeat('56',12),'hex'),1,decode(repeat('57',32),'hex'),1
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='SOCIAL_ATTEMPT_RECOVERY_CREATE_REJECTED' THEN rejected:=true; ELSE RAISE; END IF;
+  END;
+  IF NOT rejected
+    OR (SELECT count(*) FROM private.recovery_email_verifications)<>verification_count
+    OR (SELECT count(*) FROM private.recovery_delivery_attempts)<>delivery_count
+  THEN RAISE EXCEPTION 'PHASE10P_IDEMPOTENCY_EXPIRED_ATTEMPT_REUSED'; END IF;
+END $$;
+
 SELECT 'PHASE10P_RECOVERY_DELIVERY_ALREADY_SENT_IDEMPOTENT_OK' AS status;
+SELECT 'PHASE10P_RECOVERY_DELIVERY_REPEATED_REPLAY_ZERO_MUTATION_OK' AS status;
+SELECT 'PHASE10P_RECOVERY_DELIVERY_EXPIRED_ATTEMPT_REJECTED_OK' AS status;
 SELECT 'PHASE10P_RECOVERY_DELIVERY_DIFFERENT_EMAIL_LIMITED_OK' AS status;
 SELECT 'PHASE10P_RECOVERY_DELIVERY_REPLAY_NEGATIVE_MATRIX_OK' AS status;
 SELECT 'PHASE10P_RECOVERY_DELIVERY_ZERO_MUTATION_OK' AS status;
