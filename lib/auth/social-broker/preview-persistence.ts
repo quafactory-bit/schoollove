@@ -121,7 +121,7 @@ export function createPreviewRecoveryDatabase(client: PreviewRpcClient): Recover
       const outcome = text(row?.outcome)
       if (outcome === 'RECOVERY_DELIVERY_LIMITED') return Object.freeze({ outcome })
       const verificationId = text(row?.verification_id); const deliveryId = text(row?.delivery_id)
-      if (outcome !== 'RECOVERY_DELIVERY_RESERVED' || !verificationId || !deliveryId) throw new Error('SOCIAL_RECOVERY_PERSISTENCE_REJECTED')
+      if ((outcome !== 'RECOVERY_DELIVERY_RESERVED' && outcome !== 'RECOVERY_DELIVERY_ALREADY_SENT') || !verificationId || !deliveryId) throw new Error('SOCIAL_RECOVERY_PERSISTENCE_REJECTED')
       return Object.freeze({ outcome, verificationId, deliveryId })
     },
     async markSent(deliveryId: string) {

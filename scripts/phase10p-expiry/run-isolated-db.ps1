@@ -70,7 +70,21 @@ CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE SET sear
   Invoke-Sql 'TRUNCATE private.downstream_authorization_transactions,private.upstream_login_legs,private.broker_authorization_codes,private.recovery_delivery_attempts,private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.identities; DELETE FROM auth.users;'
   Invoke-SqlFile (Resolve-Path 'scripts/phase10p-expiry/preapply-stale.sql').Path
   Invoke-SqlFile (Resolve-Path 'supabase/migrations/20260820091834_expire_stale_social_identity_attempts.sql').Path
+  Invoke-SqlFile (Resolve-Path 'supabase/migrations/20260821025308_recovery_delivery_idempotent_sent_replay.sql').Path
   Invoke-SqlFile (Resolve-Path 'scripts/phase10p-expiry/preapply-assert.sql').Path
+
+  Invoke-Sql 'TRUNCATE private.downstream_authorization_transactions,private.upstream_login_legs,private.broker_authorization_codes,private.recovery_delivery_attempts,private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.identities; DELETE FROM auth.users;'
+  Invoke-SqlFile (Resolve-Path 'scripts/phase10p-idempotency/lifecycle-smoke.sql').Path
+  Invoke-SqlFile (Resolve-Path 'scripts/phase10p-idempotency/permissions-smoke.sql').Path
+
+  Invoke-Sql 'TRUNCATE private.downstream_authorization_transactions,private.upstream_login_legs,private.broker_authorization_codes,private.recovery_delivery_attempts,private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.identities; DELETE FROM auth.users;'
+  Invoke-SqlFile (Resolve-Path 'scripts/phase10p-idempotency/concurrency-setup.sql').Path
+  $mapping=(docker port $containerName 5432/tcp).Trim()
+  if ($mapping-notmatch ':(\d+)$') { throw 'Host TCP port discovery failed.' }
+  $env:PGHOST='127.0.0.1'; $env:PGPORT=$Matches[1]; $env:PGDATABASE=$databaseName; $env:PGUSER='postgres'; $env:PGPASSWORD=$testPassword
+  node scripts/phase10p-idempotency/lock-wait-runner.mjs
+  if ($LASTEXITCODE-ne 0) { throw 'PHASE 10P idempotency direct-TCP lock-wait acceptance failed.' }
+  Clear-PgEnvironment
 
   Invoke-Sql 'TRUNCATE private.downstream_authorization_transactions,private.upstream_login_legs,private.broker_authorization_codes,private.recovery_delivery_attempts,private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.identities; DELETE FROM auth.users;'
   Invoke-SqlFile (Resolve-Path 'scripts/phase10p-expiry/lifecycle-smoke.sql').Path

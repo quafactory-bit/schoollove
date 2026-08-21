@@ -6,10 +6,14 @@ import {
   activePreviewRecoveryServices,
   completeSocialSessionWithServices,
   recoveryGet,
+  recoveryPostWithServices,
+  type RecoveryPostDependencies,
   type SocialSessionCompletionDependencies,
 } from './preview-recovery-http'
-import { recoveryContinuityCookie, sealRecoveryContinuity } from './recovery-continuity-session'
+import { openRecoveryContinuity, recoveryContinuityCookie, sealRecoveryContinuity } from './recovery-continuity-session'
 import type { ActivePreviewServices } from './preview-runtime'
+import { InMemoryRecoveryOtpDeliveryTransport, type RecoveryDeliveryDatabase } from '../social-account/recovery-delivery'
+import { createPreviewRecoveryDatabase } from './preview-persistence'
 
 const recoverySource = readFileSync(new URL('./preview-recovery-http.ts', import.meta.url), 'utf8')
 const completeSource = readFileSync(new URL('../../../app/auth/social/complete/SocialCompleteClient.tsx', import.meta.url), 'utf8')
@@ -19,6 +23,11 @@ const brokerSubject = `slb:v1:k01:google:${Buffer.alloc(32, 23).toString('base64
 const attemptId = '11111111-1111-4111-8111-111111111111'
 const authUserId = '22222222-2222-4222-8222-222222222222'
 const otherAuthUserId = '33333333-3333-4333-8333-333333333333'
+const recoveryKeys = Object.freeze({
+  hmacKey: Object.freeze({ version: 1 as const, material: new Uint8Array(32).fill(31) }),
+  encryptionKey: Object.freeze({ version: 1 as const, material: new Uint8Array(32).fill(32) }),
+  otpMacKey: Object.freeze({ version: 1 as const, material: new Uint8Array(32).fill(33) }),
+})
 
 function subject(provider: 'google' | 'kakao' | 'naver'): string {
   return `slb:v1:k01:${provider}:${Buffer.alloc(32, provider === 'google' ? 23 : provider === 'kakao' ? 24 : 25).toString('base64url')}`
@@ -43,6 +52,59 @@ function completionRequest(
 
 function completionServices(): ActivePreviewServices {
   return { config: { browserSessionKey }, client: {}, now: () => now } as unknown as ActivePreviewServices
+}
+
+function recoveryServices(): ActivePreviewServices {
+  return {
+    config: { browserSessionKey, recovery: { ...recoveryKeys, resendApiKey: 'synthetic', emailFrom: 'noreply@example.invalid' } },
+    client: { rpc: async (name: string) => ({ data: name === 'get_social_recovery_http_context' ? 'RECOVERY_REQUIRED' : null, error: null }) },
+    now: () => now,
+  } as unknown as ActivePreviewServices
+}
+
+function recoveryRequiredCookie(): string {
+  return sealRecoveryContinuity({
+    stage: 'recovery_required', provider: 'google', trustedAttemptId: attemptId,
+    brokerSubject, authenticationTime: now - 10, verificationId: null,
+    issuedAt: now - 5, expiresAt: now + 300,
+  }, browserSessionKey)
+}
+
+function recoverySendRequest(cookie: string, email: string): Request {
+  const form = new FormData(); form.set('action', 'send'); form.set('recovery_email', email)
+  return new Request('https://preview.schoollove.kr/auth/social/recovery', {
+    method: 'POST', headers: { origin: 'https://preview.schoollove.kr', cookie: `${recoveryContinuityCookie.name}=${cookie}` }, body: form,
+  })
+}
+
+class IdempotentRecoveryDatabase implements RecoveryDeliveryDatabase {
+  readonly verificationId = '55555555-5555-4555-8555-555555555555'
+  readonly deliveryId = '66666666-6666-4666-8666-666666666666'
+  verificationCount = 0
+  deliveryCount = 0
+  sent = false
+  private recoveryHmac: Uint8Array | null = null
+  private hmacKeyVersion: number | null = null
+
+  async createAndReserve(input: Parameters<RecoveryDeliveryDatabase['createAndReserve']>[0]) {
+    const exactReplay = this.sent
+      && input.attemptId === attemptId
+      && this.hmacKeyVersion === input.recoveryEmailHmacKeyVersion
+      && this.recoveryHmac !== null
+      && Buffer.from(this.recoveryHmac).equals(Buffer.from(input.recoveryEmailHmac))
+    if (exactReplay) return Object.freeze({ outcome: 'RECOVERY_DELIVERY_ALREADY_SENT' as const, verificationId: this.verificationId, deliveryId: this.deliveryId })
+    if (this.verificationCount > 0) return Object.freeze({ outcome: 'RECOVERY_DELIVERY_LIMITED' as const })
+    this.recoveryHmac = input.recoveryEmailHmac
+    this.hmacKeyVersion = input.recoveryEmailHmacKeyVersion
+    this.verificationCount += 1; this.deliveryCount += 1
+    return Object.freeze({ outcome: 'RECOVERY_DELIVERY_RESERVED' as const, verificationId: this.verificationId, deliveryId: this.deliveryId })
+  }
+  async markSent(deliveryId: string) { if (deliveryId !== this.deliveryId) throw new Error('TEST_DELIVERY_MISMATCH'); this.sent = true }
+  async fail() { throw new Error('TEST_UNEXPECTED_DELIVERY_FAILURE') }
+}
+
+function recoveryDependencies(database: IdempotentRecoveryDatabase, transport: InMemoryRecoveryOtpDeliveryTransport): RecoveryPostDependencies {
+  return Object.freeze({ createDatabase: () => database, createTransport: () => transport })
 }
 
 function completionDependencies(input: Readonly<{
@@ -111,6 +173,41 @@ describe('Preview first-login HTTP boundary', () => {
     expect(completeSource.indexOf("window.history.replaceState(null, '', '/auth/social/complete')")).toBeLessThan(completeSource.indexOf("fetch('/auth/social/complete/session'"))
     expect(completeSource).not.toMatch(/localStorage|sessionStorage|console\./)
     expect(completeSource).not.toMatch(/attempt_id|account_id|transaction_id|broker_subject/)
+  })
+
+  it('turns an exact old-cookie duplicate send into the same otp_sent continuation without a second transport or row', async () => {
+    const services = recoveryServices(); const database = new IdempotentRecoveryDatabase(); const transport = new InMemoryRecoveryOtpDeliveryTransport()
+    const oldCookie = recoveryRequiredCookie(); const dependencies = recoveryDependencies(database, transport)
+    const first = await recoveryPostWithServices(recoverySendRequest(oldCookie, 'User+tag@example.com'), services, dependencies)
+    const replay = await recoveryPostWithServices(recoverySendRequest(oldCookie, 'User+tag@example.com'), services, dependencies)
+    expect(first.status).toBe(303); expect(replay.status).toBe(303)
+    expect(first.headers.get('location')).toBe('/auth/social/recovery'); expect(replay.headers.get('location')).toBe('/auth/social/recovery')
+    expect(transport.deliveries).toHaveLength(1); expect(database.verificationCount).toBe(1); expect(database.deliveryCount).toBe(1)
+    const replayCookie = replay.headers.get('set-cookie')?.match(new RegExp(`${recoveryContinuityCookie.name}=([^;]+)`))?.[1]
+    expect(replayCookie).toBeTruthy()
+    expect(openRecoveryContinuity(replayCookie, browserSessionKey, now)).toMatchObject({ stage: 'otp_sent', trustedAttemptId: attemptId, verificationId: database.verificationId })
+  })
+
+  it('keeps a different-email old-cookie replay rate-limited and performs no second transport or row mutation', async () => {
+    const services = recoveryServices(); const database = new IdempotentRecoveryDatabase(); const transport = new InMemoryRecoveryOtpDeliveryTransport()
+    const oldCookie = recoveryRequiredCookie(); const dependencies = recoveryDependencies(database, transport)
+    expect((await recoveryPostWithServices(recoverySendRequest(oldCookie, 'first@example.com'), services, dependencies)).status).toBe(303)
+    expect((await recoveryPostWithServices(recoverySendRequest(oldCookie, 'different@example.com'), services, dependencies)).status).toBe(429)
+    expect(transport.deliveries).toHaveLength(1); expect(database.verificationCount).toBe(1); expect(database.deliveryCount).toBe(1)
+  })
+
+  it('maps only the exact already-sent RPC tuple and fails closed on malformed replay rows', async () => {
+    const exact = createPreviewRecoveryDatabase({ rpc: async () => ({ data: [{ outcome: 'RECOVERY_DELIVERY_ALREADY_SENT', verification_id: 'v-existing', delivery_id: 'd-existing' }], error: null }) })
+    const prepared = { attemptId, challengeId: 'new-v', reservedAccountId: 'new-a', recoveryEmailHmac: new Uint8Array(32), recoveryEmailHmacKeyVersion: 1, destinationCiphertext: new Uint8Array(17), destinationNonce: new Uint8Array(12), encryptionKeyVersion: 1, otpMac: new Uint8Array(32), otpKeyVersion: 1 }
+    await expect(exact.createAndReserve(prepared)).resolves.toEqual({ outcome: 'RECOVERY_DELIVERY_ALREADY_SENT', verificationId: 'v-existing', deliveryId: 'd-existing' })
+    for (const row of [
+      { outcome: 'RECOVERY_DELIVERY_ALREADY_SENT', verification_id: null, delivery_id: 'd-existing' },
+      { outcome: 'RECOVERY_DELIVERY_ALREADY_SENT', verification_id: 'v-existing', delivery_id: null },
+      { outcome: 'RECOVERY_DELIVERY_ALREADY_SENT_EVIL', verification_id: 'v-existing', delivery_id: 'd-existing' },
+    ]) {
+      const malformed = createPreviewRecoveryDatabase({ rpc: async () => ({ data: [row], error: null }) })
+      await expect(malformed.createAndReserve(prepared)).rejects.toThrow('SOCIAL_RECOVERY_PERSISTENCE_REJECTED')
+    }
   })
 
   it('forces a refresh exchange, verifies both users, then binds once and writes only rotated tokens', async () => {
