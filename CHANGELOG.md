@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-20 PHASE 10P stale social-attempt expiry (local / Draft / Preview-only)
+
+- Added a forward-only boundary that terminalizes an expired `upstream_verified`/`recovery_required`/`recovery_pending`/`recovery_verified` broker-subject owner before a replacement identity decision. The existing live-subject unique index remains unchanged.
+- Stale expiry scrubs pending recovery challenge material and live downstream nonce/state, preserves sent/failed delivery history and terminal upstream legs, and uses the frozen recovery-lock → broker-lock ordering. Migration apply performs one bounded cleanup; later requests use the same on-demand helper.
+- No Preview/Production database apply, provider call, email, Auth/provider configuration, Vercel setting, login UI, or Production change is included.
+
 ## 2026-08-19 PHASE 10P first social login recovery/finalization (local / Draft / Preview-only)
 
 - Wired verified callback outcomes to exact transaction-bound downstream finalization or an encrypted, browser-bound recovery route; `RECOVERY_REQUIRED` can no longer end as a false 204 success.
