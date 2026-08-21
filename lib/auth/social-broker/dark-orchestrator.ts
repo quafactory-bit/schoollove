@@ -19,7 +19,7 @@ export type DarkBrokerPersistence = Readonly<{
   createOrResumeDurableContinuation(input: DurableContinuationCreate): Promise<DurableContinuationResult>
   claimCallback: ClaimByState
   failClaimedUpstreamLeg(input: Readonly<{ attemptId: string; legId: string; reason: 'provider_failure' | 'identity_failure' | 'expired' }>): Promise<'REJECTED' | 'EXPIRED' | 'REPLAY_REJECTED'>
-  recordVerifiedIdentity(input: Readonly<{ attemptId: string; legId: string; provider: SocialProvider; brokerSubject: string; subjectDigest: Uint8Array; subjectKeyVersion: number }>): Promise<'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'>
+  recordVerifiedIdentity(input: Readonly<{ attemptId: string; legId: string; provider: SocialProvider; brokerSubject: string; subjectDigest: Uint8Array; subjectKeyVersion: number }>): Promise<'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'>
   resolveIssuanceContext(attemptId: string): Promise<TrustedAuthorizationTransactionIssuanceContext | null>
   issueTransactionBoundCode(input: ReturnType<typeof prepareTransactionBoundBrokerCode>['database']): Promise<'AUTHORIZATION_CODE_CREATED' | 'AUTHORIZATION_CODE_REJECTED'>
 }>
@@ -55,7 +55,7 @@ export type DurableContinuationCreate = Readonly<{
   continuation: Readonly<{ ciphertext: Uint8Array; iv: Uint8Array; keyVersion: number }>
 }>
 export type TrustedCallbackResult = Readonly<{
-  outcome: 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'
+  outcome: 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'
   trustedAttemptId: string
   authenticationTime: number
   brokerSubject: string
