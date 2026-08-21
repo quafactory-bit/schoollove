@@ -51,6 +51,14 @@ BEGIN
   -- exact recovery-HMAC lock domain.
   PERFORM pg_catalog.pg_advisory_xact_lock(hashtextextended('schoollove:10o-i:recovery-delivery:v1:'||requested_hmac_key_version::text||':'||encode(requested_hmac,'hex'),0));
 
+  -- The row/advisory locks may have waited across an expiry boundary. Use an
+  -- actual wall-clock decision timestamp, not the transaction-start time or
+  -- the pre-lock snapshot, for replay eligibility and every rate budget.
+  issued_at:=clock_timestamp();
+  IF attempt.expires_at<=issued_at THEN
+    RAISE EXCEPTION 'SOCIAL_ATTEMPT_RECOVERY_CREATE_REJECTED';
+  END IF;
+
   -- A browser replay after successful transport is idempotent only for the
   -- same live attempt and the same canonical recovery address/key version.
   -- The existing pending verification and its sent ledger row are returned

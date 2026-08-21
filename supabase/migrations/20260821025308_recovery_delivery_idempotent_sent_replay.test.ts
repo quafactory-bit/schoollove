@@ -5,10 +5,18 @@ const sql = readFileSync(new URL('./20260821025308_recovery_delivery_idempotent_
 
 describe('PHASE 10P recovery delivery sent-replay idempotency', () => {
   it('recognizes the exact sent tuple before the frozen rate-limit checks', () => {
+    const advisoryLock = sql.indexOf("pg_advisory_xact_lock(hashtextextended('schoollove:10o-i:recovery-delivery:v1:")
+    const refreshedTimestamp = sql.indexOf('issued_at:=clock_timestamp();', advisoryLock)
+    const replaySelect = sql.indexOf('SELECT v.id,d.id INTO existing_verification_id,existing_delivery_id')
     const replay = sql.indexOf("RETURN QUERY SELECT 'RECOVERY_DELIVERY_ALREADY_SENT'")
     const rateLimit = sql.indexOf("RETURN QUERY SELECT 'RECOVERY_DELIVERY_LIMITED'")
+    expect(advisoryLock).toBeGreaterThan(0)
+    expect(refreshedTimestamp).toBeGreaterThan(advisoryLock)
+    expect(replaySelect).toBeGreaterThan(refreshedTimestamp)
     expect(replay).toBeGreaterThan(0)
     expect(rateLimit).toBeGreaterThan(replay)
+    expect(sql.slice(refreshedTimestamp, replaySelect)).toContain('attempt.expires_at<=issued_at')
+    expect(sql.slice(refreshedTimestamp, replaySelect)).toContain("RAISE EXCEPTION 'SOCIAL_ATTEMPT_RECOVERY_CREATE_REJECTED'")
     expect(sql).toContain("v.login_attempt_id=target_attempt_id")
     expect(sql).toContain("v.status='pending'")
     expect(sql).toContain('v.expires_at>issued_at')
