@@ -37,7 +37,10 @@ DECLARE
   source_leg private.upstream_login_legs%ROWTYPE;
   competing uuid;
   stale_competing uuid;
+  candidate_account_id uuid;
   source_attempt_id uuid;
+  source_code_id uuid;
+  identity_candidate_count integer;
   source_attempt_count integer;
   source_code_count integer;
   account_attempt_count integer;
@@ -49,10 +52,9 @@ BEGIN
   PERFORM private.require_social_attempt_service();
 
   -- Canonical current-flow row order is unchanged: transaction, attempt, leg,
-  -- then the broker-subject advisory domain. Orphan adoption subsequently
-  -- locks identity, account, source code, and source attempt. The code-before-
-  -- attempt order matches consume_broker_authorization_code and avoids an
-  -- inverse lock with a concurrent downstream token request.
+  -- then the broker-subject advisory domain. Candidate discovery below is
+  -- deliberately non-locking. Adoption locks source code, source attempt,
+  -- account, then identity, matching downstream consume and principal binding.
   SELECT * INTO tx FROM private.downstream_authorization_transactions WHERE login_attempt_id=target_attempt_id FOR UPDATE;
   SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=target_attempt_id FOR UPDATE;
   SELECT * INTO leg FROM private.upstream_login_legs WHERE id=target_leg_id AND login_attempt_id=target_attempt_id FOR UPDATE;
@@ -97,50 +99,77 @@ BEGIN
     RETURN 'EXISTING_PRIMARY';
   END IF;
 
-  -- The only resumable identity is the exact unbound provisional tuple.
-  SELECT * INTO orphan_identity FROM private.social_identity_registry
-    WHERE broker_subject=requested_broker_subject FOR UPDATE;
-  IF orphan_identity.broker_subject IS NOT NULL THEN
-    SELECT * INTO orphan_account FROM private.private_accounts WHERE id=orphan_identity.account_id FOR UPDATE;
-
-    SELECT count(*) INTO source_attempt_count FROM private.oauth_login_attempts a
-      WHERE a.id<>attempt.id AND a.account_id=orphan_account.id AND a.provider=requested_provider
-        AND a.broker_subject=requested_broker_subject AND a.subject_digest=requested_subject_digest
-        AND a.subject_key_version=requested_subject_key_version AND a.state='broker_code_ready' AND a.expires_at<=now_at;
-    SELECT a.id INTO source_attempt_id FROM private.oauth_login_attempts a
-      WHERE a.id<>attempt.id AND a.account_id=orphan_account.id AND a.provider=requested_provider
-        AND a.broker_subject=requested_broker_subject AND a.subject_digest=requested_subject_digest
-        AND a.subject_key_version=requested_subject_key_version AND a.state='broker_code_ready' AND a.expires_at<=now_at
-      ORDER BY a.expires_at,a.id LIMIT 1;
-    SELECT count(*) INTO account_attempt_count FROM private.oauth_login_attempts a
-      WHERE a.id<>attempt.id AND a.account_id=orphan_account.id;
-    SELECT count(*) INTO matching_auth_identity_count FROM auth.identities i
-      WHERE i.provider='custom:schoollove-'||requested_provider
-        AND (i.provider_id=requested_broker_subject OR i.identity_data->>'sub'=requested_broker_subject);
-
-    IF orphan_identity.provider=requested_provider AND orphan_identity.status='provisional' AND orphan_identity.auth_user_id IS NULL
-      AND orphan_identity.subject_digest=requested_subject_digest AND orphan_identity.subject_key_version=requested_subject_key_version
-      AND orphan_account.id IS NOT NULL AND orphan_account.status='provisional' AND orphan_account.auth_user_id IS NULL
-      AND orphan_account.primary_provider=requested_provider AND orphan_account.primary_broker_subject=requested_broker_subject
-      AND orphan_account.recovery_email_verified_at IS NOT NULL AND orphan_account.recovery_email_hmac IS NOT NULL
-      AND orphan_account.recovery_email_ciphertext IS NOT NULL AND orphan_account.recovery_email_nonce IS NOT NULL
-      AND source_attempt_count=1 AND account_attempt_count=1 AND matching_auth_identity_count=0
-    THEN
-      -- Token consumption locks code before attempt; adoption uses the same
-      -- order, then revalidates every source relationship while both are held.
-      SELECT count(*) INTO source_code_count FROM private.broker_authorization_codes c WHERE c.login_attempt_id=source_attempt_id;
-      IF source_code_count=1 THEN
-        SELECT * INTO source_code FROM private.broker_authorization_codes c WHERE c.login_attempt_id=source_attempt_id FOR UPDATE;
-        SELECT * INTO source_attempt FROM private.oauth_login_attempts a WHERE a.id=source_attempt_id FOR UPDATE;
-        SELECT * INTO source_tx FROM private.downstream_authorization_transactions t WHERE t.login_attempt_id=source_attempt_id FOR KEY SHARE;
-        SELECT * INTO source_leg FROM private.upstream_login_legs l WHERE l.login_attempt_id=source_attempt_id FOR KEY SHARE;
+  -- Discover only coarse candidate identifiers under the broker advisory
+  -- authority. No candidate snapshot is trusted until canonical row locks and
+  -- a complete post-lock revalidation have both succeeded.
+  SELECT count(*) INTO identity_candidate_count FROM private.social_identity_registry
+    WHERE broker_subject=requested_broker_subject;
+  IF identity_candidate_count>0 THEN
+    source_attempt_count:=0;
+    source_code_count:=0;
+    account_attempt_count:=0;
+    IF identity_candidate_count=1 THEN
+      SELECT account_id INTO candidate_account_id FROM private.social_identity_registry
+        WHERE broker_subject=requested_broker_subject;
+      SELECT count(*) INTO account_attempt_count FROM private.oauth_login_attempts a
+        WHERE a.id<>attempt.id AND a.account_id=candidate_account_id;
+      IF account_attempt_count=1 THEN
+        SELECT a.id INTO source_attempt_id FROM private.oauth_login_attempts a
+          WHERE a.id<>attempt.id AND a.account_id=candidate_account_id;
+        SELECT count(*) INTO source_code_count FROM private.broker_authorization_codes c
+          WHERE c.login_attempt_id=source_attempt_id;
+        IF source_code_count=1 THEN
+          SELECT c.id INTO source_code_id FROM private.broker_authorization_codes c
+            WHERE c.login_attempt_id=source_attempt_id;
+        END IF;
       END IF;
+    END IF;
 
-      IF source_code_count=1 AND source_attempt.id=source_attempt_id AND source_attempt.state='broker_code_ready'
+    IF identity_candidate_count=1 AND account_attempt_count=1 AND source_code_count=1 THEN
+      -- Canonical source completion order: code, attempt, account, identity.
+      SELECT * INTO source_code FROM private.broker_authorization_codes c WHERE c.id=source_code_id FOR UPDATE;
+      SELECT * INTO source_attempt FROM private.oauth_login_attempts a WHERE a.id=source_attempt_id FOR UPDATE;
+      SELECT * INTO orphan_account FROM private.private_accounts a WHERE a.id=candidate_account_id FOR UPDATE;
+      SELECT * INTO orphan_identity FROM private.social_identity_registry r WHERE r.broker_subject=requested_broker_subject FOR UPDATE;
+
+      -- Re-read every structural count and Auth binding only after all canonical
+      -- locks are held; pre-lock discovery is never sufficient for adoption.
+      SELECT count(*) INTO identity_candidate_count FROM private.social_identity_registry r
+        WHERE r.broker_subject=requested_broker_subject;
+      SELECT count(*) INTO account_attempt_count FROM private.oauth_login_attempts a
+        WHERE a.id<>attempt.id AND a.account_id=candidate_account_id;
+      SELECT count(*) INTO source_attempt_count FROM private.oauth_login_attempts a
+        WHERE a.id=source_attempt_id AND a.account_id=candidate_account_id AND a.provider=requested_provider
+          AND a.broker_subject=requested_broker_subject AND a.subject_digest=requested_subject_digest
+          AND a.subject_key_version=requested_subject_key_version AND a.state='broker_code_ready' AND a.expires_at<=now_at;
+      SELECT count(*) INTO source_code_count FROM private.broker_authorization_codes c
+        WHERE c.login_attempt_id=source_attempt_id;
+      SELECT count(*) INTO matching_auth_identity_count FROM auth.identities i
+        WHERE i.provider='custom:schoollove-'||requested_provider
+          AND (i.provider_id=requested_broker_subject OR i.identity_data->>'sub'=requested_broker_subject);
+
+      -- Source transaction and leg are terminal immutable history and are read
+      -- only after the canonical mutable source/account/identity locks.
+      SELECT * INTO source_tx FROM private.downstream_authorization_transactions t
+        WHERE t.id=source_code.authorization_transaction_id;
+      SELECT * INTO source_leg FROM private.upstream_login_legs l
+        WHERE l.id=source_tx.upstream_login_leg_id;
+
+      IF identity_candidate_count=1 AND account_attempt_count=1 AND source_attempt_count=1 AND source_code_count=1
+        AND orphan_identity.broker_subject=requested_broker_subject AND orphan_identity.account_id=orphan_account.id
+        AND orphan_identity.provider=requested_provider AND orphan_identity.status='provisional' AND orphan_identity.auth_user_id IS NULL
+        AND orphan_identity.subject_digest=requested_subject_digest AND orphan_identity.subject_key_version=requested_subject_key_version
+        AND orphan_account.id=candidate_account_id AND orphan_account.status='provisional' AND orphan_account.auth_user_id IS NULL
+        AND orphan_account.primary_provider=requested_provider AND orphan_account.primary_broker_subject=requested_broker_subject
+        AND orphan_account.recovery_email_verified_at IS NOT NULL AND orphan_account.recovery_email_hmac IS NOT NULL
+        AND orphan_account.recovery_email_ciphertext IS NOT NULL AND orphan_account.recovery_email_nonce IS NOT NULL
+        AND matching_auth_identity_count=0
+        AND source_attempt.id=source_attempt_id AND source_attempt.state='broker_code_ready'
         AND source_attempt.expires_at<=now_at AND source_attempt.account_id=orphan_account.id
         AND source_attempt.provider=requested_provider AND source_attempt.broker_subject=requested_broker_subject
         AND source_attempt.subject_digest=requested_subject_digest AND source_attempt.subject_key_version=requested_subject_key_version
-        AND source_code.login_attempt_id=source_attempt.id AND source_code.authorization_transaction_id=source_tx.id
+        AND source_code.id=source_code_id AND source_code.login_attempt_id=source_attempt.id
+        AND source_code.authorization_transaction_id=source_tx.id
         AND source_code.state IN ('ready','expired') AND source_code.expires_at<=now_at
         AND source_tx.login_attempt_id=source_attempt.id AND source_tx.status='consumed'
         AND source_tx.upstream_login_leg_id=source_leg.id AND source_leg.login_attempt_id=source_attempt.id
@@ -201,5 +230,5 @@ REVOKE ALL ON FUNCTION public.record_verified_social_identity_from_upstream_leg(
 GRANT EXECUTE ON FUNCTION public.record_verified_social_identity_from_upstream_leg(uuid,uuid,text,text,bytea,integer) TO service_role;
 
 COMMENT ON FUNCTION public.record_verified_social_identity_from_upstream_leg(uuid,uuid,text,text,bytea,integer) IS
-  'PHASE 10P exact expired unbound provisional resume: transaction/attempt/leg, broker advisory, identity/account, source code/attempt; no delete or second recovery.';
+  'PHASE 10P exact expired unbound provisional resume: current transaction/attempt/leg, broker advisory, source code/attempt, account/identity, immutable history; no delete or second recovery.';
 COMMIT;

@@ -123,6 +123,15 @@ CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE SET sear
   if ($LASTEXITCODE-ne 0) { throw 'PHASE 10P provisional resume direct-TCP acceptance failed.' }
   Clear-PgEnvironment
 
+  Invoke-Sql 'TRUNCATE private.downstream_authorization_transactions,private.upstream_login_legs,private.broker_authorization_codes,private.recovery_delivery_attempts,private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.identities; DELETE FROM auth.users;'
+  Invoke-SqlFile (Resolve-Path 'scripts/phase10p-resume/cross-path-setup.sql').Path
+  $mapping=(docker port $containerName 5432/tcp).Trim()
+  if ($mapping-notmatch ':(\d+)$') { throw 'Host TCP port discovery failed.' }
+  $env:PGHOST='127.0.0.1'; $env:PGPORT=$Matches[1]; $env:PGDATABASE=$databaseName; $env:PGUSER='postgres'; $env:PGPASSWORD=$testPassword
+  node scripts/phase10p-resume/cross-path-race-runner.mjs
+  if ($LASTEXITCODE-ne 0) { throw 'PHASE 10P token-consume/principal-bind cross-path acceptance failed.' }
+  Clear-PgEnvironment
+
   $tableCount=(docker exec $containerName psql -U postgres -d $databaseName -tAc "SELECT count(*) FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='private' AND c.relkind='r'").Trim()
   if ($tableCount-ne '9') { throw "Private table boundary mismatch: $tableCount" }
   Write-Output 'PHASE10P_EXPIRED_UNBOUND_PROVISIONAL_RESUME_ISOLATED_DB_OK private_tables=9 container_removed=true'
