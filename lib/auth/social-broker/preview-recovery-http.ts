@@ -1,6 +1,6 @@
 import 'server-only'
 import { recoveryOtpMac } from '../social-account/recovery'
-import { prepareAndDeliverAttemptRecovery } from '../social-account/recovery-delivery'
+import { prepareAndDeliverAttemptRecovery, type RecoveryDeliveryDatabase, type RecoveryOtpDeliveryTransport } from '../social-account/recovery-delivery'
 import { ResendRecoveryOtpDeliveryTransport } from '../social-account/resend-recovery-transport'
 import { PREVIEW_BROKER_ISSUER, PREVIEW_SUPABASE_CALLBACK, loadBrokerPreviewConfig } from './preview-config'
 import { bindPreviewAuthPrincipal, consumePreviewRecoveryDecision, createPreviewRecoveryDatabase, type PreviewRpcClient } from './preview-persistence'
@@ -61,6 +61,23 @@ export async function recoveryGet(request: Request): Promise<Response> {
 export async function recoveryPost(request: Request): Promise<Response> {
   const services = await activePreviewRecoveryServices(request)
   if (!services) return new Response(null, { status: 404 })
+  return recoveryPostWithServices(request, services, {
+    createDatabase: createPreviewRecoveryDatabase,
+    createTransport: active => new ResendRecoveryOtpDeliveryTransport({ apiKey: active.config.recovery.resendApiKey, from: active.config.recovery.emailFrom }),
+  })
+}
+
+export type RecoveryPostDependencies = Readonly<{
+  createDatabase(client: PreviewRpcClient): RecoveryDeliveryDatabase
+  createTransport(services: ActivePreviewServices): RecoveryOtpDeliveryTransport
+}>
+
+/** Server-only, dependency-injected recovery boundary used by executable HTTP tests. */
+export async function recoveryPostWithServices(
+  request: Request,
+  services: ActivePreviewServices,
+  dependencies: RecoveryPostDependencies,
+): Promise<Response> {
   if (request.headers.get('origin') !== PREVIEW_BROKER_ISSUER) return coarse(400, '잘못된 요청입니다.')
   const continuity = await trustedRecovery(request, services)
   if (!continuity || continuity.stage === 'downstream_finalized') return coarse(400, '복구 요청을 확인할 수 없습니다.')
@@ -71,13 +88,12 @@ export async function recoveryPost(request: Request): Promise<Response> {
     if (continuity.stage !== 'recovery_required') return coarse(400, '이미 인증번호가 발송되었습니다.')
     const recoveryEmail = form.get('recovery_email')
     if (typeof recoveryEmail !== 'string') return coarse(400, '복구 이메일을 확인해 주세요.')
-    const transport = new ResendRecoveryOtpDeliveryTransport({ apiKey: services.config.recovery.resendApiKey, from: services.config.recovery.emailFrom })
     const result = await prepareAndDeliverAttemptRecovery({
       attemptId: continuity.trustedAttemptId, recoveryEmail,
       recoveryHmacKey: services.config.recovery.hmacKey,
       recoveryEncryptionKey: services.config.recovery.encryptionKey,
       otpMacKey: services.config.recovery.otpMacKey,
-      database: createPreviewRecoveryDatabase(services.client), transport,
+      database: dependencies.createDatabase(services.client), transport: dependencies.createTransport(services),
     })
     if (result.state === 'limited') return coarse(429, '잠시 후 다시 시도해 주세요.')
     if (result.state !== 'sent' || !result.verificationId) return coarse(503, '인증번호를 발송할 수 없습니다.')

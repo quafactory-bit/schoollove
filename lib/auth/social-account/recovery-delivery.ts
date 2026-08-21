@@ -8,7 +8,7 @@ export interface RecoveryOtpDeliveryTransport {
 }
 
 export type RecoveryDeliveryReservation = Readonly<{
-  outcome: 'RECOVERY_DELIVERY_RESERVED' | 'RECOVERY_DELIVERY_LIMITED'
+  outcome: 'RECOVERY_DELIVERY_RESERVED' | 'RECOVERY_DELIVERY_ALREADY_SENT' | 'RECOVERY_DELIVERY_LIMITED'
   verificationId?: string
   deliveryId?: string
 }>
@@ -37,6 +37,10 @@ export async function prepareAndDeliverAttemptRecovery(input: Readonly<{
 }>): Promise<RecoveryDeliveryResult> {
   const prepared = prepareAttemptRecoveryChallenge(input)
   const reserved = await input.database.createAndReserve({ attemptId: input.attemptId, ...prepared.database })
+  if (reserved.outcome === 'RECOVERY_DELIVERY_ALREADY_SENT') {
+    if (!reserved.verificationId || !reserved.deliveryId) return Object.freeze({ state: 'failed' })
+    return Object.freeze({ state: 'sent', verificationId: reserved.verificationId, deliveryId: reserved.deliveryId })
+  }
   if (reserved.outcome !== 'RECOVERY_DELIVERY_RESERVED' || !reserved.verificationId || !reserved.deliveryId) return Object.freeze({ state: 'limited' })
   try {
     await input.transport.send(prepared.delivery, { deliveryId: reserved.deliveryId })
