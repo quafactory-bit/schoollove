@@ -165,6 +165,33 @@ describe('PHASE 10P preview provider foundation', () => {
     expect(response.headers.get('set-cookie')).not.toContain('slb:v1:')
   })
 
+  it('PHASE10P_CALLBACK_PROVISIONAL_RESUME_FINALIZES_WITHOUT_RECOVERY and seals downstream continuity', async () => {
+    const sessionKey = { version: 1 as const, material: Buffer.alloc(32, 35) }
+    const rawState = 'R'.repeat(43)
+    const trustedAttemptId = '33333333-3333-4333-8333-333333333333'
+    const browserCookie = sealBrowserContinuity({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
+    const finalizeReadyAttempt = vi.fn(async () => ({ redirectUri: PREVIEW_SUPABASE_CALLBACK, authorizationCode: 'D'.repeat(43), downstreamState: 'resume-state' }))
+    const adapter = createPreviewRouteAdapter({
+      now: () => 100, browserSessionKey: sessionKey,
+      orchestrator: {
+        continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
+        callback: vi.fn(async () => ({ outcome: 'PROVISIONAL_RESUME_READY', trustedAttemptId, authenticationTime: 90, brokerSubject: `slb:v1:k01:google:${'C'.repeat(43)}` })),
+        finalizeReadyAttempt,
+      } as never, verifier: {} as never, oidc: {} as never,
+    })
+    const response = await adapter.callback('google', new Request(`${PREVIEW_BROKER_ISSUER}/auth/social/callback/google?code=opaque&state=${rawState}`, { headers: { cookie: `${socialContinuityCookie.name}=${browserCookie}` } }))
+    expect(response.status).toBe(302)
+    const destination = new URL(response.headers.get('location')!)
+    expect(destination.origin + destination.pathname).toBe(PREVIEW_SUPABASE_CALLBACK)
+    expect(destination.searchParams.get('code')).toBe('D'.repeat(43))
+    expect(destination.searchParams.get('state')).toBe('resume-state')
+    expect(finalizeReadyAttempt).toHaveBeenCalledOnce()
+    const cookies = response.headers.get('set-cookie')!
+    expect(cookies).not.toContain(trustedAttemptId)
+    expect(cookies).not.toContain('slb:v1:')
+    expect(response.headers.get('location')).not.toBe('/auth/social/recovery')
+  })
+
   it('PHASE10P_CALLBACK_RECOVERY_REQUIRED issues no code and exposes only opaque recovery continuity', async () => {
     const sessionKey = { version: 1 as const, material: Buffer.alloc(32, 32) }
     const rawState = 'T'.repeat(43)

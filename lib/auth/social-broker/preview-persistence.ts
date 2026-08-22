@@ -75,7 +75,7 @@ export function createPreviewBrokerPersistence(client: PreviewRpcClient): DarkBr
     },
     async recordVerifiedIdentity(input) {
       const result = await rpc(client, 'record_verified_social_identity_from_upstream_leg', { target_attempt_id: input.attemptId, target_leg_id: input.legId, requested_provider: input.provider, requested_broker_subject: input.brokerSubject, requested_subject_digest: bytea(input.subjectDigest), requested_subject_key_version: input.subjectKeyVersion })
-      return ['EXISTING_PRIMARY', 'RECOVERY_REQUIRED', 'IDENTITY_DECISION_IN_PROGRESS', 'IDENTITY_REJECTED'].includes(result as string) ? result as 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED' : 'IDENTITY_REJECTED'
+      return ['EXISTING_PRIMARY', 'RECOVERY_REQUIRED', 'PROVISIONAL_RESUME_READY', 'IDENTITY_DECISION_IN_PROGRESS', 'IDENTITY_REJECTED'].includes(result as string) ? result as 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED' : 'IDENTITY_REJECTED'
     },
     async resolveIssuanceContext(attemptId): Promise<TrustedAuthorizationTransactionIssuanceContext | null> {
       const row = first(await rpc(client, 'get_transaction_bound_broker_code_issuance_context', { target_attempt_id: attemptId }))

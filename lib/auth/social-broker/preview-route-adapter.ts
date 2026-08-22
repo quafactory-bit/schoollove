@@ -63,7 +63,7 @@ export function createPreviewRouteAdapter(runtime: PreviewRouteRuntime) {
           }, runtime.browserSessionKey), recoveryContinuityCookie.options))
           return response
         }
-        if (trusted.outcome !== 'EXISTING_PRIMARY') throw new Error('DARK_CALLBACK_REJECTED')
+        if (trusted.outcome !== 'EXISTING_PRIMARY' && trusted.outcome !== 'PROVISIONAL_RESUME_READY') throw new Error('DARK_CALLBACK_REJECTED')
         const finalized = await runtime.orchestrator.finalizeReadyAttempt({ trustedAttemptId: trusted.trustedAttemptId, authenticationTime: trusted.authenticationTime })
         if (finalized.redirectUri !== PREVIEW_SUPABASE_CALLBACK) throw new Error('DARK_FINALIZATION_REJECTED')
         const destination = new URL(PREVIEW_SUPABASE_CALLBACK)
