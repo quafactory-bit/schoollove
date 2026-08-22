@@ -227,6 +227,7 @@ DECLARE
   auth_identity_count integer;
   auth_mapping_count integer;
   now_at timestamptz:=clock_timestamp();
+  next_tx_status text;
 BEGIN
   PERFORM private.require_social_attempt_service();
   IF target_attempt_id IS NULL OR target_leg_id IS NULL OR requested_provider NOT IN ('google','kakao','naver')
@@ -287,6 +288,32 @@ BEGIN
   -- call is permitted after either lock has been acquired.
   SELECT * INTO account FROM private.private_accounts WHERE id=candidate_account_id FOR UPDATE;
   SELECT * INTO identity FROM private.social_identity_registry WHERE broker_subject=requested_broker_subject FOR UPDATE;
+
+  -- Account/identity waits may outlive every current-flow credential. Refresh
+  -- wall-clock time after both candidate locks and give current-target expiry
+  -- priority over either the provisional or concurrently activated candidate.
+  now_at:=clock_timestamp();
+  IF tx.id IS NULL OR tx.login_attempt_id IS DISTINCT FROM target_attempt_id
+    OR tx.status<>'upstream_bound' OR tx.upstream_login_leg_id IS DISTINCT FROM target_leg_id OR tx.expires_at<=now_at
+    OR attempt.id IS DISTINCT FROM target_attempt_id OR attempt.state<>'upstream_pending'
+    OR attempt.provider IS DISTINCT FROM requested_provider OR attempt.expires_at<=now_at
+    OR leg.id IS DISTINCT FROM target_leg_id OR leg.login_attempt_id IS DISTINCT FROM target_attempt_id
+    OR leg.status<>'callback_claimed' OR leg.provider IS DISTINCT FROM requested_provider OR leg.expires_at<=now_at
+  THEN
+    next_tx_status:=CASE
+      WHEN tx.expires_at<=now_at OR attempt.expires_at<=now_at OR leg.expires_at<=now_at THEN 'expired'
+      ELSE 'rejected'
+    END;
+    IF NOT private.terminalize_bound_downstream_authorization_transaction(attempt.id,leg.id,next_tx_status,now_at)
+    THEN RETURN 'IDENTITY_REJECTED'; END IF;
+    PERFORM private.scrub_upstream_login_leg(leg.id,next_tx_status,now_at);
+    UPDATE private.oauth_login_attempts
+      SET state=CASE WHEN next_tx_status='expired' THEN 'expired' ELSE 'failed_safe' END,
+          coarse_terminal_reason=CASE WHEN next_tx_status='expired' THEN 'expired' ELSE 'failed_safe' END,
+          updated_at=now_at,version=version+1
+      WHERE id=attempt.id AND state='upstream_pending';
+    RETURN CASE WHEN next_tx_status='expired' THEN 'EXPIRED' ELSE 'IDENTITY_REJECTED' END;
+  END IF;
 
   IF tx.status='upstream_bound' AND tx.upstream_login_leg_id=leg.id AND tx.expires_at>now_at
     AND attempt.state='upstream_pending' AND attempt.provider=requested_provider AND attempt.expires_at>now_at

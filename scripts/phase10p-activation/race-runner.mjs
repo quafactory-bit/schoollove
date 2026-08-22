@@ -22,6 +22,25 @@ async function issueAndConsume(codeByte,label){
   const consumed=await run(`SELECT outcome FROM public.consume_broker_authorization_code(decode(repeat('${codeByte}',32),'hex'),'slb-supabase-google','https://hukokfyphyrpfouazxhq.supabase.co/auth/v1/callback',repeat('E',43))`,`${label}_CONSUME`)
   if(consumed[0]?.outcome!=='AUTHORIZATION_CODE_CONSUMED')throw new Error(`PHASE10P_ACTIVATION_${label}_CONSUME`)
 }
+async function prepareFreshReauth({safe,txId,legId,handleByte,stateByte,nonceByte,cipherByte,ivByte,label}){
+  const rows=await run(`
+SELECT public.create_social_login_attempt('${safe}','google',clock_timestamp()+interval '9 minutes');
+SELECT * FROM public.create_downstream_authorization_transaction('${txId}',(SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='${safe}'),decode(repeat('${handleByte}',32),'hex'),'slb-supabase-google','https://hukokfyphyrpfouazxhq.supabase.co/auth/v1/callback','code','openid',repeat('E',43),'S256',NULL,'${label.toLowerCase()}-state',clock_timestamp()+interval '5 minutes');
+SELECT * FROM public.claim_downstream_authorization_transaction_by_handle(decode(repeat('${handleByte}',32),'hex'));
+SELECT * FROM public.create_upstream_login_leg((SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='${safe}'),'${legId}','google',decode(repeat('${stateByte}',32),'hex'),decode(repeat('${nonceByte}',32),'hex'),decode(repeat('${handleByte}',32),'hex'),repeat('F',43),decode(repeat('${cipherByte}',17),'hex'),decode(repeat('${ivByte}',12),'hex'),1);
+SELECT public.bind_downstream_authorization_transaction_upstream_leg('${txId}','${legId}');
+SELECT * FROM public.claim_upstream_login_callback_by_state('google',decode(repeat('${stateByte}',32),'hex'),decode(repeat('${nonceByte}',32),'hex'));
+SELECT public.record_verified_social_identity_from_upstream_leg((SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='${safe}'),'${legId}','google',${subject},${digest},1) AS reauth_outcome`,`${label}_PREPARE`)
+  return rows.find(row=>Object.hasOwn(row,'reauth_outcome'))?.reauth_outcome
+}
+async function issueAndConsumeFresh({safe,txId,codeId,codeByte,label}){
+  const context=await run(`SELECT login_attempt_id FROM public.get_transaction_bound_broker_code_issuance_context((SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='${safe}'))`,`${label}_CONTEXT`)
+  if(context.length!==1)throw new Error(`PHASE10P_ACTIVATION_${label}_CONTEXT_MISSING`)
+  const issued=await run(`SELECT outcome FROM public.issue_transaction_bound_broker_authorization_code('${txId}','${codeId}',decode(repeat('${codeByte}',32),'hex'),floor(extract(epoch FROM clock_timestamp()))::bigint-1,NULL,NULL,NULL,NULL,NULL)`,`${label}_ISSUE`)
+  if(issued[0]?.outcome!=='AUTHORIZATION_CODE_CREATED')throw new Error(`PHASE10P_ACTIVATION_${label}_ISSUE`)
+  const consumed=await run(`SELECT outcome FROM public.consume_broker_authorization_code(decode(repeat('${codeByte}',32),'hex'),'slb-supabase-google','https://hukokfyphyrpfouazxhq.supabase.co/auth/v1/callback',repeat('E',43))`,`${label}_CONSUME`)
+  if(consumed[0]?.outcome!=='AUTHORIZATION_CODE_CONSUMED')throw new Error(`PHASE10P_ACTIVATION_${label}_CONSUME`)
+}
 
 // Serialization 1: reauth reaches auth_principal_bound first, another consumed
 // attempt activates the same account, then context resolution and issuance run
@@ -61,6 +80,54 @@ await waitFor(()=>activator.result&&candidate.result&&activator.exit===0&&candid
 if(candidate.result.rows[0]?.outcome!=='EXISTING_PRIMARY')throw new Error(`PHASE10P_ACTIVATION_CANDIDATE_CHANGE_${candidate.result.rows[0]?.outcome??'MISSING'}`)
 await assertIssuanceContext('CANDIDATE_CHANGE_CONTEXT')
 await issueAndConsume('f2','CANDIDATE_CHANGE')
+
+// The target is live when the wrapper starts, but expires while an independent
+// backend owns the candidate account row. Post-lock wall time must win, scrub
+// only the current target, and leave the bound provisional authority intact.
+await resetFixture('TARGET_EXPIRY_SETUP')
+await run("UPDATE private.oauth_login_attempts SET expires_at=clock_timestamp()+interval '4 seconds' WHERE safe_attempt_id='att_10p_activation_race_new'; UPDATE private.downstream_authorization_transactions SET expires_at=clock_timestamp()+interval '4 seconds' WHERE login_attempt_id=(SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new'); UPDATE private.upstream_login_legs SET expires_at=clock_timestamp()+interval '4 seconds' WHERE login_attempt_id=(SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new'); SELECT 'SHORT_TARGET_READY' AS result",'TARGET_EXPIRY_SHORTEN')
+const expiryLocker=worker(),expiryCandidate=worker(),expiryPair=[expiryLocker,expiryCandidate]
+await waitFor(()=>expiryLocker.ready&&expiryCandidate.ready,expiryPair,'TARGET_EXPIRY_READY')
+if(expiryLocker.ready.backendPid===expiryCandidate.ready.backendPid)throw new Error('PHASE10P_ACTIVATION_TARGET_EXPIRY_NOT_INDEPENDENT')
+expiryLocker.child.send({type:'GO',sql:"BEGIN; SELECT id FROM private.private_accounts WHERE id='e2000000-0000-4000-8000-000000000001' FOR UPDATE; SELECT pg_advisory_xact_lock(10220001); SELECT pg_sleep(6); COMMIT; SELECT 'LOCK_RELEASED' AS completion"})
+await new Promise(r=>setTimeout(r,150))
+const expirySignal=await run(`SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=${expiryLocker.ready.backendPid} AND locktype='advisory')::text AS held`,'TARGET_EXPIRY_LOCK_SIGNAL')
+if(expirySignal[0]?.held!=='true')throw new Error('PHASE10P_ACTIVATION_TARGET_EXPIRY_LOCK_NOT_HELD')
+const expiryStarted=Date.now()
+expiryCandidate.child.send({type:'GO',sql:`SELECT public.record_verified_social_identity_from_upstream_leg((SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new'),'e2000000-0000-4000-8000-000000000005','google',${subject},${digest},1) AS outcome`})
+await waitFor(()=>expiryLocker.result&&expiryCandidate.result&&expiryLocker.exit===0&&expiryCandidate.exit===0,expiryPair,'TARGET_EXPIRY_RESULT')
+const expiryWaitMs=Date.now()-expiryStarted
+if(expiryCandidate.result.rows[0]?.outcome!=='EXPIRED')throw new Error(`PHASE10P_ACTIVATION_TARGET_EXPIRY_${expiryCandidate.result.rows[0]?.outcome??'MISSING'}`)
+const expiredReadback=await run("SELECT (SELECT state FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new') attempt_state,(SELECT account_id IS NULL FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new')::text account_unbound,(SELECT status='expired' AND downstream_nonce IS NULL AND downstream_state IS NULL FROM private.downstream_authorization_transactions WHERE login_attempt_id=(SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new'))::text tx_scrubbed,(SELECT status='expired' AND state_digest IS NULL AND nonce_digest IS NULL AND pkce_verifier_ciphertext IS NULL AND continuation_ciphertext IS NULL FROM private.upstream_login_legs WHERE login_attempt_id=(SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new'))::text leg_scrubbed,(SELECT status||':'||(auth_user_id IS NOT NULL)::text FROM private.private_accounts WHERE id='e2000000-0000-4000-8000-000000000001') account_shape,(SELECT status||':'||(auth_user_id IS NOT NULL)::text FROM private.social_identity_registry WHERE account_id='e2000000-0000-4000-8000-000000000001') identity_shape,(SELECT count(*) FROM auth.users)::text auth_users,(SELECT count(*) FROM auth.identities)::text auth_identities,(SELECT count(*) FROM private.recovery_email_verifications)::text recoveries,(SELECT count(*) FROM private.recovery_delivery_attempts)::text deliveries,(SELECT count(*) FROM private.broker_authorization_codes)::text codes",'TARGET_EXPIRY_READBACK')
+const expired=expiredReadback[0]
+if(expired?.attempt_state!=='expired'||expired?.account_unbound!=='true'||expired?.tx_scrubbed!=='true'||expired?.leg_scrubbed!=='true'||expired?.account_shape!=='provisional:true'||expired?.identity_shape!=='provisional:true'||expired?.auth_users!=='1'||expired?.auth_identities!=='1'||expired?.recoveries!=='0'||expired?.deliveries!=='0'||expired?.codes!=='0')throw new Error('PHASE10P_ACTIVATION_TARGET_EXPIRY_MUTATION')
+
+await run("UPDATE public.public_account_launch_control SET state='closed',account_registration_enabled=false,private_profile_enabled=false,school_membership_enabled=false,emergency_stopped_at=NULL; SELECT 'CLOSED' AS result",'TARGET_EXPIRY_CLOSE_LAUNCH')
+const retryOutcome=await prepareFreshReauth({safe:'att_10p_activation_expiry_retry',txId:'e4000000-0000-4000-8000-000000000004',legId:'e4000000-0000-4000-8000-000000000005',handleByte:'c1',stateByte:'c2',nonceByte:'c3',cipherByte:'c4',ivByte:'c5',label:'TARGET_EXPIRY_RETRY'})
+if(retryOutcome!=='BOUND_PROVISIONAL_REAUTH_READY')throw new Error(`PHASE10P_ACTIVATION_TARGET_EXPIRY_RETRY_${retryOutcome??'MISSING'}`)
+await issueAndConsumeFresh({safe:'att_10p_activation_expiry_retry',txId:'e4000000-0000-4000-8000-000000000004',codeId:'e4000000-0000-4000-8000-000000000006',codeByte:'c6',label:'TARGET_EXPIRY_RETRY'})
+const retryComplete=await run("SELECT public.bind_social_auth_principal_from_attempt((SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_expiry_retry'),'e2000000-0000-4000-8000-000000000002') AS bind_outcome,public.activate_social_account_from_attempt((SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_expiry_retry')) AS activation_outcome,(SELECT status FROM private.private_accounts WHERE id='e2000000-0000-4000-8000-000000000001') account_status",'TARGET_EXPIRY_RETRY_COMPLETE')
+if(retryComplete[0]?.bind_outcome!=='AUTH_PRINCIPAL_ALREADY_BOUND'||retryComplete[0]?.activation_outcome!=='SOCIAL_ACCOUNT_LAUNCH_CLOSED'||retryComplete[0]?.account_status!=='provisional')throw new Error('PHASE10P_ACTIVATION_TARGET_EXPIRY_RETRY_COMPLETE')
+
+// Stronger variant: activation wins the candidate row while the current target
+// expires. Expiry still wins for that target; only a later fresh login may use
+// the exact active tuple as EXISTING_PRIMARY.
+await resetFixture('ACTIVE_WINNER_EXPIRY_SETUP')
+await run("UPDATE private.oauth_login_attempts SET expires_at=clock_timestamp()+interval '4 seconds' WHERE safe_attempt_id='att_10p_activation_race_new'; UPDATE private.downstream_authorization_transactions SET expires_at=clock_timestamp()+interval '4 seconds' WHERE login_attempt_id=(SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new'); UPDATE private.upstream_login_legs SET expires_at=clock_timestamp()+interval '4 seconds' WHERE login_attempt_id=(SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new'); SELECT 'SHORT_TARGET_READY' AS result",'ACTIVE_WINNER_EXPIRY_SHORTEN')
+const activeExpiryLocker=worker(),activeExpiryCandidate=worker(),activeExpiryPair=[activeExpiryLocker,activeExpiryCandidate]
+await waitFor(()=>activeExpiryLocker.ready&&activeExpiryCandidate.ready,activeExpiryPair,'ACTIVE_WINNER_EXPIRY_READY')
+activeExpiryLocker.child.send({type:'GO',sql:"BEGIN; SELECT id FROM private.private_accounts WHERE id='e2000000-0000-4000-8000-000000000001' FOR UPDATE; SELECT pg_advisory_xact_lock(10220002); SELECT pg_sleep(6); SELECT public.activate_social_account_from_attempt('e2000000-0000-4000-8000-000000000003') AS activation_outcome; COMMIT; SELECT 'ACTIVE_LOCK_RELEASED' AS completion"})
+await new Promise(r=>setTimeout(r,150))
+const activeExpirySignal=await run(`SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=${activeExpiryLocker.ready.backendPid} AND locktype='advisory')::text AS held`,'ACTIVE_WINNER_EXPIRY_LOCK_SIGNAL')
+if(activeExpirySignal[0]?.held!=='true')throw new Error('PHASE10P_ACTIVATION_ACTIVE_WINNER_EXPIRY_LOCK_NOT_HELD')
+activeExpiryCandidate.child.send({type:'GO',sql:`SELECT public.record_verified_social_identity_from_upstream_leg((SELECT id FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new'),'e2000000-0000-4000-8000-000000000005','google',${subject},${digest},1) AS outcome`})
+await waitFor(()=>activeExpiryLocker.result&&activeExpiryCandidate.result&&activeExpiryLocker.exit===0&&activeExpiryCandidate.exit===0,activeExpiryPair,'ACTIVE_WINNER_EXPIRY_RESULT')
+if(activeExpiryCandidate.result.rows[0]?.outcome!=='EXPIRED')throw new Error(`PHASE10P_ACTIVATION_ACTIVE_WINNER_EXPIRY_${activeExpiryCandidate.result.rows[0]?.outcome??'MISSING'}`)
+const activeExpired=await run("SELECT (SELECT state FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new') attempt_state,(SELECT account_id IS NULL FROM private.oauth_login_attempts WHERE safe_attempt_id='att_10p_activation_race_new')::text account_unbound,(SELECT status FROM private.private_accounts WHERE id='e2000000-0000-4000-8000-000000000001') account_status,(SELECT status FROM private.social_identity_registry WHERE account_id='e2000000-0000-4000-8000-000000000001') identity_status",'ACTIVE_WINNER_EXPIRY_READBACK')
+if(activeExpired[0]?.attempt_state!=='expired'||activeExpired[0]?.account_unbound!=='true'||activeExpired[0]?.account_status!=='active'||activeExpired[0]?.identity_status!=='active')throw new Error('PHASE10P_ACTIVATION_ACTIVE_WINNER_EXPIRY_PRECEDENCE')
+const activeRetryOutcome=await prepareFreshReauth({safe:'att_10p_activation_active_retry',txId:'e5000000-0000-4000-8000-000000000004',legId:'e5000000-0000-4000-8000-000000000005',handleByte:'d1',stateByte:'d2',nonceByte:'d3',cipherByte:'d4',ivByte:'d5',label:'ACTIVE_WINNER_RETRY'})
+if(activeRetryOutcome!=='EXISTING_PRIMARY')throw new Error(`PHASE10P_ACTIVATION_ACTIVE_WINNER_RETRY_${activeRetryOutcome??'MISSING'}`)
+await issueAndConsumeFresh({safe:'att_10p_activation_active_retry',txId:'e5000000-0000-4000-8000-000000000004',codeId:'e5000000-0000-4000-8000-000000000006',codeByte:'d6',label:'ACTIVE_WINNER_RETRY'})
 const final=await run("SELECT (SELECT count(*) FROM private.private_accounts)::text accounts,(SELECT count(*) FROM private.social_identity_registry)::text identities,(SELECT count(*) FROM auth.identities)::text auth_identities,(SELECT count(*) FROM private.broker_authorization_codes)::text codes,(SELECT count(*) FROM private.recovery_email_verifications)::text recoveries,(SELECT count(*) FROM private.recovery_delivery_attempts)::text deliveries,(SELECT count(*) FROM private.broker_authorization_codes GROUP BY authorization_transaction_id HAVING count(*)>1)::text duplicate_codes",'READBACK')
 const row=final[0]
 if(row?.accounts!=='1'||row?.identities!=='1'||row?.auth_identities!=='1'||row?.codes!=='1'||row?.recoveries!=='0'||row?.deliveries!=='0'||row?.duplicate_codes!==null)throw new Error('PHASE10P_ACTIVATION_RACE_DUPLICATION')
@@ -94,5 +161,8 @@ if(closed[0]?.account_status!=='provisional'||closed[0]?.identity_status!=='prov
 process.stdout.write('PHASE10P_REAUTH_FIRST_ACTIVATION_ISSUANCE_OK bind=AUTH_PRINCIPAL_ALREADY_BOUND activation=SOCIAL_ACCOUNT_ALREADY_ACTIVE session_cookies=eligible recovery_delta=0 delivery_delta=0 email_delta=0 otp_delta=0\n')
 process.stdout.write('PHASE10P_ACTIVATION_FIRST_EXISTING_PRIMARY_ISSUANCE_OK\n')
 process.stdout.write('PHASE10P_BOUND_CANDIDATE_PROVISIONAL_TO_ACTIVE_OK outcome=EXISTING_PRIMARY helper_fallback=0\n')
+process.stdout.write(`PHASE10P_TARGET_EXPIRY_DURING_ACCOUNT_LOCK_OK outcome=EXPIRED wait_ms=${expiryWaitMs} account_id_null=true account=provisional identity=provisional recovery_delta=0 delivery_delta=0 code_delta=0\n`)
+process.stdout.write('PHASE10P_RETRY_AFTER_EXPIRED_WAIT_OK outcome=BOUND_PROVISIONAL_REAUTH_READY issue=AUTHORIZATION_CODE_CREATED consume=AUTHORIZATION_CODE_CONSUMED activation=SOCIAL_ACCOUNT_LAUNCH_CLOSED recovery_delta=0 delivery_delta=0 email_delta=0 otp_delta=0\n')
+process.stdout.write('PHASE10P_ACTIVE_WINNER_EXPIRY_PRECEDENCE_OK expired_outcome=EXPIRED fresh_outcome=EXISTING_PRIMARY\n')
 process.stdout.write('PHASE10P_ACTIVATION_REAUTH_CONCURRENCY_OK deadlocks=0 raw_unique_violations=0 duplicate_accounts=0 duplicate_identities=0 duplicate_auth_identities=0 duplicate_codes=0\n')
 process.stdout.write('PHASE10P_LAUNCH_CLOSE_RACE_OK activation=SOCIAL_ACCOUNT_LAUNCH_CLOSED account=provisional identity=provisional\n')
