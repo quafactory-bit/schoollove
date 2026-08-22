@@ -75,7 +75,7 @@ export function createPreviewBrokerPersistence(client: PreviewRpcClient): DarkBr
     },
     async recordVerifiedIdentity(input) {
       const result = await rpc(client, 'record_verified_social_identity_from_upstream_leg', { target_attempt_id: input.attemptId, target_leg_id: input.legId, requested_provider: input.provider, requested_broker_subject: input.brokerSubject, requested_subject_digest: bytea(input.subjectDigest), requested_subject_key_version: input.subjectKeyVersion })
-      return ['EXISTING_PRIMARY', 'RECOVERY_REQUIRED', 'PROVISIONAL_RESUME_READY', 'IDENTITY_DECISION_IN_PROGRESS', 'IDENTITY_REJECTED'].includes(result as string) ? result as 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED' : 'IDENTITY_REJECTED'
+      return ['EXISTING_PRIMARY', 'RECOVERY_REQUIRED', 'PROVISIONAL_RESUME_READY', 'BOUND_PROVISIONAL_REAUTH_READY', 'IDENTITY_DECISION_IN_PROGRESS', 'IDENTITY_REJECTED'].includes(result as string) ? result as 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'BOUND_PROVISIONAL_REAUTH_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED' : 'IDENTITY_REJECTED'
     },
     async resolveIssuanceContext(attemptId): Promise<TrustedAuthorizationTransactionIssuanceContext | null> {
       const row = first(await rpc(client, 'get_transaction_bound_broker_code_issuance_context', { target_attempt_id: attemptId }))
@@ -154,4 +154,10 @@ export async function bindPreviewAuthPrincipal(client: PreviewRpcClient, input: 
   const result = await rpc(client, 'bind_social_auth_principal_from_attempt', { target_attempt_id: input.attemptId, target_auth_user_id: input.authUserId })
   if (result !== 'AUTH_PRINCIPAL_BOUND' && result !== 'AUTH_PRINCIPAL_ALREADY_BOUND') throw new Error('SOCIAL_PRINCIPAL_BINDING_REJECTED')
   return result
+}
+
+export async function activatePreviewSocialAccountFromAttempt(client: PreviewRpcClient, attemptId: string): Promise<'SOCIAL_ACCOUNT_ACTIVATED' | 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' | 'SOCIAL_ACCOUNT_LAUNCH_CLOSED' | 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED'> {
+  const result = await rpc(client, 'activate_social_account_from_attempt', { target_attempt_id: attemptId })
+  if (!['SOCIAL_ACCOUNT_ACTIVATED', 'SOCIAL_ACCOUNT_ALREADY_ACTIVE', 'SOCIAL_ACCOUNT_LAUNCH_CLOSED', 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED'].includes(result as string)) throw new Error('SOCIAL_ACCOUNT_ACTIVATION_REJECTED')
+  return result as 'SOCIAL_ACCOUNT_ACTIVATED' | 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' | 'SOCIAL_ACCOUNT_LAUNCH_CLOSED' | 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED'
 }

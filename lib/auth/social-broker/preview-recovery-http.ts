@@ -3,7 +3,7 @@ import { recoveryOtpMac } from '../social-account/recovery'
 import { prepareAndDeliverAttemptRecovery, type RecoveryDeliveryDatabase, type RecoveryOtpDeliveryTransport } from '../social-account/recovery-delivery'
 import { ResendRecoveryOtpDeliveryTransport } from '../social-account/resend-recovery-transport'
 import { PREVIEW_BROKER_ISSUER, PREVIEW_SUPABASE_CALLBACK, loadBrokerPreviewConfig } from './preview-config'
-import { bindPreviewAuthPrincipal, consumePreviewRecoveryDecision, createPreviewRecoveryDatabase, type PreviewRpcClient } from './preview-persistence'
+import { activatePreviewSocialAccountFromAttempt, bindPreviewAuthPrincipal, consumePreviewRecoveryDecision, createPreviewRecoveryDatabase, type PreviewRpcClient } from './preview-persistence'
 import { createActivePreviewServices, type ActivePreviewServices } from './preview-runtime'
 import { openRecoveryContinuity, recoveryContinuityCookie, sealRecoveryContinuity, type RecoveryContinuity } from './recovery-continuity-session'
 
@@ -138,6 +138,7 @@ export async function completeSocialSession(request: Request): Promise<Response>
   return completeSocialSessionWithServices(request, services, {
     createAuthClient: createPublicAuthClient,
     bindPrincipal: bindPreviewAuthPrincipal,
+    activateAccount: activatePreviewSocialAccountFromAttempt,
     createSuccessResponse: () => NextResponse.json({ authenticated: true, redirect: '/account' }, { headers: { 'cache-control': 'no-store' } }),
     setSessionCookies: setUserSessionCookies,
   })
@@ -154,6 +155,7 @@ type CompletionAuthClient = Readonly<{ auth: Readonly<{
 export type SocialSessionCompletionDependencies = Readonly<{
   createAuthClient(): CompletionAuthClient
   bindPrincipal(client: PreviewRpcClient, input: Readonly<{ attemptId: string; authUserId: string }>): Promise<unknown>
+  activateAccount(client: PreviewRpcClient, attemptId: string): Promise<'SOCIAL_ACCOUNT_ACTIVATED' | 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' | 'SOCIAL_ACCOUNT_LAUNCH_CLOSED' | 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED'>
   createSuccessResponse(): Response
   setSessionCookies(response: Response, session: CompletionSession): void
 }>
@@ -192,6 +194,8 @@ export async function completeSocialSessionWithServices(
     ) ?? false
     if (refreshedAccess.error || !user || accessUser.id !== user.id || !identityMatches) throw new Error('SOCIAL_COMPLETION_SESSION_REJECTED')
     await dependencies.bindPrincipal(services.client, { attemptId: continuity.trustedAttemptId, authUserId: user.id })
+    const activation = await dependencies.activateAccount(services.client, continuity.trustedAttemptId)
+    if (activation === 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED') throw new Error('SOCIAL_ACCOUNT_ACTIVATION_REJECTED')
     const response = dependencies.createSuccessResponse()
     dependencies.setSessionCookies(response, {
       access_token: session.access_token,

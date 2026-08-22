@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-22 PHASE 10P social activation and bound-provisional reauthentication (local / Draft / Preview-only)
+
+- Added one forward-only migration that restores a missing launch singleton only to the exact closed state, preserves an existing valid singleton unchanged, and hardens social activation so only an exact open launch can activate an attempt-derived account and primary identity atomically.
+- Added exact same-provider reauthentication for a recovery-verified provisional account already bound to one matching Supabase Custom OIDC principal. It reuses `auth_principal_bound`, creates no recovery/email/OTP work, and completes authentication while a closed launch keeps the account provisional.
+- No Preview/Production migration apply, remote database mutation, provider call, Resend call, Auth/provider setting, Vercel setting, login control, or launch-state change is included.
+
 ## 2026-08-20 PHASE 10P stale social-attempt expiry (local / Draft / Preview-only)
 
 - Added a forward-only boundary that terminalizes an expired `upstream_verified`/`recovery_required`/`recovery_pending`/`recovery_verified` broker-subject owner before a replacement identity decision. The existing live-subject unique index remains unchanged.
