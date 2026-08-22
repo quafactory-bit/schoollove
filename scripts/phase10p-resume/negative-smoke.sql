@@ -5,8 +5,9 @@ DECLARE
   d bytea:=decode(repeat('91',32),'hex'); s text:='slb:v1:k01:google:'||translate(rtrim(encode(d,'base64'),'='),'+/','-_');
   a uuid; tx uuid:=gen_random_uuid(); leg uuid:=gen_random_uuid(); outcome text;
 BEGIN
-  -- The lifecycle fixture already bound this exact provisional identity to an
-  -- Auth principal. A later same-subject callback must remain fail-closed.
+  -- PR #62 alone keeps this bound tuple fail-closed. The later PHASE 10P
+  -- activation migration intentionally recognizes only its exact Auth-bound
+  -- provisional shape and must not weaken any of the other negative cases.
   a:=public.create_social_login_attempt('att_10p_resume_bound_block','google',clock_timestamp()+interval '10 minutes');
   PERFORM public.create_downstream_authorization_transaction(tx,a,decode(repeat('d1',32),'hex'),'slb-supabase-google','https://hukokfyphyrpfouazxhq.supabase.co/auth/v1/callback','code','openid',repeat('G',43),'S256',NULL,'bound-block',clock_timestamp()+interval '5 minutes');
   PERFORM public.claim_downstream_authorization_transaction_by_handle(decode(repeat('d1',32),'hex'));
@@ -14,7 +15,13 @@ BEGIN
   PERFORM public.bind_downstream_authorization_transaction_upstream_leg(tx,leg);
   PERFORM public.claim_upstream_login_callback_by_state('google',decode(repeat('d2',32),'hex'),decode(repeat('d3',32),'hex'));
   outcome:=public.record_verified_social_identity_from_upstream_leg(a,leg,'google',s,d,1);
-  IF outcome<>'IDENTITY_DECISION_IN_PROGRESS' OR (SELECT state FROM private.oauth_login_attempts WHERE id=a)<>'failed_safe' THEN RAISE EXCEPTION 'PHASE10P_RESUME_BOUND_PRINCIPAL_FAIL_OPEN %',outcome; END IF;
+  IF to_regprocedure('private.record_verified_identity_before_bound_reauth(uuid,uuid,text,text,bytea,integer)') IS NULL THEN
+    IF outcome<>'IDENTITY_DECISION_IN_PROGRESS' OR (SELECT state FROM private.oauth_login_attempts WHERE id=a)<>'failed_safe'
+    THEN RAISE EXCEPTION 'PHASE10P_RESUME_BOUND_PRINCIPAL_FAIL_OPEN %',outcome; END IF;
+  ELSE
+    IF outcome<>'BOUND_PROVISIONAL_REAUTH_READY' OR (SELECT state FROM private.oauth_login_attempts WHERE id=a)<>'auth_principal_bound'
+    THEN RAISE EXCEPTION 'PHASE10P_RESUME_BOUND_PRINCIPAL_REAUTH_REJECTED %',outcome; END IF;
+  END IF;
 END $$;
 
 DO $$
@@ -50,5 +57,9 @@ BEGIN
   THEN RAISE EXCEPTION 'PHASE10P_RESUME_LIVE_SOURCE_FAIL_OPEN %',outcome; END IF;
 END $$;
 
-SELECT 'PHASE10P_PROVISIONAL_RESUME_BOUND_PRINCIPAL_BLOCKED_OK' AS status;
+SELECT CASE
+  WHEN to_regprocedure('private.record_verified_identity_before_bound_reauth(uuid,uuid,text,text,bytea,integer)') IS NULL
+    THEN 'PHASE10P_PROVISIONAL_RESUME_BOUND_PRINCIPAL_BLOCKED_OK'
+  ELSE 'PHASE10P_BOUND_PROVISIONAL_REAUTH_READY_REGRESSION_OK'
+END AS status;
 SELECT 'PHASE10P_PROVISIONAL_RESUME_LIVE_SOURCE_AND_CODE_BLOCKED_OK' AS status;

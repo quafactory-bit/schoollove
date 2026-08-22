@@ -118,6 +118,8 @@ function completionDependencies(input: Readonly<{
   identityProviderId?: string
   identitySubject?: string
   bindError?: unknown
+  bindResult?: 'AUTH_PRINCIPAL_BOUND' | 'AUTH_PRINCIPAL_ALREADY_BOUND'
+  activationResult?: 'SOCIAL_ACCOUNT_ACTIVATED' | 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' | 'SOCIAL_ACCOUNT_LAUNCH_CLOSED' | 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED'
 }> = {}) {
   const calls: string[] = []
   const written: Array<Readonly<{ access_token: string; refresh_token: string; expires_in?: number }>> = []
@@ -140,6 +142,11 @@ function completionDependencies(input: Readonly<{
     bindPrincipal: async (_client, binding) => {
       calls.push(`bind:${binding.attemptId}:${binding.authUserId}`)
       if (input.bindError) throw input.bindError
+      return input.bindResult ?? 'AUTH_PRINCIPAL_BOUND'
+    },
+    activateAccount: async (_client, trustedAttemptId) => {
+      calls.push(`activate:${trustedAttemptId}`)
+      return input.activationResult ?? 'SOCIAL_ACCOUNT_ACTIVATED'
     },
     createSuccessResponse: () => Response.json({ authenticated: true, redirect: '/account' }, { headers: { 'cache-control': 'no-store' } }),
     setSessionCookies: (response, tokens) => {
@@ -219,6 +226,7 @@ describe('Preview first-login HTTP boundary', () => {
       'refreshSession:submitted-refresh',
       'getUser:rotated-access',
       `bind:${attemptId}:${authUserId}`,
+      `activate:${attemptId}`,
       'cookies',
     ])
     expect(harness.written).toEqual([{ access_token: 'rotated-access', refresh_token: 'rotated-refresh', expires_in: 3600 }])
@@ -296,6 +304,38 @@ describe('Preview first-login HTTP boundary', () => {
       'refreshSession:submitted-refresh',
       'getUser:rotated-access',
       `bind:${attemptId}:${authUserId}`,
+    ])
+    expect(harness.written).toEqual([])
+  })
+
+  it('keeps authentication successful while an exact closed launch leaves the account provisional', async () => {
+    const harness = completionDependencies({ activationResult: 'SOCIAL_ACCOUNT_LAUNCH_CLOSED' })
+    const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
+    expect(response.status).toBe(200)
+    expect(harness.calls).toContain(`activate:${attemptId}`)
+    expect(harness.calls.at(-1)).toBe('cookies')
+    expect(harness.written).toHaveLength(1)
+  })
+
+  it('keeps authentication successful when the exact account is already active', async () => {
+    const harness = completionDependencies({ bindResult: 'AUTH_PRINCIPAL_ALREADY_BOUND', activationResult: 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' })
+    const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
+    expect(response.status).toBe(200)
+    expect(harness.calls).toContain(`activate:${attemptId}`)
+    expect(harness.calls.at(-1)).toBe('cookies')
+    expect(harness.written).toHaveLength(1)
+  })
+
+  it('fails session completion without cookies when attempt-bound activation rejects the binding', async () => {
+    const harness = completionDependencies({ activationResult: 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED' })
+    const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
+    expect(response.status).toBe(400)
+    expect(harness.calls).toEqual([
+      'getUser:submitted-access',
+      'refreshSession:submitted-refresh',
+      'getUser:rotated-access',
+      `bind:${attemptId}:${authUserId}`,
+      `activate:${attemptId}`,
     ])
     expect(harness.written).toEqual([])
   })

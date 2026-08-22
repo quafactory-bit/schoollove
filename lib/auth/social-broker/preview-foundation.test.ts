@@ -192,6 +192,27 @@ describe('PHASE 10P preview provider foundation', () => {
     expect(response.headers.get('location')).not.toBe('/auth/social/recovery')
   })
 
+  it('PHASE10P_CALLBACK_BOUND_PROVISIONAL_REAUTH_FINALIZES_WITHOUT_RECOVERY', async () => {
+    const sessionKey = { version: 1 as const, material: Buffer.alloc(32, 36) }
+    const rawState = 'U'.repeat(43)
+    const trustedAttemptId = '44444444-4444-4444-8444-444444444444'
+    const browserCookie = sealBrowserContinuity({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
+    const finalizeReadyAttempt = vi.fn(async () => ({ redirectUri: PREVIEW_SUPABASE_CALLBACK, authorizationCode: 'E'.repeat(43), downstreamState: 'bound-reauth' }))
+    const adapter = createPreviewRouteAdapter({
+      now: () => 100, browserSessionKey: sessionKey,
+      orchestrator: {
+        continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
+        callback: vi.fn(async () => ({ outcome: 'BOUND_PROVISIONAL_REAUTH_READY', trustedAttemptId, authenticationTime: 90, brokerSubject: `slb:v1:k01:google:${'D'.repeat(43)}` })),
+        finalizeReadyAttempt,
+      } as never, verifier: {} as never, oidc: {} as never,
+    })
+    const response = await adapter.callback('google', new Request(`${PREVIEW_BROKER_ISSUER}/auth/social/callback/google?code=opaque&state=${rawState}`, { headers: { cookie: `${socialContinuityCookie.name}=${browserCookie}` } }))
+    expect(response.status).toBe(302)
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/auth/v1/callback')
+    expect(response.headers.get('location')).not.toBe('/auth/social/recovery')
+    expect(finalizeReadyAttempt).toHaveBeenCalledOnce()
+  })
+
   it('PHASE10P_CALLBACK_RECOVERY_REQUIRED issues no code and exposes only opaque recovery continuity', async () => {
     const sessionKey = { version: 1 as const, material: Buffer.alloc(32, 32) }
     const rawState = 'T'.repeat(43)

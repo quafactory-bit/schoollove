@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-22 PHASE 10P social activation and bound-provisional reauthentication (Draft)
+
+- Added `20260822022953_social_activation_gate_and_bound_provisional_reauth.sql`. A missing launch singleton is repaired to closed with one non-personal audit row; a valid singleton is validated and preserved byte-for-byte; ambiguous or malformed state fails before function replacement.
+- Activation authority is now the consumed login attempt rather than a browser-supplied account ID. Exact account, primary identity, recovery custody, `auth.users`, and Custom OIDC `auth.identities` mappings are required before the launch-gated atomic transition.
+- Exact bound provisional same-provider login returns `BOUND_PROVISIONAL_REAUTH_READY`, advances the fresh attempt through the existing `auth_principal_bound` issuance path, and skips recovery delivery. Disposable acceptance covers the complete fail-closed matrix, closed/open behavior, launch and activation/reauth races, service-only permissions, and the prior J/M/N/O/P/R/S plus stale-expiry/idempotency/resume chains.
+- No remote database, Google/Kakao/Naver, Resend, Vercel, Auth/provider configuration, login UI, launch, or Production mutation was performed.
+
 ## 2026-08-20 PHASE 10P stale social-attempt expiry (Draft)
 
 - Added forward-only migration `20260820091834_expire_stale_social_identity_attempts.sql`. An expired identity-live attempt is moved to `expired` under deterministic transaction/attempt/recovery/broker locking before a new exact broker subject can enter the unchanged partial unique index.
