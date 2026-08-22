@@ -118,6 +118,7 @@ function completionDependencies(input: Readonly<{
   identityProviderId?: string
   identitySubject?: string
   bindError?: unknown
+  bindResult?: 'AUTH_PRINCIPAL_BOUND' | 'AUTH_PRINCIPAL_ALREADY_BOUND'
   activationResult?: 'SOCIAL_ACCOUNT_ACTIVATED' | 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' | 'SOCIAL_ACCOUNT_LAUNCH_CLOSED' | 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED'
 }> = {}) {
   const calls: string[] = []
@@ -141,6 +142,7 @@ function completionDependencies(input: Readonly<{
     bindPrincipal: async (_client, binding) => {
       calls.push(`bind:${binding.attemptId}:${binding.authUserId}`)
       if (input.bindError) throw input.bindError
+      return input.bindResult ?? 'AUTH_PRINCIPAL_BOUND'
     },
     activateAccount: async (_client, trustedAttemptId) => {
       calls.push(`activate:${trustedAttemptId}`)
@@ -316,7 +318,7 @@ describe('Preview first-login HTTP boundary', () => {
   })
 
   it('keeps authentication successful when the exact account is already active', async () => {
-    const harness = completionDependencies({ activationResult: 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' })
+    const harness = completionDependencies({ bindResult: 'AUTH_PRINCIPAL_ALREADY_BOUND', activationResult: 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' })
     const response = await completeSocialSessionWithServices(completionRequest(), completionServices(), harness.dependencies)
     expect(response.status).toBe(200)
     expect(harness.calls).toContain(`activate:${attemptId}`)

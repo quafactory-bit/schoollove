@@ -71,6 +71,31 @@ try {
   if($LASTEXITCODE-ne 0){throw 'Activation/reauth race failed'}
   Clear-PgEnvironment
 
+  # Exercise the PR #62 orphan fallback through the new public wrapper. These
+  # direct-TCP runners prove the source code/attempt lock order, target-expiry
+  # wait, token-consume/principal-bind cross path, and normal resume race.
+  Invoke-Sql 'phase10pactivation' "TRUNCATE private.downstream_authorization_transactions,private.upstream_login_legs,private.broker_authorization_codes,private.recovery_delivery_attempts,private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.identities; DELETE FROM auth.users;"
+  Invoke-SqlFile 'phase10pactivation' (Resolve-Path 'scripts/phase10p-resume/lifecycle-smoke.sql').Path
+  Invoke-SqlFile 'phase10pactivation' (Resolve-Path 'scripts/phase10p-resume/negative-smoke.sql').Path
+  Write-Output 'PHASE10P_LEGACY_ORPHAN_SINGLE_RESUME_OK'
+
+  Invoke-Sql 'phase10pactivation' "TRUNCATE private.downstream_authorization_transactions,private.upstream_login_legs,private.broker_authorization_codes,private.recovery_delivery_attempts,private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.identities; DELETE FROM auth.users;"
+  Invoke-SqlFile 'phase10pactivation' (Resolve-Path 'scripts/phase10p-resume/concurrency-setup.sql').Path
+  $mapping=(docker port $containerName 5432/tcp).Trim();if($mapping-notmatch ':(\d+)$'){throw 'Port discovery failed'}
+  $env:PGHOST='127.0.0.1';$env:PGPORT=$Matches[1];$env:PGDATABASE='phase10pactivation';$env:PGUSER='postgres';$env:PGPASSWORD=$password
+  node scripts/phase10p-resume/race-runner.mjs
+  if($LASTEXITCODE-ne 0){throw 'Legacy orphan fallback race failed'}
+  Clear-PgEnvironment
+
+  Invoke-Sql 'phase10pactivation' "TRUNCATE private.downstream_authorization_transactions,private.upstream_login_legs,private.broker_authorization_codes,private.recovery_delivery_attempts,private.recovery_email_verifications,private.social_identity_registry,private.oauth_login_attempts,private.auth_principal_cleanup_jobs,private.private_accounts CASCADE; DELETE FROM auth.identities; DELETE FROM auth.users;"
+  Invoke-SqlFile 'phase10pactivation' (Resolve-Path 'scripts/phase10p-resume/cross-path-setup.sql').Path
+  $mapping=(docker port $containerName 5432/tcp).Trim();if($mapping-notmatch ':(\d+)$'){throw 'Port discovery failed'}
+  $env:PGHOST='127.0.0.1';$env:PGPORT=$Matches[1];$env:PGDATABASE='phase10pactivation';$env:PGUSER='postgres';$env:PGPASSWORD=$password
+  node scripts/phase10p-resume/cross-path-race-runner.mjs
+  if($LASTEXITCODE-ne 0){throw 'Legacy orphan fallback lock-order regression failed'}
+  Clear-PgEnvironment
+  Write-Output 'PHASE10P_LEGACY_ORPHAN_FALLBACK_LOCK_ORDER_OK deadlocks=0 raw_unique_violations=0'
+
   Initialize-Baseline 'phase10pproductionlike'
   Invoke-SqlFile 'phase10pproductionlike' (Resolve-Path 'scripts/phase10p-activation/preapply-production.sql').Path
   Invoke-SqlFile 'phase10pproductionlike' (Resolve-Path $targetMigration).Path

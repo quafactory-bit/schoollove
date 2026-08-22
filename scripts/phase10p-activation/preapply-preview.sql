@@ -9,8 +9,8 @@ BEGIN
     VALUES(account_id,user_id,'provisional','google',s,decode(repeat('d2',32),'hex'),1,decode(repeat('d3',17),'hex'),decode(repeat('d4',12),'hex'),1,clock_timestamp());
   INSERT INTO private.social_identity_registry(broker_subject,provider,subject_digest,subject_key_version,account_id,auth_user_id,status)
     VALUES(s,'google',d,1,account_id,user_id,'provisional');
-  INSERT INTO private.oauth_login_attempts(id,safe_attempt_id,provider,state,broker_subject,subject_digest,subject_key_version,account_id,consumed_at)
-    VALUES(attempt_id,'att_10p_activation_source','google','consumed',s,d,1,account_id,clock_timestamp());
+  INSERT INTO private.oauth_login_attempts(id,safe_attempt_id,provider,state,broker_subject,subject_digest,subject_key_version,account_id,created_at,expires_at,updated_at,consumed_at)
+    VALUES(attempt_id,'att_10p_activation_source','google','consumed',s,d,1,account_id,clock_timestamp(),clock_timestamp()+interval '9 minutes',clock_timestamp(),clock_timestamp());
   DELETE FROM public.public_account_launch_control;
   IF (SELECT count(*) FROM public.public_account_launch_control)<>0 OR (SELECT count(*) FROM public.public_account_launch_audit)<>0 THEN RAISE EXCEPTION 'PHASE10P_PREAPPLY_PREVIEW_SHAPE'; END IF;
 END $$;

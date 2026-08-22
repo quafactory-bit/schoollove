@@ -224,7 +224,6 @@ DECLARE
   account private.private_accounts%ROWTYPE;
   identity private.social_identity_registry%ROWTYPE;
   candidate_account_id uuid;
-  candidate_count integer;
   auth_identity_count integer;
   auth_mapping_count integer;
   now_at timestamptz:=clock_timestamp();
@@ -242,18 +241,9 @@ BEGIN
     );
   END IF;
 
-  SELECT count(*) INTO candidate_count
-    FROM private.social_identity_registry WHERE broker_subject=requested_broker_subject;
-  IF candidate_count<>1 THEN
-    RETURN private.record_verified_identity_before_bound_reauth(
-      target_attempt_id,target_leg_id,requested_provider,requested_broker_subject,requested_subject_digest,requested_subject_key_version
-    );
-  END IF;
-  SELECT account_id INTO candidate_account_id
-    FROM private.social_identity_registry WHERE broker_subject=requested_broker_subject;
-
-  -- Match the canonical transaction -> attempt -> leg -> broker authority ->
-  -- account -> identity order used by the existing decision implementation.
+  -- Current mutable rows precede the broker authority. Candidate account and
+  -- identity rows are not locked until a coarse bound-provisional read says
+  -- this wrapper, rather than the legacy orphan/recovery helper, owns the case.
   SELECT * INTO tx FROM private.downstream_authorization_transactions WHERE login_attempt_id=target_attempt_id FOR UPDATE;
   SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=target_attempt_id FOR UPDATE;
   SELECT * INTO leg FROM private.upstream_login_legs WHERE id=target_leg_id AND login_attempt_id=target_attempt_id FOR UPDATE;
@@ -271,6 +261,30 @@ BEGIN
     'schoollove:10o-g:broker-decision:v1:'||requested_provider||':'||requested_subject_key_version::text||':'||encode(requested_subject_digest,'hex'),0
   ));
   now_at:=clock_timestamp();
+
+  -- This is deliberately non-locking. Anything except one plausible exact
+  -- bound provisional tuple delegates before account/identity row locks, so
+  -- the legacy code -> attempt -> account -> identity order remains intact.
+  SELECT r.account_id INTO candidate_account_id
+    FROM private.social_identity_registry r
+    JOIN private.private_accounts a ON a.id=r.account_id
+    WHERE r.broker_subject=requested_broker_subject
+      AND r.provider=requested_provider AND r.subject_digest=requested_subject_digest
+      AND r.subject_key_version=requested_subject_key_version AND r.status='provisional'
+      AND r.auth_user_id IS NOT NULL
+      AND a.status='provisional' AND a.auth_user_id=r.auth_user_id
+      AND a.primary_provider=requested_provider AND a.primary_broker_subject=requested_broker_subject
+      AND a.recovery_email_verified_at IS NOT NULL AND a.recovery_email_hmac IS NOT NULL
+      AND a.recovery_email_hmac_key_version IS NOT NULL AND a.recovery_email_ciphertext IS NOT NULL
+      AND a.recovery_email_nonce IS NOT NULL AND a.recovery_email_encryption_key_version IS NOT NULL;
+  IF candidate_account_id IS NULL THEN
+    RETURN private.record_verified_identity_before_bound_reauth(
+      target_attempt_id,target_leg_id,requested_provider,requested_broker_subject,requested_subject_digest,requested_subject_key_version
+    );
+  END IF;
+
+  -- Canonical candidate lock order: account, then identity. No legacy helper
+  -- call is permitted after either lock has been acquired.
   SELECT * INTO account FROM private.private_accounts WHERE id=candidate_account_id FOR UPDATE;
   SELECT * INTO identity FROM private.social_identity_registry WHERE broker_subject=requested_broker_subject FOR UPDATE;
 
@@ -304,9 +318,145 @@ BEGIN
     END IF;
   END IF;
 
-  RETURN private.record_verified_identity_before_bound_reauth(
-    target_attempt_id,target_leg_id,requested_provider,requested_broker_subject,requested_subject_digest,requested_subject_key_version
-  );
+  -- A concurrent legitimate activation may win while this wrapper waits for
+  -- the account lock. Revalidate the complete immutable provider/subject/Auth
+  -- tuple and return the trusted active result directly, without re-entering
+  -- the legacy helper in the reverse lock order.
+  IF tx.status='upstream_bound' AND tx.upstream_login_leg_id=leg.id AND tx.expires_at>now_at
+    AND attempt.state='upstream_pending' AND attempt.provider=requested_provider AND attempt.expires_at>now_at
+    AND leg.status='callback_claimed' AND leg.provider=requested_provider AND leg.expires_at>now_at
+    AND account.id=candidate_account_id AND account.status='active' AND account.auth_user_id IS NOT NULL
+    AND account.activated_at IS NOT NULL AND account.primary_provider=requested_provider
+    AND account.primary_broker_subject=requested_broker_subject
+    AND identity.account_id=account.id AND identity.status='active' AND identity.activated_at IS NOT NULL
+    AND identity.provider=requested_provider AND identity.broker_subject=requested_broker_subject
+    AND identity.subject_digest=requested_subject_digest AND identity.subject_key_version=requested_subject_key_version
+    AND identity.auth_user_id=account.auth_user_id
+    AND EXISTS(SELECT 1 FROM auth.users u WHERE u.id=account.auth_user_id)
+  THEN
+    SELECT count(*) INTO auth_identity_count FROM auth.identities i
+      WHERE i.user_id=account.auth_user_id AND i.provider='custom:schoollove-'||requested_provider
+        AND i.provider_id=requested_broker_subject AND i.identity_data->>'sub'=requested_broker_subject;
+    SELECT count(*) INTO auth_mapping_count FROM auth.identities i
+      WHERE i.provider='custom:schoollove-'||requested_provider
+        AND (i.user_id=account.auth_user_id OR i.provider_id=requested_broker_subject OR i.identity_data->>'sub'=requested_broker_subject);
+    IF auth_identity_count=1 AND auth_mapping_count=1 THEN
+      PERFORM private.scrub_upstream_login_leg(leg.id,'verified',now_at);
+      UPDATE private.oauth_login_attempts SET state='existing_primary',broker_subject=requested_broker_subject,
+        subject_digest=requested_subject_digest,subject_key_version=requested_subject_key_version,
+        account_id=account.id,updated_at=now_at,version=version+1
+        WHERE id=attempt.id AND state='upstream_pending';
+      IF FOUND THEN RETURN 'EXISTING_PRIMARY'; END IF;
+    END IF;
+  END IF;
+
+  IF NOT private.terminalize_bound_downstream_authorization_transaction(attempt.id,leg.id,'rejected',now_at)
+  THEN RETURN 'IDENTITY_REJECTED'; END IF;
+  PERFORM private.scrub_upstream_login_leg(leg.id,'rejected',now_at);
+  UPDATE private.oauth_login_attempts SET state='failed_safe',coarse_terminal_reason='failed_safe',updated_at=now_at,version=version+1
+    WHERE id=attempt.id AND state='upstream_pending';
+  RETURN 'IDENTITY_DECISION_IN_PROGRESS';
+END $$;
+
+-- A same-account activation may commit after a reauth attempt reaches
+-- auth_principal_bound but before its transaction-bound code is issued. Both
+-- issuance boundaries therefore accept the exact provisional-bound OR exact
+-- active-bound shape for that state, while preserving all other P contracts.
+CREATE OR REPLACE FUNCTION public.issue_transaction_bound_broker_authorization_code(
+  target_transaction_id uuid,requested_code_id uuid,requested_code_digest bytea,
+  requested_authentication_time bigint,requested_downstream_nonce text DEFAULT NULL,
+  requested_downstream_nonce_digest bytea DEFAULT NULL,requested_downstream_nonce_ciphertext bytea DEFAULT NULL,
+  requested_downstream_nonce_iv bytea DEFAULT NULL,requested_downstream_nonce_key_version integer DEFAULT NULL
+) RETURNS TABLE(outcome text,code_id uuid,expires_at timestamptz,downstream_state text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE
+  tx private.downstream_authorization_transactions%ROWTYPE;
+  attempt private.oauth_login_attempts%ROWTYPE;
+  leg private.upstream_login_legs%ROWTYPE;
+  issued_at timestamptz:=clock_timestamp(); final_expiry timestamptz; nonce_digest bytea;
+BEGIN
+  PERFORM private.require_social_attempt_service();
+  IF target_transaction_id IS NULL OR requested_code_id IS NULL
+    OR requested_code_digest IS NULL OR octet_length(requested_code_digest)<>32
+    OR requested_authentication_time IS NULL OR requested_authentication_time<0
+    OR requested_authentication_time>floor(extract(epoch FROM issued_at))::bigint
+    OR ((requested_downstream_nonce_digest IS NULL) <> (requested_downstream_nonce_ciphertext IS NULL))
+    OR ((requested_downstream_nonce_digest IS NULL) <> (requested_downstream_nonce_iv IS NULL))
+    OR ((requested_downstream_nonce_digest IS NULL) <> (requested_downstream_nonce_key_version IS NULL))
+    OR (requested_downstream_nonce_digest IS NOT NULL AND (octet_length(requested_downstream_nonce_digest)<>32 OR octet_length(requested_downstream_nonce_ciphertext)<=16 OR octet_length(requested_downstream_nonce_iv)<>12 OR requested_downstream_nonce_key_version NOT BETWEEN 1 AND 32767))
+  THEN RETURN QUERY SELECT 'AUTHORIZATION_CODE_REJECTED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN; END IF;
+
+  SELECT * INTO tx FROM private.downstream_authorization_transactions WHERE id=target_transaction_id FOR UPDATE;
+  IF tx.id IS NULL OR tx.status<>'upstream_bound' OR tx.upstream_login_leg_id IS NULL
+  THEN RETURN QUERY SELECT 'AUTHORIZATION_CODE_REJECTED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN; END IF;
+  SELECT * INTO attempt FROM private.oauth_login_attempts WHERE id=tx.login_attempt_id FOR UPDATE;
+  SELECT * INTO leg FROM private.upstream_login_legs WHERE id=tx.upstream_login_leg_id FOR UPDATE;
+  IF tx.expires_at<=issued_at OR attempt.id IS NULL OR attempt.expires_at<=issued_at OR leg.id IS NULL OR leg.expires_at<=issued_at THEN
+    UPDATE private.downstream_authorization_transactions SET status='expired',downstream_nonce=NULL,downstream_state=NULL,terminal_at=issued_at,version=version+1 WHERE id=tx.id AND status='upstream_bound';
+    UPDATE private.oauth_login_attempts SET state='expired',coarse_terminal_reason='expired',updated_at=issued_at,version=version+1 WHERE id=tx.login_attempt_id AND state IN ('account_decided','auth_principal_bound','existing_primary');
+    RETURN QUERY SELECT 'AUTHORIZATION_CODE_EXPIRED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN;
+  END IF;
+  IF leg.login_attempt_id<>tx.login_attempt_id OR leg.status<>'verified' OR attempt.state NOT IN ('account_decided','auth_principal_bound','existing_primary')
+  THEN RETURN QUERY SELECT 'AUTHORIZATION_CODE_REJECTED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM private.private_accounts a JOIN private.social_identity_registry r ON r.account_id=a.id
+    WHERE a.id=attempt.account_id AND a.primary_provider=attempt.provider AND a.primary_broker_subject=attempt.broker_subject
+      AND r.broker_subject=attempt.broker_subject AND r.provider=attempt.provider
+      AND ((attempt.state='account_decided' AND a.status='provisional' AND a.auth_user_id IS NULL AND r.status='provisional' AND r.auth_user_id IS NULL)
+        OR (attempt.state='auth_principal_bound' AND (
+             (a.status='provisional' AND a.auth_user_id IS NOT NULL AND r.status='provisional' AND r.auth_user_id=a.auth_user_id AND r.activated_at IS NULL)
+          OR (a.status='active' AND a.auth_user_id IS NOT NULL AND a.activated_at IS NOT NULL AND r.status='active' AND r.auth_user_id=a.auth_user_id AND r.activated_at IS NOT NULL)
+        )) OR (attempt.state='existing_primary' AND a.status='active' AND a.auth_user_id IS NOT NULL AND a.activated_at IS NOT NULL AND r.status='active' AND r.auth_user_id=a.auth_user_id AND r.activated_at IS NOT NULL))
+  ) THEN RETURN QUERY SELECT 'AUTHORIZATION_CODE_REJECTED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN; END IF;
+
+  IF tx.downstream_nonce IS NULL THEN
+    IF requested_downstream_nonce IS NOT NULL OR requested_downstream_nonce_digest IS NOT NULL
+    THEN RETURN QUERY SELECT 'AUTHORIZATION_CODE_REJECTED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN; END IF;
+  ELSE
+    nonce_digest:=extensions.digest(convert_to('schoollove:broker-code-downstream-nonce-digest:v1','UTF8') || decode('00','hex') || convert_to(tx.downstream_nonce,'UTF8'),'sha256');
+    IF requested_downstream_nonce IS DISTINCT FROM tx.downstream_nonce OR requested_downstream_nonce_digest IS NULL OR requested_downstream_nonce_digest<>nonce_digest
+    THEN RETURN QUERY SELECT 'AUTHORIZATION_CODE_REJECTED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN; END IF;
+  END IF;
+  IF EXISTS(SELECT 1 FROM private.broker_authorization_codes WHERE authorization_transaction_id=tx.id)
+  THEN RETURN QUERY SELECT 'REPLAY_REJECTED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN; END IF;
+  final_expiry:=LEAST(tx.expires_at,attempt.expires_at,issued_at+interval '60 seconds');
+  IF final_expiry<=issued_at THEN
+    UPDATE private.downstream_authorization_transactions SET status='expired',downstream_nonce=NULL,downstream_state=NULL,terminal_at=issued_at,version=version+1 WHERE id=tx.id AND status='upstream_bound';
+    UPDATE private.oauth_login_attempts SET state='expired',coarse_terminal_reason='expired',updated_at=issued_at,version=version+1 WHERE id=attempt.id AND state IN ('account_decided','auth_principal_bound','existing_primary');
+    RETURN QUERY SELECT 'AUTHORIZATION_CODE_EXPIRED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN;
+  END IF;
+  BEGIN
+    INSERT INTO private.broker_authorization_codes(id,login_attempt_id,authorization_transaction_id,code_digest,client_id,redirect_uri,pkce_s256_challenge,authentication_time,state,created_at,expires_at,downstream_nonce_digest,downstream_nonce_ciphertext,downstream_nonce_iv,downstream_nonce_key_version)
+    VALUES(requested_code_id,tx.login_attempt_id,tx.id,requested_code_digest,tx.client_id,tx.redirect_uri,tx.pkce_s256_challenge,requested_authentication_time,'ready',issued_at,final_expiry,requested_downstream_nonce_digest,requested_downstream_nonce_ciphertext,requested_downstream_nonce_iv,requested_downstream_nonce_key_version);
+  EXCEPTION WHEN unique_violation THEN RETURN QUERY SELECT 'AUTHORIZATION_CODE_REJECTED'::text,NULL::uuid,NULL::timestamptz,NULL::text; RETURN; END;
+  UPDATE private.oauth_login_attempts SET state='broker_code_ready',updated_at=issued_at,version=version+1 WHERE id=attempt.id AND state IN ('account_decided','auth_principal_bound','existing_primary');
+  UPDATE private.downstream_authorization_transactions SET status='consumed',downstream_nonce=NULL,downstream_state=NULL,terminal_at=issued_at,version=version+1 WHERE id=tx.id AND status='upstream_bound';
+  RETURN QUERY SELECT 'AUTHORIZATION_CODE_CREATED'::text,requested_code_id,final_expiry,tx.downstream_state;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.get_transaction_bound_broker_code_issuance_context(target_attempt_id uuid)
+RETURNS TABLE(authorization_transaction_id uuid,login_attempt_id uuid,client_id text,redirect_uri text,pkce_s256_challenge text,downstream_nonce text,downstream_state text,expires_at timestamptz)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE tx private.downstream_authorization_transactions%ROWTYPE; attempt private.oauth_login_attempts%ROWTYPE; leg private.upstream_login_legs%ROWTYPE; now_at timestamptz:=clock_timestamp();
+BEGIN
+  PERFORM private.require_social_attempt_service();
+  IF target_attempt_id IS NULL THEN RETURN; END IF;
+  SELECT t.* INTO tx FROM private.downstream_authorization_transactions t WHERE t.login_attempt_id=target_attempt_id;
+  SELECT a.* INTO attempt FROM private.oauth_login_attempts a WHERE a.id=target_attempt_id;
+  IF tx.id IS NULL OR attempt.id IS NULL OR tx.status<>'upstream_bound' OR tx.upstream_login_leg_id IS NULL OR tx.expires_at<=now_at OR attempt.expires_at<=now_at OR attempt.state NOT IN ('account_decided','auth_principal_bound','existing_primary') THEN RETURN; END IF;
+  SELECT l.* INTO leg FROM private.upstream_login_legs l WHERE l.id=tx.upstream_login_leg_id;
+  IF leg.id IS NULL OR leg.login_attempt_id<>target_attempt_id OR leg.status<>'verified' OR leg.expires_at<=now_at THEN RETURN; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM private.private_accounts a JOIN private.social_identity_registry r ON r.account_id=a.id
+    WHERE a.id=attempt.account_id AND a.primary_provider=attempt.provider AND a.primary_broker_subject=attempt.broker_subject
+      AND r.broker_subject=attempt.broker_subject AND r.provider=attempt.provider
+      AND ((attempt.state='account_decided' AND a.status='provisional' AND a.auth_user_id IS NULL AND r.status='provisional' AND r.auth_user_id IS NULL)
+        OR (attempt.state='auth_principal_bound' AND (
+             (a.status='provisional' AND a.auth_user_id IS NOT NULL AND r.status='provisional' AND r.auth_user_id=a.auth_user_id AND r.activated_at IS NULL)
+          OR (a.status='active' AND a.auth_user_id IS NOT NULL AND a.activated_at IS NOT NULL AND r.status='active' AND r.auth_user_id=a.auth_user_id AND r.activated_at IS NOT NULL)
+        )) OR (attempt.state='existing_primary' AND a.status='active' AND a.auth_user_id IS NOT NULL AND a.activated_at IS NOT NULL AND r.status='active' AND r.auth_user_id=a.auth_user_id AND r.activated_at IS NOT NULL))
+  ) THEN RETURN; END IF;
+  RETURN QUERY SELECT tx.id,tx.login_attempt_id,tx.client_id,tx.redirect_uri,tx.pkce_s256_challenge,tx.downstream_nonce,tx.downstream_state,tx.expires_at;
 END $$;
 
 REVOKE ALL ON FUNCTION public.activate_social_account(uuid) FROM PUBLIC,anon,authenticated;
