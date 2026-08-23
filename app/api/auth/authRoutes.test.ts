@@ -27,6 +27,16 @@ describe('email OTP auth routes', () => {
     )
   })
 
+  it('OTP 검증 schema는 정확히 6자리 숫자만 허용한다', () => {
+    const sixDigits = /^\d{6}$/
+    expect(sixDigits.test('12345')).toBe(false)
+    expect(sixDigits.test('123456')).toBe(true)
+    expect(sixDigits.test('1234567')).toBe(false)
+    expect(sixDigits.test('12345678')).toBe(false)
+    expect(sixDigits.test('12a456')).toBe(false)
+    expect(verifySource).toContain('regex(/^\\d{6}$/)')
+  })
+
   it('rate-limit 저장 key는 원본 IP·이메일 대신 SHA-256 digest를 사용한다', () => {
     expect(rateLimitSource).toContain("createHash('sha256')")
     expect(rateLimitSource).toContain("digest('hex')")

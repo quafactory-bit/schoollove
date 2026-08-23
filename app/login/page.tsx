@@ -61,6 +61,15 @@ export default function LoginPage() {
     await sendOtp()
   }
 
+  function rejectInvalidTokenPaste(event:React.ClipboardEvent<HTMLInputElement>) {
+    const pasted=event.clipboardData.getData('text')
+    if (/^\d{6}$/.test(pasted)) return
+    event.preventDefault()
+    setToken('')
+    setStatus('인증번호는 숫자 6자리만 입력해 주세요.')
+    setIsError(true)
+  }
+
   async function verifyOtp(event:React.FormEvent) {
     event.preventDefault()
     if (busy) return
@@ -92,16 +101,16 @@ export default function LoginPage() {
       <input id="email" type="email" inputMode="email" autoComplete="email" required maxLength={254}
         value={email} onChange={(event)=>setEmail(event.target.value)}
         className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3" />
-      <button disabled={busy} className="schoollove-focus min-h-12 w-full rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-50">
+      <button disabled={busy} className="schoollove-dark-action schoollove-focus min-h-12 w-full rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-50">
         {busy?'보내는 중…':'인증번호 받기'}
       </button>
     </form> : <form onSubmit={verifyOtp} className="mt-8 space-y-4">
       <p className="break-all rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700">입력한 이메일로 보낸 6자리 번호를 확인해 주세요.</p>
       <label className="block text-sm font-medium text-gray-800" htmlFor="token">인증번호 6자리</label>
       <input id="token" inputMode="numeric" autoComplete="one-time-code" required pattern="[0-9]{6}" maxLength={6}
-        value={token} onChange={(event)=>setToken(event.target.value.replace(/\D/g,''))}
+        value={token} onChange={(event)=>setToken(event.target.value.replace(/\D/g,''))} onPaste={rejectInvalidTokenPaste}
         className="schoollove-focus min-h-14 w-full rounded-xl border border-gray-300 px-4 py-3 text-center text-2xl tracking-[0.35em]" />
-      <button disabled={busy||token.length!==6} className="schoollove-focus min-h-12 w-full rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-50">
+      <button disabled={busy||token.length!==6} className="schoollove-dark-action schoollove-focus min-h-12 w-full rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-50">
         {busy?'확인 중…':'로그인'}
       </button>
       <button type="button" disabled={busy||cooldown>0} onClick={()=>void sendOtp()}
