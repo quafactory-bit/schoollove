@@ -22,9 +22,9 @@ The verified Preview deployment is `dpl_5xoV1NxpdyBS1wyFbk7TJC8F1CDy` on
    was recorded once (`ready` to `open`). Opening alone did not activate it.
 4. Vercel Authentication initially prevented Supabase broker discovery,
    classified as `PREVIEW_OIDC_DISCOVERY_BLOCKED_BY_VERCEL_AUTHENTICATION`.
-5. A separately approved short Preview-only Vercel Authentication window made
-   discovery and JWKS reachable. One Google flow completed and reached
-   `/account`; protection was restored immediately afterward.
+5. An approved short controlled Vercel Authentication OFF window under Standard
+   Protection made discovery and JWKS reachable. One Google flow completed and
+   reached `/account`; Require Log In was restored immediately afterward.
 6. That flow changed only the existing Google account and identity from
    `provisional` to `active`, without new recovery.
 
@@ -122,9 +122,9 @@ No fixture was created and no Kakao provider request was sent.
 With Vercel Standard Protection on, Supabase Custom OIDC server-side requests
 to Preview discovery, JWKS, and token endpoints cannot reach the protected
 broker authority. A future real Kakao or Naver Preview E2E consequently needs
-either a separately approved short Preview-only protection window or a later
-architecture separating public OIDC authority from protected Preview UI. This
-audit changes neither option.
+either an approved short controlled Vercel Authentication OFF window under
+Standard Protection or a later architecture separating public OIDC authority
+from protected Preview UI. This audit changes neither option.
 
 The next-provider gate remains closed until the operator supplies the Kakao
 Developers confirmations. Any future first Kakao E2E is a first-login/recovery flow, not a
