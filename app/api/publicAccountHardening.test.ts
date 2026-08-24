@@ -26,12 +26,12 @@ describe('PHASE 10N-B application hardening',()=>{
     expect(route).toContain("rpc('admin_mark_public_account_auth_deletion_failed'")
   })
 
-  it('counts OTP requests only after provider acceptance and OTP verify once per account',()=>{
+  it('keeps Supabase email OTP routes dark under Google-only login policy',()=>{
     const request=source('app/api/auth/request-otp/route.ts')
     const verify=source('app/api/auth/verify-otp/route.ts')
-    expect(request).toMatch(/if \(error\)[\s\S]*else await recordPublicAccountActivity\('otp_request_accepted'/)
-    expect(verify).toContain("rpc('record_own_otp_verified_milestone')")
-    expect(verify).not.toContain('recordPublicAccountActivity')
+    expect(request).toContain('status: 404')
+    expect(verify).toContain('status: 404')
+    expect(request + verify).not.toMatch(/signInWithOtp|verifyOtp/)
   })
 
   it('records school-search activity only when the actual results RPC runs',()=>{

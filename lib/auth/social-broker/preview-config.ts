@@ -1,7 +1,6 @@
 import 'server-only'
 import { createPrivateKey, createPublicKey, timingSafeEqual, type KeyObject } from 'node:crypto'
 import { createDarkOidcClient, type DarkOidcClient } from './http'
-import type { SocialProvider } from './types'
 import type { VersionedKey } from '../social-account/recovery'
 
 const KEY_PATTERN = /^[A-Za-z0-9_-]{43}$/
@@ -10,15 +9,13 @@ const JWK_PATTERN = /^[A-Za-z0-9_-]{64,16384}$/
 
 export const PREVIEW_BROKER_ISSUER = 'https://preview.schoollove.kr'
 export const PREVIEW_SUPABASE_CALLBACK = 'https://hukokfyphyrpfouazxhq.supabase.co/auth/v1/callback'
-const DOWNSTREAM_CLIENT_IDS: Readonly<Record<SocialProvider, string>> = Object.freeze({
-  google: 'slb-supabase-google', kakao: 'slb-supabase-kakao', naver: 'slb-supabase-naver',
-})
+const GOOGLE_DOWNSTREAM_CLIENT_ID = 'slb-supabase-google'
 
 export type BrokerExposureMode = 'off' | 'preview'
 export type ProviderCredential = Readonly<{ clientId: string; clientSecret: string }>
 export type BrokerPreviewConfig = Readonly<{
   exposure: 'preview'
-  providers: Readonly<Record<SocialProvider, ProviderCredential>>
+  providers: Readonly<{ google: ProviderCredential }>
   downstreamClients: readonly DarkOidcClient[]
   upstreamContinuationKey: Readonly<{ version: 1; material: Uint8Array }>
   browserSessionKey: Readonly<{ version: 1; material: Uint8Array }>
@@ -75,19 +72,8 @@ export function loadBrokerPreviewConfig(env: Environment = process.env): BrokerC
   const mode = env.SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE ?? 'off'
   if (mode === 'off') return Object.freeze({ exposure: 'off' })
   if (mode !== 'preview' || env.VERCEL_ENV === 'production') invalid()
-  const providers = Object.freeze({
-    google: Object.freeze({ clientId: required(env, 'SCHOOLLOVE_GOOGLE_CLIENT_ID'), clientSecret: required(env, 'SCHOOLLOVE_GOOGLE_CLIENT_SECRET') }),
-    kakao: Object.freeze({ clientId: required(env, 'SCHOOLLOVE_KAKAO_CLIENT_ID'), clientSecret: required(env, 'SCHOOLLOVE_KAKAO_CLIENT_SECRET') }),
-    naver: Object.freeze({ clientId: required(env, 'SCHOOLLOVE_NAVER_CLIENT_ID'), clientSecret: required(env, 'SCHOOLLOVE_NAVER_CLIENT_SECRET') }),
-  })
-  const downstreamSecrets = Object.freeze((['google', 'kakao', 'naver'] as const).map(provider => required(env, `SCHOOLLOVE_SUPABASE_${provider.toUpperCase()}_CLIENT_SECRET`)))
-  if (new Set(downstreamSecrets).size !== downstreamSecrets.length) invalid()
-  const downstreamClients = Object.freeze((['google', 'kakao', 'naver'] as const).map((provider, index) => createDarkOidcClient(
-    DOWNSTREAM_CLIENT_IDS[provider],
-    downstreamSecrets[index]!,
-    PREVIEW_SUPABASE_CALLBACK,
-    provider,
-  )))
+  const providers = Object.freeze({ google: Object.freeze({ clientId: required(env, 'SCHOOLLOVE_GOOGLE_CLIENT_ID'), clientSecret: required(env, 'SCHOOLLOVE_GOOGLE_CLIENT_SECRET') }) })
+  const downstreamClients = Object.freeze([createDarkOidcClient(GOOGLE_DOWNSTREAM_CLIENT_ID, required(env, 'SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET'), PREVIEW_SUPABASE_CALLBACK, 'google')])
   const upstreamContinuationKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1')
   const browserSessionKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1')
   const upstreamPkceKey = key(env, 'SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1')
@@ -115,9 +101,7 @@ export function loadBrokerPreviewConfig(env: Environment = process.env): BrokerC
   })
 }
 
-export const PROVIDER_CALLBACK_PATHS: Readonly<Record<SocialProvider, string>> = Object.freeze({
-  google: '/auth/social/callback/google', kakao: '/auth/social/callback/kakao', naver: '/auth/social/callback/naver',
-})
+export const PROVIDER_CALLBACK_PATHS = Object.freeze({ google: '/auth/social/callback/google' })
 export const BROKER_PUBLIC_PATHS = Object.freeze({
   discovery: '/.well-known/openid-configuration', jwks: '/.well-known/jwks.json', authorize: '/oauth/authorize', token: '/oauth/token',
 })

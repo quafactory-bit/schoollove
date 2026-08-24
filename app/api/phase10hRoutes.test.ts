@@ -42,9 +42,14 @@ describe('PHASE 10H route boundaries',()=>{
     expect(source('app/admin/operations/OperationsClient.tsx')).toContain('개인 원문 없이')
   })
 
-  it('restricts login continuation to account or onboarding',()=>{
+  it('pins login to the fixed first-party Google start route',()=>{
     const login=source('app/login/page.tsx')
-    expect(login).toContain('safeLoginDestination')
+    const googleStart=source('app/auth/social/start/google/route.ts')
+    expect(login).toContain('href="/auth/social/start/google"')
+    expect(login).not.toMatch(/safeLoginDestination|redirect_to|provider=/)
+    expect(googleStart).toContain("destination.searchParams.set('provider', 'custom:schoollove-google')")
+    expect(googleStart).toContain("destination.searchParams.set('redirect_to', COMPLETION_ROUTE)")
+    expect(googleStart).not.toMatch(/request\.|headers\.get|searchParams\.get/)
     expect(source('lib/policy/onboarding.ts')).toContain("value === '/onboarding'")
   })
 

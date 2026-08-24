@@ -35,7 +35,7 @@ describe('social broker security and feature-off contract', () => {
     expect(Object.keys(JSON.parse(output)).sort()).toEqual(['at', 'attemptId', 'event', 'provider', 'state'])
   })
 
-  it('keeps the broker server-only, hard-off in deployed routes, and disconnected from Supabase and network clients', () => {
+  it('keeps the broker server-only, permits only the fixed Google entrypoint, and disconnects it from Supabase and network clients', () => {
     const index = read('lib/auth/social-broker/index.ts')
     const providers = read('lib/auth/social-broker/providers.ts')
     const oidc = read('lib/auth/social-broker/oidc.ts')
@@ -46,13 +46,23 @@ describe('social broker security and feature-off contract', () => {
     expect(appSources).toContain('darkOidcRouteNotFound')
     expect(read('lib/auth/social-broker/http.ts')).toContain("import 'server-only'")
     expect(read('lib/auth/social-broker/http.ts')).toContain('return new Response(null, { status: 404')
-    expect(read('app/login/page.tsx')).not.toMatch(/kakao|naver|google|social-broker/i)
+    const login = read('app/login/page.tsx')
+    const googleStart = read('app/auth/social/start/google/route.ts')
+    expect(login).toContain('href="/auth/social/start/google"')
+    expect(login).toContain('Google로 계속하기')
+    expect(login).not.toMatch(/kakao|naver/i)
+    expect(googleStart).toContain("custom:schoollove-google")
+    expect(googleStart).toContain("destination.searchParams.set('redirect_to', COMPLETION_ROUTE)")
+    expect(googleStart).not.toMatch(/request\.|headers\.get|searchParams\.get/)
     expect(read('app/api/auth/request-otp/route.ts')).not.toContain('social-broker')
     expect(read('app/api/auth/verify-otp/route.ts')).not.toContain('social-broker')
     for (const route of [
       'app/auth/social/callback/google/route.ts', 'app/auth/social/callback/kakao/route.ts', 'app/auth/social/callback/naver/route.ts',
       'app/.well-known/openid-configuration/route.ts', 'app/.well-known/jwks.json/route.ts', 'app/oauth/authorize/route.ts', 'app/oauth/token/route.ts',
     ]) expect(read(route)).toContain('darkOidcRouteNotFound')
+    for (const route of ['app/auth/social/callback/kakao/route.ts', 'app/auth/social/callback/naver/route.ts']) {
+      expect(read(route)).not.toMatch(/activePreviewRouteAdapter|upstream-adapters/)
+    }
   })
 
   it('keeps dark upstream adapters server-only, transport-injected, and outside the public HTTP surface', () => {
