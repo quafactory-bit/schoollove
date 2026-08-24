@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-24 PHASE 10Q Google-only Preview authentication consolidation (local / Draft)
+
+- Consolidated the Preview/Draft user-facing authentication path to Google only, with a fixed first-party Google start route and no client-selected provider or redirect destination.
+- Darkened Supabase email OTP user-login routes and Kakao/Naver deployed callback runtime; SchoolLove custom recovery remains available with its eight-digit OTP contract.
+- No external provider or Supabase/Vercel configuration, Production system, database, Auth, launch, email, or recovery delivery was mutated in this phase. External provider decommission remains separately approved work.
+
 ## 2026-08-22 PHASE 10P social activation and bound-provisional reauthentication (local / Draft / Preview-only)
 
 - Added one forward-only migration that restores a missing launch singleton only to the exact closed state, preserves an existing valid singleton unchanged, and hardens social activation so only an exact open launch can activate an attempt-derived account and primary identity atomically.

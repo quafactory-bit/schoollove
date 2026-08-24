@@ -9,7 +9,7 @@ const endpoints = Object.freeze({
   kakao: Object.freeze({ token: 'https://kauth.kakao.com/oauth/token', jwks: 'https://kauth.kakao.com/.well-known/jwks.json' }),
   naver: Object.freeze({ token: 'https://nid.naver.com/oauth2.0/token', profile: 'https://openapi.naver.com/v1/nid/me' }),
 })
-export type TransportCredentials = Readonly<Record<SocialProvider, Readonly<{ clientId: string; clientSecret: string }>>>
+export type TransportCredentials = Readonly<Partial<Record<SocialProvider, Readonly<{ clientId: string; clientSecret: string }>>>>
 type Fetcher = typeof fetch
 
 function rejected(): never { throw new Error('UPSTREAM_TRANSPORT_REJECTED') }

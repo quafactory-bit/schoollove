@@ -24,11 +24,9 @@ const now = () => Math.floor(Date.now() / 1000)
  */
 export function createActivePreviewServices(config: BrokerPreviewConfig, client: PreviewRpcClient, clock: () => number = now): ActivePreviewServices {
   const persistence = createPreviewBrokerPersistence(client)
-  const upstream = Object.freeze({
-    google: Object.freeze({ clientId: config.providers.google.clientId, redirectUri: `${PREVIEW_BROKER_ISSUER}/auth/social/callback/google` }),
-    kakao: Object.freeze({ clientId: config.providers.kakao.clientId, redirectUri: `${PREVIEW_BROKER_ISSUER}/auth/social/callback/kakao` }),
-    naver: Object.freeze({ clientId: config.providers.naver.clientId, redirectUri: `${PREVIEW_BROKER_ISSUER}/auth/social/callback/naver` }),
-  })
+  // The deployed registry contains only Google; the cast preserves the historical
+  // generic broker type while unsupported providers have no reachable runtime path.
+  const upstream = Object.freeze({ google: Object.freeze({ clientId: config.providers.google.clientId, redirectUri: `${PREVIEW_BROKER_ISSUER}/auth/social/callback/google` }) }) as Readonly<Record<'google' | 'kakao' | 'naver', Readonly<{ clientId: string; redirectUri: string }>>>
   const orchestrator = new DarkBrokerOrchestrator({
     clients: config.downstreamClients,
     persistence,

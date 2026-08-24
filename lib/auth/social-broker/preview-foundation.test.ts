@@ -15,11 +15,7 @@ const env = (overrides: Record<string, string | undefined> = {}) => ({
   SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'preview',
   VERCEL_ENV: 'preview',
   SCHOOLLOVE_GOOGLE_CLIENT_ID: 'google-client', SCHOOLLOVE_GOOGLE_CLIENT_SECRET: 'google-secret',
-  SCHOOLLOVE_KAKAO_CLIENT_ID: 'kakao-client', SCHOOLLOVE_KAKAO_CLIENT_SECRET: 'kakao-secret',
-  SCHOOLLOVE_NAVER_CLIENT_ID: 'naver-client', SCHOOLLOVE_NAVER_CLIENT_SECRET: 'naver-secret',
   SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET: 'downstream-google-secret',
-  SCHOOLLOVE_SUPABASE_KAKAO_CLIENT_SECRET: 'downstream-kakao-secret',
-  SCHOOLLOVE_SUPABASE_NAVER_CLIENT_SECRET: 'downstream-naver-secret',
   SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_CONTINUATION_KEY_V1: key(1),
   SCHOOLLOVE_SOCIAL_BROKER_BROWSER_SESSION_KEY_V1: key(2),
   SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1: key(3),
@@ -44,10 +40,9 @@ describe('PHASE 10P preview provider foundation', () => {
     expect(config.providers.google.clientId).toBe('google-client')
     expect(config.downstreamClients).toEqual(expect.arrayContaining([
       expect.objectContaining({ clientId: 'slb-supabase-google', provider: 'google', redirectUri: PREVIEW_SUPABASE_CALLBACK }),
-      expect.objectContaining({ clientId: 'slb-supabase-kakao', provider: 'kakao', redirectUri: PREVIEW_SUPABASE_CALLBACK }),
-      expect.objectContaining({ clientId: 'slb-supabase-naver', provider: 'naver', redirectUri: PREVIEW_SUPABASE_CALLBACK }),
     ]))
-    expect(() => loadBrokerPreviewConfig(env({ SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET: 'same-secret', SCHOOLLOVE_SUPABASE_KAKAO_CLIENT_SECRET: 'same-secret' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+    expect(config.downstreamClients).toHaveLength(1)
+    expect(() => loadBrokerPreviewConfig(env({ SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET: '' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
     expect(() => loadBrokerPreviewConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1: key(1) }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
   })
 
