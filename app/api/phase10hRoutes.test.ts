@@ -49,7 +49,8 @@ describe('PHASE 10H route boundaries',()=>{
     expect(login).not.toMatch(/safeLoginDestination|redirect_to|provider=/)
     expect(googleStart).toContain("destination.searchParams.set('provider', 'custom:schoollove-google')")
     expect(googleStart).toContain("destination.searchParams.set('redirect_to', COMPLETION_ROUTE)")
-    expect(googleStart).not.toMatch(/request\.|headers\.get|searchParams\.get/)
+    expect(googleStart).toContain('new URL(request.url).origin !== PREVIEW_ORIGIN')
+    expect(googleStart).not.toMatch(/headers\.get|searchParams\.get/)
     expect(source('lib/policy/onboarding.ts')).toContain("value === '/onboarding'")
   })
 

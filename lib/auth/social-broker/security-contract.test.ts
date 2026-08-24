@@ -53,7 +53,8 @@ describe('social broker security and feature-off contract', () => {
     expect(login).not.toMatch(/kakao|naver/i)
     expect(googleStart).toContain("custom:schoollove-google")
     expect(googleStart).toContain("destination.searchParams.set('redirect_to', COMPLETION_ROUTE)")
-    expect(googleStart).not.toMatch(/request\.|headers\.get|searchParams\.get/)
+    expect(googleStart).toContain('new URL(request.url).origin !== PREVIEW_ORIGIN')
+    expect(googleStart).not.toMatch(/headers\.get|searchParams\.get/)
     expect(read('app/api/auth/request-otp/route.ts')).not.toContain('social-broker')
     expect(read('app/api/auth/verify-otp/route.ts')).not.toContain('social-broker')
     for (const route of [
