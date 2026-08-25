@@ -12,6 +12,12 @@ describe('/account private management UI', () => {
     expect(page).toContain("robots: { index: false, follow: false, nocache: true, noarchive: true }")
   })
 
+  it('Google 로그인 상태를 coarse label로 표시하고 provider email에 의존하지 않는다', () => {
+    expect(client).toContain('Google 계정으로 로그인됨')
+    expect(page).not.toContain('auth.user.email')
+    expect(client).not.toMatch(/\bemail\b/)
+  })
+
   it('성인 확인, 필수 동의, 내 프로필, 학교 이력, 삭제·탈퇴를 제공한다', () => {
     for (const text of ['만 19세 이상 확인', '필수 동의', '내 비공개 프로필', '내 학교 이력', '내 프로필 삭제', '계정 탈퇴 요청']) {
       expect(client).toContain(text)

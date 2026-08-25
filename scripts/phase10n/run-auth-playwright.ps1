@@ -1,7 +1,7 @@
 param([string]$Project='')
 $ErrorActionPreference='Stop'
-$db='schoollove-phase10n-auth-db';$auth='schoollove-phase10n-auth-gotrue';$rest='schoollove-phase10n-auth-rest';$mail='schoollove-phase10n-auth-mail';$network='schoollove-phase10n-auth-network'
-$dbImage='public.ecr.aws/supabase/postgres:17.6.1.143';$authImage='public.ecr.aws/supabase/gotrue:v2.193.0';$restImage='public.ecr.aws/supabase/postgrest:v14.14';$mailImage='public.ecr.aws/supabase/mailpit:v1.30.2'
+$db='schoollove-phase10n-auth-db';$auth='schoollove-phase10n-auth-gotrue';$rest='schoollove-phase10n-auth-rest';$network='schoollove-phase10n-auth-network'
+$dbImage='public.ecr.aws/supabase/postgres:17.6.1.143';$authImage='public.ecr.aws/supabase/gotrue:v2.193.0';$restImage='public.ecr.aws/supabase/postgrest:v14.14'
 $reset=(Resolve-Path 'supabase/migrations/20260802120000_legacy_person_data_reset.sql').Path;$launch=(Resolve-Path 'supabase/migrations/20260803120000_public_account_soft_launch.sql').Path
 $next=$null;$proxy=$null;$temp=Join-Path ([IO.Path]::GetTempPath()) ('schoollove-phase10n-auth-'+[guid]::NewGuid().ToString('N'));$created=@()
 function B64([byte[]]$value){[Convert]::ToBase64String($value).TrimEnd('=').Replace('+','-').Replace('/','_')}
@@ -12,7 +12,7 @@ function WaitHttp([string]$url,[int]$attempts=120){for($i=0;$i-lt$attempts;$i++)
 try{
   New-Item -ItemType Directory -Path $temp|Out-Null
   docker version --format '{{.Server.Version}}'|Out-Null;if($LASTEXITCODE-ne 0){throw 'Docker unavailable.'}
-  foreach($name in @($db,$auth,$rest,$mail)){$old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';docker rm -f $name 2>$null|Out-Null;$ErrorActionPreference=$old}
+  foreach($name in @($db,$auth,$rest)){$old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';docker rm -f $name 2>$null|Out-Null;$ErrorActionPreference=$old}
   $old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';docker network rm $network 2>$null|Out-Null;$ErrorActionPreference=$old
   docker network create $network|Out-Null;$created+=@('network')
   docker run -d --name $db --network $network --network-alias db -e POSTGRES_PASSWORD=local_phase10n_auth_only $dbImage|Out-Null;$created+=@('db')
@@ -20,22 +20,17 @@ try{
   docker exec $db createdb -U postgres -T template0 phase10n_auth
   $secretBytes=New-Object byte[] 48;$controlBytes=New-Object byte[] 32;$rng=[Security.Cryptography.RandomNumberGenerator]::Create();try{$rng.GetBytes($secretBytes);$rng.GetBytes($controlBytes)}finally{$rng.Dispose()};$secret=B64($secretBytes);$control=B64($controlBytes);$anon=Jwt 'anon' $secret;$service=Jwt 'service_role' $secret
   Sql "CREATE ROLE phase10n_gotrue LOGIN PASSWORD 'local_phase10n_gotrue_only'; GRANT phase10n_gotrue TO postgres; ALTER ROLE phase10n_gotrue IN DATABASE phase10n_auth SET search_path TO auth,public; CREATE SCHEMA auth; GRANT ALL ON SCHEMA auth TO phase10n_gotrue;"
-  docker run -d --name $mail --network $network --network-alias mailpit -p 127.0.0.1:3224:8025 $mailImage|Out-Null;$created+=@('mail')
   $env:PHASE10N_PROXY_PORT='3221';$env:PHASE10N_POSTGREST_PORT='3222';$env:PHASE10N_GOTRUE_PORT='3223';$env:PHASE10N_PROXY_CONTROL_TOKEN=$control
+  $env:PHASE10N_DB_CONTAINER=$db
   $proxy=Start-Process -FilePath 'node.exe' -ArgumentList 'scripts/phase10n/supabase-proxy.mjs' -WorkingDirectory (Get-Location).Path -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $temp 'proxy.out') -RedirectStandardError (Join-Path $temp 'proxy.err')
-  WaitHttp 'http://127.0.0.1:3221/phase10n-otp-template'
+  WaitHttp 'http://127.0.0.1:3221/phase10n-proxy-health'
   docker run -d --name $auth --network $network --network-alias gotrue -p 127.0.0.1:3223:9999 `
     -e GOTRUE_API_HOST=0.0.0.0 -e GOTRUE_API_PORT=9999 -e GOTRUE_DB_DRIVER=postgres `
     -e GOTRUE_DB_NAMESPACE=auth `
     -e GOTRUE_DB_DATABASE_URL='postgres://phase10n_gotrue:local_phase10n_gotrue_only@db:5432/phase10n_auth?sslmode=disable' `
     -e GOTRUE_SITE_URL=http://127.0.0.1:3220 -e API_EXTERNAL_URL=http://127.0.0.1:3221/auth/v1 `
     -e GOTRUE_JWT_SECRET=$secret -e GOTRUE_JWT_EXP=3600 -e GOTRUE_JWT_ADMIN_ROLES=service_role -e GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated `
-    -e GOTRUE_DISABLE_SIGNUP=false -e GOTRUE_EXTERNAL_EMAIL_ENABLED=true -e GOTRUE_MAILER_AUTOCONFIRM=false `
-    -e GOTRUE_SMTP_HOST=mailpit -e GOTRUE_SMTP_PORT=1025 -e GOTRUE_SMTP_ADMIN_EMAIL=admin@example.invalid -e GOTRUE_SMTP_SENDER_NAME='SchoolLove TEST' `
-    -e GOTRUE_SMTP_MAX_FREQUENCY=1s -e GOTRUE_RATE_LIMIT_EMAIL_SENT=1000 `
-    -e GOTRUE_MAILER_TEMPLATES_MAGIC_LINK=http://host.docker.internal:3221/phase10n-otp-template `
-    -e GOTRUE_MAILER_TEMPLATES_RECOVERY=http://host.docker.internal:3221/phase10n-otp-template `
-    -e GOTRUE_MAILER_OTP_EXP=3600 -e GOTRUE_MAILER_OTP_LENGTH=6 $authImage|Out-Null;$created+=@('auth')
+    -e GOTRUE_DISABLE_SIGNUP=false -e GOTRUE_EXTERNAL_EMAIL_ENABLED=false -e GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED=true $authImage|Out-Null;$created+=@('auth')
   WaitHttp 'http://127.0.0.1:3223/health'
   Sql "DO `$`$ BEGIN IF to_regclass('public.schema_migrations') IS NOT NULL THEN ALTER TABLE public.schema_migrations RENAME TO gotrue_schema_migrations; ALTER TABLE public.gotrue_schema_migrations RENAME CONSTRAINT schema_migrations_pkey TO gotrue_schema_migrations_pkey; ALTER TABLE public.gotrue_schema_migrations SET SCHEMA auth; END IF; END `$`$;"
   Sql @"
@@ -50,7 +45,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
   docker run -d --name $rest --network $network -p 127.0.0.1:3222:3000 -e PGRST_DB_URI=postgres://phase10l_authenticator:phase10l_local_postgrest@db:5432/phase10n_auth -e PGRST_DB_SCHEMAS=public -e PGRST_DB_ANON_ROLE=anon -e PGRST_JWT_SECRET=$secret $restImage|Out-Null;$created+=@('rest')
   WaitHttp 'http://127.0.0.1:3221/auth/v1/health'
   $env:NEXT_PUBLIC_SUPABASE_URL='http://127.0.0.1:3221';$env:NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon;$env:SUPABASE_SERVICE_ROLE_KEY=$service;$env:NEXT_PUBLIC_SITE_URL='http://127.0.0.1:3220';$env:ADMIN_PASSWORD='phase10n-local-admin-only'
-  $env:PHASE10N_E2E_SERVICE_KEY=$service;$env:PHASE10N_E2E_ANON_KEY=$anon;$env:PHASE10N_E2E_SUPABASE_URL='http://127.0.0.1:3221';$env:PHASE10N_E2E_MAILPIT_URL='http://127.0.0.1:3224';$env:PHASE10N_E2E_PROXY_CONTROL_TOKEN=$control
+  $env:PHASE10N_E2E_SERVICE_KEY=$service;$env:PHASE10N_E2E_ANON_KEY=$anon;$env:PHASE10N_E2E_SUPABASE_URL='http://127.0.0.1:3221';$env:PHASE10N_E2E_PROXY_CONTROL_TOKEN=$control
   $env:PLAYWRIGHT_BASE_URL='http://127.0.0.1:3220'
   $next=Start-Process -FilePath 'node.exe' -ArgumentList 'node_modules/next/dist/bin/next','dev','-p','3220' -WorkingDirectory (Get-Location).Path -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $temp 'next.out') -RedirectStandardError (Join-Path $temp 'next.err')
   WaitHttp 'http://127.0.0.1:3220/'
@@ -62,9 +57,9 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
   Sql "ALTER TABLE public.beta_program_schools DISABLE TRIGGER USER;DELETE FROM public.beta_program_schools school USING public.beta_programs program WHERE school.program_id=program.id AND program.program_key LIKE 'phase10n_e2e_%';ALTER TABLE public.beta_program_schools ENABLE TRIGGER USER;ALTER TABLE public.beta_program_setup_snapshots DISABLE TRIGGER USER;DELETE FROM public.beta_program_setup_snapshots snapshot USING public.beta_programs program WHERE snapshot.program_id=program.id AND program.program_key LIKE 'phase10n_e2e_%';ALTER TABLE public.beta_program_setup_snapshots ENABLE TRIGGER USER;DELETE FROM public.beta_setup_drafts WHERE draft_key LIKE 'phase10n_e2e_%';DELETE FROM public.beta_programs WHERE program_key LIKE 'phase10n_e2e_%';"
   $counts=docker exec $db psql -U postgres -d phase10n_auth -tAc "SELECT concat_ws('|',(SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.reports),(SELECT count(*) FROM public.traces),(SELECT count(*) FROM public.search_logs),(SELECT count(*) FROM public.schools),(SELECT count(*) FROM public.beta_members),(SELECT count(*) FROM public.promotion_orders),(SELECT count(*) FROM public.private_profiles),(SELECT count(*) FROM public.profile_school_memberships))"
   if($LASTEXITCODE-ne 0-or$counts.Trim()-ne'0|0|0|0|10006|0|0|0|0'){throw "E2E baseline drift: $($counts.Trim())"}
-  if($Project){Write-Output "PHASE10N_REAL_AUTH_PLAYWRIGHT_PROJECT_OK $Project 5/5 0|0|0|0|10006|0|0|0|0"}
-  else{Write-Output 'PHASE10N_REAL_AUTH_PLAYWRIGHT_OK 20/20 0|0|0|0|10006|0|0|0|0'}
+  if($Project){Write-Output "PHASE10R_GOOGLE_AUTH_PLAYWRIGHT_PROJECT_OK $Project 5/5 0|0|0|0|10006|0|0|0|0"}
+  else{Write-Output 'PHASE10R_GOOGLE_AUTH_PLAYWRIGHT_OK 20/20 0|0|0|0|10006|0|0|0|0'}
 }finally{
   foreach($process in @($next,$proxy)){if($process-and-not$process.HasExited){Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue}}
-  $old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';foreach($name in @($rest,$auth,$mail,$db)){docker rm -f $name 2>$null|Out-Null};docker network rm $network 2>$null|Out-Null;if(Test-Path $temp){Remove-Item -LiteralPath $temp -Recurse -Force};if(Test-Path 'test-results'){Remove-Item -LiteralPath 'test-results' -Recurse -Force};$ErrorActionPreference=$old
+  $old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';foreach($name in @($rest,$auth,$db)){docker rm -f $name 2>$null|Out-Null};docker network rm $network 2>$null|Out-Null;if(Test-Path $temp){Remove-Item -LiteralPath $temp -Recurse -Force};if(Test-Path 'test-results'){Remove-Item -LiteralPath 'test-results' -Recurse -Force};$ErrorActionPreference=$old
 }

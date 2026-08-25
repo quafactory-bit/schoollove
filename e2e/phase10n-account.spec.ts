@@ -4,18 +4,11 @@ import {expect,test} from '@playwright/test'
 const supabaseUrl=process.env.PHASE10N_E2E_SUPABASE_URL
 const serviceKey=process.env.PHASE10N_E2E_SERVICE_KEY
 const anonKey=process.env.PHASE10N_E2E_ANON_KEY
-const mailpitUrl=process.env.PHASE10N_E2E_MAILPIT_URL
 const proxyControlToken=process.env.PHASE10N_E2E_PROXY_CONTROL_TOKEN
-test.skip(!supabaseUrl||!serviceKey||!anonKey||!mailpitUrl||!proxyControlToken,'requires disposable local Supabase Auth')
+test.skip(!supabaseUrl||!serviceKey||!anonKey||!proxyControlToken,'requires disposable local Supabase Auth')
 test.describe.configure({mode:'serial'})
 
 function headers(admin=false){const key=admin?serviceKey!:anonKey!;return {'content-type':'application/json',apikey:key,Authorization:`Bearer ${key}`}}
-
-async function createLocalUser(email:string){
-  const response=await fetch(`${supabaseUrl}/auth/v1/admin/users`,{method:'POST',headers:headers(true),body:JSON.stringify({email,email_confirm:true})})
-  expect(response.ok).toBeTruthy()
-  return (await response.json() as {id:string}).id
-}
 
 async function createControlledBetaFixture(userId:string,suffix:string){
   const draftId=crypto.randomUUID(),programId=crypto.randomUUID(),snapshotId=crypto.randomUUID()
@@ -32,23 +25,6 @@ async function createControlledBetaFixture(userId:string,suffix:string){
     'account_registration','private_profile','people_search','connection_request','messaging','instagram_permission','promotion_application','promotion_operations',
   ].map((feature_key)=>({program_id:programId,feature_key,enabled:['account_registration','private_profile'].includes(feature_key),reason_code:'E2E_SNAPSHOT_CONTRACT',updated_by:'test:playwright'})))
   await insert('beta_members',{program_id:programId,user_id:userId,status:'active',reviewed_at:new Date().toISOString(),reviewed_by:'test:playwright',reason_code:'E2E_APPROVED'})
-}
-
-async function hasMessageFor(email:string){
-  const response=await fetch(`${mailpitUrl}/api/v1/messages`)
-  expect(response.ok).toBeTruthy()
-  const body=await response.json() as {messages?:Array<{To?:Array<{Address?:string}>}>}
-  return (body.messages??[]).some((item)=>item.To?.some((to)=>to.Address===email))
-}
-
-async function messageIdsFor(email:string){
-  const response=await fetch(`${mailpitUrl}/api/v1/messages`)
-  expect(response.ok).toBeTruthy()
-  const body=await response.json() as {messages?:Array<{ID?:string;To?:Array<{Address?:string}>}>}
-  return new Set((body.messages??[])
-    .filter((item)=>item.To?.some((to)=>to.Address===email))
-    .map((item)=>item.ID)
-    .filter((id):id is string=>typeof id==='string'))
 }
 
 async function setLaunchState(state:string,reason:string){
@@ -85,50 +61,30 @@ async function aggregateCount(eventKey:string){
   return rows.reduce((sum,row)=>sum+row.event_count,0)
 }
 
-async function readOtp(email:string,excludedIds:Set<string>){
-  for(let attempt=0;attempt<40;attempt++){
-    const response=await fetch(`${mailpitUrl}/api/v1/messages`)
-    if(response.ok){
-      const body=await response.json() as {messages?:Array<{ID?:string;To?:Array<{Address?:string}>}>}
-      const message=(body.messages??[]).find((item)=>item.ID&&!excludedIds.has(item.ID)&&item.To?.some((to)=>to.Address===email))
-      if(message?.ID){
-        const detail=await fetch(`${mailpitUrl}/api/v1/message/${message.ID}`).then((result)=>result.json()) as {Text?:string;HTML?:string;Subject?:string}
-        const token=`${detail.Subject??''}\n${detail.Text??''}\n${detail.HTML??''}`.match(/\b\d{6}\b/)?.[0]
-        if(token)return token
-      }
-    }
-    await new Promise((resolve)=>setTimeout(resolve,250))
-  }
-  throw new Error('local OTP not found')
-}
-
-async function loginWithOtp(page:import('@playwright/test').Page,email:string,verifyWrongOtp=false){
-  await page.goto('/login?next=/account')
-  await page.getByLabel('이메일').fill(email)
-  const priorMessageIds=await messageIdsFor(email)
-  await page.getByRole('button',{name:'인증번호 받기'}).click()
-  await expect(page.getByText('입력한 이메일로 인증번호를 보냈습니다.')).toBeVisible({timeout:30_000})
-  const token=await readOtp(email,priorMessageIds)
-  if(verifyWrongOtp){
-    const wrongToken=`${token.slice(0,5)}${token[5]==='9'?'0':String(Number(token[5])+1)}`
-    await page.getByLabel('인증번호 6자리').fill(wrongToken)
-    const rejected=page.waitForResponse((response)=>response.url().includes('/api/auth/verify-otp')&&response.request().method()==='POST')
-    await page.getByRole('button',{name:'로그인'}).click()
-    expect((await rejected).status()).toBe(401)
-    await expect(page).toHaveURL(/\/login/)
-  }
-  await page.getByLabel('인증번호 6자리').fill(token)
-  await page.getByRole('button',{name:'로그인'}).click()
-  await page.waitForURL('**/account')
+async function loginWithSyntheticGoogle(page:import('@playwright/test').Page,fixtureKey:string){
+  await page.goto('/login')
+  await expect(page.getByRole('link',{name:'Google로 계속하기'})).toHaveCount(1)
+  await expect(page.getByText(/이메일 OTP|인증번호 받기|6자리 인증번호/)).toHaveCount(0)
+  const response=await page.request.post(`${supabaseUrl}/phase10r-google-session`,{
+    headers:{'x-phase10n-control':proxyControlToken!},
+    data:{fixtureKey},
+  })
+  const responseBody=await response.text()
+  expect(response.ok(),responseBody).toBeTruthy()
+  const fixture=JSON.parse(responseBody) as {userId:string;provider:string;identityCount:number}
+  expect(fixture.provider).toBe('custom:schoollove-google')
+  expect(fixture.identityCount).toBe(1)
+  await page.goto('/account')
   await expect(page.getByRole('heading',{name:'내 계정',exact:true})).toBeVisible({timeout:60_000})
+  await expect(page.getByText('Google 계정으로 로그인됨')).toBeVisible()
+  return fixture
 }
 
-test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
-  let suffix='';let email='';let closedEmail=''
+test.describe('PHASE 10R Google-only disposable account flow',()=>{
+  let suffix='';let primaryFixture=''
   test.beforeAll(async({},testInfo)=>{
     suffix=testInfo.project.name.replace(/[^a-z0-9]/gi,'-').toLowerCase()
-    email=`phase10n-${suffix}@example.invalid`
-    closedEmail=`phase10n-closed-${suffix}@example.invalid`
+    primaryFixture=`phase10r-${suffix}`
     await setLaunchState('internal_test','LOCAL_AUTH_TEST_PROJECT_RESET')
   })
 
@@ -149,15 +105,15 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy()
   })
 
-  test('registration closed keeps a generic response and creates no auth user',async({page})=>{
+  test('unauthenticated account redirects and removed Email Auth surfaces stay dark',async({page})=>{
+    await page.goto('/account')
+    await expect(page).toHaveURL(/\/login\?next=/)
     await page.goto('/login')
-    await page.getByLabel('이메일').fill(closedEmail)
-    const requestResponse=page.waitForResponse((response)=>response.url().includes('/api/auth/request-otp')&&response.request().method()==='POST',{timeout:60_000})
-    await page.getByRole('button',{name:'인증번호 받기'}).click()
-    expect((await requestResponse).status()).toBe(200)
-    await expect(page.getByText('입력한 이메일로 인증번호를 보냈습니다.')).toBeVisible({timeout:30_000})
-    await page.waitForTimeout(500)
-    expect(await hasMessageFor(closedEmail)).toBeFalsy()
+    await expect(page.getByRole('link',{name:'Google로 계속하기'})).toHaveCount(1)
+    await expect(page.getByText(/이메일 OTP|인증번호 받기|6자리 인증번호/)).toHaveCount(0)
+    for(const endpoint of ['/api/auth/request-otp','/api/auth/verify-otp']){
+      expect((await page.request.post(endpoint,{data:{}})).status()).toBe(404)
+    }
     await page.context().addCookies([
       {name:'sl_user_access',value:'header.eyJleHAiOjF9.signature',url:process.env.PLAYWRIGHT_BASE_URL!,httpOnly:true,sameSite:'Lax'},
       {name:'sl_user_refresh',value:'invalid-refresh-token',url:process.env.PLAYWRIGHT_BASE_URL!,httpOnly:true,sameSite:'Lax'},
@@ -168,10 +124,10 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     expect(cleared.some((cookie)=>cookie.name==='sl_user_access'||cookie.name==='sl_user_refresh')).toBeFalsy()
   })
 
-  test('real OTP, refresh rotation, adult consent, profile, school, relogin, emergency and deletion lifecycle',async({page})=>{
+  test('genuine Google-bound session, refresh, onboarding, relogin, emergency and deletion lifecycle',async({page})=>{
     test.setTimeout(300_000)
-    const userId=await createLocalUser(email)
-    await loginWithOtp(page,email,true)
+    const firstLogin=await loginWithSyntheticGoogle(page,primaryFixture)
+    const userId=firstLogin.userId
     const accessToken=(await page.context().cookies()).find((cookie)=>cookie.name==='sl_user_access')?.value
     expect(accessToken).toBeTruthy()
     const userHeaders={'content-type':'application/json',apikey:anonKey!,Authorization:`Bearer ${accessToken}`}
@@ -184,7 +140,6 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
       const response=await fetch(`${supabaseUrl}/rest/v1/${path}`,{method,headers:userHeaders,body:JSON.stringify(body)})
       expect([401,403]).toContain(response.status)
     }
-    const otpMilestone=await aggregateCount('otp_verify_succeeded')
     const adultBefore=await aggregateCount('adult_eligibility_completed')
     const consentBefore=await aggregateCount('required_consents_completed')
     const profileBefore=await aggregateCount('private_profile_created')
@@ -241,8 +196,9 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     }
 
     await page.getByRole('button',{name:'로그아웃'}).click()
-    await loginWithOtp(page,email)
-    expect(await aggregateCount('otp_verify_succeeded')).toBe(otpMilestone)
+    const secondLogin=await loginWithSyntheticGoogle(page,primaryFixture)
+    expect(secondLogin.userId).toBe(userId)
+    expect(secondLogin.identityCount).toBe(1)
     await page.goto('/onboarding')
     await expect(page.getByText('비공개 계정 시작 준비를 모두 마쳤습니다.')).toBeVisible({timeout:20_000})
     await page.goto('/people/search')
@@ -326,11 +282,11 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     await expect(page).toHaveURL(/\/login\?next=/)
     await page.goto('/connections')
     await expect(page).toHaveURL(/\/login\?next=/)
-    const betaEmail=`phase10n-beta-${suffix}@example.invalid`
-    const betaUserId=await createLocalUser(betaEmail)
+    const betaLogin=await loginWithSyntheticGoogle(page,`phase10r-beta-${suffix}`)
+    const betaUserId=betaLogin.userId
     await createControlledBetaFixture(betaUserId,suffix)
     await setLaunchState('closed','PLAYWRIGHT_BETA_UI_CLOSED')
-    await loginWithOtp(page,betaEmail)
+    await page.reload()
     await expect(page.getByRole('button',{name:'만 19세 이상 확인'})).toBeEnabled()
     await expect(page.getByRole('heading',{name:/내 학교 이력.*0\/1/})).toBeVisible()
     await page.goto('/people/search')
@@ -350,7 +306,7 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
 
   test('public pages expose no account identity and legacy write APIs stay fixed 503',async({page})=>{
     await page.goto('/')
-    await expect(page.getByText(email)).toHaveCount(0)
+    await expect(page.getByText('Google 계정으로 로그인됨')).toHaveCount(0)
     await expect(page.getByText(`TEST ${suffix}`)).toHaveCount(0)
     for(const endpoint of ['/api/profiles','/api/reports','/api/traces']){
       const status=await page.evaluate((url)=>fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then((response)=>response.status),endpoint)

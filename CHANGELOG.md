@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-25 PHASE 10R Google-only account onboarding alignment (local / Draft)
+
+- Removed the account header's dependency on an Auth email and replaced it with a coarse Google signed-in label; no Google profile, email, subject, token, or provider payload is persisted or displayed.
+- Aligned active account governance and login metadata with the Google-only Preview policy while preserving the separate eight-digit SchoolLove recovery boundary and historical evidence.
+- Migrated the disposable account lifecycle authority away from Supabase Email Auth, Mailpit, and six-digit login OTP to a genuine local Supabase session rebound to the exact `custom:schoollove-google` identity contract.
+- Kept the canonical post-login destination at `/account`, preserved the four DB-authoritative onboarding stages, and made no Production or external-provider configuration change.
+
 ## 2026-08-24 PHASE 10Q Google-only Preview authentication consolidation (local / Draft)
 
 - Consolidated the Preview/Draft user-facing authentication path to Google only, with a fixed first-party Google start route and no client-selected provider or redirect destination.

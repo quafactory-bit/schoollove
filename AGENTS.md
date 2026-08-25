@@ -1,5 +1,7 @@
 # SchoolLoveI 작업 규칙
 
+> PHASE 10R 현재 결정: `docs/decisions/2026-08-24-google-only-auth-policy.md`가 일반 사용자 인증의 최신 권위다. 유일한 사용자-facing 로그인 provider는 Google이며 `/login`에서 시작해 검증된 session으로 `/account`와 `/onboarding`을 이용한다. Kakao·Naver와 Supabase Email Auth는 지원하지 않는다. SchoolLove custom recovery email은 로그인과 분리된 소유권·중복 보호 경계로만 유지하고 OTP는 8자리다. 관리자 인증은 별도 경계다. 이 Preview 결정만으로 Production Google rollout은 승인되지 않는다.
+
 > PHASE 10N-C2 현재 결정: disposable provider matrix에서 public `emergency_stopped`인데 active controlled-beta 사용자의 eligibility route가 200을 반환하는 우회를 발견해, 네 account write route와 onboarding writable 판정이 공통 `public_account_access_active` 선검사를 거치도록 수정했다. `closed`에서는 valid active beta 권한을 유지하고, `open`에서도 beta one-school 계약이 우선하며, emergency는 public/beta account 신규·수정 write보다 우선한다. 개인정보 owner 삭제와 탈퇴 요청 권리는 별도 경계로 유지한다. 최신 local 검증은 targeted 8 files/54 tests, full 114 files/1,008 tests, TypeScript, 58 pages/routes build, isolated 18 rollback 및 PHASE 10J/10N 회귀, disposable provider Chromium/mobile 360/390/412 각 5/5(총 20/20, workers=1, retries=0)다. 외부 이메일·Production Auth·Production mutation은 0이며 PR #39는 계속 Draft, Ready·merge·Production migration/deploy/open은 금지한다.
 
 > PHASE 10N-B 현재 결정: PR #39는 Draft에서 공개 계정 경계를 강화한다. 미적용 migration `20260803120000`은 68→71 public-table/UUID person-link/Production post-reset 기준을 영구 DDL 전에 검증하고 전체 transaction으로 rollback한다. authenticated의 consent·deletion·private profile·membership 직접 write를 폐쇄하고 `auth.uid()` owner RPC만 사용한다. activity 요청량과 계정별 최초 milestone을 분리하고 `return_session`은 제거한다. 탈퇴는 public data 삭제→Auth Admin 실제 삭제→완료의 2단계이며 실패는 `failed_safe`, 비식별 운영 기록은 90일 후 파기한다. generic state RPC는 ready/open을 허용하지 않고 최신 immutable readiness와 별도 open RPC를 요구한다. Production migration·배포·환경 변경·실제 Auth/OTP·open·학교/beta/commercial mutation, PR Ready·merge는 계속 금지한다.
@@ -23,7 +25,7 @@
 
 - 이 절은 아래의 기존 제품·FROZEN 계약과 충돌할 때 우선한다.
 - 공개 `POST /api/profiles`와 제3자 등록은 계속 항상 차단한다.
-- 공개 계정이 별도 승인으로 open된 뒤의 개인 등록은 이메일 OTP session, KST 기준 만 19세 이상 자기진술, 필수 동의, 본인 소유권을 모두 검증한 `/account` 경계에서만 허용한다. closed/internal_test/ready/emergency_stopped에서는 신규 Production Auth user 생성을 금지한다.
+- 공개 계정이 별도 승인으로 open된 뒤의 개인 등록은 Google 로그인으로 얻은 검증된 session, KST 기준 만 19세 이상 자기진술, 필수 동의, 본인 소유권을 모두 검증한 `/account` 경계에서만 허용한다. closed/internal_test/ready/emergency_stopped에서는 신규 Production Auth user 생성을 금지한다.
 - 개인 정보는 기본 비공개이며, 상대방 승인 전에는 Instagram을 공개하지 않는다.
 - 공개 사람 명단, 이름 검색, Year/Class 개인 카드와 개인 Instagram 노출을 금지한다.
 - 학교명·지역·학교 유형 등 학교 기본 정보 검색은 유지한다.
@@ -58,7 +60,7 @@
 
 ## D. 공개 사용자 UX 계약
 
-- 일반 사용자 인증은 승인된 PHASE 10B 이메일 OTP 경계만 사용한다.
+- 일반 사용자 인증은 Google-only 경계만 사용한다. Kakao·Naver와 Supabase Email Auth를 사용자 로그인으로 다시 도입하지 않으며, 8자리 SchoolLove custom recovery는 별도 경계로 유지한다.
 - 관리자 로그인은 일반 사용자 흐름과 분리된 별도 경계다.
 - 공개 개인 Profile 페이지를 만들지 않는다. `/account`는 본인 전용 관리 화면이다.
 - 공개 프로필, Year/Class 사람 목록, nickname 검색과 Instagram 노출을 금지한다.
