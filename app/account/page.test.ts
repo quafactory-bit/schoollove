@@ -36,8 +36,15 @@ describe('/account private management UI', () => {
 
   it('실제 계정 상태에서 로그인 포함 온보딩 진행률을 계산한다',()=>{
     expect(client).toContain('onboardingCompleted=1+Number(state.adultEligible)')
+    expect(client).toContain('onboardingComplete=state.adultEligible&&state.consentsComplete&&Boolean(state.profile)&&state.memberships.length>0')
     expect(client).toContain('온보딩 진행 상태 보기')
     expect(client).toContain('{onboardingCompleted*20}%')
+    expect(client).toContain('비공개 계정 준비 완료')
+  })
+
+  it('기존 account state membership을 별도 조회 없이 내 학교 첫 가치로 전달한다',()=>{
+    expect(client).toContain('<MySchoolsPanel memberships={state.memberships}/>')
+    expect(client).not.toMatch(/fetch\([^)]*my-schools/)
   })
 
   it('public 또는 controlled beta 중 하나가 허용한 기능만 저장 가능하다',()=>{

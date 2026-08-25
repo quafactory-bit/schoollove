@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-25 PHASE 10S private-account first-value “내 학교” (local / Draft)
+
+- Added a private `/account` summary of the current user's registered schools, own graduation year, and optional class after onboarding, with a clear private-account completion state and factual zero state.
+- Linked only valid DB-derived school slugs to the privacy-safe public school basics page; the public page adds a generic account-management CTA without membership personalization or private queries.
+- Kept people discovery, public lists, Year/Class person navigation, Instagram exposure, counts/activity claims, new telemetry, schema, API routes, and Production/external-provider changes out of scope.
+
 ## 2026-08-25 PHASE 10R Google-only account onboarding alignment (local / Draft)
 
 - Removed the account header's dependency on an Auth email and replaced it with a coarse Google signed-in label; no Google profile, email, subject, token, or provider payload is persisted or displayed.

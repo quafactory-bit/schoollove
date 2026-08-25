@@ -1,5 +1,13 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-25 PHASE 10S private-account first-value “내 학교” (local / Draft)
+
+- Added an owner-only “내 학교” summary immediately after `/account` onboarding progress. It reuses the existing ordered `AccountState.memberships`, shows only the current user's school basics and own graduation year/optional class, and makes completion explicit only when adult eligibility, required consents, private profile, and at least one membership are DB-authoritative.
+- A safe internal link is created only for an exact DB-relation slug and points to `/school/{slug}` without year, class, query, or guessed school-name authority. Null or malformed school relations remain readable without a link; zero state adds no duplicate write path or fake populated card.
+- The public school page remains membership-independent and adds only a generic `/account` management CTA. It performs no private account query and exposes no profile, membership existence/count, graduation year, class, or private Instagram.
+- Extended the existing disposable Google-bound account lifecycle to prove save→account refresh→school page→account restoration→profile/membership deletion across the existing desktop and mobile projects. No migration, runtime API route, telemetry, provider call, Preview durable write, external Auth setting, or Production mutation was added.
+- Final validation: focused Vitest 3 files / 25 tests, full Vitest 153 passed files / 3 skipped files and 1,239 passed tests / 4 skipped tests / 0 failed, TypeScript PASS, build PASS with 59/59 static pages, and the existing disposable Google-bound Playwright lifecycle 20/20 PASS (`workers=1`, `retries=0`) across desktop and 360/390/412 mobile widths. Secret, added-line email/UUID/phone, runtime-route, and migration inventories found no expansion or disclosure.
+
 ## 2026-08-22 PHASE 10P social activation and bound-provisional reauthentication (Draft)
 
 - Added `20260822022953_social_activation_gate_and_bound_provisional_reauth.sql`. A missing launch singleton is repaired to closed with one non-personal audit row; a valid singleton is validated and preserved byte-for-byte; ambiguous or malformed state fails before function replacement.
