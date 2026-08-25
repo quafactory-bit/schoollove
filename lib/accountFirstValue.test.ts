@@ -37,6 +37,10 @@ describe('private account first-value my schools', () => {
     }])
   })
 
+  it('DB에서 온 비ASCII slug도 하나의 인코딩된 학교 segment로 보존한다', () => {
+    expect(buildSafeMySchoolHref('서울-제1고')).toBe('/school/%EC%84%9C%EC%9A%B8-%EC%A0%9C1%EA%B3%A0')
+  })
+
   it('반이 없으면 null을 유지하고 학교 relation이 없으면 값을 추측하지 않는다', () => {
     expect(buildMySchoolCards([membership({ school: null, class_number: null })])).toEqual([{
       id: 'membership-1',
@@ -49,8 +53,28 @@ describe('private account first-value my schools', () => {
     }])
   })
 
-  it.each([null, undefined, '', ' test-school', 'test-school ', 'test/school', 'test.school', 'test?school', '학교'])('변형되거나 잘못된 slug %s에는 링크를 만들지 않는다', (slug) => {
+  it.each([null, undefined, '', 'test/school', 'test\\school', '.', '..'])('비어 있거나 segment 경계를 벗어나는 slug %s에는 링크를 만들지 않는다', (slug) => {
     expect(buildSafeMySchoolHref(slug)).toBeNull()
+  })
+
+  it('query와 fragment 문자를 인코딩해 학교 segment 밖으로 탈출시키지 않는다', () => {
+    const href = buildSafeMySchoolHref('test-school?next=account#profile')
+    expect(href).toBe('/school/test-school%3Fnext%3Daccount%23profile')
+    expect(href?.slice('/school/'.length)).not.toMatch(/[/?#]/)
+  })
+
+  it('protocol처럼 보이는 값도 외부 URL이 아니라 내부 학교 segment로만 만든다', () => {
+    expect(buildSafeMySchoolHref('javascript:alert(1)')).toBe('/school/javascript%3Aalert(1)')
+    expect(buildSafeMySchoolHref('https://example.com')).toBeNull()
+  })
+
+  it('경로 segment로 인코딩할 수 없는 문자열은 fail closed한다', () => {
+    expect(buildSafeMySchoolHref('\uD800')).toBeNull()
+  })
+
+  it('school_name은 slug가 없을 때 route authority로 사용되지 않는다', () => {
+    const school = { ...membership().school!, school_name: 'guess-this-school', slug: null as unknown as string }
+    expect(buildMySchoolCards([membership({ school })])[0].href).toBeNull()
   })
 
   it('여러 학교는 전달받은 DB 순서를 그대로 보존한다', () => {

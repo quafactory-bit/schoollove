@@ -2,8 +2,6 @@ import type { SchoolMembership } from '@/lib/account'
 import { buildSchoolPath } from '@/lib/seo'
 import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
 
-const SAFE_SCHOOL_SLUG = /^[A-Za-z0-9_-]+$/
-
 export type MySchoolCard = {
   id: string
   schoolName: string
@@ -15,9 +13,14 @@ export type MySchoolCard = {
 }
 
 export function buildSafeMySchoolHref(slug: unknown): string | null {
-  if (typeof slug !== 'string' || slug.length === 0 || slug.length > 120) return null
-  if (!SAFE_SCHOOL_SLUG.test(slug)) return null
-  return buildSchoolPath(slug)
+  if (typeof slug !== 'string' || slug.length === 0) return null
+  if (slug === '.' || slug === '..' || slug.includes('/') || slug.includes('\\')) return null
+
+  try {
+    return buildSchoolPath(encodeURIComponent(slug))
+  } catch {
+    return null
+  }
 }
 
 export function buildMySchoolCards(memberships: SchoolMembership[]): MySchoolCard[] {

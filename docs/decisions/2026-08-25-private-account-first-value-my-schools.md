@@ -7,9 +7,9 @@ Status: Preview Draft decision
 
 Google-only 온보딩 이후의 첫 지속 가치는 사용자가 직접 등록한 본인의 과거 학교 이력이 비공개 계정에 연결되어 다시 확인 가능한 상태다. 이 경험의 단일 home은 기존 owner-only `/account`이며 별도 `/my-schools`, 공개 profile 또는 user route를 만들지 않는다.
 
-`/account`의 “내 학교”는 이미 서버에서 읽은 `AccountState.memberships`만 사용한다. 각 membership의 학교명·유형·지역과 본인의 졸업연도·선택 반을 기존 DB 정렬 순서대로 표시한다. 대표 학교, 선호 학교 또는 새 우선순위는 도입하지 않는다. school relation이 없거나 slug가 내부 단일 경로 조각 계약을 만족하지 않으면 URL을 추측하지 않고 링크를 생략한다.
+`/account`의 “내 학교”는 이미 서버에서 읽은 `AccountState.memberships`만 사용한다. 각 membership의 학교명·유형·지역과 본인의 졸업연도·선택 반을 기존 DB 정렬 순서대로 표시한다. 대표 학교, 선호 학교 또는 새 우선순위는 도입하지 않는다. school relation이 없으면 URL을 추측하지 않고 링크를 생략한다.
 
-유효한 CTA는 DB relation의 slug로 만든 `/school/{slug}`뿐이다. 졸업연도·반을 URL에 넣지 않으며 기존 Year/Class compatibility route를 사람 탐색이나 first-value 동선으로 사용하지 않는다.
+유효한 CTA는 DB relation의 slug로 만든 `/school/{slug}`뿐이다. 저장소와 DB는 slug 문자 범위의 canonical validator 또는 CHECK 제약을 제공하지 않으므로 별도 ASCII alphabet을 발명하지 않는다. 비어 있지 않은 DB slug를 `encodeURIComponent`로 정확히 한 route segment에 보존하고, `/`, `\\`, `.`, `..` 또는 인코딩 불가능 값은 링크 없이 fail closed한다. query·fragment·protocol 문자는 경로 segment 밖의 권위가 되지 않는다. 졸업연도·반을 URL에 넣지 않으며 기존 Year/Class compatibility route를 사람 탐색이나 first-value 동선으로 사용하지 않는다.
 
 ## Public school boundary
 
