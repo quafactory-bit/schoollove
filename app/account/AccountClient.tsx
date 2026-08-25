@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useSchoolAutocomplete } from '@/lib/hooks/useSchoolAutocomplete'
 import type { AccountState } from '@/lib/account'
 import type { PublicAccountLaunch } from '@/lib/publicAccountLaunch'
+import MySchoolsPanel from '@/components/account/MySchoolsPanel'
 
 type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;currentYear:number}
 
@@ -35,6 +36,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
   const accountWritable=privateProfileWritable||schoolMembershipWritable
   const membershipLimit=controlledBetaAccess?1:3
   const onboardingCompleted=1+Number(state.adultEligible)+Number(state.consentsComplete)+Number(Boolean(state.profile))+Number(state.memberships.length>0)
+  const onboardingComplete=state.adultEligible&&state.consentsComplete&&Boolean(state.profile)&&state.memberships.length>0
 
   async function submit(endpoint:string,payload:unknown,method='POST',success='안전하게 저장했습니다.'){
     if(busy)return false
@@ -66,7 +68,9 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
     <section className="mt-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3" aria-label="온보딩 진행 상태">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span className="font-semibold text-gray-900">온보딩 진행</span><span>{onboardingCompleted}/5 · {onboardingCompleted*20}%</span></div>
       <Link href="/onboarding" className="schoollove-focus mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-gray-900 underline">온보딩 진행 상태 보기</Link>
+      {onboardingComplete?<div className="mt-3 rounded-xl bg-emerald-50 px-4 py-3"><p className="font-semibold text-emerald-900">비공개 계정 준비 완료</p><p className="mt-1 text-xs leading-5 text-emerald-800">성인 확인, 필수 동의, 비공개 프로필과 학교 이력을 모두 저장했습니다.</p></div>:null}
     </section>
+    <MySchoolsPanel memberships={state.memberships}/>
     {!accountWritable&&!deletionBlocked ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900" role="status">계정 소프트런치를 준비 중이어서 현재 정보 저장은 닫혀 있습니다. 저장된 본인 정보 조회와 삭제·탈퇴 요청은 계속할 수 있습니다.</p>:null}
     {deletionBlocked ? <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900" role="status">{state.deletionStatus==='pending'?'탈퇴 요청이 접수되어 추가 정보 변경을 차단했습니다.':state.deletionStatus==='done'?'탈퇴 처리가 완료되었습니다.':'개인 데이터 삭제 또는 Auth identity 삭제를 진행 중이며 개인 기능 접근을 차단했습니다.'}</p>:null}
 
