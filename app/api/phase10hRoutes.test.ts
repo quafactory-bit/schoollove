@@ -45,13 +45,16 @@ describe('PHASE 10H route boundaries',()=>{
   it('pins login to the fixed first-party Google start route',()=>{
     const login=source('app/login/page.tsx')
     const googleStart=source('app/auth/social/start/google/route.ts')
+    const socialComplete=source('app/auth/social/complete/SocialCompleteClient.tsx')
     expect(login).toContain('href="/auth/social/start/google"')
     expect(login).not.toMatch(/safeLoginDestination|redirect_to|provider=/)
     expect(googleStart).toContain("destination.searchParams.set('provider', 'custom:schoollove-google')")
     expect(googleStart).toContain("destination.searchParams.set('redirect_to', COMPLETION_ROUTE)")
     expect(googleStart).toContain('new URL(request.url).origin !== PREVIEW_ORIGIN')
     expect(googleStart).not.toMatch(/headers\.get|searchParams\.get/)
-    expect(source('lib/policy/onboarding.ts')).toContain("value === '/onboarding'")
+    expect(socialComplete).toContain("result.redirect !== '/account'")
+    expect(socialComplete).toContain("window.location.replace('/account')")
+    expect(source('lib/policy/onboarding.ts')).not.toContain('safeLoginDestination')
   })
 
   it('chains people-search shutdown into greeting creation without blocking safety actions',()=>{

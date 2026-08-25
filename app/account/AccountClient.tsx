@@ -7,13 +7,13 @@ import { useSchoolAutocomplete } from '@/lib/hooks/useSchoolAutocomplete'
 import type { AccountState } from '@/lib/account'
 import type { PublicAccountLaunch } from '@/lib/publicAccountLaunch'
 
-type Props={email:string;state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;currentYear:number}
+type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;currentYear:number}
 
 async function readResult(response:Response):Promise<{error?:string}>{
   try{return await response.json() as {error?:string}}catch{return {}}
 }
 
-export default function AccountClient({email,state,launch,controlledBetaAccess,currentYear}:Props){
+export default function AccountClient({state,launch,controlledBetaAccess,currentYear}:Props){
   const router=useRouter()
   const [status,setStatus]=useState('')
   const [isError,setIsError]=useState(false)
@@ -58,7 +58,7 @@ export default function AccountClient({email,state,launch,controlledBetaAccess,c
     <div className="flex flex-wrap items-start justify-between gap-4"><div>
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Private account</p>
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">내 계정</h1>
-      <p className="mt-2 break-all text-sm text-gray-600">{email}</p>
+      <p className="mt-2 text-sm text-gray-600">Google 계정으로 로그인됨</p>
       <p className="mt-1 text-xs text-gray-500">로그인 세션은 서버에서 검증하며 만료 시 다시 로그인해야 할 수 있습니다.</p>
     </div><button type="button" disabled={busy} onClick={async()=>{await fetch('/api/auth/logout',{method:'POST'}).catch(()=>undefined);router.push('/login');router.refresh()}}
       className="schoollove-focus min-h-11 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700">로그아웃</button></div>
