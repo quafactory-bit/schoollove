@@ -18,4 +18,11 @@ describe('PHASE 10A safe home', () => {
     expect(SOURCE).toContain('href="/search"')
     expect(SOURCE).toContain('href="/contact"')
   })
+
+  it('open 상태는 Google-only 계정 시작 권위와 고정 login 경로만 안내한다', () => {
+    expect(SOURCE).toContain('Google 로그인 후 자기 정보만 비공개로 기록할 수 있습니다.')
+    expect(SOURCE).toContain('href="/login"')
+    expect(SOURCE).not.toMatch(/이메일 인증|Email OTP|6자리/)
+    expect(SOURCE).not.toContain('/login?next=/onboarding')
+  })
 })

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { SchoolMembership } from '@/lib/account'
 import { buildMySchoolCards } from '@/lib/accountFirstValue'
+import ShareButton from '@/components/ShareButton'
 
 type Props = {
   memberships: SchoolMembership[]
@@ -24,6 +25,9 @@ export default function MySchoolsPanel({ memberships }: Props) {
       <p className="mt-2 text-sm leading-6 text-schoollove-secondary">
         학교 이력이 비공개 계정에 연결되었습니다. 이 정보는 사람 찾기나 공개 명단으로 사용되지 않습니다.
       </p>
+      <p className="mt-1 text-sm leading-6 text-schoollove-secondary">
+        다시 로그인하면 등록한 학교 이력을 내 계정에서 계속 확인할 수 있습니다.
+      </p>
       <ul className="mt-4 space-y-3">
         {buildMySchoolCards(memberships).map((school) => (
           <li key={school.id} className="min-w-0 border border-schoollove-border bg-white p-4">
@@ -36,11 +40,17 @@ export default function MySchoolsPanel({ memberships }: Props) {
             <p className="mt-2 text-sm font-medium text-schoollove-text">
               {school.graduationYear}년 졸업{school.classNumber === null ? '' : ` · ${school.classNumber}반`}
             </p>
-            {school.href ? (
-              <Link href={school.href} className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
+            {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
                 학교 페이지 보기
               </Link>
-            ) : null}
+              <ShareButton
+                schoolName={school.schoolName}
+                url={school.href}
+                label="학교 링크 공유"
+                className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline"
+              />
+            </div> : null}
           </li>
         ))}
       </ul>

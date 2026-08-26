@@ -195,6 +195,23 @@ test.describe('PHASE 10R Google-only disposable account flow',()=>{
     expect(schoolHref).toMatch(/^\/school\/[A-Za-z0-9_-]+$/)
     expect(schoolHref).not.toContain('/2020')
     expect(schoolHref).not.toContain('/3')
+    await page.evaluate(()=>{
+      Object.defineProperty(navigator,'share',{
+        configurable:true,
+        value:async(payload:ShareData)=>{Reflect.set(window,'__phase10tSharePayload',payload)},
+      })
+    })
+    await mySchools.getByRole('button',{name:'학교 링크 공유'}).click()
+    const sharedPayload=await page.evaluate(()=>Reflect.get(window,'__phase10tSharePayload') as ShareData)
+    expect(sharedPayload).toEqual({
+      title:'스쿨러브아이',
+      text:'스쿨러브아이에서 TEST School 1 학교 정보를 확인해 보세요.',
+      url:`${await page.evaluate(()=>window.location.origin)}${schoolHref}`,
+    })
+    const serializedShare=JSON.stringify(sharedPayload)
+    for(const privateValue of ['2020','3반','test.private',`TEST ${suffix}`,userId])expect(serializedShare).not.toContain(privateValue)
+    for(const privateKey of ['graduationYear','classNumber','instagram','displayName','membershipId','schoolId','userId','authUuid'])expect(serializedShare).not.toContain(privateKey)
+    expect(sharedPayload.url).not.toMatch(/[?#]/)
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy()
     await page.goto(schoolHref!)
     await expect(page).toHaveURL(new RegExp(`${schoolHref!}$`))
@@ -211,6 +228,7 @@ test.describe('PHASE 10R Google-only disposable account flow',()=>{
     await expect(restoredMySchools).toContainText('TEST School 1')
     await expect(restoredMySchools).toContainText('2020년 졸업')
     await expect(restoredMySchools).toContainText('3반')
+    await expect(restoredMySchools.getByRole('button',{name:'학교 링크 공유'})).toBeVisible()
     expect(await aggregateCount('first_school_membership_created')).toBe(schoolBefore+1)
     expect(await aggregateCount('onboarding_completed')).toBe(onboardingBefore+1)
     const refreshedAccess=(await page.context().cookies()).find((cookie)=>cookie.name==='sl_user_access')?.value
@@ -247,6 +265,7 @@ test.describe('PHASE 10R Google-only disposable account flow',()=>{
     await page.locator('section').filter({hasText:'내 학교 이력'}).getByRole('button',{name:'삭제'}).click()
     await expect(page.getByRole('heading',{name:/내 학교 이력.*0\/3/})).toBeVisible({timeout:20_000})
     await expect(page.getByRole('heading',{name:'내 학교',exact:true})).toHaveCount(0)
+    await expect(page.getByRole('button',{name:'학교 링크 공유'})).toHaveCount(0)
     await expect(page.getByText('학교 이력을 한 곳 등록하면 비공개 계정에서 내 학교를 확인할 수 있습니다.')).toBeVisible()
     await page.getByLabel('학교 검색').fill('TEST School 1')
     await expect(page.getByRole('option').first()).toBeVisible()
@@ -258,6 +277,7 @@ test.describe('PHASE 10R Google-only disposable account flow',()=>{
     expect(profileDeleted).toBe(200)
     await page.reload()
     await expect(page.getByRole('heading',{name:'내 학교',exact:true})).toHaveCount(0)
+    await expect(page.getByRole('button',{name:'학교 링크 공유'})).toHaveCount(0)
     await expect(page.getByText('학교 이력을 한 곳 등록하면 비공개 계정에서 내 학교를 확인할 수 있습니다.')).toBeVisible()
     const profileRestored=await page.evaluate((displayName)=>fetch('/api/account/profile',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({display_name:displayName,instagram_handle:'test.private',introduction:'TEST restored and updated'})}).then((response)=>response.status),`TEST ${suffix}`)
     expect(profileRestored).toBe(200)

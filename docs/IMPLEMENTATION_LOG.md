@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-26 PHASE 10T privacy-safe school share and return loop (local / Draft)
+
+- Added an optional `학교 링크 공유` action only to `/account` cards that already have a valid `buildSafeMySchoolHref()` result. The browser resolves that approved relative path against `window.location.origin`; payload authority is limited to public school name and the same public school URL, with no sender, membership, user, graduation/class, Instagram, referral, query, fragment, or tracking data.
+- Reused and hardened the existing `ShareButton`: native Web Share remains first, `AbortError` remains a cancellation without clipboard fallback, and unsupported or genuinely failed share attempts copy only the generic public text and same-origin URL with a temporary `aria-live` status. No client persistence, analytics, server write, invite identity, third-party SDK, API, route, or schema was added.
+- Corrected active Home open-state copy to Google-only authentication and the fixed `/login` start route. Public Home and school pages remain membership-independent, and `/people/search` continues to require both an authenticated context and `people_search` beta access.
+- Validation passed focused Vitest 7 files / 52 tests, full Vitest 156 passed files / 3 skipped files and 1,263 passed tests / 4 skipped tests / 0 failed, TypeScript with incremental cache disabled, and a 59/59 Next.js build using process-local non-secret Supabase placeholders. The existing disposable Google-bound Playwright authority passed 20/20 (`workers=1`, `retries=0`) across desktop and 360/390/412 with exact share payload, same-origin URL, DB return, and deletion disappearance assertions; its final local baseline remained `0|0|0|0|10006|0|0|0|0`. Diff, secret/PII, page/API route, migration, schema, telemetry, and public-exposure audits found no prohibited expansion or disclosure.
+
 ## 2026-08-25 PHASE 10S private-account first-value “내 학교” (local / Draft)
 
 - Added an owner-only “내 학교” summary immediately after `/account` onboarding progress. It reuses the existing ordered `AccountState.memberships`, shows only the current user's school basics and own graduation year/optional class, and makes completion explicit only when adult eligibility, required consents, private profile, and at least one membership are DB-authoritative.
