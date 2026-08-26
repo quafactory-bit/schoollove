@@ -8,6 +8,10 @@ import {
 const origin = 'https://preview.schoollove.kr'
 
 describe('privacy-safe school share payload', () => {
+  it.each(['', '   ', '\t\n'])('빈 학교명 %j은 payload를 만들지 않는다', (schoolName) => {
+    expect(buildSchoolSharePayload({ schoolName, href: '/school/test-school', origin })).toBeNull()
+  })
+
   it('현재 origin과 승인된 학교 path로만 절대 URL을 만든다', () => {
     expect(buildSchoolSharePayload({ schoolName: '테스트고등학교', href: '/school/test-school', origin })).toEqual({
       title: '스쿨러브아이',

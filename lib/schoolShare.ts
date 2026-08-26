@@ -6,9 +6,20 @@ export type SchoolSharePayload = {
 
 export type ShareOutcome = 'shared' | 'cancelled' | 'copied' | 'unavailable'
 
+export type ShareButtonContent = {
+  url: string
+} & (
+  | { text: string; schoolName?: never }
+  | { schoolName: string; text?: never }
+)
+
 type ShareDependencies = {
   share?: (payload: SchoolSharePayload) => Promise<void>
   writeClipboard?: (value: string) => Promise<void>
+}
+
+type ShareButtonDependencies = ShareDependencies & {
+  origin: string
 }
 
 const SCHOOL_PATH = /^\/school\/[^/?#]+$/
@@ -22,6 +33,7 @@ export function buildSchoolSharePayload({
   href: string
   origin: string
 }): SchoolSharePayload | null {
+  if (schoolName.trim().length === 0) return null
   if (!SCHOOL_PATH.test(href)) return null
 
   try {
@@ -46,6 +58,23 @@ export function formatSchoolShareClipboard(payload: SchoolSharePayload) {
 
 export function isShareCancellation(error: unknown) {
   return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+}
+
+export async function executeShareButton(
+  props: ShareButtonContent,
+  dependencies: ShareButtonDependencies,
+): Promise<ShareOutcome> {
+  let payload: SchoolSharePayload | null
+
+  if ('schoolName' in props) {
+    if (typeof props.schoolName !== 'string') return 'unavailable'
+    payload = buildSchoolSharePayload({ schoolName: props.schoolName, href: props.url, origin: dependencies.origin })
+  } else {
+    payload = { title: '스쿨러브아이', text: props.text, url: props.url }
+  }
+
+  if (!payload) return 'unavailable'
+  return executeSchoolShare(payload, dependencies)
 }
 
 export async function executeSchoolShare(
