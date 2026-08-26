@@ -1,5 +1,7 @@
 # SchoolLoveI 작업 규칙
 
+> PHASE 10V 현재 결정: PHASE 10U의 사람 발견 P0 2개/P1 8개를 runtime·API·DB 방어선에서 폐쇄한다. 정확 검색은 actor가 target 학교 membership을 실제 보유할 때만 opaque token을 발급하고, 모든 유효 non-match/관계 상태는 하나의 generic unavailable 응답으로 수축하며 검색은 IP·account 각각 5회/일이다. `emergency_stopped`는 검색·요청·reminder·accept보다 우선하지만 기존 pending 요청의 decline·not-the-person·block·report와 기존 관계의 disconnect·report는 유지한다. 탈퇴 lifecycle, request-time 학교 authority, accept-time 양측 eligibility를 원자적으로 재검사하고 greeting의 실용적 연락처 우회와 Instagram GET 선행 조회를 차단한다. 새 migration은 기존 함수만 교체하며 table·column·function·route 증가는 없다. `people_search`, `connection_request`, `messaging`, `instagram_permission`은 계속 비활성이고 Preview migration 적용·Ready·merge·Production 변경은 별도 승인 전까지 금지한다.
+
 > PHASE 10U 현재 결정: 사람 발견 readiness audit는 local/disposable 환경에서 완료했지만 public emergency 우회와 Instagram GET feature-gate 공백을 포함한 P0/P1 선행 수정이 남아 있다. `people_search`, `connection_request`, `messaging`, `instagram_permission`은 PHASE 10V 구현·재검증·별도 승인 전까지 계속 비활성 상태다.
 
 > PHASE 10T 현재 결정: 첫 privacy-safe cold-start loop는 `/account`의 유효한 내 학교 card에서 membership과 무관한 공개 `/school/{encoded-slug}` 페이지를 공유하는 것이다. payload는 공개 학교명, `buildSafeMySchoolHref()` 결과와 현재 origin만 사용하며 졸업연도·반·Instagram·sender/membership/user/Auth ID, referral·tracking을 포함하지 않는다. Web Share 취소(`AbortError`)는 clipboard 복사로 바꾸지 않고, 공유·복사 telemetry와 client persistence를 만들지 않는다. 공개 학교 페이지는 개인화하지 않으며 사람 검색·명단·연결·메시지는 계속 닫혀 있고 신규 schema·API·route는 없다.

@@ -77,15 +77,22 @@ export async function hasPublicAccountFeatureAccess(
   return !error && data === true
 }
 
+export async function hasPublicAccountAccessActive(
+  client: SupabaseClient,
+  userId: string,
+): Promise<boolean> {
+  const { data,error } = await client.rpc('public_account_access_active',{
+    target_user_id:userId,
+  })
+  return !error&&data===true
+}
+
 export async function hasPublicAccountWriteAccess(
   client: SupabaseClient,
   userId: string,
   feature: Exclude<PublicAccountFeature,'account_registration'>,
 ): Promise<boolean> {
-  const {data:active,error:activeError}=await client.rpc('public_account_access_active',{
-    target_user_id:userId,
-  })
-  if(activeError||active!==true)return false
+  if(!await hasPublicAccountAccessActive(client,userId))return false
   if(await hasPublicAccountFeatureAccess(client,feature))return true
   const {data:betaAccess,error:betaError}=await client.rpc('has_beta_feature_access',{
     target_user_id:userId,requested_feature:'private_profile',
