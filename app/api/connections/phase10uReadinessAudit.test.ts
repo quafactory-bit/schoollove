@@ -22,11 +22,16 @@ const reportRoute = read('app/api/connections/[id]/report/route.ts')
 const requestsPage = read('app/connections/requests/page.tsx')
 const conversationPage = read('app/connections/[id]/page.tsx')
 const sql = read('supabase/migrations/20260728180000_safe_connection_request_messaging.sql')
+const hardeningSql = read('supabase/migrations/20260826061123_people_discovery_safety_hardening.sql')
 const launchSql = read('supabase/migrations/20260803120000_public_account_soft_launch.sql')
 const onboarding = read('lib/onboarding.ts')
 
 function rpc(name: string, nextName: string) {
   return sql.slice(sql.indexOf(`CREATE OR REPLACE FUNCTION public.${name}`), sql.indexOf(`CREATE OR REPLACE FUNCTION public.${nextName}`))
+}
+
+function hardenedRpc(name: string, nextName: string) {
+  return hardeningSql.slice(hardeningSql.indexOf(`CREATE OR REPLACE FUNCTION public.${name}`), hardeningSql.indexOf(`CREATE OR REPLACE FUNCTION public.${nextName}`))
 }
 
 describe('PHASE 10U dormant people-discovery readiness audit', () => {
@@ -41,32 +46,28 @@ describe('PHASE 10U dormant people-discovery readiness audit', () => {
     expect(reportRoute).toContain("requireConnectionContext(request, 'report')")
   })
 
-  it('records alternate page/read paths that do not themselves require the dormant feature', () => {
+  it('preserves existing relationship reads while Instagram GET now requires its feature', () => {
     expect(requestsPage).not.toContain('hasBetaFeatureAccess')
     expect(conversationPage).not.toContain('hasBetaFeatureAccess')
     expect(connectionRoute).toContain('requireConnectionContext(request)')
     expect(connectionRoute).not.toContain("requireConnectionContext(request, '")
     const instagramGet = instagramRoute.slice(instagramRoute.indexOf('export async function GET'), instagramRoute.indexOf('export async function POST'))
-    expect(instagramGet).toContain('requireConnectionContext(request)')
-    expect(instagramGet).not.toContain("'instagram'")
+    expect(instagramGet).toContain("requireConnectionContext(request, 'instagram')")
   })
 
-  it('records that public emergency state is absent from page, API and discovery RPC authority', () => {
-    const searchRpc = rpc('find_exact_private_profile_match', 'create_connection_request')
-    const requestRpc = rpc('create_connection_request', 'remind_connection_request')
-    for (const source of [routeBoundary, searchRoute, requestRoute, searchRpc, requestRpc]) {
-      expect(source).not.toMatch(/public_account_access_active|emergency_stopped/)
+  it('closes public emergency bypass at API and service-only RPC authority', () => {
+    expect(routeBoundary).toContain('hasPublicAccountAccessActive')
+    for (const name of ['find_exact_private_profile_match','create_connection_request','remind_connection_request','respond_connection_request']) {
+      expect(hardeningSql.slice(hardeningSql.indexOf(`public.${name}`))).toContain("control.state = 'emergency_stopped'")
     }
-    expect(launchSql).toContain("WHEN 'connection_match_tokens' THEN 'people_search'")
-    expect(launchSql).toContain("WHEN 'connection_requests' THEN 'connection_request'")
   })
 
-  it('records the cross-school authority gap and missing requester-membership recheck', () => {
-    const searchRpc = rpc('find_exact_private_profile_match', 'create_connection_request')
-    const requestRpc = rpc('create_connection_request', 'remind_connection_request')
+  it('closes cross-school search and requester membership stale authority', () => {
+    const searchRpc = hardenedRpc('find_exact_private_profile_match', 'create_connection_request')
+    const requestRpc = hardenedRpc('create_connection_request', 'remind_connection_request')
     expect(searchRpc).toContain('WHERE actor_membership.owner_user_id = actor_user_id')
-    expect(searchRpc).not.toMatch(/actor_membership\.school_id\s*=\s*target_school_id/)
-    expect(requestRpc).not.toMatch(/profile_school_memberships[\s\S]*owner_user_id\s*=\s*actor_user_id/)
+    expect(searchRpc).toMatch(/actor_membership\.school_id\s*=\s*target_school_id/)
+    expect(requestRpc).toMatch(/profile_school_memberships[\s\S]*owner_user_id\s*=\s*actor_user_id/)
   })
 
   it('records exact-only input normalization and rejects one-character, chosung and extra fields', () => {
@@ -76,17 +77,17 @@ describe('PHASE 10U dormant people-discovery readiness audit', () => {
     expect(ExactPersonSearchSchema.safeParse({ ...base, exact_name: '김' }).success).toBe(false)
     expect(ExactPersonSearchSchema.safeParse({ ...base, exact_name: 'ㄱㅎㄴ' }).success).toBe(false)
     expect(ExactPersonSearchSchema.safeParse({ ...base, exact_name: '김하늘', page: 1 }).success).toBe(false)
-    expect(sql).toContain('lower(btrim(p.display_name)) = lower(btrim(exact_display_name))')
-    expect(sql).not.toMatch(/ILIKE|SIMILAR TO/)
+    expect(hardeningSql).toContain('lower(btrim(normalize(p.display_name,NFKC)))')
+    expect(hardeningSql).not.toMatch(/ILIKE|SIMILAR TO/)
   })
 
-  it('records generic ambiguity/self handling but distinguishable relationship and block states', () => {
-    const searchRpc = rpc('find_exact_private_profile_match', 'create_connection_request')
+  it('contracts every non-match relationship and safety state to unavailable', () => {
+    const searchRpc = hardenedRpc('find_exact_private_profile_match', 'create_connection_request')
     expect(searchRpc).toContain('IF matched_count <> 1')
     expect(searchRpc).toContain('p.owner_user_id <> actor_user_id')
-    for (const state of ['not_found', 'request_unavailable', 'already_connected', 'already_requested', 'match_available']) {
-      expect(searchRpc).toContain(`'${state}'`)
-    }
+    expect(searchRpc).toContain("'unavailable'")
+    for (const state of ['not_found','request_unavailable','already_connected','already_requested']) expect(searchRpc).not.toContain(`'${state}'`)
+    expect(searchRpc).toContain("'match_available'")
   })
 
   it('records opaque, hashed, requester-bound, receiver-bound, expiring and single-use tokens', () => {
@@ -105,18 +106,19 @@ describe('PHASE 10U dormant people-discovery readiness audit', () => {
     expect(browserMatchResult).not.toMatch(/receiverUserId|receiver_user_id/)
   })
 
-  it('records request terminality, immutable greeting and receiver-only response authority', () => {
-    const createRpc = rpc('create_connection_request', 'remind_connection_request')
-    const respondRpc = rpc('respond_connection_request', 'send_connection_message')
+  it('preserves request terminality and adds atomic receiver-only acceptance eligibility checks', () => {
+    const createRpc = hardenedRpc('create_connection_request', 'remind_connection_request')
+    const respondRpc = hardenedRpc('respond_connection_request', 'REVOKE ALL ON FUNCTION public.connection_text_is_safe')
     expect(createRpc).toMatch(/EXISTS \([\s\S]*connection_requests[\s\S]*pair_low_id[\s\S]*pair_high_id/)
     expect(sql).toContain('connection_requests_immutable_content')
     expect(sql).toContain('connection_requests_status_guard')
     expect(respondRpc).toContain('req.receiver_user_id <> actor_user_id')
-    expect(respondRpc).not.toMatch(/is_current_adult_account\((?:req\.)?(?:sender|receiver)/)
+    expect(respondRpc).toContain('public.is_current_adult_account(req.sender_user_id)')
+    expect(respondRpc).toContain('public.is_current_adult_account(req.receiver_user_id)')
     expect(requestActionRoute).not.toMatch(/sender_user_id|receiver_user_id/)
   })
 
-  it('records current greeting filter coverage and known obfuscation bypass classes', () => {
+  it('closes practical greeting obfuscation classes while preserving natural self-identification', () => {
     for (const rejected of [
       'https://example.com', 'example.kr', 'hello@example.com', '010-1234-5678',
       '@friend', '카톡 아이디 friend12', 'Ｉｎｓｔａｇｒａｍ： friend12', 'https:\u200b//example.com',
@@ -127,11 +129,15 @@ describe('PHASE 10U dormant people-discovery readiness audit', () => {
         message: rejected,
       }).success).toBe(false)
     }
-    for (const acceptedObfuscation of [
+    for (const rejectedObfuscation of [
       '0 1 0 1 2 3 4 5 6 7 8', 'example dot kr', '(@friend_name)', 'k a k a o id friend12',
     ]) {
-      expect(containsExternalContact(acceptedObfuscation)).toBe(false)
+      expect(containsExternalContact(rejectedObfuscation)).toBe(true)
     }
+    expect(ConnectionRequestSchema.safeParse({
+      match_token:'11111111-1111-4111-8111-111111111111',relationship_type:'same_school',message:'나 완이야. 오랜만이야.',
+    }).success).toBe(true)
+    expect(hardeningSql).toContain('normalize(input_text, NFKC)')
   })
 
   it('records pre-accept and post-accept browser-visible fields without user/Auth UUIDs', () => {
@@ -182,7 +188,7 @@ describe('PHASE 10U dormant people-discovery readiness audit', () => {
   })
 
   it('records exact IP/account limits, fail-closed production behavior and forwarded-IP assumption', () => {
-    expect(rateLimit).toContain("search: { count: 20, window: '1 d' }")
+    expect(rateLimit).toContain("search: { count: 5, window: '1 d' }")
     expect(rateLimit).toContain("request: { count: 5, window: '1 d' }")
     expect(rateLimit).toContain("process.env.NODE_ENV === 'production'")
     expect(rateLimit).toContain('return { allowed: false, status: 503 }')

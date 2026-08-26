@@ -6,7 +6,7 @@ import { getConversation, setInstagramPermission } from '@/lib/connections'
 const IdSchema = z.string().uuid()
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const context = await requireConnectionContext(request)
+  const context = await requireConnectionContext(request, 'instagram')
   if ('response' in context) return context.response
   const id = IdSchema.safeParse((await params).id)
   if (!id.success) return NextResponse.json({ error: '연결을 확인해 주세요.' }, { status: 400 })

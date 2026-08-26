@@ -5,7 +5,7 @@ import { createConnectionRequest, getConnectionRequests } from '@/lib/connection
 import { recordLimitedLaunchEvent } from '@/lib/onboarding'
 
 export async function GET(request: NextRequest) {
-  const context = await requireConnectionContext(request, 'response')
+  const context = await requireConnectionContext(request, 'response', [])
   if ('response' in context) return context.response
   const result = await getConnectionRequests(context.auth.user.id)
   return result

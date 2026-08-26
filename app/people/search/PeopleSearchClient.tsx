@@ -34,15 +34,13 @@ export default function PeopleSearchClient() {
     const result = await response.json() as { state?: string; matchToken?: string }
     setBusy(false)
     const copy: Record<string, string> = {
-      not_found: '일치하는 등록을 확인하지 못했습니다.',
-      already_requested: '이미 안부를 보낸 대상입니다.',
-      already_connected: '이미 연결된 대상입니다.',
-      request_unavailable: '현재 연결 요청을 보낼 수 없습니다.',
+      unavailable: '일치 여부를 확인하지 못했습니다.',
       invalid_search: '학교, 졸업연도와 정확한 이름을 확인해 주세요.',
+      service_unavailable: '검색을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.',
     }
     if (result.state === 'match_available' && result.matchToken) {
       setMatchToken(result.matchToken); setStatus('일치하는 등록자가 있습니다. 개인정보는 안부 수락 전까지 공개되지 않습니다.')
-    } else setStatus(copy[result.state ?? ''] ?? '검색을 완료할 수 없습니다.')
+    } else setStatus(copy[result.state ?? ''] ?? '일치 여부를 확인하지 못했습니다.')
   }
 
   async function sendGreeting() {

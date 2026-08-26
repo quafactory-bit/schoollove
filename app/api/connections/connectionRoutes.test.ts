@@ -45,6 +45,11 @@ describe('PHASE 10C connection API boundaries', () => {
     expect(service).toContain('.or(`user_low_id.eq.${userId},user_high_id.eq.${userId}`)')
     expect(service).toContain('mine: message.sender_user_id === userId')
     expect(service).not.toMatch(/return \{[^}]*receiver_user_id/)
+    expect(service).toContain(".select('id,graduation_year,school_id')")
+    expect(service).toContain(".select('id,school_name')")
+    expect(service).not.toContain('school:schools(school_name)')
+    expect(service).toContain('Auxiliary display lookups must never hide an owned pending request')
+    expect(service).toContain("senderName: names.get(row.sender_user_id) ?? '알 수 없는 사용자'")
   })
 
   it('검색·안부·재알림·대화·Instagram·신고에 rate limit action을 적용한다', () => {

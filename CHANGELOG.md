@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-26 PHASE 10V narrow people-discovery safety hardening (local / Draft)
+
+- Hardened all two P0 and eight P1 findings from the PHASE 10U readiness audit without activating people discovery: public emergency stops search/request/reminder/accept, while authenticated receiver safety closure and existing relationship safety operations remain available.
+- Contracted exact search to same-target-school authority, a single browser-visible unavailable state, and five attempts per day for both IP and account. Request creation rechecks current school authority and deletion state; acceptance atomically rechecks both parties.
+- Hardened TypeScript and PostgreSQL greeting validation against practical contact obfuscation, gated Instagram GET before private lookup, and added one replacement-only migration with no new table, column, function, page, API route, telemetry event, or provider.
+- Preview migration/feature activation, external configuration changes, and Production mutation remain out of scope.
+
 ## 2026-08-26 PHASE 10T privacy-safe school share and return loop (local / Draft)
 
 - Added a generic public-school share action to valid owner-only `/account` school cards. It resolves the existing safe school path against the current deployment origin and carries no membership, sender, graduation/class, Instagram, referral, or tracking data.

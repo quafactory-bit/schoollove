@@ -23,7 +23,7 @@ const valid = {
   exact_name: '김하늘',
 }
 
-describe('PHASE 10U search response oracle timing evidence', () => {
+describe('PHASE 10V contracted search response and timing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.context.mockResolvedValue({ auth: { user: { id: 'actor' } } })
@@ -31,7 +31,7 @@ describe('PHASE 10U search response oracle timing evidence', () => {
     mocks.record.mockResolvedValue(undefined)
   })
 
-  it('pads representative states to the same minimum timing class while bodies remain distinguishable', async () => {
+  it('pads representative non-match states and contracts them to one browser body', async () => {
     const samples: Record<string, number[]> = {}
     const sizes: Record<string, number> = {}
     for (const state of ['not_found', 'request_unavailable', 'already_requested']) {
@@ -44,13 +44,13 @@ describe('PHASE 10U search response oracle timing evidence', () => {
         const body = await response.text()
         sizes[state] = new TextEncoder().encode(body).byteLength
         expect(response.status).toBe(200)
-        expect(JSON.parse(body)).toEqual({ state })
+        expect(JSON.parse(body)).toEqual({ state: 'unavailable' })
       }
     }
     for (const values of Object.values(samples)) {
       expect(Math.min(...values)).toBeGreaterThanOrEqual(230)
     }
-    expect(new Set(Object.values(sizes)).size).toBeGreaterThan(1)
+    expect(new Set(Object.values(sizes)).size).toBe(1)
   }, 10_000)
 
   it('pads authorization and validation failures without issuing a match query', async () => {

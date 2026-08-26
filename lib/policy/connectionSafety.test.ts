@@ -21,14 +21,30 @@ describe('PHASE 10C connection safety policy', () => {
     'example.kr/profile',
     'hello@example.com',
     '010-1234-5678',
+    '010 1234 5678',
+    '0 1 0 1 2 3 4 5 6 7 8',
     '@school_friend',
+    '(@friend_name)',
     '카톡 아이디 friend123',
     'Kakao ID friend123',
+    'k a k a o id friend12',
     'Instagram: friend.name',
+    'Ｉｎｓｔａｇｒａｍ： friend12',
+    'example dot kr',
     'https:\u200b//example.com',
   ])('외부 연락처 패턴을 거부한다: %s', (value) => {
     expect(containsExternalContact(value)).toBe(true)
     expect(ConnectionMessageSchema.safeParse({ message: `안녕 ${value}` }).success).toBe(false)
+  })
+
+  it('자연스러운 자기소개와 일반 숫자·문장부호는 허용한다', () => {
+    const input = {
+      match_token: '11111111-1111-4111-8111-111111111111',
+      relationship_type: 'same_school',
+      message: '나 완이야. 오랜만이야.',
+    }
+    expect(ConnectionRequestSchema.safeParse(input).success).toBe(true)
+    expect(ConnectionMessageSchema.safeParse({ message: '우리 3학년 2반이었지?' }).success).toBe(true)
   })
 
   it('최초 안부 200자와 연결 후 메시지 500자 경계를 분리한다', () => {

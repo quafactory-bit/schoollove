@@ -3,6 +3,7 @@ import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { checkConnectionRateLimit, getRequestIp, type ConnectionRateAction } from '@/lib/security/connectionRateLimit'
 import { hasBetaFeatureAccess } from '@/lib/beta'
 import type { BetaFeatureKey } from '@/lib/policy/operations'
+import { hasPublicAccountAccessActive } from '@/lib/publicAccountLaunch'
 
 const featuresForAction: Partial<Record<ConnectionRateAction, readonly BetaFeatureKey[]>> = {
   search: ['people_search'],
@@ -13,18 +14,25 @@ const featuresForAction: Partial<Record<ConnectionRateAction, readonly BetaFeatu
   instagram: ['instagram_permission'],
 }
 
-export async function requireConnectionContext(
+const publicActiveActions = new Set<ConnectionRateAction>(['search','request','reminder'])
+
+type AuthenticatedConnectionContext = NonNullable<Awaited<ReturnType<typeof getAuthenticatedRequestContext>>>
+
+export async function requireConnectionActionContext(
   request: NextRequest,
-  action?: ConnectionRateAction,
+  auth: AuthenticatedConnectionContext,
+  action: ConnectionRateAction,
   requiredFeatures?: readonly BetaFeatureKey[],
+  options?: { requirePublicAccountActive?: boolean },
 ) {
-  const auth = await getAuthenticatedRequestContext(request)
-  if (!auth) return { response: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) } as const
-  if (!action) return { auth } as const
   for (const feature of requiredFeatures ?? featuresForAction[action] ?? []) {
     if (!(await hasBetaFeatureAccess(auth.client, auth.user.id, feature))) {
       return { response: NextResponse.json({ error: 'LIMITED_BETA_ACCESS_REQUIRED' }, { status: 403 }) } as const
     }
+  }
+  if ((options?.requirePublicAccountActive ?? publicActiveActions.has(action))
+    && !(await hasPublicAccountAccessActive(auth.client,auth.user.id))) {
+    return { response: NextResponse.json({ error: 'PUBLIC_ACCOUNT_ACCESS_INACTIVE' }, { status: 403 }) } as const
   }
   const rate = await checkConnectionRateLimit({ ip: getRequestIp(request), userId: auth.user.id, action })
   if (!rate.allowed) {
@@ -33,6 +41,17 @@ export async function requireConnectionContext(
     return { response } as const
   }
   return { auth } as const
+}
+
+export async function requireConnectionContext(
+  request: NextRequest,
+  action?: ConnectionRateAction,
+  requiredFeatures?: readonly BetaFeatureKey[],
+) {
+  const auth = await getAuthenticatedRequestContext(request)
+  if (!auth) return { response: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) } as const
+  if (!action) return { auth } as const
+  return requireConnectionActionContext(request,auth,action,requiredFeatures)
 }
 
 export async function readJson(request: NextRequest): Promise<unknown | null> {

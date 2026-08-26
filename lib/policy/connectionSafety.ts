@@ -13,13 +13,22 @@ export type ConnectionRelationship = (typeof CONNECTION_RELATIONSHIPS)[number]
 const urlPattern = /(?:https?:\/\/|www\.)\S+|(?:\b[A-Za-z0-9-]+\.)+(?:com|net|org|kr|io|me|co|app|dev)\b(?:\/\S*)?/iu
 const emailPattern = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[A-Za-z]{2,}/iu
 const phonePattern = /(?:\+?82[- .]?)?(?:0\d{1,2}[- .]?)?\d{3,4}[- .]?\d{4}/u
-const bareHandlePattern = /(^|\s)@[A-Za-z0-9._-]{2,30}(?=\s|$)/u
+const compactMobilePattern = /(?:\+?82)?0?10\d{7,8}/u
+const bareHandlePattern = /(^|[\s([{])@[A-Za-z0-9._-]{2,30}(?=$|[\s)\]},.!?])/u
 const externalIdPattern = /(?:카카오(?:톡)?|카톡|kakao|인스타(?:그램)?|instagram|텔레그램|telegram|라인|line)\s*(?:아이디|id)?\s*[:：]?\s*[A-Za-z0-9@._-]{2,}/iu
+const obfuscatedDomainPattern = /\b[A-Za-z0-9-]{2,}\s+(?:dot|점)\s+(?:com|net|org|kr|io|me|co|app|dev)\b/iu
+const compactProviderIdPattern = /(?:kakao|instagram|telegram|line)id[A-Za-z0-9@._-]{2,}/iu
 const invisibleFormatPattern = /[\u200B-\u200D\u2060\uFEFF]/u
 
 export function containsExternalContact(value: string): boolean {
-  return invisibleFormatPattern.test(value) || [urlPattern, emailPattern, phonePattern, bareHandlePattern, externalIdPattern]
-    .some((pattern) => pattern.test(value))
+  if (invisibleFormatPattern.test(value)) return true
+  const normalized = value.normalize('NFKC')
+  const compactPhone = normalized.replace(/[\s().-]/g,'')
+  const compactProvider = normalized.replace(/[\s._:()[\]{}-]/g,'')
+  return [urlPattern, emailPattern, phonePattern, bareHandlePattern, externalIdPattern, obfuscatedDomainPattern]
+    .some((pattern) => pattern.test(normalized))
+    || compactMobilePattern.test(compactPhone)
+    || compactProviderIdPattern.test(compactProvider)
 }
 
 export function normalizeConnectionText(value: string): string {

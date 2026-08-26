@@ -119,15 +119,22 @@ export async function getConnectionRequests(userId: string) {
 
   const [profilesResult, membershipsResult] = await Promise.all([
     senderIds.length ? admin.from('private_profiles').select('owner_user_id,display_name').in('owner_user_id', senderIds) : Promise.resolve({ data: [], error: null }),
-    membershipIds.length ? admin.from('profile_school_memberships').select('id,graduation_year,school:schools(school_name)').in('id', membershipIds) : Promise.resolve({ data: [], error: null }),
+    membershipIds.length ? admin.from('profile_school_memberships').select('id,graduation_year,school_id').in('id', membershipIds) : Promise.resolve({ data: [], error: null }),
   ])
-  if (profilesResult.error || membershipsResult.error) return null
-  const names = new Map((profilesResult.data ?? []).map((row: { owner_user_id: string; display_name: string }) => [row.owner_user_id, maskDisplayName(row.display_name)]))
-  const memberships = new Map((membershipsResult.data ?? []).map((row: { id: string; graduation_year: number; school: unknown }) => {
-    const school = Array.isArray(row.school) ? row.school[0] : row.school
-    const schoolName = school && typeof school === 'object' && 'school_name' in school ? String((school as { school_name: unknown }).school_name) : '학교'
-    return [row.id, { schoolName, graduationYear: row.graduation_year }]
-  }))
+  // Auxiliary display lookups must never hide an owned pending request and its
+  // receiver safety actions. Fail closed to masked/missing display metadata.
+  const profileRows = profilesResult.error ? [] : profilesResult.data ?? []
+  const names = new Map(profileRows.map((row: { owner_user_id: string; display_name: string }) => [row.owner_user_id, maskDisplayName(row.display_name)]))
+  const membershipRows = (membershipsResult.error ? [] : membershipsResult.data ?? []) as Array<{ id: string; graduation_year: number; school_id: string }>
+  const schoolIds = [...new Set(membershipRows.map((row) => row.school_id))]
+  const schoolsResult = schoolIds.length
+    ? await admin.from('schools').select('id,school_name').in('id', schoolIds)
+    : { data: [], error: null }
+  const schoolRows = schoolsResult.error ? [] : schoolsResult.data ?? []
+  const schoolNames = new Map(schoolRows.map((row: { id: string; school_name: string }) => [row.id,row.school_name]))
+  const memberships = new Map(membershipRows.map((row) => [row.id, {
+    schoolName: schoolNames.get(row.school_id) ?? '학교', graduationYear: row.graduation_year,
+  }]))
 
   return {
     received: incoming.map((row) => ({
