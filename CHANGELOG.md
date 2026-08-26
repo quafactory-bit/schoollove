@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-26 PHASE 10T privacy-safe school share and return loop (local / Draft)
+
+- Added a generic public-school share action to valid owner-only `/account` school cards. It resolves the existing safe school path against the current deployment origin and carries no membership, sender, graduation/class, Instagram, referral, or tracking data.
+- Kept native share cancellation as cancellation, limited clipboard fallback to the same generic school text and URL, and added temporary accessible copy feedback without persistence or telemetry.
+- Corrected active Home account-start copy and CTA to the fixed Google-only `/login` authority while leaving people discovery, public school privacy, routes, APIs, schema, Auth, Preview data, and Production unchanged.
+
 ## 2026-08-25 PHASE 10S private-account first-value “내 학교” (local / Draft)
 
 - Added a private `/account` summary of the current user's registered schools, own graduation year, and optional class after onboarding, with a clear private-account completion state and factual zero state.

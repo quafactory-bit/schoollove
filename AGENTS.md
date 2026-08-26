@@ -1,5 +1,7 @@
 # SchoolLoveI 작업 규칙
 
+> PHASE 10T 현재 결정: 첫 privacy-safe cold-start loop는 `/account`의 유효한 내 학교 card에서 membership과 무관한 공개 `/school/{encoded-slug}` 페이지를 공유하는 것이다. payload는 공개 학교명, `buildSafeMySchoolHref()` 결과와 현재 origin만 사용하며 졸업연도·반·Instagram·sender/membership/user/Auth ID, referral·tracking을 포함하지 않는다. Web Share 취소(`AbortError`)는 clipboard 복사로 바꾸지 않고, 공유·복사 telemetry와 client persistence를 만들지 않는다. 공개 학교 페이지는 개인화하지 않으며 사람 검색·명단·연결·메시지는 계속 닫혀 있고 신규 schema·API·route는 없다.
+
 > PHASE 10S 현재 결정: `/account`는 Google-only 온보딩을 마친 사용자의 비공개 first-value home이며, 기존 owner-only `AccountState.memberships`로 본인의 학교명·유형·지역·졸업연도·선택 반을 보여 줄 수 있다. 학교 CTA는 DB relation의 유효한 slug로 만든 `/school/{slug}` 기본 경로만 사용하고 Year/Class 경로를 첫 가치 동선으로 사용하지 않는다. 공개 학교 페이지는 membership과 무관한 학교 기본 정보와 일반 `/account` 관리 CTA만 제공하며 개인화하지 않는다. 공개 사람 발견·명단은 계속 꺼져 있고 대표/선호 학교, 가짜 활동·인원·성장 수치, 신규 telemetry·schema·API를 만들지 않는다.
 
 > PHASE 10R 현재 결정: `docs/decisions/2026-08-24-google-only-auth-policy.md`가 일반 사용자 인증의 최신 권위다. 유일한 사용자-facing 로그인 provider는 Google이며 `/login`에서 시작해 검증된 session으로 `/account`와 `/onboarding`을 이용한다. Kakao·Naver와 Supabase Email Auth는 지원하지 않는다. SchoolLove custom recovery email은 로그인과 분리된 소유권·중복 보호 경계로만 유지하고 OTP는 8자리다. 관리자 인증은 별도 경계다. 이 Preview 결정만으로 Production Google rollout은 승인되지 않는다.
