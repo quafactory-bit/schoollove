@@ -29,8 +29,8 @@ AS $$
     AND normalized_text !~* '[[:alnum:]._%+-]+@[[:alnum:].-]+\.[A-Za-z]{2,}'
     AND normalized_text !~ '(\+?82[- .]?)?(0[0-9]{1,2}[- .]?)?[0-9]{3,4}[- .]?[0-9]{4}'
     AND compact_phone !~ '(\+?82)?0?10[0-9]{7,8}'
-    AND handle_spaced !~ '(^|[[:space:]])@[A-Za-z0-9._-]{2,30}([[:space:]]|$)'
-    AND normalized_text !~* '(카카오톡|카톡|kakao|인스타그램|instagram|텔레그램|telegram|라인|line)[[:space:]]*(아이디|id)?[[:space:]]*[:：]?[[:space:]]*[A-Za-z0-9@._-]{2,}'
+    AND handle_spaced !~ '(^|[[:space:]])@[A-Za-z0-9._-]{2,30}([[:space:],.!?]|$)'
+    AND normalized_text !~* '(카카오톡|카카오|카톡|kakao|인스타그램|인스타|instagram|텔레그램|telegram|라인|line)[[:space:]]*(아이디|id)?[[:space:]]*[:：]?[[:space:]]*[A-Za-z0-9@._-]{2,}'
     AND normalized_text !~* '(^|[^[:alnum:]])[A-Za-z0-9-]{2,}[[:space:]]+(dot|점)[[:space:]]+(com|net|org|kr|io|me|co|app|dev)([^[:alnum:]]|$)'
     AND compact_provider !~* '(kakao|instagram|telegram|line)id[A-Za-z0-9@._-]{2,}'
   FROM derived;

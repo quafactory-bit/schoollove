@@ -224,10 +224,12 @@ SELECT phase10v_audit.record(33,'instagram_feature_off_authority',NOT public.has
 DO $$
 DECLARE value text;
 BEGIN
-  FOREACH value IN ARRAY ARRAY['https://example.com','example.kr','hello@example.com','010-1234-5678','010 1234 5678','0 1 0 1 2 3 4 5 6 7 8','@friend','(@friend_name)','카톡 아이디 friend12','k a k a o id friend12','Instagram: friend12','Ｉｎｓｔａｇｒａｍ： friend12','example dot kr','https:'||chr(8203)||'//example.com'] LOOP
+  FOREACH value IN ARRAY ARRAY['https://example.com','example.kr','hello@example.com','010-1234-5678','010 1234 5678','0 1 0 1 2 3 4 5 6 7 8','@friend','@friend,','@friend.','@friend!','@friend?','(@friend_name)','[@friend_name]','{@friend_name}','카카오 아이디 friend12','카카오톡 아이디 friend12','카톡 아이디 friend12','인스타 아이디 friend12','인스타그램 아이디 friend12','k a k a o id friend12','Instagram: friend12','Ｉｎｓｔａｇｒａｍ： friend12','example dot kr','https:'||chr(8203)||'//example.com'] LOOP
     PERFORM phase10v_audit.assert(NOT public.connection_text_is_safe(value,200),'unsafe greeting accepted: '||value);
   END LOOP;
-  PERFORM phase10v_audit.record(34,'greeting_obfuscation_sql_parity',public.connection_text_is_safe('나 완이야. 오랜만이야.',200));
+  PERFORM phase10v_audit.assert(public.connection_text_is_safe('나 완이야. 오랜만이야.',200),'safe natural greeting rejected');
+  PERFORM phase10v_audit.assert(public.connection_text_is_safe('우리 3학년 2반이었지?',200),'safe numeric punctuation greeting rejected');
+  PERFORM phase10v_audit.record(34,'greeting_obfuscation_sql_parity',public.connection_text_is_safe('우리 @ 기호도 썼었지.',200));
 END $$;
 
 DO $$

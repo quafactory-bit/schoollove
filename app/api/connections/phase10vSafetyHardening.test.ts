@@ -12,6 +12,8 @@ const requests = read('app/api/connections/requests/route.ts')
 const action = read('app/api/connections/requests/[id]/route.ts')
 const instagram = read('app/api/connections/[id]/instagram/route.ts')
 const client = read('app/people/search/PeopleSearchClient.tsx')
+const safetyTest = read('lib/policy/connectionSafety.test.ts')
+const disposableAudit = read('scripts/phase10v/disposable-audit.sql')
 
 function rpc(name: string,next: string) {
   const nextMarker = next.startsWith('REVOKE ') ? next : `CREATE OR REPLACE FUNCTION public.${next}`
@@ -89,6 +91,20 @@ describe('PHASE 10V narrow people-discovery hardening contract',()=>{
     ]) {
       expect(migration).toContain(`REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC,anon,authenticated`)
       expect(migration).toContain(`GRANT EXECUTE ON FUNCTION public.${signature} TO service_role`)
+    }
+  })
+
+  it('keeps the expanded Korean-provider and handle-terminator corpus in both TS and SQL verification',()=>{
+    for(const value of [
+      '카카오 아이디 friend12','인스타 아이디 friend12',
+      '@friend,','@friend.','@friend!','@friend?',
+    ]) {
+      expect(safetyTest).toContain(value)
+      expect(disposableAudit).toContain(value)
+    }
+    for(const value of ['나 완이야. 오랜만이야.','우리 3학년 2반이었지?','우리 @ 기호도 썼었지.']) {
+      expect(safetyTest).toContain(value)
+      expect(disposableAudit).toContain(value)
     }
   })
 })
