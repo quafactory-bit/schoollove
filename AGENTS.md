@@ -1,5 +1,7 @@
 # SchoolLoveI 작업 규칙
 
+> PHASE 10X 현재 결정: controlled-beta snapshot이 표현할 수 있는 feature contract는 정확히 두 개다. 기존 `ACCOUNT_PRIVATE_BETA`는 `account_registration`+`private_profile`, 새 `PEOPLE_DISCOVERY_BETA`는 `people_search`+`connection_request`이며 순서와 무관한 정확한 2개 집합만 허용한다. 두 계약 모두 단일 학교·최대 20명·정확히 14일·관리자 승인·초대 1회/7일·필수 중단 조건을 유지하고, immutable snapshot과 8개 program flag 전체가 일치해야 시작·재활성화할 수 있다. messaging·Instagram은 제외하며 `people_search` 중단은 connection expansion에도 우선한다. 10X는 계약 추가만 수행하며 Preview migration 적용, beta draft/program/invite/member 생성, feature 활성화와 Production 변경은 별도 승인 전까지 금지한다.
+
 > PHASE 10V 현재 결정: PHASE 10U의 사람 발견 P0 2개/P1 8개를 runtime·API·DB 방어선에서 폐쇄한다. 정확 검색은 actor가 target 학교 membership을 실제 보유할 때만 opaque token을 발급하고, 모든 유효 non-match/관계 상태는 하나의 generic unavailable 응답으로 수축하며 검색은 IP·account 각각 5회/일이다. `emergency_stopped`는 검색·요청·reminder·accept보다 우선하지만 기존 pending 요청의 decline·not-the-person·block·report와 기존 관계의 disconnect·report는 유지한다. 탈퇴 lifecycle, request-time 학교 authority, accept-time 양측 eligibility를 원자적으로 재검사하고 greeting의 실용적 연락처 우회와 Instagram GET 선행 조회를 차단한다. 새 migration은 기존 함수만 교체하며 table·column·function·route 증가는 없다. `people_search`, `connection_request`, `messaging`, `instagram_permission`은 계속 비활성이고 Preview migration 적용·Ready·merge·Production 변경은 별도 승인 전까지 금지한다.
 
 > PHASE 10U 현재 결정: 사람 발견 readiness audit는 local/disposable 환경에서 완료했지만 public emergency 우회와 Instagram GET feature-gate 공백을 포함한 P0/P1 선행 수정이 남아 있다. `people_search`, `connection_request`, `messaging`, `instagram_permission`은 PHASE 10V 구현·재검증·별도 승인 전까지 계속 비활성 상태다.
