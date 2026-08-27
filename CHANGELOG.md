@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-27 PHASE 10X people-discovery controlled-beta contract (local / Draft)
+
+- Preserved the exact legacy `account_registration` + `private_profile` contract and added one second exact controlled-beta contract: `people_search` + `connection_request`. Mixed, partial, duplicate, and expanded sets remain invalid.
+- Made immutable setup snapshots authoritative for server readiness, full eight-row program flags, start/reactivation, and effective feature access while retaining one school, a 20-user cap, exactly 14 days, admin approval, one-use/seven-day invites, and mandatory privacy/RLS/health stop conditions.
+- Added one replacement-only migration with no new table, column, function, route, or provider. Messaging and Instagram remain excluded, and stopping `people_search` also fails closed for dependent connection expansion.
+- Feature activation, Preview migration/data writes, external configuration/provider calls, and Production mutation remain out of scope.
+
 ## 2026-08-26 PHASE 10V narrow people-discovery safety hardening (local / Draft)
 
 - Hardened all two P0 and eight P1 findings from the PHASE 10U readiness audit without activating people discovery: public emergency stops search/request/reminder/accept, while authenticated receiver safety closure and existing relationship safety operations remain available.
