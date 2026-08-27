@@ -54,4 +54,9 @@ describe('/account private management UI', () => {
     expect(client).toContain('controlledBetaAccess?1:3')
   })
 
+  it('어두운 계정 동작 버튼과 상태 알림은 흰 글자 대비를 강제한다',()=>{
+    expect(client).toContain('schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950')
+    expect(client).toContain('className={`schoollove-dark-action sticky bottom-24')
+  })
+
 })
