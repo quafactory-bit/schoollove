@@ -1,27 +1,30 @@
-export type SocialBrokerErrorCode =
-  | 'INVALID_PROVIDER'
-  | 'INVALID_SUBJECT'
-  | 'INVALID_KEY_VERSION'
-  | 'INVALID_KEY'
-  | 'INVALID_ATTEMPT_ID'
-  | 'ATTEMPT_ID_REUSED'
-  | 'ATTEMPT_EXPIRED'
-  | 'INVALID_ATTEMPT_TRANSITION'
-  | 'TERMINAL_ATTEMPT_REUSE'
-  | 'STATE_REJECTED'
-  | 'PKCE_REJECTED'
-  | 'PKCE_DOWNGRADE_REJECTED'
-  | 'NONCE_REJECTED'
-  | 'PROVIDER_MISMATCH'
-  | 'REPLAY_REJECTED'
-  | 'UPSTREAM_RESPONSE_EXPIRED'
-  | 'UPSTREAM_RESPONSE_MALFORMED'
-  | 'UPSTREAM_TRANSPORT_REJECTED'
-  | 'UPSTREAM_ERROR'
-  | 'UNKNOWN_CLIENT'
-  | 'REDIRECT_URI_REJECTED'
-  | 'AUTHORIZATION_CODE_REJECTED'
-  | 'AUTHORIZATION_CODE_EXPIRED'
+export const SOCIAL_BROKER_ERROR_CODES = [
+  'INVALID_PROVIDER',
+  'INVALID_SUBJECT',
+  'INVALID_KEY_VERSION',
+  'INVALID_KEY',
+  'INVALID_ATTEMPT_ID',
+  'ATTEMPT_ID_REUSED',
+  'ATTEMPT_EXPIRED',
+  'INVALID_ATTEMPT_TRANSITION',
+  'TERMINAL_ATTEMPT_REUSE',
+  'STATE_REJECTED',
+  'PKCE_REJECTED',
+  'PKCE_DOWNGRADE_REJECTED',
+  'NONCE_REJECTED',
+  'PROVIDER_MISMATCH',
+  'REPLAY_REJECTED',
+  'UPSTREAM_RESPONSE_EXPIRED',
+  'UPSTREAM_RESPONSE_MALFORMED',
+  'UPSTREAM_TRANSPORT_REJECTED',
+  'UPSTREAM_ERROR',
+  'UNKNOWN_CLIENT',
+  'REDIRECT_URI_REJECTED',
+  'AUTHORIZATION_CODE_REJECTED',
+  'AUTHORIZATION_CODE_EXPIRED',
+] as const
+
+export type SocialBrokerErrorCode = (typeof SOCIAL_BROKER_ERROR_CODES)[number]
 
 export const GOOGLE_CALLBACK_DIAGNOSTIC_REASONS = [
   'pkce_resume_failed',
@@ -36,9 +39,48 @@ export const GOOGLE_CALLBACK_DIAGNOSTIC_REASONS = [
   'token_time_failed',
   'nonce_failed',
   'provider_identity_malformed',
+  'verifier_unclassified_failure',
 ] as const
 
 export type GoogleCallbackDiagnosticReason = (typeof GOOGLE_CALLBACK_DIAGNOSTIC_REASONS)[number]
+
+const socialBrokerErrorCodes = new Set<string>(SOCIAL_BROKER_ERROR_CODES)
+const googleCallbackDiagnosticReasons = new Set<string>(GOOGLE_CALLBACK_DIAGNOSTIC_REASONS)
+
+export type ExtractedGoogleCallbackDiagnostic = Readonly<{
+  reason: GoogleCallbackDiagnosticReason
+  upstreamStatus?: number
+}>
+
+/**
+ * Reads only allowlisted scalar metadata from an unknown error boundary.
+ * It never serializes, spreads, or returns the source error object.
+ */
+export function extractGoogleCallbackDiagnostic(error: unknown): ExtractedGoogleCallbackDiagnostic | null {
+  if ((typeof error !== 'object' && typeof error !== 'function') || error === null) return null
+  try {
+    const reason = Reflect.get(error, 'diagnosticReason')
+    if (typeof reason !== 'string' || !googleCallbackDiagnosticReasons.has(reason)) return null
+    const upstreamStatus = Reflect.get(error, 'upstreamStatus')
+    const validStatus = Number.isInteger(upstreamStatus) && (upstreamStatus as number) >= 100 && (upstreamStatus as number) <= 599
+      ? upstreamStatus as number
+      : undefined
+    return Object.freeze({ reason: reason as GoogleCallbackDiagnosticReason, ...(validStatus === undefined ? {} : { upstreamStatus: validStatus }) })
+  } catch {
+    return null
+  }
+}
+
+/** Reads one allowlisted lifecycle code without relying on cross-module class identity. */
+export function extractSocialBrokerErrorCode(error: unknown): SocialBrokerErrorCode | undefined {
+  if ((typeof error !== 'object' && typeof error !== 'function') || error === null) return undefined
+  try {
+    const code = Reflect.get(error, 'code')
+    return typeof code === 'string' && socialBrokerErrorCodes.has(code) ? code as SocialBrokerErrorCode : undefined
+  } catch {
+    return undefined
+  }
+}
 
 const diagnostics = new WeakMap<SocialBrokerError, Readonly<{ reason: GoogleCallbackDiagnosticReason; upstreamStatus?: number }>>()
 

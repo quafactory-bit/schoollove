@@ -1,6 +1,6 @@
 import 'server-only'
 import type { UpstreamHttpResponse, UpstreamHttpTransport } from './upstream-adapters'
-import { brokerFailure, diagnosticFailure, SocialBrokerError, type GoogleCallbackDiagnosticReason } from './errors'
+import { brokerFailure, diagnosticFailure, extractGoogleCallbackDiagnostic, type GoogleCallbackDiagnosticReason } from './errors'
 import type { SocialProvider } from './types'
 
 const TIMEOUT_MS = 5_000
@@ -23,7 +23,7 @@ async function bounded(fetcher: Fetcher, url: string, init: RequestInit, transpo
     if (Buffer.byteLength(body, 'utf8') > MAX_BODY_BYTES) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', malformedReason)
     return Object.freeze({ status: response.status, contentType, body, url })
   } catch (error) {
-    if (error instanceof SocialBrokerError && error.diagnosticReason) throw error
+    if (extractGoogleCallbackDiagnostic(error)) throw error
     rejected(transportReason)
   } finally { clearTimeout(timer) }
 }

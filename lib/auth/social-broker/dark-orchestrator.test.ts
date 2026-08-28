@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 import { DarkBrokerOrchestrator, type DarkBrokerPersistence } from './dark-orchestrator'
 import { createSyntheticClient } from './http'
-import { GOOGLE_CALLBACK_DIAGNOSTIC_REASONS, SocialBrokerError } from './errors'
+import { extractGoogleCallbackDiagnostic, extractSocialBrokerErrorCode, GOOGLE_CALLBACK_DIAGNOSTIC_REASONS, SocialBrokerError } from './errors'
 import { downstreamAuthorizationBoundHandleDigest } from './authorization-transaction'
 
 const redirect = 'https://local.supabase.invalid/auth/v1/callback'
@@ -36,6 +36,13 @@ function orchestrator(port = persistence()) {
 describe('dark end-to-end broker orchestration', () => {
   const authorizeUrl = () => new URL(`https://broker.invalid/oauth/authorize?response_type=code&client_id=${client.clientId}&redirect_uri=${encodeURIComponent(redirect)}&scope=openid&state=${encodeURIComponent(context.downstreamState)}&nonce=${context.downstreamNonce}&code_challenge=${context.pkceS256Challenge}&code_challenge_method=S256`)
 
+  it('accepts only allowlisted structural diagnostic metadata', () => {
+    expect(extractGoogleCallbackDiagnostic({ diagnosticReason: 'nonce_failed', upstreamStatus: 99 })).toEqual({ reason: 'nonce_failed' })
+    expect(extractGoogleCallbackDiagnostic({ diagnosticReason: 'not-approved', upstreamStatus: 400 })).toBeNull()
+    expect(extractSocialBrokerErrorCode({ code: 'UPSTREAM_RESPONSE_EXPIRED' })).toBe('UPSTREAM_RESPONSE_EXPIRED')
+    expect(extractSocialBrokerErrorCode({ code: 'not-approved' })).toBeUndefined()
+  })
+
   it('PHASE10O_Q_VALIDATED_DOWNSTREAM_TO_DURABLE_HANDLE_OK', async () => {
     const result = await orchestrator().begin(authorizeUrl())
     expect(result).toMatchObject({ provider: 'google' }); expect(result.brokerHandle).toMatch(/^[A-Za-z0-9_-]{43}$/); expect(result.browserBindingSecret).toMatch(/^[A-Za-z0-9_-]{43}$/); expect(result.browserBindingSecret).not.toBe(result.brokerHandle)
@@ -68,14 +75,80 @@ describe('dark end-to-end broker orchestration', () => {
 
   it('PHASE10O_Q_PROVIDER_FAILURE_TERMINALIZES_CLAIMED_LEG', async () => {
     let terminalized = 0
+    let upstreamState = 'callback_claimed'
+    let downstreamState = 'upstream_bound'
+    const output: string[] = []
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(value => { output.push(String(value)) })
     const port = persistence()
     const configured: DarkBrokerPersistence = {
       ...port,
       claimCallback: async () => ({ outcome: 'CALLBACK_CLAIMED', attemptId: context.loginAttemptId, legId: 'd1000000-0000-4000-8000-000000000003', provider: 'google', nonceDigest: Buffer.alloc(32, 1), pkceS256Challenge: 'B'.repeat(43), pkceVerifierCiphertext: Buffer.alloc(17, 2), pkceVerifierIv: Buffer.alloc(12, 3), pkceVerifierKeyVersion: 1 }),
+      failClaimedUpstreamLeg: async () => { terminalized += 1; upstreamState = 'rejected'; downstreamState = 'rejected'; return 'REJECTED' },
+    }
+    const plain = Object.assign(new Error('never-log-authorization-code'), {
+      authorizationCode: 'never-log-authorization-code', verifier: 'never-log-verifier', state: 'never-log-state', nonce: 'never-log-nonce',
+      idToken: 'never-log-id-token', accessToken: 'never-log-access-token', clientSecret: 'never-log-client-secret',
+      email: 'never-log@example.invalid', subject: 'never-log-subject',
+    })
+    Object.defineProperty(plain, 'diagnosticReason', { get() { throw new Error('never-log-getter-value') } })
+    try {
+      await expect(orchestrator(configured).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw plain } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
+      expect(terminalized).toBe(1)
+      expect(upstreamState).toBe('rejected')
+      expect(downstreamState).toBe('rejected')
+      expect(output).toHaveLength(1)
+      const serialized = output[0]
+      expect(JSON.parse(serialized)).toMatchObject({ reason: 'verifier_unclassified_failure', provider: 'google' })
+      for (const forbidden of ['never-log-authorization-code', 'never-log-verifier', 'never-log-state', 'never-log-nonce', 'never-log-id-token', 'never-log-access-token', 'never-log-client-secret', 'never-log@example.invalid', 'never-log-subject', 'never-log-getter-value']) {
+        expect(serialized).not.toContain(forbidden)
+      }
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('extracts allowlisted diagnostic metadata across a broken instanceof boundary', async () => {
+    const output: string[] = []
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(value => { output.push(String(value)) })
+    const terminalReasons: string[] = []
+    const crossBoundaryError = Object.freeze({
+      code: 'UPSTREAM_ERROR', diagnosticReason: 'token_exchange_http_failed', upstreamStatus: 400,
+      responseBody: 'never-log-response-body', authorizationCode: 'never-log-authorization-code',
+    })
+    expect(crossBoundaryError).not.toBeInstanceOf(SocialBrokerError)
+    const port: DarkBrokerPersistence = {
+      ...persistence(),
+      claimCallback: async () => ({ outcome: 'CALLBACK_CLAIMED', attemptId: context.loginAttemptId, legId: 'd1000000-0000-4000-8000-000000000003', provider: 'google', nonceDigest: Buffer.alloc(32, 1), pkceS256Challenge: 'B'.repeat(43), pkceVerifierCiphertext: Buffer.alloc(17, 2), pkceVerifierIv: Buffer.alloc(12, 3), pkceVerifierKeyVersion: 1 }),
+      failClaimedUpstreamLeg: async input => { terminalReasons.push(input.reason); return 'REJECTED' },
+    }
+    try {
+      await expect(orchestrator(port).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw crossBoundaryError } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
+      expect(terminalReasons).toEqual(['provider_failure'])
+      expect(output).toHaveLength(1)
+      expect(JSON.parse(output[0])).toMatchObject({ reason: 'token_exchange_http_failed', upstreamStatus: 400 })
+      expect(output[0]).not.toContain('never-log-response-body')
+      expect(output[0]).not.toContain('never-log-authorization-code')
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('keeps fail-closed terminalization when the diagnostic sink throws', async () => {
+    let terminalized = 0
+    let loggerCalls = 0
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { loggerCalls += 1; throw new Error('synthetic logger failure') })
+    const port: DarkBrokerPersistence = {
+      ...persistence(),
+      claimCallback: async () => ({ outcome: 'CALLBACK_CLAIMED', attemptId: context.loginAttemptId, legId: 'd1000000-0000-4000-8000-000000000003', provider: 'google', nonceDigest: Buffer.alloc(32, 1), pkceS256Challenge: 'B'.repeat(43), pkceVerifierCiphertext: Buffer.alloc(17, 2), pkceVerifierIv: Buffer.alloc(12, 3), pkceVerifierKeyVersion: 1 }),
       failClaimedUpstreamLeg: async () => { terminalized += 1; return 'REJECTED' },
     }
-    await expect(orchestrator(configured).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw new Error('provider rejected') } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
-    expect(terminalized).toBe(1)
+    try {
+      await expect(orchestrator(port).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw new Error('synthetic verifier failure') } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
+      expect(loggerCalls).toBe(1)
+      expect(terminalized).toBe(1)
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('logs only the safe diagnostic enum while every classified verifier failure terminalizes fail-closed', async () => {
@@ -148,10 +221,16 @@ describe('dark end-to-end broker orchestration', () => {
 
   it('PHASE10O_Q_ONLY_TYPED_EXPIRY_SELECTS_EXPIRED_TERMINATION', async () => {
     const reasons: string[] = []
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const port: DarkBrokerPersistence = { ...persistence(), claimCallback: async () => ({ outcome: 'CALLBACK_CLAIMED', attemptId: context.loginAttemptId, legId: 'd1000000-0000-4000-8000-000000000003', provider: 'google', nonceDigest: Buffer.alloc(32, 1), pkceS256Challenge: 'B'.repeat(43), pkceVerifierCiphertext: Buffer.alloc(17, 2), pkceVerifierIv: Buffer.alloc(12, 3), pkceVerifierKeyVersion: 1 }), failClaimedUpstreamLeg: async input => { reasons.push(input.reason); return input.reason === 'expired' ? 'EXPIRED' : 'REJECTED' } }
-    await expect(orchestrator(port).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw new SocialBrokerError('UPSTREAM_RESPONSE_EXPIRED') } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
-    await expect(orchestrator({ ...port, failClaimedUpstreamLeg: async input => { reasons.push(input.reason); return 'REJECTED' } }).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw new Error('UPSTREAM_RESPONSE_EXPIRED') } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
-    expect(reasons).toEqual(['expired', 'provider_failure'])
+    try {
+      await expect(orchestrator(port).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw new SocialBrokerError('UPSTREAM_RESPONSE_EXPIRED') } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
+      await expect(orchestrator({ ...port, failClaimedUpstreamLeg: async input => { reasons.push(input.reason); return 'REJECTED' } }).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw new Error('UPSTREAM_RESPONSE_EXPIRED') } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
+      await expect(orchestrator(port).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw { code: 'UPSTREAM_RESPONSE_EXPIRED', diagnosticReason: 'token_time_failed' } } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
+      expect(reasons).toEqual(['expired', 'provider_failure', 'expired'])
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('PHASE10O_Q_CALLBACK_PRIVATE_ID_INJECTION_REJECTED', async () => {

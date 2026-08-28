@@ -8,7 +8,7 @@ import { validateDownstreamAuthorizationRequest, type DarkOidcClient, type Valid
 import { prepareTransactionBoundBrokerCode, type TrustedAuthorizationTransactionIssuanceContext } from './transaction-bound-code-issuance'
 import type { BrokerAuthorizationCodeNonceKey } from './durable-code'
 import { deriveBrokerSubject } from './subject'
-import { SocialBrokerError } from './errors'
+import { extractGoogleCallbackDiagnostic, extractSocialBrokerErrorCode, type ExtractedGoogleCallbackDiagnostic } from './errors'
 import { writeGoogleCallbackDiagnostic } from './google-callback-diagnostics'
 import type { SocialProvider } from './types'
 
@@ -129,14 +129,15 @@ export class DarkBrokerOrchestrator {
     try { verifiedUpstream = await input.verifier.verify(correlated.context) }
     catch (error) {
       // A claimed callback must never be abandoned: transition through the approved M failure RPC.
-      const code = error instanceof SocialBrokerError ? error.code : undefined
-      if (input.provider === 'google' && error instanceof SocialBrokerError && error.diagnosticReason) {
+      const code = extractSocialBrokerErrorCode(error)
+      if (input.provider === 'google') {
+        const diagnostic: ExtractedGoogleCallbackDiagnostic = extractGoogleCallbackDiagnostic(error) ?? Object.freeze({ reason: 'verifier_unclassified_failure' })
         try {
           writeGoogleCallbackDiagnostic({
             attemptId: correlated.context.attemptId,
-            reason: error.diagnosticReason,
+            reason: diagnostic.reason,
             at: this.input.now(),
-            ...(error.upstreamStatus === undefined ? {} : { upstreamStatus: error.upstreamStatus }),
+            ...(diagnostic.upstreamStatus === undefined ? {} : { upstreamStatus: diagnostic.upstreamStatus }),
           })
         } catch { /* Diagnostics must never alter the fail-closed transition. */ }
       }
