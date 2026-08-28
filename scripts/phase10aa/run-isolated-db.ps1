@@ -4,17 +4,66 @@ $containerName = 'schoollove-phase10aa-db'
 $image = 'public.ecr.aws/supabase/postgres:17.6.1.143'
 $migrationName = '20260827104800_grade_class_history_foundation.sql'
 $migrationPath = (Resolve-Path "supabase/migrations/$migrationName").Path
+$migrationSha256 = '00a1c26d18fc99d4baae48c33d3503bd4a65ffa0b183217a5029d7bd5929abc8'
+$nonAsciiProofPath = (Resolve-Path 'supabase/migrations/20260715120000_school_growth_ranking_rpc.sql').Path
 $created = $false
+$temp = Join-Path ([IO.Path]::GetTempPath()) ('schoollove-phase10aa-' + [guid]::NewGuid().ToString('N'))
+
+function Copy-SqlFile([string]$file) {
+  $containerPath = '/tmp/phase10aa-' + [guid]::NewGuid().ToString('N') + '.sql'
+  $hostHash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+  docker cp $file "${containerName}:$containerPath" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "SQL copy failed: $file" }
+  $containerHashOutput = docker exec $containerName sha256sum $containerPath
+  if ($LASTEXITCODE -ne 0) { throw "Container SQL hash failed: $file" }
+  $containerHash = ($containerHashOutput -split '\s+')[0].ToLowerInvariant()
+  if ($hostHash -ne $containerHash) {
+    docker exec $containerName rm -f $containerPath | Out-Null
+    throw 'PHASE_10AA_SQL_TRANSPORT_BYTE_MISMATCH'
+  }
+  return [pscustomobject]@{
+    ContainerPath = $containerPath
+    HostHash = $hostHash
+    ContainerHash = $containerHash
+  }
+}
+
+function Remove-ContainerSqlFile([string]$containerPath) {
+  docker exec $containerName rm -f $containerPath | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Container SQL cleanup failed: $containerPath" }
+}
+
+function Assert-SqlTransport([string]$label, [string]$file, [string]$expectedHash = '') {
+  $copy = Copy-SqlFile $file
+  try {
+    if ($expectedHash -and $copy.HostHash -ne $expectedHash) {
+      throw "$label expected=$expectedHash actual=$($copy.HostHash)"
+    }
+    Write-Output "PHASE10AA_BYTE_PROOF $label host=$($copy.HostHash) container=$($copy.ContainerHash)"
+  } finally {
+    Remove-ContainerSqlFile $copy.ContainerPath
+  }
+}
 
 function Invoke-SqlFile([string]$database, [string]$file) {
-  Get-Content -LiteralPath $file -Raw -Encoding UTF8 |
-    docker exec -i $containerName psql -U postgres -d $database -v ON_ERROR_STOP=1 -q
-  if ($LASTEXITCODE -ne 0) { throw "SQL failed: $database $file" }
+  $copy = Copy-SqlFile $file
+  try {
+    docker exec $containerName psql -U postgres -d $database -v ON_ERROR_STOP=1 -q -f $copy.ContainerPath
+    $code = $LASTEXITCODE
+  } finally {
+    Remove-ContainerSqlFile $copy.ContainerPath
+  }
+  if ($code -ne 0) { throw "SQL failed: $database $file" }
 }
 
 function Invoke-Sql([string]$database, [string]$sql) {
-  $sql | docker exec -i $containerName psql -U postgres -d $database -v ON_ERROR_STOP=1 -q
-  if ($LASTEXITCODE -ne 0) { throw "SQL failed: $database" }
+  $file = Join-Path $temp ([guid]::NewGuid().ToString('N') + '.sql')
+  [IO.File]::WriteAllText($file, $sql, [Text.UTF8Encoding]::new($false))
+  try {
+    Invoke-SqlFile $database $file
+  } finally {
+    Remove-Item -LiteralPath $file -Force
+  }
 }
 
 function Invoke-Scalar([string]$database, [string]$sql) {
@@ -29,11 +78,19 @@ function Assert-Equal([string]$label, [string]$actual, [string]$expected) {
 }
 
 function Expect-SqlFailure([string]$database, [string]$label, [string]$sql) {
-  $old = $ErrorActionPreference
-  $ErrorActionPreference = 'SilentlyContinue'
-  $sql | docker exec -i $containerName psql -U postgres -d $database -v ON_ERROR_STOP=1 -q 2>$null | Out-Null
-  $code = $LASTEXITCODE
-  $ErrorActionPreference = $old
+  $file = Join-Path $temp ([guid]::NewGuid().ToString('N') + '.sql')
+  [IO.File]::WriteAllText($file, $sql, [Text.UTF8Encoding]::new($false))
+  $copy = Copy-SqlFile $file
+  try {
+    $old = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+    docker exec $containerName psql -U postgres -d $database -v ON_ERROR_STOP=1 -q -f $copy.ContainerPath 2>$null | Out-Null
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $old
+  } finally {
+    Remove-ContainerSqlFile $copy.ContainerPath
+    Remove-Item -LiteralPath $file -Force
+  }
   if ($code -eq 0) { throw "Expected SQL failure was accepted: $label" }
   Write-Output "PHASE10AA_EXPECTED_REJECTION_OK $label"
 }
@@ -167,6 +224,7 @@ WHERE users.email LIKE 'phase10aa-%@example.invalid'
 }
 
 try {
+  New-Item -ItemType Directory -Path $temp | Out-Null
   docker version --format '{{.Server.Version}}' | Out-Null
   if ($LASTEXITCODE -ne 0) { throw 'Docker engine is unavailable.' }
   $old = $ErrorActionPreference
@@ -196,6 +254,9 @@ try {
   }
   if (-not $ready) { throw 'Isolated PostgreSQL did not become ready.' }
 
+  Assert-SqlTransport 'phase10aa_migration' $migrationPath $migrationSha256
+  Assert-SqlTransport 'earlier_non_ascii_migration' $nonAsciiProofPath
+
   $migrationCount = @(Get-ChildItem -LiteralPath 'supabase/migrations' -Filter '*.sql').Count
   Assert-Equal 'migration_count' "$migrationCount" '36'
 
@@ -224,6 +285,8 @@ SELECT public.add_own_school_membership(
   Assert-Equal 'table_delta' "$([int]$afterTables-[int]$beforeTables)" '1'
   Assert-Equal 'column_delta' "$([int]$afterColumns-[int]$beforeColumns)" '7'
   Assert-Equal 'function_delta' "$([int]$afterFunctions-[int]$beforeFunctions)" '1'
+  Assert-Equal 'legacy_function_authenticated_execute' (Invoke-Scalar 'phase10aa_upgrade' "SELECT has_function_privilege('authenticated','public.add_own_school_membership(uuid,integer,integer)','EXECUTE')") 'f'
+  Assert-Equal 'class_history_function_authenticated_execute' (Invoke-Scalar 'phase10aa_upgrade' "SELECT has_function_privilege('authenticated','public.add_own_school_membership_with_class_history(uuid,integer,jsonb)','EXECUTE')") 't'
   Assert-Equal 'legacy_class_retained' (Invoke-Scalar 'phase10aa_upgrade' "SELECT class_number FROM public.profile_school_memberships WHERE owner_user_id='aa100001-0000-4000-8000-000000000006'") '9'
   Assert-Equal 'legacy_not_backfilled' (Invoke-Scalar 'phase10aa_upgrade' "SELECT count(*) FROM public.profile_school_class_histories WHERE owner_user_id='aa100001-0000-4000-8000-000000000006'") '0'
   Write-Output "PHASE10AA_UPGRADE_PASS migrations=35_to_36 tables=$beforeTables->$afterTables columns=$beforeColumns->$afterColumns functions=$beforeFunctions->$afterFunctions"
@@ -249,6 +312,7 @@ SELECT public.add_own_school_membership_with_class_history(
   Assert-Equal 'three_schools' (Invoke-Scalar 'phase10aa_fresh' "SELECT count(*) FROM public.profile_school_memberships WHERE owner_user_id='$ownerOne'") '3'
   Assert-Equal 'twelve_class_rows' (Invoke-Scalar 'phase10aa_fresh' "SELECT count(*) FROM public.profile_school_class_histories WHERE owner_user_id='$ownerOne'") '12'
   Assert-Equal 'new_parent_class_null' (Invoke-Scalar 'phase10aa_fresh' "SELECT count(*) FROM public.profile_school_memberships WHERE owner_user_id='$ownerOne' AND class_number IS NOT NULL") '0'
+  Assert-Equal 'owner_select_allowed' (Invoke-Scalar 'phase10aa_fresh' "SET request.jwt.claim.sub='$ownerOne'; SET ROLE authenticated; SELECT count(*) FROM public.profile_school_class_histories; RESET ROLE;") '12'
 
   Expect-AsUserFailure 'phase10aa_fresh' $ownerTwo 'high_grade_4' @'
 SELECT public.add_own_school_membership_with_class_history('aa000001-0000-4000-8000-000000000001',2008,'[{"grade_number":4,"class_number":1}]'::jsonb);
@@ -311,6 +375,7 @@ DROP FUNCTION public.phase10aa_force_child_failure();
   Assert-Equal 'cross_user_select_blocked' (Invoke-Scalar 'phase10aa_fresh' "SET request.jwt.claim.sub='$ownerTwo'; SET ROLE authenticated; SELECT count(*) FROM public.profile_school_class_histories; RESET ROLE;") '0'
   Expect-AsUserFailure 'phase10aa_fresh' $ownerTwo 'cross_user_insert_blocked' "INSERT INTO public.profile_school_class_histories(membership_id,owner_user_id,grade_number,class_number) SELECT id,'$ownerTwo',1,1 FROM public.profile_school_memberships WHERE owner_user_id='$ownerOne' LIMIT 1;"
   Expect-AsUserFailure 'phase10aa_fresh' $ownerTwo 'cross_user_update_blocked' "UPDATE public.profile_school_class_histories SET class_number=99 WHERE owner_user_id='$ownerOne';"
+  Expect-AsUserFailure 'phase10aa_fresh' $ownerTwo 'cross_user_delete_blocked' "DELETE FROM public.profile_school_class_histories WHERE owner_user_id='$ownerOne';"
   Expect-SqlFailure 'phase10aa_fresh' 'parent_owner_mismatch_fk' "INSERT INTO public.profile_school_class_histories(membership_id,owner_user_id,grade_number,class_number) SELECT id,'$ownerTwo',4,1 FROM public.profile_school_memberships WHERE owner_user_id='$ownerOne' AND school_id='aa000001-0000-4000-8000-000000000003';"
 
   $middleMembershipId = Invoke-Scalar 'phase10aa_fresh' "SELECT id FROM public.profile_school_memberships WHERE owner_user_id='$ownerOne' AND school_id='aa000001-0000-4000-8000-000000000002'"
@@ -333,5 +398,8 @@ DROP FUNCTION public.phase10aa_force_child_failure();
     $ErrorActionPreference = 'SilentlyContinue'
     docker rm -f $containerName 2>$null | Out-Null
     $ErrorActionPreference = $old
+  }
+  if (Test-Path -LiteralPath $temp) {
+    Remove-Item -LiteralPath $temp -Recurse -Force
   }
 }
