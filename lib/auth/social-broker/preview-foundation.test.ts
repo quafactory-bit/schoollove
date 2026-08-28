@@ -105,6 +105,26 @@ describe('PHASE 10P preview provider foundation', () => {
     expect([...response.headers.entries()].join('\n')).not.toContain('never-log-authorization-code')
   })
 
+  it('keeps the external callback HTTP 400 for an unclassified verifier failure', async () => {
+    const sessionKey = { version: 1 as const, material: Buffer.alloc(32, 20) }
+    const rawState = 'U'.repeat(43)
+    const sealed = sealBrowserContinuity({ provider: 'google', brokerHandle: 'J'.repeat(43), browserBindingSecret: 'K'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
+    const adapter = createPreviewRouteAdapter({
+      now: () => 100,
+      browserSessionKey: sessionKey,
+      orchestrator: {
+        continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
+        callback: vi.fn(async () => { throw new Error('never-log-plain-verifier-error') }),
+      } as never,
+      verifier: {} as never,
+      oidc: {} as never,
+    })
+    const response = await adapter.callback('google', new Request(`${PREVIEW_BROKER_ISSUER}/auth/social/callback/google?code=never-log-authorization-code&state=${rawState}`, { headers: { cookie: `${socialContinuityCookie.name}=${sealed}` } }))
+    expect(response.status).toBe(400)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(await response.text()).toBe('')
+  })
+
   it('PHASE10P_BROWSER_CONTINUITY_SERVER_ONLY_OK seals a short-lived HttpOnly browser binding and rejects tamper or expiry', () => {
     const material = Buffer.alloc(32, 7)
     const sealed = sealBrowserContinuity({ provider: 'google', brokerHandle: 'A'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 100, expiresAt: 700 }, { version: 1, material })

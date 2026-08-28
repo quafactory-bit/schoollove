@@ -4,7 +4,7 @@ import { createNonceLeg, type NonceBinding } from './nonce'
 import { calculateS256Challenge, createPkceVerifier } from './pkce'
 import { createStateLeg, type StateBinding } from './state'
 import { verifyDurableUpstreamNonce } from './durable-upstream-leg'
-import { brokerFailure, diagnosticFailure, SocialBrokerError } from './errors'
+import { brokerFailure, diagnosticFailure, extractGoogleCallbackDiagnostic } from './errors'
 import type { SocialProvider } from './types'
 
 const MAX_RESPONSE_BYTES = 16 * 1024
@@ -139,7 +139,7 @@ function decodeJwt(token: string): Readonly<{ header: Record<string, unknown>; p
       signature: Buffer.from(parts[2], 'base64url'),
     })
   } catch (error) {
-    if (error instanceof SocialBrokerError && error.diagnosticReason) throw error
+    if (extractGoogleCallbackDiagnostic(error)) throw error
     diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_missing_or_malformed')
   }
 }
@@ -150,7 +150,7 @@ function validateJwt(input: Readonly<{ idToken: string; provider: 'kakao' | 'goo
     let jwksResponse: UpstreamHttpResponse
     try { jwksResponse = await input.transport.fetchJwks({ provider: input.provider, jwksUri: input.config.jwksUri }) }
     catch (error) {
-      if (error instanceof SocialBrokerError && error.diagnosticReason) throw error
+      if (extractGoogleCallbackDiagnostic(error)) throw error
       diagnosticFailure('UPSTREAM_ERROR', 'jwks_fetch_failed')
     }
     const jwks = oidcResponseObject(parseOidcResponse(jwksResponse, input.config.jwksUri, 'jwks'), 'jwks_key_rejected'); const keys = jwks.keys
@@ -165,7 +165,7 @@ function validateJwt(input: Readonly<{ idToken: string; provider: 'kakao' | 'goo
     try {
       if (!verify('RSA-SHA256', jwt.signed, publicKey, jwt.signature)) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_signature_failed')
     } catch (error) {
-      if (error instanceof SocialBrokerError && error.diagnosticReason) throw error
+      if (extractGoogleCallbackDiagnostic(error)) throw error
       diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_signature_failed')
     }
     const payload = jwt.payload
@@ -201,7 +201,7 @@ export async function verifyResumedOidcIdentity(input: Readonly<{ provider: 'kak
   let response: UpstreamHttpResponse
   try { response = await input.transport.exchangeCode({ provider: input.provider, tokenEndpoint: config.tokenEndpoint, clientId: config.clientId, redirectUri: config.redirectUri, authorizationCode: opaqueAuthorizationCode(input.authorizationCode), codeVerifier: input.codeVerifier }) }
   catch (error) {
-    if (error instanceof SocialBrokerError && error.diagnosticReason) throw error
+    if (extractGoogleCallbackDiagnostic(error)) throw error
     diagnosticFailure('UPSTREAM_ERROR', 'token_exchange_transport_failed')
   }
   const token = oidcResponseObject(parseOidcResponse(response, config.tokenEndpoint, 'token'), 'token_response_malformed')

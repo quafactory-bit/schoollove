@@ -56,6 +56,20 @@ describe('dark upstream provider adapters', () => {
     expect(identity).toEqual({ provider: 'google', upstreamSubject: Buffer.from('synthetic-google-subject'), authenticationTime: NOW - 2 })
   })
 
+  it('classifies a malformed durable raw nonce as nonce_failed instead of leaking a plain format error', async () => {
+    const malformedNonce = 'not-a-durable-nonce'
+    const identityToken = jwt(expectedClaims('google', malformedNonce))
+    let caught: unknown
+    try {
+      await verifyResumedOidcIdentity({
+        provider: 'google', authorizationCode: 'synthetic-code', clientId, redirectUri: redirect, codeVerifier: 'V'.repeat(43),
+        nonceDigest: Buffer.alloc(32, 1), transport: oidcTransport({ provider: 'google', idToken: identityToken }), now: NOW,
+      })
+    } catch (error) { caught = error }
+    expect(caught).toBeInstanceOf(SocialBrokerError)
+    expect(caught).toMatchObject({ code: 'NONCE_REJECTED', diagnosticReason: 'nonce_failed' })
+  })
+
   it('classifies secret-free Google callback verifier failure stages without weakening verification', async () => {
     const nonce = 'D'.repeat(43)
     const { upstreamNonceDigest } = await import('./durable-upstream-leg')
@@ -142,6 +156,30 @@ describe('dark upstream provider adapters', () => {
     expect((caught as SocialBrokerError).diagnosticReason).toBe(expectedReason)
     expect((caught as SocialBrokerError).diagnosticReason).not.toBe('token_exchange_transport_failed')
     expect(transportCalls).toBe(0)
+  })
+
+  it('preserves an allowlisted diagnostic across a non-instance transport boundary', async () => {
+    const nonce = 'C'.repeat(43)
+    const { upstreamNonceDigest } = await import('./durable-upstream-leg')
+    const crossBoundaryDiagnostic = Object.freeze({
+      code: 'UPSTREAM_ERROR', diagnosticReason: 'token_exchange_http_failed', upstreamStatus: 400,
+      responseBody: 'never-log-cross-boundary-response',
+    })
+    let caught: unknown
+    try {
+      await verifyResumedOidcIdentity({
+        provider: 'google', authorizationCode: 'synthetic-code', clientId, redirectUri: redirect, codeVerifier: 'V'.repeat(43),
+        nonceDigest: upstreamNonceDigest(nonce), now: NOW,
+        transport: {
+          exchangeCode: async () => { throw crossBoundaryDiagnostic },
+          fetchJwks: async () => { throw new Error('not used') },
+          fetchNaverProfile: async () => { throw new Error('not used') },
+        },
+      })
+    } catch (error) { caught = error }
+    expect(caught).toBe(crossBoundaryDiagnostic)
+    expect(caught).not.toBeInstanceOf(SocialBrokerError)
+    expect(caught).toMatchObject({ diagnosticReason: 'token_exchange_http_failed', upstreamStatus: 400 })
   })
 
   it('PHASE10O_M_STATELESS_NAVER_RESUME_VERIFY_OK verifies Naver without a pending adapter object', async () => {
