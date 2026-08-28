@@ -5,10 +5,20 @@ import { isFutureGraduationYear } from '@/lib/policy/operations'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
 import { getSafeMembershipError, hasPublicAccountWriteAccess } from '@/lib/publicAccountLaunch'
 
+const GradeClassSchema = z.object({
+  grade_number: z.number().int().min(1).max(6),
+  class_number: z.number().int().min(1).max(100),
+}).strict()
+
 const MembershipSchema = z.object({
   school_id: z.string().uuid(),
   graduation_year: z.number().int().min(1900).max(2200),
-  class_number: z.number().int().min(1).max(100).nullable().optional(),
+  grade_classes: z.array(GradeClassSchema).max(6),
+}).strict().superRefine((value, context) => {
+  const grades = value.grade_classes.map((row) => row.grade_number)
+  if (new Set(grades).size !== grades.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: 'duplicate grade' })
+  }
 })
 const DeleteSchema = z.object({ membership_id: z.string().uuid() })
 export async function POST(request: NextRequest) {
@@ -37,10 +47,10 @@ export async function POST(request: NextRequest) {
   if (!profile) return NextResponse.json({ error: '내 프로필을 먼저 만들어 주세요.' }, { status: 409 })
 
   // owner_user_id and profile_id are derived inside the database from auth.uid().
-  const { data, error } = await auth.client.rpc('add_own_school_membership', {
+  const { data, error } = await auth.client.rpc('add_own_school_membership_with_class_history', {
     requested_school_id: parsed.data.school_id,
     requested_graduation_year: parsed.data.graduation_year,
-    requested_class_number: parsed.data.class_number ?? null,
+    requested_grade_classes: parsed.data.grade_classes,
   })
   if (error) {
     const safeMessage=getSafeMembershipError(error)

@@ -35,8 +35,11 @@ describe('PHASE 10B account API boundaries', () => {
   it('위조 user_id를 신뢰하지 않고 검증된 session ID를 사용한다', () => {
     expect(profile).toContain("rpc('upsert_own_private_profile'")
     expect(profile).not.toMatch(/owner_user_id\s*:/)
-    expect(memberships).toContain("rpc('add_own_school_membership'")
+    expect(memberships).toContain("rpc('add_own_school_membership_with_class_history'")
+    expect(memberships).toContain('requested_grade_classes: parsed.data.grade_classes')
     expect(memberships).not.toMatch(/owner_user_id\s*:/)
+    expect(memberships).not.toMatch(/profile_id\s*:/)
+    expect(memberships).not.toMatch(/school_type\s*:/)
     expect(deletion).toContain("rpc('request_own_account_deletion'")
     expect(deletion).not.toMatch(/user_id\s*:/)
   })
@@ -45,6 +48,14 @@ describe('PHASE 10B account API boundaries', () => {
     expect(profile).toContain("rpc('delete_own_private_profile'")
     expect(memberships).toContain("rpc('delete_own_school_membership'")
     expect(memberships).toContain('target_membership_id: parsed.data.membership_id')
+  })
+
+  it('학교 저장은 strict grade_classes payload만 받고 legacy 단일 반을 받지 않는다', () => {
+    expect(memberships).toContain('grade_classes: z.array(GradeClassSchema).max(6)')
+    expect(memberships).toContain("message: 'duplicate grade'")
+    expect(memberships).toContain('}).strict()')
+    expect(memberships).not.toContain('requested_class_number')
+    expect(memberships).not.toContain('class_number: z.number().int().min(1).max(100).nullable()')
   })
 
   it('public soft launch와 controlled beta를 분리된 server access 경로로 평가한다',()=>{

@@ -1,5 +1,14 @@
 # SchoolLoveI Implementation Log
 
+## 2026-08-27 PHASE 10AA grade/class history foundation (local / Draft)
+
+- Added forward-only migration `20260827104800_grade_class_history_foundation.sql`. It creates one seven-column owner-private child table beneath `profile_school_memberships`, guarantees parent/child owner equality with a composite foreign key, enforces one row per grade and class 1–100, and leaves all legacy parent `class_number` values unmodified while requiring new values to be NULL.
+- Added the unambiguous owner-safe `add_own_school_membership_with_class_history` RPC. It resolves school type from `public.schools`, validates elementary 1–6 and middle/high 1–3, rejects grade history for university/college, derives owner/profile identity from `auth.uid()`, and atomically creates the membership and every supplied child row.
+- Updated the strict account membership API, owner-only account read, Korean account UI, first-value school cards, user data export, and deletion coverage. K12 inputs are optional per grade, university/college shows none, and history is displayed in ascending grade order rather than as one misleading class.
+- Preserved the already-merged PR #73 `schoollove-dark-action` contrast contract while continuing from the required pre-#73 start SHA, so the PHASE 10AA Draft deployment does not reintroduce unreadable dark account actions or status notices.
+- People discovery remains school + graduation year + exact name; membership limits still count schools only. No public route, public analytics, beta invite/member/search, Preview migration/data, provider/Vercel setting, or Production mutation was added.
+- Final local evidence: focused Vitest 8 files / 63 tests, full Vitest 166 passed files / 3 skipped files with 1,355 passed / 4 skipped / 0 failed, TypeScript PASS, and Next.js production build PASS with 59/59 static generation. Exact Supabase CLI `2.111.0` generated the migration. Disposable Postgres verified the complete 36-migration fresh chain and the 35→36 upgrade (`71→72` public tables, `704→711` public columns, `181→182` public functions), legacy preservation without backfill, grade/class ranges, RLS/FORCE RLS, direct-write denial, atomic rollback, and membership/profile cascades. Account lifecycle Playwright passed 20/20 with workers=1 and retries=0 across Desktop, mobile 360, mobile 390, and mobile 412 (5/5 each).
+
 ## 2026-08-26 PHASE 10T privacy-safe school share and return loop (local / Draft)
 
 - Added an optional `학교 링크 공유` action only to `/account` cards that already have a valid `buildSafeMySchoolHref()` result. The browser resolves that approved relative path against `window.location.origin`; payload authority is limited to public school name and the same public school URL, with no sender, membership, user, graduation/class, Instagram, referral, query, fragment, or tracking data.

@@ -7,6 +7,8 @@ import { useSchoolAutocomplete } from '@/lib/hooks/useSchoolAutocomplete'
 import type { AccountState } from '@/lib/account'
 import type { PublicAccountLaunch } from '@/lib/publicAccountLaunch'
 import MySchoolsPanel from '@/components/account/MySchoolsPanel'
+import { buildGradeClassPayload, formatGradeClassHistory, gradeNumbersForSchoolType } from '@/lib/accountGradeClass'
+import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
 
 type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;currentYear:number}
 
@@ -26,8 +28,9 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
   const [introduction,setIntroduction]=useState(state.profile?.introduction??'')
   const [schoolQuery,setSchoolQuery]=useState('')
   const [schoolId,setSchoolId]=useState('')
+  const [selectedSchoolType,setSelectedSchoolType]=useState<SchoolType|null>(null)
   const [graduationYear,setGraduationYear]=useState('')
-  const [classNumber,setClassNumber]=useState('')
+  const [gradeClassValues,setGradeClassValues]=useState<Record<number,string>>({})
   const [activeSchool,setActiveSchool]=useState(-1)
   const schools=useSchoolAutocomplete(schoolQuery)
   const deletionBlocked=state.deletionStatus!==null
@@ -37,6 +40,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
   const membershipLimit=controlledBetaAccess?1:3
   const onboardingCompleted=1+Number(state.adultEligible)+Number(state.consentsComplete)+Number(Boolean(state.profile))+Number(state.memberships.length>0)
   const onboardingComplete=state.adultEligible&&state.consentsComplete&&Boolean(state.profile)&&state.memberships.length>0
+  const selectedGradeNumbers=gradeNumbersForSchoolType(selectedSchoolType)
 
   async function submit(endpoint:string,payload:unknown,method='POST',success='안전하게 저장했습니다.'){
     if(busy)return false
@@ -53,7 +57,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
   function chooseSchool(index:number){
     const school=schools.results[index]
     if(!school)return
-    setSchoolId(school.id);setSchoolQuery(`${school.school_name} · ${school.school_type} · ${school.sido} ${school.sigungu}`);setActiveSchool(-1)
+    setSchoolId(school.id);setSelectedSchoolType(school.school_type);setGradeClassValues({});setSchoolQuery(`${school.school_name} · ${school.school_type} · ${school.sido} ${school.sigungu}`);setActiveSchool(-1)
   }
 
   return <main className="mx-auto max-w-2xl px-5 py-10">
@@ -107,15 +111,16 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
     </section>
 
     <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">4. 내 학교 이력 <span className="text-sm font-normal text-gray-500">({state.memberships.length}/{membershipLimit})</span></h2>
-      {state.memberships.length===0?<p className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">아직 저장한 학교 이력이 없습니다.</p>:<ul className="mt-3 space-y-2">{state.memberships.map((membership)=><li key={membership.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm"><span className="break-keep">{membership.school?.school_name??'학교'} · {membership.school?.school_type??'학교 유형 미상'} · {membership.school?.sido} {membership.school?.sigungu} · {membership.graduation_year}년{membership.class_number?` · ${membership.class_number}반`:''}</span><button type="button" disabled={busy} onClick={()=>void submit('/api/account/memberships',{membership_id:membership.id},'DELETE','학교 이력을 삭제했습니다.')} className="schoollove-focus min-h-11 text-red-700">삭제</button></li>)}</ul>}
-      <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();if(!schoolId){setStatus('검색 결과에서 학교를 선택해 주세요.');setIsError(true);return}if(await submit('/api/account/memberships',{school_id:schoolId,graduation_year:Number(graduationYear),class_number:classNumber?Number(classNumber):null},'POST','학교 이력을 저장했습니다.')){setSchoolQuery('');setSchoolId('');setGraduationYear('');setClassNumber('')}}}>
+      {state.memberships.length===0?<p className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">아직 저장한 학교 이력이 없습니다.</p>:<ul className="mt-3 space-y-2">{state.memberships.map((membership)=><li key={membership.id} className="flex items-start justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm"><div className="min-w-0 break-keep"><p>{membership.school?.school_name??'학교'} · {membership.school?.school_type?SCHOOL_TYPE_LABELS[membership.school.school_type as SchoolType]??membership.school.school_type:'학교 유형 미상'} · {membership.school?.sido} {membership.school?.sigungu}</p><p className="mt-1">{membership.graduation_year}년 졸업</p>{membership.class_history.length>0?<p className="mt-1 text-gray-600">{formatGradeClassHistory(membership.class_history)}</p>:null}</div><button type="button" disabled={busy} onClick={()=>void submit('/api/account/memberships',{membership_id:membership.id},'DELETE','학교 이력을 삭제했습니다.')} className="schoollove-focus min-h-11 shrink-0 text-red-700">삭제</button></li>)}</ul>}
+      <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();if(!schoolId){setStatus('검색 결과에서 학교를 선택해 주세요.');setIsError(true);return}if(await submit('/api/account/memberships',{school_id:schoolId,graduation_year:Number(graduationYear),grade_classes:buildGradeClassPayload(gradeClassValues)},'POST','학교 이력을 저장했습니다.')){setSchoolQuery('');setSchoolId('');setSelectedSchoolType(null);setGraduationYear('');setGradeClassValues({})}}}>
         <label htmlFor="school-query" className="block text-sm font-medium text-gray-800">학교 검색</label>
         <input id="school-query" role="combobox" aria-expanded={schoolQuery.trim().length>=2&&schools.results.length>0} aria-controls="school-options" aria-activedescendant={activeSchool>=0?`school-option-${activeSchool}`:undefined} autoComplete="off" value={schoolQuery}
-          onChange={(event)=>{setSchoolQuery(event.target.value);setSchoolId('');setActiveSchool(-1)}}
+          onChange={(event)=>{setSchoolQuery(event.target.value);setSchoolId('');setSelectedSchoolType(null);setGradeClassValues({});setActiveSchool(-1)}}
           onKeyDown={(event)=>{if(!schools.results.length)return;if(event.key==='ArrowDown'){event.preventDefault();setActiveSchool((value)=>Math.min(schools.results.length-1,value+1))}else if(event.key==='ArrowUp'){event.preventDefault();setActiveSchool((value)=>Math.max(0,value-1))}else if(event.key==='Enter'&&activeSchool>=0){event.preventDefault();chooseSchool(activeSchool)}else if(event.key==='Escape'){setActiveSchool(-1)}}}
           className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/>
         {schoolQuery.trim().length>=2&&schools.status==='ok'&&schools.results.length>0?<div id="school-options" role="listbox" className="max-h-64 overflow-auto rounded-xl border border-gray-200 bg-white p-1">{schools.results.map((school,index)=><button id={`school-option-${index}`} role="option" aria-selected={activeSchool===index} type="button" key={school.id} onMouseDown={(event)=>event.preventDefault()} onClick={()=>chooseSchool(index)} className={`block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm ${activeSchool===index?'bg-gray-100':'hover:bg-gray-50'}`}>{school.school_name} · {school.school_type} · {school.sido} {school.sigungu}</button>)}</div>:null}
-        <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm text-gray-700">졸업연도<input type="number" min={1900} max={currentYear} required value={graduationYear} onChange={(event)=>setGraduationYear(event.target.value)} className="schoollove-focus mt-1 min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/></label><label className="text-sm text-gray-700">반 (선택)<input type="number" min={1} max={100} value={classNumber} onChange={(event)=>setClassNumber(event.target.value)} className="schoollove-focus mt-1 min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/></label></div>
+        <label className="block text-sm text-gray-700">졸업연도<input type="number" min={1900} max={currentYear} required value={graduationYear} onChange={(event)=>setGraduationYear(event.target.value)} className="schoollove-focus mt-1 min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/></label>
+        {selectedGradeNumbers.length>0?<fieldset className="space-y-3 rounded-xl border border-gray-200 p-4"><legend className="px-1 text-sm font-semibold text-gray-900">학년별 반 이력 (선택)</legend><p className="text-xs leading-5 text-gray-600">기억나는 학년의 반만 입력해도 됩니다.</p><div className="grid gap-3 sm:grid-cols-2">{selectedGradeNumbers.map((grade)=><label key={grade} className="text-sm text-gray-700">{grade}학년 반<input type="number" min={1} max={100} value={gradeClassValues[grade]??''} onChange={(event)=>setGradeClassValues((current)=>({...current,[grade]:event.target.value}))} className="schoollove-focus mt-1 min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/></label>)}</div></fieldset>:null}
         <button disabled={busy||!schoolMembershipWritable||!state.profile||state.memberships.length>=membershipLimit||!schoolId} className="schoollove-focus min-h-12 rounded-xl border border-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 disabled:opacity-40">학교 이력 추가</button>
       </form>
     </section>

@@ -12,6 +12,11 @@ function membership(overrides: Partial<SchoolMembership> = {}): SchoolMembership
     school_id: 'school-1',
     graduation_year: 2020,
     class_number: 3,
+    class_history: [
+      { grade_number: 3, class_number: 2 },
+      { grade_number: 1, class_number: 2 },
+      { grade_number: 2, class_number: 5 },
+    ],
     school: {
       id: 'school-1',
       school_name: '테스트고등학교',
@@ -25,14 +30,18 @@ function membership(overrides: Partial<SchoolMembership> = {}): SchoolMembership
 }
 
 describe('private account first-value my schools', () => {
-  it('학교명, 유형, 지역, 졸업연도, 선택 반과 정확한 학교 기본 경로를 만든다', () => {
+  it('학교명, 유형, 지역, 졸업연도, 학년별 반과 정확한 학교 기본 경로를 만든다', () => {
     expect(buildMySchoolCards([membership()])).toEqual([{
       id: 'membership-1',
       schoolName: '테스트고등학교',
       schoolType: '고등학교',
       region: '서울특별시 종로구',
       graduationYear: 2020,
-      classNumber: 3,
+      classHistory: [
+        { grade_number: 1, class_number: 2 },
+        { grade_number: 2, class_number: 5 },
+        { grade_number: 3, class_number: 2 },
+      ],
       href: '/school/test-school',
     }])
   })
@@ -41,14 +50,14 @@ describe('private account first-value my schools', () => {
     expect(buildSafeMySchoolHref('서울-제1고')).toBe('/school/%EC%84%9C%EC%9A%B8-%EC%A0%9C1%EA%B3%A0')
   })
 
-  it('반이 없으면 null을 유지하고 학교 relation이 없으면 값을 추측하지 않는다', () => {
-    expect(buildMySchoolCards([membership({ school: null, class_number: null })])).toEqual([{
+  it('학년별 반이 없으면 빈 배열을 유지하고 학교 relation이 없으면 값을 추측하지 않는다', () => {
+    expect(buildMySchoolCards([membership({ school: null, class_number: null, class_history: [] })])).toEqual([{
       id: 'membership-1',
       schoolName: '학교 정보 확인 필요',
       schoolType: null,
       region: null,
       graduationYear: 2020,
-      classNumber: null,
+      classHistory: [],
       href: null,
     }])
   })
