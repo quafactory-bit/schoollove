@@ -8,7 +8,7 @@ import { validateDownstreamAuthorizationRequest, type DarkOidcClient, type Valid
 import { prepareTransactionBoundBrokerCode, type TrustedAuthorizationTransactionIssuanceContext } from './transaction-bound-code-issuance'
 import type { BrokerAuthorizationCodeNonceKey } from './durable-code'
 import { deriveBrokerSubject } from './subject'
-import { extractGoogleCallbackDiagnostic, extractSocialBrokerErrorCode, type ExtractedGoogleCallbackDiagnostic } from './errors'
+import { extractGoogleCallbackDiagnostic, extractSocialBrokerErrorCode, type ExtractedGoogleCallbackDiagnostic, type GoogleCallbackDiagnosticReason } from './errors'
 import { writeGoogleCallbackDiagnostic } from './google-callback-diagnostics'
 import type { SocialProvider } from './types'
 
@@ -19,7 +19,12 @@ export type DarkBrokerPersistence = Readonly<{
   resolveDurableContinuation(handleDigest: Uint8Array): Promise<DurableContinuationResult>
   createOrResumeDurableContinuation(input: DurableContinuationCreate): Promise<DurableContinuationResult>
   claimCallback: ClaimByState
-  failClaimedUpstreamLeg(input: Readonly<{ attemptId: string; legId: string; reason: 'provider_failure' | 'identity_failure' | 'expired' }>): Promise<'REJECTED' | 'EXPIRED' | 'REPLAY_REJECTED'>
+  failClaimedUpstreamLeg(input: Readonly<{
+    attemptId: string
+    legId: string
+    reason: 'provider_failure' | 'identity_failure' | 'expired'
+    diagnostic?: Readonly<{ reason: GoogleCallbackDiagnosticReason; upstreamStatus?: number }>
+  }>): Promise<'REJECTED' | 'EXPIRED' | 'REPLAY_REJECTED'>
   recordVerifiedIdentity(input: Readonly<{ attemptId: string; legId: string; provider: SocialProvider; brokerSubject: string; subjectDigest: Uint8Array; subjectKeyVersion: number }>): Promise<'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'BOUND_PROVISIONAL_REAUTH_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'>
   resolveIssuanceContext(attemptId: string): Promise<TrustedAuthorizationTransactionIssuanceContext | null>
   issueTransactionBoundCode(input: ReturnType<typeof prepareTransactionBoundBrokerCode>['database']): Promise<'AUTHORIZATION_CODE_CREATED' | 'AUTHORIZATION_CODE_REJECTED'>
@@ -130,8 +135,10 @@ export class DarkBrokerOrchestrator {
     catch (error) {
       // A claimed callback must never be abandoned: transition through the approved M failure RPC.
       const code = extractSocialBrokerErrorCode(error)
+      let durableDiagnostic: ExtractedGoogleCallbackDiagnostic | undefined
       if (input.provider === 'google') {
         const diagnostic: ExtractedGoogleCallbackDiagnostic = extractGoogleCallbackDiagnostic(error) ?? Object.freeze({ reason: 'verifier_unclassified_failure' })
+        durableDiagnostic = diagnostic
         try {
           writeGoogleCallbackDiagnostic({
             attemptId: correlated.context.attemptId,
@@ -141,7 +148,12 @@ export class DarkBrokerOrchestrator {
           })
         } catch { /* Diagnostics must never alter the fail-closed transition. */ }
       }
-      await this.input.persistence.failClaimedUpstreamLeg({ attemptId: correlated.context.attemptId, legId: correlated.context.legId, reason: code === 'UPSTREAM_RESPONSE_EXPIRED' ? 'expired' : 'provider_failure' })
+      await this.input.persistence.failClaimedUpstreamLeg({
+        attemptId: correlated.context.attemptId,
+        legId: correlated.context.legId,
+        reason: code === 'UPSTREAM_RESPONSE_EXPIRED' ? 'expired' : 'provider_failure',
+        ...(durableDiagnostic === undefined ? {} : { diagnostic: durableDiagnostic }),
+      })
       throw new Error('DARK_CALLBACK_REJECTED')
     }
     if (verifiedUpstream.provider !== input.provider || !Number.isSafeInteger(verifiedUpstream.authenticationTime) || verifiedUpstream.authenticationTime < 0) throw new Error('DARK_CALLBACK_REJECTED')

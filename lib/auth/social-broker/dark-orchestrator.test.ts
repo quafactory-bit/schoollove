@@ -77,13 +77,14 @@ describe('dark end-to-end broker orchestration', () => {
     let terminalized = 0
     let upstreamState = 'callback_claimed'
     let downstreamState = 'upstream_bound'
+    let persistedDiagnostic: unknown
     const output: string[] = []
     const consoleError = vi.spyOn(console, 'error').mockImplementation(value => { output.push(String(value)) })
     const port = persistence()
     const configured: DarkBrokerPersistence = {
       ...port,
       claimCallback: async () => ({ outcome: 'CALLBACK_CLAIMED', attemptId: context.loginAttemptId, legId: 'd1000000-0000-4000-8000-000000000003', provider: 'google', nonceDigest: Buffer.alloc(32, 1), pkceS256Challenge: 'B'.repeat(43), pkceVerifierCiphertext: Buffer.alloc(17, 2), pkceVerifierIv: Buffer.alloc(12, 3), pkceVerifierKeyVersion: 1 }),
-      failClaimedUpstreamLeg: async () => { terminalized += 1; upstreamState = 'rejected'; downstreamState = 'rejected'; return 'REJECTED' },
+      failClaimedUpstreamLeg: async input => { terminalized += 1; persistedDiagnostic = input.diagnostic; upstreamState = 'rejected'; downstreamState = 'rejected'; return 'REJECTED' },
     }
     const plain = Object.assign(new Error('never-log-authorization-code'), {
       authorizationCode: 'never-log-authorization-code', verifier: 'never-log-verifier', state: 'never-log-state', nonce: 'never-log-nonce',
@@ -96,6 +97,7 @@ describe('dark end-to-end broker orchestration', () => {
       expect(terminalized).toBe(1)
       expect(upstreamState).toBe('rejected')
       expect(downstreamState).toBe('rejected')
+      expect(persistedDiagnostic).toEqual({ reason: 'verifier_unclassified_failure' })
       expect(output).toHaveLength(1)
       const serialized = output[0]
       expect(JSON.parse(serialized)).toMatchObject({ reason: 'verifier_unclassified_failure', provider: 'google' })
@@ -111,6 +113,7 @@ describe('dark end-to-end broker orchestration', () => {
     const output: string[] = []
     const consoleError = vi.spyOn(console, 'error').mockImplementation(value => { output.push(String(value)) })
     const terminalReasons: string[] = []
+    const durableDiagnostics: unknown[] = []
     const crossBoundaryError = Object.freeze({
       code: 'UPSTREAM_ERROR', diagnosticReason: 'token_exchange_http_failed', upstreamStatus: 400,
       responseBody: 'never-log-response-body', authorizationCode: 'never-log-authorization-code',
@@ -119,11 +122,12 @@ describe('dark end-to-end broker orchestration', () => {
     const port: DarkBrokerPersistence = {
       ...persistence(),
       claimCallback: async () => ({ outcome: 'CALLBACK_CLAIMED', attemptId: context.loginAttemptId, legId: 'd1000000-0000-4000-8000-000000000003', provider: 'google', nonceDigest: Buffer.alloc(32, 1), pkceS256Challenge: 'B'.repeat(43), pkceVerifierCiphertext: Buffer.alloc(17, 2), pkceVerifierIv: Buffer.alloc(12, 3), pkceVerifierKeyVersion: 1 }),
-      failClaimedUpstreamLeg: async input => { terminalReasons.push(input.reason); return 'REJECTED' },
+      failClaimedUpstreamLeg: async input => { terminalReasons.push(input.reason); durableDiagnostics.push(input.diagnostic); return 'REJECTED' },
     }
     try {
       await expect(orchestrator(port).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw crossBoundaryError } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
       expect(terminalReasons).toEqual(['provider_failure'])
+      expect(durableDiagnostics).toEqual([{ reason: 'token_exchange_http_failed', upstreamStatus: 400 }])
       expect(output).toHaveLength(1)
       expect(JSON.parse(output[0])).toMatchObject({ reason: 'token_exchange_http_failed', upstreamStatus: 400 })
       expect(output[0]).not.toContain('never-log-response-body')
@@ -136,16 +140,18 @@ describe('dark end-to-end broker orchestration', () => {
   it('keeps fail-closed terminalization when the diagnostic sink throws', async () => {
     let terminalized = 0
     let loggerCalls = 0
+    let persistedDiagnostic: unknown
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { loggerCalls += 1; throw new Error('synthetic logger failure') })
     const port: DarkBrokerPersistence = {
       ...persistence(),
       claimCallback: async () => ({ outcome: 'CALLBACK_CLAIMED', attemptId: context.loginAttemptId, legId: 'd1000000-0000-4000-8000-000000000003', provider: 'google', nonceDigest: Buffer.alloc(32, 1), pkceS256Challenge: 'B'.repeat(43), pkceVerifierCiphertext: Buffer.alloc(17, 2), pkceVerifierIv: Buffer.alloc(12, 3), pkceVerifierKeyVersion: 1 }),
-      failClaimedUpstreamLeg: async () => { terminalized += 1; return 'REJECTED' },
+      failClaimedUpstreamLeg: async input => { terminalized += 1; persistedDiagnostic = input.diagnostic; return 'REJECTED' },
     }
     try {
       await expect(orchestrator(port).callback({ provider: 'google', callbackUrl: 'https://broker.invalid/google/callback?code=synthetic-code&state=' + 'A'.repeat(43), verifier: { verify: async () => { throw new Error('synthetic verifier failure') } } })).rejects.toThrow('DARK_CALLBACK_REJECTED')
       expect(loggerCalls).toBe(1)
       expect(terminalized).toBe(1)
+      expect(persistedDiagnostic).toEqual({ reason: 'verifier_unclassified_failure' })
     } finally {
       consoleError.mockRestore()
     }
@@ -158,6 +164,7 @@ describe('dark end-to-end broker orchestration', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(value => { output.push(String(value)) })
     try {
       const terminalReasons: string[] = []
+      const durableDiagnostics: unknown[] = []
       for (const diagnosticReason of GOOGLE_CALLBACK_DIAGNOSTIC_REASONS) {
         let attemptState = 'upstream_pending'
         let upstreamLegState = 'callback_claimed'
@@ -169,6 +176,7 @@ describe('dark end-to-end broker orchestration', () => {
           claimCallback: async () => ({ outcome: 'CALLBACK_CLAIMED', attemptId: context.loginAttemptId, legId: 'd1000000-0000-4000-8000-000000000003', provider: 'google', nonceDigest: Buffer.alloc(32, 1), pkceS256Challenge: 'B'.repeat(43), pkceVerifierCiphertext: Buffer.alloc(17, 2), pkceVerifierIv: Buffer.alloc(12, 3), pkceVerifierKeyVersion: 1 }),
           failClaimedUpstreamLeg: async input => {
             terminalReasons.push(input.reason)
+            durableDiagnostics.push(input.diagnostic)
             const expired = input.reason === 'expired'
             attemptState = expired ? 'expired' : 'failed_safe'
             upstreamLegState = expired ? 'expired' : 'rejected'
@@ -202,6 +210,10 @@ describe('dark end-to-end broker orchestration', () => {
         expect(authorizationCodes).toBe(0)
       }
       expect(terminalReasons).toEqual(GOOGLE_CALLBACK_DIAGNOSTIC_REASONS.map(reason => reason === 'token_time_failed' ? 'expired' : 'provider_failure'))
+      expect(durableDiagnostics).toEqual(GOOGLE_CALLBACK_DIAGNOSTIC_REASONS.map(reason => ({
+        reason,
+        ...(reason === 'token_exchange_http_failed' ? { upstreamStatus: 400 } : {}),
+      })))
       expect(output).toHaveLength(GOOGLE_CALLBACK_DIAGNOSTIC_REASONS.length)
       for (const [index, serialized] of output.entries()) {
         const event = JSON.parse(serialized) as Record<string, unknown>

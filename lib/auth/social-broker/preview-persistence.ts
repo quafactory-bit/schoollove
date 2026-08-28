@@ -70,7 +70,15 @@ export function createPreviewBrokerPersistence(client: PreviewRpcClient): DarkBr
     },
     claimCallback,
     async failClaimedUpstreamLeg(input) {
-      const result = await rpc(client, 'fail_upstream_login_leg', { target_attempt_id: input.attemptId, target_leg_id: input.legId, reason: input.reason })
+      const result = input.diagnostic
+        ? await rpc(client, 'fail_upstream_login_leg_with_diagnostic', {
+            target_attempt_id: input.attemptId,
+            target_leg_id: input.legId,
+            reason: input.reason,
+            requested_diagnostic_reason: input.diagnostic.reason,
+            requested_diagnostic_upstream_status: input.diagnostic.upstreamStatus ?? null,
+          })
+        : await rpc(client, 'fail_upstream_login_leg', { target_attempt_id: input.attemptId, target_leg_id: input.legId, reason: input.reason })
       return result === 'EXPIRED' ? 'EXPIRED' : result === 'REPLAY_REJECTED' ? 'REPLAY_REJECTED' : 'REJECTED'
     },
     async recordVerifiedIdentity(input) {
