@@ -77,7 +77,7 @@ CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE SET sear
     '20260813100000_downstream_authorization_transaction_persistence.sql',
     '20260813120000_transaction_bound_broker_code_issuance.sql',
     '20260813180000_downstream_authorization_terminal_scrub_boundary.sql',
-    '20260829110000_google_callback_durable_diagnostic_persistence.sql'
+    '20260828234042_google_callback_durable_diagnostic_persistence.sql'
   )) {
     Invoke-SqlFile (Resolve-Path "supabase/migrations/$migration").Path
   }
