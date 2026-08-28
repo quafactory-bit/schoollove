@@ -96,11 +96,15 @@ describe('PHASE 10P preview provider foundation', () => {
   it('PHASE10P_PROVIDER_REQUESTS_PINNED_OK builds the exact minimal Google, Kakao, and Naver request contracts', () => {
     const common = { clientId: 'client', redirectUri: 'https://preview.schoollove.invalid/auth/social/callback/google', state: 'S'.repeat(43) }
     const google = buildProviderAuthorizationRequest({ ...common, provider: 'google', nonce: 'N'.repeat(43), pkceChallenge: 'P'.repeat(43) })
-    expect(google.origin).toBe('https://accounts.google.com'); expect(google.searchParams.get('scope')).toBe('openid profile'); expect(google.searchParams.has('email')).toBe(false)
+    expect(google.origin).toBe('https://accounts.google.com'); expect(google.pathname).toBe('/o/oauth2/v2/auth')
+    expect(google.searchParams.get('scope')).toBe('openid profile'); expect(google.searchParams.has('email')).toBe(false)
+    expect(google.searchParams.getAll('prompt')).toEqual(['select_account'])
+    expect(google.searchParams.get('state')).toBe('S'.repeat(43)); expect(google.searchParams.get('nonce')).toBe('N'.repeat(43))
+    expect(google.searchParams.get('code_challenge')).toBe('P'.repeat(43)); expect(google.searchParams.get('code_challenge_method')).toBe('S256')
     const kakao = buildProviderAuthorizationRequest({ ...common, provider: 'kakao', nonce: 'N'.repeat(43), pkceChallenge: 'P'.repeat(43) })
-    expect(kakao.origin).toBe('https://kauth.kakao.com'); expect(kakao.searchParams.get('scope')).toBe('openid')
+    expect(kakao.origin).toBe('https://kauth.kakao.com'); expect(kakao.searchParams.get('scope')).toBe('openid'); expect(kakao.searchParams.has('prompt')).toBe(false)
     const naver = buildProviderAuthorizationRequest({ ...common, provider: 'naver', nonce: null, pkceChallenge: null })
-    expect(naver.origin).toBe('https://nid.naver.com'); expect(naver.searchParams.has('scope')).toBe(false); expect(naver.searchParams.has('nonce')).toBe(false)
+    expect(naver.origin).toBe('https://nid.naver.com'); expect(naver.searchParams.has('scope')).toBe(false); expect(naver.searchParams.has('nonce')).toBe(false); expect(naver.searchParams.has('prompt')).toBe(false)
   })
 
   it('PHASE10P_SERVER_TRANSPORT_PINNED_OK uses only configured pinned endpoints with a synthetic intercepted transport', async () => {
@@ -126,11 +130,14 @@ describe('PHASE 10P preview provider foundation', () => {
       verifier: {} as never,
       oidc: {} as never,
     })
-    const response = await adapter.authorize(new Request('https://preview.schoollove.invalid/oauth/authorize?response_type=code'))
+    const response = await adapter.authorize(new Request('https://preview.schoollove.invalid/oauth/authorize?response_type=code&prompt=none&prompt=consent', {
+      headers: { prompt: 'none', 'x-oauth-prompt': 'consent', 'x-login-hint': 'forged-account' },
+    }))
     expect(response.status).toBe(302)
     const redirect = new URL(response.headers.get('location')!)
     expect(redirect.origin).toBe('https://accounts.google.com')
     expect(redirect.searchParams.get('scope')).toBe('openid profile'); expect(redirect.searchParams.get('state')).toBe('S'.repeat(43))
+    expect(redirect.searchParams.getAll('prompt')).toEqual(['select_account']); expect(redirect.searchParams.has('login_hint')).toBe(false)
     const session = response.headers.get('set-cookie')!
     expect(session).toContain('HttpOnly'); expect(session).toContain('Secure'); expect(session).toContain('SameSite=Lax')
     expect(session).not.toContain('H'.repeat(43)); expect(session).not.toContain('B'.repeat(43)); expect(response.headers.get('location')).not.toContain('B'.repeat(43))

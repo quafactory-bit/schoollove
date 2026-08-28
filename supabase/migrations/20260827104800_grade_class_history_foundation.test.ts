@@ -6,6 +6,7 @@ const sql = readFileSync(
   join(process.cwd(), 'supabase/migrations/20260827104800_grade_class_history_foundation.sql'),
   'utf8',
 )
+const normalizedSql = sql.replace(/\r\n/g, '\n')
 
 describe('PHASE 10AA grade/class history migration', () => {
   it('학교 membership 아래 정확히 한 child table을 추가하고 legacy column을 보존한다', () => {
@@ -38,8 +39,8 @@ describe('PHASE 10AA grade/class history migration', () => {
     expect(sql).toContain('INSERT INTO public.profile_school_memberships')
     expect(sql).toContain('INSERT INTO public.profile_school_class_histories')
     expect(sql).toContain('DUPLICATE_GRADE_CLASS_HISTORY')
-    expect(sql).toContain('VALUES (\n    own_profile.id,\n    requester,')
-    expect(sql).toContain('requested_graduation_year,\n    NULL')
+    expect(normalizedSql).toContain('VALUES (\n    own_profile.id,\n    requester,')
+    expect(normalizedSql).toContain('requested_graduation_year,\n    NULL')
   })
 
   it('owner select만 허용하고 browser mutation과 legacy RPC를 닫는다', () => {
