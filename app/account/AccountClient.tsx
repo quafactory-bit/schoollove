@@ -32,6 +32,10 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
   const [graduationYear,setGraduationYear]=useState('')
   const [gradeClassValues,setGradeClassValues]=useState<Record<number,string>>({})
   const [activeSchool,setActiveSchool]=useState(-1)
+  const [inviteToken,setInviteToken]=useState('')
+  const [inviteBusy,setInviteBusy]=useState(false)
+  const [inviteStatus,setInviteStatus]=useState('')
+  const [inviteError,setInviteError]=useState(false)
   const schools=useSchoolAutocomplete(schoolQuery)
   const deletionBlocked=state.deletionStatus!==null
   const privateProfileWritable=(launch.privateProfileEnabled||controlledBetaAccess)&&!launch.emergencyStopped&&!deletionBlocked
@@ -60,6 +64,39 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
     setSchoolId(school.id);setSelectedSchoolType(school.school_type);setGradeClassValues({});setSchoolQuery(`${school.school_name} · ${school.school_type} · ${school.sido} ${school.sigungu}`);setActiveSchool(-1)
   }
 
+  async function redeemBetaInvite(event:React.FormEvent<HTMLFormElement>){
+    event.preventDefault()
+    if(inviteBusy)return
+    setInviteBusy(true);setInviteStatus('');setInviteError(false)
+    try{
+      const response=await fetch('/api/beta/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:inviteToken})})
+      const result=await response.json().catch(()=>({})) as {status?:string;error?:string}
+      if(!response.ok){
+        setInviteStatus(result.error==='INVALID_INVITE'?'초대 토큰 형식을 확인해 주세요.':result.error==='AUTH_REQUIRED'?'로그인 세션을 다시 확인해 주세요.':'초대를 등록할 수 없습니다. 만료 여부를 확인해 주세요.')
+        setInviteError(true);return
+      }
+      const messages:Record<string,string>={
+        PENDING_REVIEW:'초대를 등록했습니다. 운영자 승인 후 베타 기능을 사용할 수 있습니다.',
+        ACTIVE:'초대를 등록했습니다. 베타 기능을 사용할 수 있습니다.',
+        ALREADY_REDEEMED:'이미 등록한 베타 초대입니다.',
+        ADULT_CONSENT_REQUIRED:'성인 확인과 필수 동의를 먼저 완료해 주세요.',
+        IDENTITY_MISMATCH:'이 계정에서 사용할 수 없는 초대입니다.',
+        PROGRAM_FULL:'현재 베타 참여 인원이 모두 찼습니다.',
+        PROGRAM_UNAVAILABLE:'현재 사용할 수 없는 베타 프로그램입니다.',
+        PROGRAM_CONTRACT_UNAVAILABLE:'현재 사용할 수 없는 베타 프로그램입니다.',
+        WAITLIST_DISABLED:'현재 베타 승인 대기를 사용할 수 없습니다.',
+        UNAVAILABLE:'유효하지 않거나 만료되었거나 이미 사용된 초대입니다.',
+        INVALID:'초대 토큰 형식을 확인해 주세요.',
+        ACCESS_DENIED:'이 계정으로 초대를 등록할 수 없습니다.',
+      }
+      const success=['PENDING_REVIEW','ACTIVE','ALREADY_REDEEMED'].includes(result.status??'')
+      setInviteStatus(messages[result.status??'']??'초대를 등록할 수 없습니다.')
+      setInviteError(!success)
+      if(success){setInviteToken('');router.refresh()}
+    }catch{setInviteStatus('네트워크 연결을 확인한 뒤 다시 시도해 주세요.');setInviteError(true)}
+    finally{setInviteBusy(false)}
+  }
+
   return <main className="mx-auto max-w-2xl px-5 py-10">
     <div className="flex flex-wrap items-start justify-between gap-4"><div>
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Private account</p>
@@ -73,6 +110,16 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span className="font-semibold text-gray-900">온보딩 진행</span><span>{onboardingCompleted}/5 · {onboardingCompleted*20}%</span></div>
       <Link href="/onboarding" className="schoollove-focus mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-gray-900 underline">온보딩 진행 상태 보기</Link>
       {onboardingComplete?<div className="mt-3 rounded-xl bg-emerald-50 px-4 py-3"><p className="font-semibold text-emerald-900">비공개 계정 준비 완료</p><p className="mt-1 text-xs leading-5 text-emerald-800">성인 확인, 필수 동의, 비공개 프로필과 학교 이력을 모두 저장했습니다.</p></div>:null}
+    </section>
+    <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5" aria-label="제한 베타 초대 등록">
+      <h2 className="text-lg font-bold text-gray-950">제한 베타 초대 등록</h2>
+      <p className="mt-2 text-sm leading-6 text-gray-600">운영자에게 받은 초대 토큰을 직접 제출할 때만 등록합니다. 토큰은 주소나 브라우저 저장소에 보관하지 않습니다.</p>
+      <form className="mt-4 space-y-3" onSubmit={redeemBetaInvite}>
+        <label htmlFor="beta-invite-token" className="block text-sm font-medium text-gray-800">초대 토큰</label>
+        <input id="beta-invite-token" type="password" required minLength={24} maxLength={256} autoComplete="off" spellCheck={false} value={inviteToken} onChange={(event)=>setInviteToken(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/>
+        <button disabled={inviteBusy||inviteToken.trim().length<24} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{inviteBusy?'초대 확인 중…':'초대 등록'}</button>
+      </form>
+      {inviteStatus?<p role={inviteError?'alert':'status'} aria-live="polite" className={`mt-3 rounded-xl px-4 py-3 text-sm ${inviteError?'bg-red-50 text-red-900':'bg-emerald-50 text-emerald-900'}`}>{inviteStatus}</p>:null}
     </section>
     <MySchoolsPanel memberships={state.memberships}/>
     {!accountWritable&&!deletionBlocked ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900" role="status">계정 소프트런치를 준비 중이어서 현재 정보 저장은 닫혀 있습니다. 저장된 본인 정보 조회와 삭제·탈퇴 요청은 계속할 수 있습니다.</p>:null}

@@ -2,6 +2,8 @@ import { createHash, randomBytes } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BetaFeatureKey } from '@/lib/policy/operations'
 import { getLimitedLaunchAdminState } from '@/lib/onboarding'
+import { assessControlledBetaInvitationEligibility } from '@/lib/policy/betaOperations'
+import { betaFeatureKeys } from '@/lib/policy/operations'
 
 export function hashBetaIdentity(value: string): string {
   return createHash('sha256').update(value.trim().toLowerCase()).digest('hex')
@@ -38,14 +40,27 @@ export async function getBetaAdminState() {
     const allowed=(programSchools.data??[]).filter((item)=>item.program_id===program.id)
     const school=allowed[0]?.school
     const programFlags=(flags.data??[]).filter((item)=>item.program_id===program.id)
-    const enabled=programFlags.filter((item)=>item.enabled).map((item)=>item.feature_key).sort()
-    const featureContract=programFlags.length===8&&enabled.length===2&&enabled[0]==='account_registration'&&enabled[1]==='private_profile'
-    const globalFeatureStopped=(flags.data??[]).some((item)=>item.program_id===null&&!item.enabled&&['account_registration','private_profile'].includes(item.feature_key))
-    const startsAt=program.starts_at?new Date(program.starts_at).getTime():NaN
-    const endsAt=program.ends_at?new Date(program.ends_at).getTime():NaN
-    const timeEligible=Number.isFinite(startsAt)&&Number.isFinite(endsAt)&&Date.now()>=startsAt&&Date.now()<endsAt
-    const inviteContract=snapshot?.invite_policy?.maxUsesPerInvite===1&&snapshot?.invite_policy?.expiresInDays===7&&snapshot?.approval_waitlist_enabled===true
-    return {...program,snapshot_backed:Boolean(snapshot),selected_school:Array.isArray(school)?school[0]??null:school??null,school_allowlist_count:allowed.length,invite_eligible:Boolean(snapshot)&&allowed.length===1&&snapshot?.target_school_id===allowed[0]?.school_id&&featureContract&&!globalFeatureStopped&&inviteContract&&timeEligible&&program.status==='active'&&!program.emergency_disabled_at}
+    const knownFeature=(value:unknown):value is BetaFeatureKey=>typeof value==='string'&&betaFeatureKeys.includes(value as BetaFeatureKey)
+    const snapshotFeatures=Array.isArray(snapshot?.enabled_features)&&snapshot.enabled_features.every(knownFeature)
+      ? snapshot.enabled_features as BetaFeatureKey[]
+      : null
+    const typedProgramFlags=programFlags.filter((item)=>knownFeature(item.feature_key)) as {feature_key:BetaFeatureKey;enabled:boolean}[]
+    const typedGlobalFlags=(flags.data??[]).filter((item)=>item.program_id===null&&knownFeature(item.feature_key)) as {feature_key:BetaFeatureKey;enabled:boolean}[]
+    const inviteEligible=assessControlledBetaInvitationEligibility({
+      snapshotFeatures,
+      programFlags:typedProgramFlags,
+      globalFlags:typedGlobalFlags,
+      snapshotBacked:Boolean(snapshot),
+      schoolAllowlistCount:allowed.length,
+      schoolContractMatches:Boolean(snapshot)&&snapshot?.target_school_id===allowed[0]?.school_id,
+      invitePolicy:snapshot?.invite_policy,
+      approvalWaitlistEnabled:snapshot?.approval_waitlist_enabled,
+      startsAt:program.starts_at,
+      endsAt:program.ends_at,
+      status:program.status,
+      emergencyDisabledAt:program.emergency_disabled_at,
+    })
+    return {...program,snapshot_backed:Boolean(snapshot),selected_school:Array.isArray(school)?school[0]??null:school??null,school_allowlist_count:allowed.length,invite_eligible:inviteEligible}
   })
   return { programs:safePrograms, members: members.data, flags: flags.data, jobs: jobs.data, exports: exports.data, events: events.data, incidents: incidents.data, launch }
 }

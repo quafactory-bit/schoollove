@@ -2,6 +2,7 @@ import { describe,expect,it } from 'vitest'
 import { betaFeatureKeys } from './operations'
 import {
   assessBetaReadiness,
+  assessControlledBetaInvitationEligibility,
   assessControlledBetaFeatureContract,
   BetaAdminActionSchema,
   BetaFeedbackSchema,
@@ -52,6 +53,32 @@ describe('controlled beta operations policy',()=>{
     expect(people).toEqual({contractKind:'people_discovery',programFlagsComplete:true,globalFeatureStopped:false})
     expect(assessControlledBetaFeatureContract({snapshotFeatures:peopleDiscoveryControlledBetaEnabledFeatures,programFlags:programFlags(firstControlledBetaEnabledFeatures),globalFlags:[]}).programFlagsComplete).toBe(false)
     expect(assessControlledBetaFeatureContract({snapshotFeatures:peopleDiscoveryControlledBetaEnabledFeatures,programFlags:programFlags(peopleDiscoveryControlledBetaEnabledFeatures),globalFlags:[{feature_key:'people_search',enabled:false}]}).globalFeatureStopped).toBe(true)
+  })
+
+  it('allows invitations for either exact controlled-beta feature contract and keeps lifecycle gates fail-closed',()=>{
+    const now=Date.parse('2026-08-28T00:00:00.000Z')
+    const assess=(features:readonly (typeof betaFeatureKeys)[number][],overrides:Partial<Parameters<typeof assessControlledBetaInvitationEligibility>[0]>={})=>assessControlledBetaInvitationEligibility({
+      snapshotFeatures:features,
+      programFlags:programFlags(features),
+      globalFlags:[],
+      snapshotBacked:true,
+      schoolAllowlistCount:1,
+      schoolContractMatches:true,
+      invitePolicy:{maxUsesPerInvite:1,expiresInDays:7},
+      approvalWaitlistEnabled:true,
+      startsAt:'2026-08-27T00:00:00.000Z',
+      endsAt:'2026-09-10T00:00:00.000Z',
+      status:'active',
+      emergencyDisabledAt:null,
+      now,
+      ...overrides,
+    })
+    expect(assess(firstControlledBetaEnabledFeatures)).toBe(true)
+    expect(assess(peopleDiscoveryControlledBetaEnabledFeatures)).toBe(true)
+    expect(assess(['people_search'])).toBe(false)
+    expect(assess(peopleDiscoveryControlledBetaEnabledFeatures,{status:'paused'})).toBe(false)
+    expect(assess(peopleDiscoveryControlledBetaEnabledFeatures,{endsAt:'2026-08-28T00:00:00.000Z'})).toBe(false)
+    expect(assess(peopleDiscoveryControlledBetaEnabledFeatures,{globalFlags:[{feature_key:'people_search',enabled:false}]})).toBe(false)
   })
 
   it('validates both configure pairs and rejects mixed administrator actions',()=>{
