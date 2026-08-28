@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { SchoolMembership } from '@/lib/account'
 import { buildMySchoolCards } from '@/lib/accountFirstValue'
 import ShareButton from '@/components/ShareButton'
+import { formatGradeClassHistory } from '@/lib/accountGradeClass'
 
 type Props = {
   memberships: SchoolMembership[]
@@ -38,8 +39,13 @@ export default function MySchoolsPanel({ memberships }: Props) {
               </p>
             ) : null}
             <p className="mt-2 text-sm font-medium text-schoollove-text">
-              {school.graduationYear}년 졸업{school.classNumber === null ? '' : ` · ${school.classNumber}반`}
+              {school.graduationYear}년 졸업
             </p>
+            {school.classHistory.length > 0 ? (
+              <p className="mt-1 text-sm text-schoollove-secondary">
+                {formatGradeClassHistory(school.classHistory)}
+              </p>
+            ) : null}
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
                 학교 페이지 보기

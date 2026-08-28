@@ -12,6 +12,11 @@ function membership(overrides: Partial<SchoolMembership> = {}): SchoolMembership
     school_id: 'private-school-id',
     graduation_year: 2020,
     class_number: 3,
+    class_history: [
+      { grade_number: 1, class_number: 2 },
+      { grade_number: 2, class_number: 5 },
+      { grade_number: 3, class_number: 2 },
+    ],
     school: {
       id: 'private-school-id',
       school_name: '테스트고등학교',
@@ -54,5 +59,10 @@ describe('MySchoolsPanel privacy-safe share action', () => {
   it('재로그인 return loop는 타인 활동을 약속하지 않고 DB 학교 이력만 안내한다', () => {
     expect(SOURCE).toContain('다시 로그인하면 등록한 학교 이력을 내 계정에서 계속 확인할 수 있습니다.')
     expect(SOURCE).not.toMatch(/친구가 기다리고|동창이 있어요|명이 참여|성장 중/)
+  })
+
+  it('legacy 단일 반을 표시하지 않고 학년별 반 이력을 정확히 표시한다', () => {
+    expect(SOURCE).toContain('formatGradeClassHistory(school.classHistory)')
+    expect(SOURCE).not.toContain('school.classNumber')
   })
 })

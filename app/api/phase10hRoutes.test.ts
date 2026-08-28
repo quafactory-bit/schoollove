@@ -32,7 +32,7 @@ describe('PHASE 10H route boundaries',()=>{
       expect(route).toContain('if (error) return NextResponse.json')
       expect(route).toContain('syncOnboardingProgressSafely')
       expect(route).not.toContain('recordPublicAccountEvent')
-      expect(route).toMatch(/rpc\('(upsert_own_private_profile|add_own_school_membership)'/)
+      expect(route).toMatch(/rpc\('(upsert_own_private_profile|add_own_school_membership_with_class_history)'/)
     }
   })
 

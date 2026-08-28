@@ -1,6 +1,7 @@
 import type { SchoolMembership } from '@/lib/account'
 import { buildSchoolPath } from '@/lib/seo'
 import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
+import type { GradeClassInput } from '@/lib/accountGradeClass'
 
 export type MySchoolCard = {
   id: string
@@ -8,7 +9,7 @@ export type MySchoolCard = {
   schoolType: string | null
   region: string | null
   graduationYear: number
-  classNumber: number | null
+  classHistory: GradeClassInput[]
   href: string | null
 }
 
@@ -34,7 +35,8 @@ export function buildMySchoolCards(memberships: SchoolMembership[]): MySchoolCar
       ? [membership.school.sido, membership.school.sigungu].filter(Boolean).join(' ') || null
       : null,
     graduationYear: membership.graduation_year,
-    classNumber: membership.class_number,
+    classHistory: [...membership.class_history]
+      .sort((left, right) => left.grade_number - right.grade_number),
     href: buildSafeMySchoolHref(membership.school?.slug),
   }))
 }

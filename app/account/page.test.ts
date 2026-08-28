@@ -54,4 +54,18 @@ describe('/account private management UI', () => {
     expect(client).toContain('controlledBetaAccess?1:3')
   })
 
+  it('선택한 K12 학교에만 학년별 반 입력을 제공하고 학교 수와 분리한다',()=>{
+    expect(client).toContain('gradeNumbersForSchoolType(selectedSchoolType)')
+    expect(client).toContain('기억나는 학년의 반만 입력해도 됩니다.')
+    expect(client).toContain('{grade}학년 반')
+    expect(client).toContain('grade_classes:buildGradeClassPayload(gradeClassValues)')
+    expect(client).not.toContain('class_number:classNumber')
+    expect(client).toContain('controlledBetaAccess?1:3')
+  })
+
+  it('어두운 계정 동작 버튼과 상태 알림은 흰 글자 대비를 강제한다',()=>{
+    expect(client).toContain('schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950')
+    expect(client).toContain('className={`schoollove-dark-action sticky bottom-24')
+  })
+
 })

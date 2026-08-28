@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-27 PHASE 10AA grade/class history foundation (local / Draft)
+
+- Replaced the new-account single-class write contract with optional K12 grade/class child history beneath one school + graduation-year membership. Elementary supports grades 1–6, middle/high supports 1–3, and university/college collects no grade/class history in this phase.
+- Added one owner-safe atomic RPC and one owner-private RLS/FORCE RLS child table. Parent and child ownership must match, authenticated browser mutation is revoked, and membership/profile deletion cascades the child data.
+- Retained the legacy parent `class_number` without inferring or backfilling a grade; every new membership write stores it as NULL. Owner account read, display, export, and tests now use sorted child history.
+- Kept school limits, public routes/pages/analytics, and people matching unchanged. Preview migration/data, beta membership/invites/search, external settings, and Production remain untouched.
+
 ## 2026-08-27 PHASE 10X people-discovery controlled-beta contract (local / Draft)
 
 - Preserved the exact legacy `account_registration` + `private_profile` contract and added one second exact controlled-beta contract: `people_search` + `connection_request`. Mixed, partial, duplicate, and expanded sets remain invalid.
