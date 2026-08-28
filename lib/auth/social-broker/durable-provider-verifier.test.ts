@@ -44,7 +44,30 @@ describe('durable provider verifier', () => {
   it('PHASE10O_Q_DURABLE_PROVIDER_FAILURE_FAILS_CLOSED', async () => {
     const prepared = prepareDurableUpstreamLoginLeg({ attemptId, legId, provider: 'google', clientId: upstream.google.clientId, redirectUri: upstream.google.redirectUri, pkceKey: key })
     const verifier = createDurableProviderVerifier({ upstream, pkceKey: { ...key, material: Buffer.alloc(32, 8) }, transport: transport({ provider: 'google', token: oidcToken('google', prepared.authorization.rawNonce!) }), now: () => NOW })
-    await expect(verifier.verify({ provider: 'google', authorizationCode: 'synthetic/opaque/provider-code', rawState: prepared.authorization.rawState, attemptId, legId, nonceDigest: prepared.database.nonceDigest, pkce: { challenge: prepared.database.pkce!.challenge, ciphertext: prepared.database.pkce!.ciphertext, iv: prepared.database.pkce!.iv, keyVersion: prepared.database.pkce!.keyVersion } })).rejects.toThrow('UPSTREAM_PKCE_DECRYPTION_REJECTED')
+    let caught: unknown
+    try { await verifier.verify({ provider: 'google', authorizationCode: 'synthetic/opaque/provider-code', rawState: prepared.authorization.rawState, attemptId, legId, nonceDigest: prepared.database.nonceDigest, pkce: { challenge: prepared.database.pkce!.challenge, ciphertext: prepared.database.pkce!.ciphertext, iv: prepared.database.pkce!.iv, keyVersion: prepared.database.pkce!.keyVersion } }) } catch (error) { caught = error }
+    expect(caught).toBeInstanceOf(SocialBrokerError)
+    expect(caught).toMatchObject({ code: 'UPSTREAM_RESPONSE_MALFORMED', diagnosticReason: 'pkce_resume_failed' })
+  })
+
+  it('classifies a missing durable nonce digest as nonce_failed before transport', async () => {
+    const prepared = prepareDurableUpstreamLoginLeg({ attemptId, legId, provider: 'google', clientId: upstream.google.clientId, redirectUri: upstream.google.redirectUri, pkceKey: key })
+    let transportCalls = 0
+    const verifier = createDurableProviderVerifier({
+      upstream,
+      pkceKey: key,
+      transport: {
+        exchangeCode: async () => { transportCalls += 1; throw new Error('must not run') },
+        fetchJwks: async () => { throw new Error('must not run') },
+        fetchNaverProfile: async () => { throw new Error('must not run') },
+      },
+      now: () => NOW,
+    })
+    let caught: unknown
+    try { await verifier.verify({ provider: 'google', authorizationCode: 'synthetic/opaque/provider-code', rawState: prepared.authorization.rawState, attemptId, legId, nonceDigest: null, pkce: { challenge: prepared.database.pkce!.challenge, ciphertext: prepared.database.pkce!.ciphertext, iv: prepared.database.pkce!.iv, keyVersion: prepared.database.pkce!.keyVersion } }) } catch (error) { caught = error }
+    expect(caught).toBeInstanceOf(SocialBrokerError)
+    expect(caught).toMatchObject({ code: 'NONCE_REJECTED', diagnosticReason: 'nonce_failed' })
+    expect(transportCalls).toBe(0)
   })
 
   it('PHASE10O_Q_TYPED_EXPIRY_PROVENANCE_SURVIVES_DURABLE_VERIFIER', async () => {
