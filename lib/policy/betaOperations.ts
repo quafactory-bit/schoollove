@@ -35,6 +35,46 @@ export function assessControlledBetaFeatureContract(input:{
   const globalFeatureStopped=Boolean(expected?.some((feature)=>input.globalFlags.some((flag)=>flag.feature_key===feature&&!flag.enabled)))
   return {contractKind,programFlagsComplete,globalFeatureStopped}
 }
+
+export function assessControlledBetaInvitationEligibility(input:{
+  snapshotFeatures:readonly BetaFeatureKey[]|null|undefined
+  programFlags:readonly {feature_key:BetaFeatureKey;enabled:boolean}[]
+  globalFlags:readonly {feature_key:BetaFeatureKey;enabled:boolean}[]
+  snapshotBacked:boolean
+  schoolAllowlistCount:number
+  schoolContractMatches:boolean
+  invitePolicy:{maxUsesPerInvite?:number;expiresInDays?:number}|null|undefined
+  approvalWaitlistEnabled:boolean|null|undefined
+  startsAt:string|null
+  endsAt:string|null
+  status:string
+  emergencyDisabledAt:string|null
+  now?:number
+}):boolean {
+  const featureContract=assessControlledBetaFeatureContract({
+    snapshotFeatures:input.snapshotFeatures,
+    programFlags:input.programFlags,
+    globalFlags:input.globalFlags,
+  })
+  const startsAt=input.startsAt?new Date(input.startsAt).getTime():NaN
+  const endsAt=input.endsAt?new Date(input.endsAt).getTime():NaN
+  const now=input.now??Date.now()
+  return featureContract.contractKind!==null
+    && featureContract.programFlagsComplete
+    && !featureContract.globalFeatureStopped
+    && input.snapshotBacked
+    && input.schoolAllowlistCount===1
+    && input.schoolContractMatches
+    && input.invitePolicy?.maxUsesPerInvite===1
+    && input.invitePolicy.expiresInDays===7
+    && input.approvalWaitlistEnabled===true
+    && Number.isFinite(startsAt)
+    && Number.isFinite(endsAt)
+    && now>=startsAt
+    && now<endsAt
+    && input.status==='active'
+    && input.emergencyDisabledAt===null
+}
 export const controlledBetaSafeErrorCodes = [
   'TARGET_SCHOOL_REQUIRED','TARGET_SCHOOL_NOT_FOUND','INVALID_FIRST_BETA_FEATURE_SET','INVALID_CONTROLLED_BETA_FEATURE_SET',
   'INVALID_FIRST_BETA_INVITE_POLICY','INVALID_FIRST_BETA_CONTRACT','DRAFT_ALREADY_ACTIVATED',

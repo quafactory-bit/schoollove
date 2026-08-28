@@ -68,4 +68,21 @@ describe('/account private management UI', () => {
     expect(client).toContain('className={`schoollove-dark-action sticky bottom-24')
   })
 
+  it('authenticated account에서만 명시적으로 beta invite를 기존 API에 제출한다',()=>{
+    expect(client).toContain('제한 베타 초대 등록')
+    expect(client).toContain("fetch('/api/beta/redeem'")
+    expect(client).toContain('JSON.stringify({token:inviteToken})')
+    expect(client).toContain("if(inviteBusy)return")
+    expect(client).toContain('inviteBusy||inviteToken.trim().length<24')
+    expect(client).toContain("type=\"password\"")
+    expect(client).toContain("autoComplete=\"off\"")
+    expect(client).not.toMatch(/localStorage|searchParams.*invite|console\.(log|error).*invite/i)
+  })
+
+  it('beta invite success와 coarse failure 상태를 토큰 반사 없이 표시한다',()=>{
+    for(const state of ['PENDING_REVIEW','ACTIVE','ALREADY_REDEEMED','UNAVAILABLE','INVALID','PROGRAM_FULL'])expect(client).toContain(state)
+    expect(client).toContain("if(success){setInviteToken('');router.refresh()}")
+    expect(client).not.toContain('setInviteStatus(inviteToken')
+  })
+
 })
