@@ -9,6 +9,7 @@ import { prepareTransactionBoundBrokerCode, type TrustedAuthorizationTransaction
 import type { BrokerAuthorizationCodeNonceKey } from './durable-code'
 import { deriveBrokerSubject } from './subject'
 import { SocialBrokerError } from './errors'
+import { writeGoogleCallbackDiagnostic } from './google-callback-diagnostics'
 import type { SocialProvider } from './types'
 
 /** Deliberately narrow service-RPC port; implementations must not use direct private-table SQL. */
@@ -129,6 +130,16 @@ export class DarkBrokerOrchestrator {
     catch (error) {
       // A claimed callback must never be abandoned: transition through the approved M failure RPC.
       const code = error instanceof SocialBrokerError ? error.code : undefined
+      if (input.provider === 'google' && error instanceof SocialBrokerError && error.diagnosticReason) {
+        try {
+          writeGoogleCallbackDiagnostic({
+            attemptId: correlated.context.attemptId,
+            reason: error.diagnosticReason,
+            at: this.input.now(),
+            ...(error.upstreamStatus === undefined ? {} : { upstreamStatus: error.upstreamStatus }),
+          })
+        } catch { /* Diagnostics must never alter the fail-closed transition. */ }
+      }
       await this.input.persistence.failClaimedUpstreamLeg({ attemptId: correlated.context.attemptId, legId: correlated.context.legId, reason: code === 'UPSTREAM_RESPONSE_EXPIRED' ? 'expired' : 'provider_failure' })
       throw new Error('DARK_CALLBACK_REJECTED')
     }

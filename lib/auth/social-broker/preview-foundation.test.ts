@@ -8,6 +8,7 @@ import { activePreviewRouteAdapter, createActivePreviewRuntime } from './preview
 import { createServerUpstreamTransport } from './server-transport'
 import { GOOGLE_OIDC_METADATA } from './upstream-adapters'
 import { createPreviewRouteAdapter } from './preview-route-adapter'
+import { GOOGLE_CALLBACK_DIAGNOSTIC_REASONS, SocialBrokerError } from './errors'
 
 const key = (value: number) => Buffer.alloc(32, value).toString('base64url')
 const signingKey = Buffer.from(JSON.stringify(generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ format: 'jwk' })), 'utf8').toString('base64url')
@@ -83,6 +84,27 @@ describe('PHASE 10P preview provider foundation', () => {
     expect(callback).not.toHaveBeenCalled()
   })
 
+  it.each(GOOGLE_CALLBACK_DIAGNOSTIC_REASONS)('keeps external callback HTTP 400 and secret-free for %s', async diagnosticReason => {
+    const sessionKey = { version: 1 as const, material: Buffer.alloc(32, 19) }
+    const rawState = 'S'.repeat(43)
+    const sealed = sealBrowserContinuity({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
+    const adapter = createPreviewRouteAdapter({
+      now: () => 100,
+      browserSessionKey: sessionKey,
+      orchestrator: {
+        continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
+        callback: vi.fn(async () => { throw new SocialBrokerError(diagnosticReason === 'token_time_failed' ? 'UPSTREAM_RESPONSE_EXPIRED' : 'UPSTREAM_ERROR', { reason: diagnosticReason }) }),
+      } as never,
+      verifier: {} as never,
+      oidc: {} as never,
+    })
+    const response = await adapter.callback('google', new Request(`${PREVIEW_BROKER_ISSUER}/auth/social/callback/google?code=never-log-authorization-code&state=${rawState}`, { headers: { cookie: `${socialContinuityCookie.name}=${sealed}` } }))
+    expect(response.status).toBe(400)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(await response.text()).toBe('')
+    expect([...response.headers.entries()].join('\n')).not.toContain('never-log-authorization-code')
+  })
+
   it('PHASE10P_BROWSER_CONTINUITY_SERVER_ONLY_OK seals a short-lived HttpOnly browser binding and rejects tamper or expiry', () => {
     const material = Buffer.alloc(32, 7)
     const sealed = sealBrowserContinuity({ provider: 'google', brokerHandle: 'A'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 100, expiresAt: 700 }, { version: 1, material })
@@ -116,6 +138,25 @@ describe('PHASE 10P preview provider foundation', () => {
     await transport.fetchJwks({ provider: 'google', jwksUri: GOOGLE_OIDC_METADATA.jwksUri })
     await expect(transport.fetchJwks({ provider: 'google', jwksUri: 'https://evil.invalid/jwks' })).rejects.toThrow('UPSTREAM_TRANSPORT_REJECTED')
     expect(calls).toEqual([GOOGLE_OIDC_METADATA.tokenEndpoint, GOOGLE_OIDC_METADATA.jwksUri])
+  })
+
+  it('PHASE10P_SERVER_TRANSPORT_DIAGNOSTIC_BOUNDARIES_OK keeps local invariants and received oversized JWKS distinct from fetch failures', async () => {
+    let fetchCalls = 0
+    const transport = createServerUpstreamTransport({ google: { clientId: 'g', clientSecret: 'synthetic-secret' } }, (async () => {
+      fetchCalls += 1
+      return new Response('X'.repeat(128 * 1024 + 1), { status: 200, headers: { 'content-type': 'application/json' } })
+    }) as typeof fetch)
+    let missingCode: unknown
+    try { await transport.exchangeCode({ provider: 'google', tokenEndpoint: GOOGLE_OIDC_METADATA.tokenEndpoint, clientId: 'g', redirectUri: 'https://broker.invalid/google/callback', authorizationCode: '', codeVerifier: 'V'.repeat(43) }) } catch (error) { missingCode = error }
+    expect(missingCode).toBeInstanceOf(SocialBrokerError)
+    expect((missingCode as SocialBrokerError).diagnosticReason).toBeUndefined()
+    let missingVerifier: unknown
+    try { await transport.exchangeCode({ provider: 'google', tokenEndpoint: GOOGLE_OIDC_METADATA.tokenEndpoint, clientId: 'g', redirectUri: 'https://broker.invalid/google/callback', authorizationCode: 'synthetic-code', codeVerifier: '' }) } catch (error) { missingVerifier = error }
+    expect(missingVerifier).toMatchObject({ diagnosticReason: 'pkce_resume_failed' })
+    let oversizedJwks: unknown
+    try { await transport.fetchJwks({ provider: 'google', jwksUri: GOOGLE_OIDC_METADATA.jwksUri }) } catch (error) { oversizedJwks = error }
+    expect(oversizedJwks).toMatchObject({ diagnosticReason: 'jwks_key_rejected' })
+    expect(fetchCalls).toBe(1)
   })
 
   it('PHASE10P_ROUTE_COMPOSITION_OK derives provider from the registered flow and seals continuity without URL leakage', async () => {

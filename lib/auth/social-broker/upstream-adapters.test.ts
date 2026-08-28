@@ -56,6 +56,94 @@ describe('dark upstream provider adapters', () => {
     expect(identity).toEqual({ provider: 'google', upstreamSubject: Buffer.from('synthetic-google-subject'), authenticationTime: NOW - 2 })
   })
 
+  it('classifies secret-free Google callback verifier failure stages without weakening verification', async () => {
+    const nonce = 'D'.repeat(43)
+    const { upstreamNonceDigest } = await import('./durable-upstream-leg')
+    const verifyWith = async (transport: UpstreamHttpTransport) => {
+      let caught: unknown
+      try {
+        await verifyResumedOidcIdentity({ provider: 'google', authorizationCode: 'never-log-authorization-code', clientId, redirectUri: redirect, codeVerifier: 'V'.repeat(43), nonceDigest: upstreamNonceDigest(nonce), transport, now: NOW })
+      } catch (error) { caught = error }
+      expect(caught).toBeInstanceOf(SocialBrokerError)
+      return caught as SocialBrokerError
+    }
+    const response = (body: unknown, url: string, status = 200): UpstreamHttpResponse => ({ status, contentType: 'application/json', body: typeof body === 'string' ? body : JSON.stringify(body), url })
+    const withResponses = (idToken: string, jwksResponse: (url: string) => UpstreamHttpResponse = url => response({ keys: [jwk] }, url)): UpstreamHttpTransport => ({
+      exchangeCode: async request => response({ id_token: idToken, access_token: 'never-log-access-token', refresh_token: 'never-log-refresh-token' }, request.tokenEndpoint),
+      fetchJwks: async request => jwksResponse(request.jwksUri),
+      fetchNaverProfile: async () => { throw new Error('not used') },
+    })
+    const valid = jwt(expectedClaims('google', nonce))
+    const cases: Array<readonly [string, UpstreamHttpTransport, number?]> = [
+      ['token_exchange_transport_failed', { exchangeCode: async () => { throw new Error('network contains never-log-authorization-code') }, fetchJwks: async () => { throw new Error('unused') }, fetchNaverProfile: async () => { throw new Error('unused') } }],
+      ['token_exchange_http_failed', { exchangeCode: async request => response({ error: 'invalid_grant', body: 'never-log-response-body' }, request.tokenEndpoint, 400), fetchJwks: async () => { throw new Error('unused') }, fetchNaverProfile: async () => { throw new Error('unused') } }, 400],
+      ['token_response_malformed', { exchangeCode: async request => response('{malformed-json', request.tokenEndpoint), fetchJwks: async () => { throw new Error('unused') }, fetchNaverProfile: async () => { throw new Error('unused') } }],
+      ['id_token_missing_or_malformed', { exchangeCode: async request => response({}, request.tokenEndpoint), fetchJwks: async () => { throw new Error('unused') }, fetchNaverProfile: async () => { throw new Error('unused') } }],
+      ['jwks_fetch_failed', withResponses(valid, url => response({ error: 'unavailable' }, url, 503)), 503],
+      ['jwks_key_rejected', withResponses(jwt(expectedClaims('google', nonce), { kid: 'unknown-kid' }))],
+      ['id_token_signature_failed', withResponses(jwt(expectedClaims('google', nonce), { privateKey: generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey }))],
+      ['issuer_or_audience_failed', withResponses(jwt({ ...expectedClaims('google', nonce), aud: 'wrong-audience' }))],
+      ['token_time_failed', withResponses(jwt({ ...expectedClaims('google', nonce), exp: NOW - 1 }))],
+      ['nonce_failed', withResponses(jwt({ ...expectedClaims('google', nonce), nonce: 'W'.repeat(43) }))],
+      ['provider_identity_malformed', withResponses(jwt((() => { const claims = { ...expectedClaims('google', nonce) }; delete claims.sub; return claims })()))],
+    ]
+    const observed: string[] = []
+    for (const [expectedReason, transport, expectedStatus] of cases) {
+      const error = await verifyWith(transport)
+      expect(error.diagnosticReason).toBe(expectedReason)
+      expect(error.upstreamStatus).toBe(expectedStatus)
+      observed.push(error.diagnosticReason!)
+    }
+    expect(new Set(observed).size).toBe(cases.length)
+  })
+
+  it.each([
+    ['wrong content type', { status: 200, contentType: 'text/html', body: '{}', url: GOOGLE_OIDC_METADATA.jwksUri }],
+    ['oversized body', { status: 200, contentType: 'application/json', body: 'X'.repeat(16 * 1024 + 1), url: GOOGLE_OIDC_METADATA.jwksUri }],
+    ['invalid JSON', { status: 200, contentType: 'application/json', body: '{invalid-jwks', url: GOOGLE_OIDC_METADATA.jwksUri }],
+  ] as const)('classifies a received malformed JWKS response as jwks_key_rejected: %s', async (_label, jwksResponse) => {
+    const nonce = 'J'.repeat(43)
+    const { upstreamNonceDigest } = await import('./durable-upstream-leg')
+    let caught: unknown
+    try {
+      await verifyResumedOidcIdentity({
+        provider: 'google', authorizationCode: 'synthetic-code', clientId, redirectUri: redirect, codeVerifier: 'V'.repeat(43),
+        nonceDigest: upstreamNonceDigest(nonce),
+        transport: {
+          exchangeCode: async request => json({ id_token: jwt(expectedClaims('google', nonce)) }, request.tokenEndpoint),
+          fetchJwks: async () => jwksResponse,
+          fetchNaverProfile: async () => { throw new Error('not used') },
+        },
+        now: NOW,
+      })
+    } catch (error) { caught = error }
+    expect(caught).toBeInstanceOf(SocialBrokerError)
+    expect(caught).toMatchObject({ diagnosticReason: 'jwks_key_rejected' })
+  })
+
+  it.each([
+    ['missing code verifier', { authorizationCode: 'synthetic-code', codeVerifier: '', nonceDigest: Buffer.alloc(32) }, 'pkce_resume_failed'],
+    ['invalid nonce digest', { authorizationCode: 'synthetic-code', codeVerifier: 'V'.repeat(43), nonceDigest: Buffer.alloc(31) }, 'nonce_failed'],
+    ['empty authorization code', { authorizationCode: '', codeVerifier: 'V'.repeat(43), nonceDigest: Buffer.alloc(32) }, undefined],
+  ] as const)('keeps local verifier invariants distinct from token transport failures: %s', async (_label, local, expectedReason) => {
+    let transportCalls = 0
+    let caught: unknown
+    try {
+      await verifyResumedOidcIdentity({
+        provider: 'google', ...local, clientId, redirectUri: redirect, now: NOW,
+        transport: {
+          exchangeCode: async request => { transportCalls += 1; return json({}, request.tokenEndpoint) },
+          fetchJwks: async () => { throw new Error('not used') },
+          fetchNaverProfile: async () => { throw new Error('not used') },
+        },
+      })
+    } catch (error) { caught = error }
+    expect(caught).toBeInstanceOf(SocialBrokerError)
+    expect((caught as SocialBrokerError).diagnosticReason).toBe(expectedReason)
+    expect((caught as SocialBrokerError).diagnosticReason).not.toBe('token_exchange_transport_failed')
+    expect(transportCalls).toBe(0)
+  })
+
   it('PHASE10O_M_STATELESS_NAVER_RESUME_VERIFY_OK verifies Naver without a pending adapter object', async () => {
     const identity = await verifyResumedNaverIdentity({ authorizationCode: 'opaque-naver-code', rawState: 'A'.repeat(43), clientId, redirectUri: redirect, transport: { exchangeCode: async request => json({ access_token: 'synthetic-token' }, request.tokenEndpoint), fetchJwks: async () => { throw new Error('unused') }, fetchNaverProfile: async request => json({ resultcode: '00', response: { id: 'synthetic-naver-resumed', email: 'ignored@example.invalid' } }, request.profileEndpoint) } })
     expect(identity).toEqual({ provider: 'naver', upstreamSubject: Buffer.from('synthetic-naver-resumed') })
