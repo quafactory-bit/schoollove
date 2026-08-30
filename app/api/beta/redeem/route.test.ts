@@ -54,6 +54,30 @@ describe('beta invite redeem route',()=>{
     expect(mocks.record).toHaveBeenCalledWith('invite_redeemed')
   })
 
+  it('redeems an unrestricted invite without hashing absent authenticated email data',async()=>{
+    mocks.auth.mockResolvedValue({user:{id:userId,email:null},client:{}})
+    const response=await POST(request({token}) as never)
+    expect(response.status).toBe(200)
+    expect(mocks.rpc).toHaveBeenCalledWith('redeem_beta_invite',{
+      actor_user_id:userId,
+      requested_token_hash:`hash:${token}`,
+      actor_email_hash:null,
+      actor_domain_hash:null,
+    })
+    expect(mocks.hash).toHaveBeenCalledTimes(1)
+    expect(mocks.hash).toHaveBeenCalledWith(token)
+  })
+
+  it('never hashes empty authenticated email or domain values',async()=>{
+    mocks.auth.mockResolvedValue({user:{id:userId,email:''},client:{}})
+    await POST(request({token}) as never)
+    expect(mocks.rpc).toHaveBeenCalledWith('redeem_beta_invite',expect.objectContaining({
+      actor_email_hash:null,
+      actor_domain_hash:null,
+    }))
+    expect(mocks.hash).toHaveBeenCalledTimes(1)
+  })
+
   it('returns only the existing coarse error when the RPC rejects',async()=>{
     mocks.rpc.mockResolvedValue({data:null,error:{message:'sensitive provider detail'}})
     const response=await POST(request({token}) as never)
