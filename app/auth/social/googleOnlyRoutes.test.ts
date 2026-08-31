@@ -2,6 +2,9 @@ import { generateKeyPairSync } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 import { GET as startGoogle } from './start/google/route'
+import { GET as callbackGoogle } from './callback/google/route'
+import { GET as authorizeOidc } from '@/app/oauth/authorize/route'
+import { POST as tokenOidc } from '@/app/oauth/token/route'
 import { GET as kakao } from './callback/kakao/route'
 import { GET as naver } from './callback/naver/route'
 import { POST as requestOtp } from '@/app/api/auth/request-otp/route'
@@ -49,6 +52,14 @@ describe('PHASE 10Q Google-only public auth routes', () => {
     expect(response.status).toBe(302)
     expect(response.headers.get('location')).toBe('https://ucnybhzpbatzcipwqtox.supabase.co/auth/v1/authorize?provider=custom%3Aschoollove-google&redirect_to=https%3A%2F%2Fwww.schoollove.kr%2Fauth%2Fsocial%2Fcomplete')
     expect((await startGoogle(new Request('https://preview.schoollove.kr/auth/social/start/google'))).status).toBe(404)
+  })
+
+  it('keeps Production Google start and callback dark during issuer bootstrap', async () => {
+    configure({ SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'production-bootstrap', VERCEL_ENV: 'production' })
+    expect((await startGoogle(new Request('https://www.schoollove.kr/auth/social/start/google'))).status).toBe(404)
+    expect((await callbackGoogle(new Request('https://www.schoollove.kr/auth/social/callback/google?code=opaque&state=opaque'))).status).toBe(404)
+    expect((await authorizeOidc(new Request('https://www.schoollove.kr/oauth/authorize'))).status).toBe(404)
+    expect((await tokenOidc(new Request('https://www.schoollove.kr/oauth/token', { method: 'POST' }))).status).toBe(404)
   })
 
   it.each(['production', 'development'])('is dark for a Preview exposure in the %s Vercel environment', async (vercelEnv) => {

@@ -11,6 +11,14 @@ describe('/login', () => {
     expect(source).not.toMatch(/request-otp|verify-otp|one-time-code|인증번호 받기|Kakao|Naver/)
   })
 
+  it('Production bootstrap에서는 server-only gate가 CTA를 숨기고 준비 상태만 표시한다', () => {
+    expect(source).not.toContain("'use client'")
+    expect(source).toContain("export const dynamic = 'force-dynamic'")
+    expect(source).toContain('loadUserLoginBrokerConfig() !== null')
+    expect(source).toContain("loginAvailable\n        ? <a href=\"/auth/social/start/google\"")
+    expect(source).toContain('로그인은 아직 열리지 않았습니다.')
+  })
+
   it('단일 dark CTA는 상호작용 상태까지 보호하는 contrast 계약을 사용한다', () => {
     const darkActionButtons = source.match(/schoollove-dark-action schoollove-focus[^\"]*bg-schoollove-text[^\"]*text-white/g) ?? []
     expect(darkActionButtons).toHaveLength(1)
