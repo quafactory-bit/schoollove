@@ -4,7 +4,6 @@ import { DarkBrokerOrchestrator, type DurableProviderVerifier } from './dark-orc
 import { DarkOidcHttpIssuer } from './http'
 import { buildProviderAuthorizationRequest } from './provider-authorization-request'
 import type { SocialProvider } from './types'
-import { PREVIEW_SUPABASE_CALLBACK } from './preview-config'
 import { recoveryContinuityCookie, sealRecoveryContinuity } from './recovery-continuity-session'
 
 const clearCookie = Object.freeze({ ...socialContinuityCookie.options, maxAge: 0 })
@@ -18,13 +17,14 @@ export type PreviewRouteRuntime = Readonly<{
   orchestrator: DarkBrokerOrchestrator
   verifier: DurableProviderVerifier
   browserSessionKey: BrowserSessionKey
+  downstreamCallback: string
   now: () => number
   oidc: DarkOidcHttpIssuer
 }>
 
 /**
  * HTTP composition only. Deployed routes must inject this only after the separate
- * Preview-origin and downstream-client approvals; callers never supply provider or
+ * active-origin and downstream-client approvals; callers never supply provider or
  * durable IDs. This module has no environment lookup and does not activate routes.
  */
 export function createPreviewRouteAdapter(runtime: PreviewRouteRuntime) {
@@ -65,8 +65,8 @@ export function createPreviewRouteAdapter(runtime: PreviewRouteRuntime) {
         }
         if (trusted.outcome !== 'EXISTING_PRIMARY' && trusted.outcome !== 'PROVISIONAL_RESUME_READY' && trusted.outcome !== 'BOUND_PROVISIONAL_REAUTH_READY') throw new Error('DARK_CALLBACK_REJECTED')
         const finalized = await runtime.orchestrator.finalizeReadyAttempt({ trustedAttemptId: trusted.trustedAttemptId, authenticationTime: trusted.authenticationTime })
-        if (finalized.redirectUri !== PREVIEW_SUPABASE_CALLBACK) throw new Error('DARK_FINALIZATION_REJECTED')
-        const destination = new URL(PREVIEW_SUPABASE_CALLBACK)
+        if (finalized.redirectUri !== runtime.downstreamCallback) throw new Error('DARK_FINALIZATION_REJECTED')
+        const destination = new URL(runtime.downstreamCallback)
         destination.searchParams.set('code', finalized.authorizationCode)
         if (finalized.downstreamState !== null) destination.searchParams.set('state', finalized.downstreamState)
         const response = new Response(null, { status: 302, headers: { location: destination.toString(), 'cache-control': 'no-store' } })

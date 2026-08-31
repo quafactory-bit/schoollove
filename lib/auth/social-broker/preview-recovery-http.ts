@@ -2,9 +2,9 @@ import 'server-only'
 import { recoveryOtpMac } from '../social-account/recovery'
 import { prepareAndDeliverAttemptRecovery, type RecoveryDeliveryDatabase, type RecoveryOtpDeliveryTransport } from '../social-account/recovery-delivery'
 import { ResendRecoveryOtpDeliveryTransport } from '../social-account/resend-recovery-transport'
-import { PREVIEW_BROKER_ISSUER, PREVIEW_SUPABASE_CALLBACK, loadBrokerPreviewConfig } from './preview-config'
+import { loadBrokerConfig } from './preview-config'
 import { activatePreviewSocialAccountFromAttempt, bindPreviewAuthPrincipal, consumePreviewRecoveryDecision, createPreviewRecoveryDatabase, type PreviewRpcClient } from './preview-persistence'
-import { createActivePreviewServices, type ActivePreviewServices } from './preview-runtime'
+import { createActiveBrokerServices, type ActiveBrokerServices } from './preview-runtime'
 import { openRecoveryContinuity, recoveryContinuityCookie, sealRecoveryContinuity, type RecoveryContinuity } from './recovery-continuity-session'
 
 const COOKIE_OPTIONS = recoveryContinuityCookie.options
@@ -32,17 +32,16 @@ async function rpcText(client: PreviewRpcClient, name: string, args: Record<stri
   return result.error || typeof result.data !== 'string' ? null : result.data
 }
 
-export async function activePreviewRecoveryServices(request: Request): Promise<ActivePreviewServices | null> {
+export async function activeBrokerRecoveryServices(request: Request): Promise<ActiveBrokerServices | null> {
   try {
-    if (new URL(request.url).origin !== PREVIEW_BROKER_ISSUER) return null
-    const config = loadBrokerPreviewConfig()
-    if (config.exposure !== 'preview') return null
+    const config = loadBrokerConfig()
+    if (config.exposure === 'off' || new URL(request.url).origin !== config.issuer) return null
     const { getSupabaseAdmin } = await import('@/lib/supabase')
-    return createActivePreviewServices(config, getSupabaseAdmin())
+    return createActiveBrokerServices(config, getSupabaseAdmin())
   } catch { return null }
 }
 
-async function trustedRecovery(request: Request, services: ActivePreviewServices): Promise<RecoveryContinuity | null> {
+async function trustedRecovery(request: Request, services: ActiveBrokerServices): Promise<RecoveryContinuity | null> {
   try {
     const value = openRecoveryContinuity(readCookie(request, recoveryContinuityCookie.name), services.config.browserSessionKey, services.now())
     if (value.stage === 'downstream_finalized') return value
@@ -52,14 +51,14 @@ async function trustedRecovery(request: Request, services: ActivePreviewServices
 }
 
 export async function recoveryGet(request: Request): Promise<Response> {
-  const services = await activePreviewRecoveryServices(request)
+  const services = await activeBrokerRecoveryServices(request)
   if (!services) return new Response(null, { status: 404 })
   const continuity = await trustedRecovery(request, services)
   return continuity && continuity.stage !== 'downstream_finalized' ? recoveryPage(continuity.stage) : coarse(400, '복구 요청을 확인할 수 없습니다.')
 }
 
 export async function recoveryPost(request: Request): Promise<Response> {
-  const services = await activePreviewRecoveryServices(request)
+  const services = await activeBrokerRecoveryServices(request)
   if (!services) return new Response(null, { status: 404 })
   return recoveryPostWithServices(request, services, {
     createDatabase: createPreviewRecoveryDatabase,
@@ -69,16 +68,16 @@ export async function recoveryPost(request: Request): Promise<Response> {
 
 export type RecoveryPostDependencies = Readonly<{
   createDatabase(client: PreviewRpcClient): RecoveryDeliveryDatabase
-  createTransport(services: ActivePreviewServices): RecoveryOtpDeliveryTransport
+  createTransport(services: ActiveBrokerServices): RecoveryOtpDeliveryTransport
 }>
 
 /** Server-only, dependency-injected recovery boundary used by executable HTTP tests. */
 export async function recoveryPostWithServices(
   request: Request,
-  services: ActivePreviewServices,
+  services: ActiveBrokerServices,
   dependencies: RecoveryPostDependencies,
 ): Promise<Response> {
-  if (request.headers.get('origin') !== PREVIEW_BROKER_ISSUER) return coarse(400, '잘못된 요청입니다.')
+  if (request.headers.get('origin') !== services.config.issuer) return coarse(400, '잘못된 요청입니다.')
   const continuity = await trustedRecovery(request, services)
   if (!continuity || continuity.stage === 'downstream_finalized') return coarse(400, '복구 요청을 확인할 수 없습니다.')
   let form: FormData
@@ -119,8 +118,8 @@ export async function recoveryPostWithServices(
   }
   try {
     const finalized = await services.orchestrator.finalizeReadyAttempt({ trustedAttemptId: continuity.trustedAttemptId, authenticationTime: continuity.authenticationTime })
-    if (finalized.redirectUri !== PREVIEW_SUPABASE_CALLBACK) throw new Error('RECOVERY_FINALIZATION_REJECTED')
-    const destination = new URL(PREVIEW_SUPABASE_CALLBACK); destination.searchParams.set('code', finalized.authorizationCode)
+    if (finalized.redirectUri !== services.config.supabaseCallback) throw new Error('RECOVERY_FINALIZATION_REJECTED')
+    const destination = new URL(services.config.supabaseCallback); destination.searchParams.set('code', finalized.authorizationCode)
     if (finalized.downstreamState !== null) destination.searchParams.set('state', finalized.downstreamState)
     const response = new Response(null, { status: 302, headers: { location: destination.toString(), 'cache-control': 'no-store' } })
     response.headers.set('set-cookie', cookieHeader(recoveryContinuityCookie.name, sealRecoveryContinuity({ ...continuity, stage: 'downstream_finalized', verificationId: null, issuedAt: services.now(), expiresAt: services.now() + 600 }, services.config.browserSessionKey), COOKIE_OPTIONS))
@@ -132,8 +131,8 @@ export async function recoveryPostWithServices(
 }
 
 export async function completeSocialSession(request: Request): Promise<Response> {
-  const services = await activePreviewRecoveryServices(request)
-  if (!services || request.headers.get('origin') !== PREVIEW_BROKER_ISSUER) return new Response(null, { status: services ? 400 : 404 })
+  const services = await activeBrokerRecoveryServices(request)
+  if (!services || request.headers.get('origin') !== services.config.issuer) return new Response(null, { status: services ? 400 : 404 })
   const [{ createPublicAuthClient, setUserSessionCookies }, { NextResponse }] = await Promise.all([import('@/lib/user-auth'), import('next/server')])
   return completeSocialSessionWithServices(request, services, {
     createAuthClient: createPublicAuthClient,
@@ -163,7 +162,7 @@ export type SocialSessionCompletionDependencies = Readonly<{
 /** Server-only, dependency-injected completion boundary used by executable security tests. */
 export async function completeSocialSessionWithServices(
   request: Request,
-  services: ActivePreviewServices,
+  services: ActiveBrokerServices,
   dependencies: SocialSessionCompletionDependencies,
 ): Promise<Response> {
   let continuity: RecoveryContinuity

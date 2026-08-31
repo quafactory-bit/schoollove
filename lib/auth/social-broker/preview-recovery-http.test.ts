@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 import {
-  activePreviewRecoveryServices,
+  activeBrokerRecoveryServices,
   completeSocialSessionWithServices,
   recoveryGet,
   recoveryPostWithServices,
@@ -11,7 +11,7 @@ import {
   type SocialSessionCompletionDependencies,
 } from './preview-recovery-http'
 import { openRecoveryContinuity, recoveryContinuityCookie, sealRecoveryContinuity } from './recovery-continuity-session'
-import type { ActivePreviewServices } from './preview-runtime'
+import type { ActiveBrokerServices } from './preview-runtime'
 import { InMemoryRecoveryOtpDeliveryTransport, type RecoveryDeliveryDatabase } from '../social-account/recovery-delivery'
 import { createPreviewRecoveryDatabase } from './preview-persistence'
 
@@ -50,16 +50,21 @@ function completionRequest(
   })
 }
 
-function completionServices(): ActivePreviewServices {
-  return { config: { browserSessionKey }, client: {}, now: () => now } as unknown as ActivePreviewServices
+function completionServices(): ActiveBrokerServices {
+  return { config: { browserSessionKey, issuer: 'https://preview.schoollove.kr' }, client: {}, now: () => now } as unknown as ActiveBrokerServices
 }
 
-function recoveryServices(): ActivePreviewServices {
+function recoveryServices(): ActiveBrokerServices {
   return {
-    config: { browserSessionKey, recovery: { ...recoveryKeys, resendApiKey: 'synthetic', emailFrom: 'noreply@example.invalid' } },
+    config: {
+      browserSessionKey,
+      issuer: 'https://preview.schoollove.kr',
+      supabaseCallback: 'https://preview-supabase.invalid/auth/v1/callback',
+      recovery: { ...recoveryKeys, resendApiKey: 'synthetic', emailFrom: 'noreply@example.invalid' },
+    },
     client: { rpc: async (name: string) => ({ data: name === 'get_social_recovery_http_context' ? 'RECOVERY_REQUIRED' : null, error: null }) },
     now: () => now,
-  } as unknown as ActivePreviewServices
+  } as unknown as ActiveBrokerServices
 }
 
 function recoveryRequiredCookie(): string {
@@ -162,7 +167,7 @@ function completionDependencies(input: Readonly<{
 describe('Preview first-login HTTP boundary', () => {
   it('keeps recovery unavailable off Preview and on foreign origins', async () => {
     vi.stubEnv('SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE', 'off')
-    await expect(activePreviewRecoveryServices(new Request('https://evil.example/auth/social/recovery'))).resolves.toBeNull()
+    await expect(activeBrokerRecoveryServices(new Request('https://evil.example/auth/social/recovery'))).resolves.toBeNull()
     await expect(recoveryGet(new Request('https://preview.schoollove.kr/auth/social/recovery'))).resolves.toMatchObject({ status: 404 })
     vi.unstubAllEnvs()
   })
@@ -170,7 +175,7 @@ describe('Preview first-login HTTP boundary', () => {
   it('accepts no browser durable identity fields and has no secret logging path', () => {
     expect(recoverySource).not.toMatch(/form\.get\(['"](?:attempt_id|account_id|transaction_id|provider|broker_subject)['"]\)/)
     expect(recoverySource).not.toMatch(/console\.|localStorage|sessionStorage/)
-    expect(recoverySource).toContain("request.headers.get('origin') !== PREVIEW_BROKER_ISSUER")
+    expect(recoverySource).toContain("request.headers.get('origin') !== services.config.issuer")
     expect(recoverySource).toContain("identity.provider === expectedProvider")
     expect(recoverySource).toContain("identity.id === continuity.brokerSubject")
     expect(recoverySource).toContain("identity.identity_data?.sub === continuity.brokerSubject")
