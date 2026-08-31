@@ -3,8 +3,14 @@ vi.mock('server-only', () => ({}))
 import { generateKeyPairSync } from 'node:crypto'
 import { openBrowserContinuity, sealBrowserContinuity, socialContinuityCookie } from './browser-continuity-session'
 import { buildProviderAuthorizationRequest } from './provider-authorization-request'
-import { PREVIEW_BROKER_ISSUER, PREVIEW_SUPABASE_CALLBACK, loadBrokerPreviewConfig } from './preview-config'
-import { activePreviewRouteAdapter, createActivePreviewRuntime } from './preview-runtime'
+import {
+  PREVIEW_BROKER_ISSUER,
+  PREVIEW_SUPABASE_CALLBACK,
+  PRODUCTION_BROKER_ISSUER,
+  PRODUCTION_SUPABASE_CALLBACK,
+  loadBrokerConfig,
+} from './preview-config'
+import { activeBrokerRouteAdapter, createActiveBrokerRuntime, createActiveBrokerServices } from './preview-runtime'
 import { createServerUpstreamTransport } from './server-transport'
 import { GOOGLE_OIDC_METADATA } from './upstream-adapters'
 import { createPreviewRouteAdapter } from './preview-route-adapter'
@@ -33,26 +39,49 @@ const env = (overrides: Record<string, string | undefined> = {}) => ({
 
 describe('PHASE 10P preview provider foundation', () => {
   it('PHASE10P_CONFIG_FAIL_CLOSED_OK keeps the surface off by default and rejects malformed or Production preview exposure', () => {
-    expect(loadBrokerPreviewConfig({})).toEqual({ exposure: 'off' })
-    expect(() => loadBrokerPreviewConfig(env({ SCHOOLLOVE_GOOGLE_CLIENT_SECRET: '' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
-    expect(() => loadBrokerPreviewConfig(env({ VERCEL_ENV: 'production' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
-    const config = loadBrokerPreviewConfig(env())
+    expect(loadBrokerConfig({})).toEqual({ exposure: 'off' })
+    expect(() => loadBrokerConfig(env({ SCHOOLLOVE_GOOGLE_CLIENT_SECRET: '' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+    expect(() => loadBrokerConfig(env({ VERCEL_ENV: 'production' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+    const config = loadBrokerConfig(env())
     if (config.exposure !== 'preview') throw new Error('expected preview config')
     expect(config.providers.google.clientId).toBe('google-client')
     expect(config.downstreamClients).toEqual(expect.arrayContaining([
       expect.objectContaining({ clientId: 'slb-supabase-google', provider: 'google', redirectUri: PREVIEW_SUPABASE_CALLBACK }),
     ]))
     expect(config.downstreamClients).toHaveLength(1)
-    expect(() => loadBrokerPreviewConfig(env({ SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET: '' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
-    expect(() => loadBrokerPreviewConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1: key(1) }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+    expect(() => loadBrokerConfig(env({ SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET: '' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+    expect(() => loadBrokerConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_UPSTREAM_PKCE_KEY_V1: key(1) }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+  })
+
+  it('binds an immutable Production profile and rejects every cross-environment exposure', async () => {
+    const config = loadBrokerConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'production', VERCEL_ENV: 'production' }))
+    if (config.exposure !== 'production') throw new Error('expected production config')
+    expect(config).toMatchObject({
+      issuer: PRODUCTION_BROKER_ISSUER,
+      supabaseCallback: PRODUCTION_SUPABASE_CALLBACK,
+      completionRoute: `${PRODUCTION_BROKER_ISSUER}/auth/social/complete`,
+      oidcSigningKey: { kid: 'production-rs256-v1' },
+    })
+    expect(config.downstreamClients).toEqual([
+      expect.objectContaining({ clientId: 'slb-supabase-google', provider: 'google', redirectUri: PRODUCTION_SUPABASE_CALLBACK }),
+    ])
+    const client = { rpc: vi.fn(async () => ({ data: null, error: null })) }
+    const services = createActiveBrokerServices(config, client)
+    expect(services.orchestrator.input.upstream.google.redirectUri).toBe(`${PRODUCTION_BROKER_ISSUER}/auth/social/callback/google`)
+    const runtime = services.adapter
+    expect(await runtime.discovery().json()).toMatchObject({ issuer: PRODUCTION_BROKER_ISSUER })
+    const jwks = await runtime.jwks().json() as { keys: Array<Record<string, unknown>> }
+    expect(jwks.keys[0]).toMatchObject({ kid: 'production-rs256-v1' })
+    expect(() => loadBrokerConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'production', VERCEL_ENV: 'preview' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+    expect(() => loadBrokerConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'preview', VERCEL_ENV: 'production' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
   })
 
   it('PHASE10P_DURABLE_SIGNING_CUSTODY_OK keeps RS256 JWKS public and stable across runtime reconstruction', async () => {
-    const config = loadBrokerPreviewConfig(env())
+    const config = loadBrokerConfig(env())
     if (config.exposure !== 'preview') throw new Error('expected preview config')
     const client = { rpc: vi.fn(async () => ({ data: null, error: null })) }
-    const first = createActivePreviewRuntime(config, client)
-    const second = createActivePreviewRuntime(config, client)
+    const first = createActiveBrokerRuntime(config, client)
+    const second = createActiveBrokerRuntime(config, client)
     const firstJwks = await first.jwks().json() as { keys: Array<Record<string, unknown>> }
     const secondJwks = await second.jwks().json() as { keys: Array<Record<string, unknown>> }
     const discovery = await first.discovery().json() as { issuer: string }
@@ -63,11 +92,12 @@ describe('PHASE 10P preview provider foundation', () => {
   })
 
   it('PHASE10P_PREVIEW_ORIGIN_AND_CALLBACK_FAIL_CLOSED_OK rejects a foreign origin and all missing, tampered, expired, or wrong-provider continuity callbacks', async () => {
-    expect(await activePreviewRouteAdapter(new Request('https://evil.example/oauth/authorize'))).toBeNull()
+    expect(await activeBrokerRouteAdapter(new Request('https://evil.example/oauth/authorize'))).toBeNull()
     const callback = vi.fn(async () => 'IDENTITY_REJECTED')
     const adapter = createPreviewRouteAdapter({
       now: () => 100,
       browserSessionKey: { version: 1, material: Buffer.alloc(32, 9) },
+      downstreamCallback: PREVIEW_SUPABASE_CALLBACK,
       orchestrator: { callback, continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState: 'T'.repeat(43) } })) } as never,
       verifier: {} as never,
       oidc: {} as never,
@@ -91,6 +121,7 @@ describe('PHASE 10P preview provider foundation', () => {
     const adapter = createPreviewRouteAdapter({
       now: () => 100,
       browserSessionKey: sessionKey,
+      downstreamCallback: PREVIEW_SUPABASE_CALLBACK,
       orchestrator: {
         continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
         callback: vi.fn(async () => { throw new SocialBrokerError(diagnosticReason === 'token_time_failed' ? 'UPSTREAM_RESPONSE_EXPIRED' : 'UPSTREAM_ERROR', { reason: diagnosticReason }) }),
@@ -112,6 +143,7 @@ describe('PHASE 10P preview provider foundation', () => {
     const adapter = createPreviewRouteAdapter({
       now: () => 100,
       browserSessionKey: sessionKey,
+      downstreamCallback: PREVIEW_SUPABASE_CALLBACK,
       orchestrator: {
         continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
         callback: vi.fn(async () => { throw new Error('never-log-plain-verifier-error') }),
@@ -183,6 +215,7 @@ describe('PHASE 10P preview provider foundation', () => {
     const adapter = createPreviewRouteAdapter({
       now: () => 100,
       browserSessionKey: { version: 1, material: Buffer.alloc(32, 3) },
+      downstreamCallback: PREVIEW_SUPABASE_CALLBACK,
       orchestrator: {
         input: { upstream: { google: { clientId: 'google-client', redirectUri: 'https://preview.schoollove.invalid/auth/social/callback/google' } } },
         begin: async () => ({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43) }),
@@ -210,7 +243,7 @@ describe('PHASE 10P preview provider foundation', () => {
     const browserCookie = sealBrowserContinuity({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
     const finalizeReadyAttempt = vi.fn(async () => ({ redirectUri: PREVIEW_SUPABASE_CALLBACK, authorizationCode: 'C'.repeat(43), downstreamState: 'exact + state/&=한글' }))
     const adapter = createPreviewRouteAdapter({
-      now: () => 100, browserSessionKey: sessionKey,
+      now: () => 100, browserSessionKey: sessionKey, downstreamCallback: PREVIEW_SUPABASE_CALLBACK,
       orchestrator: {
         continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
         callback: vi.fn(async () => ({ outcome: 'EXISTING_PRIMARY', trustedAttemptId: '11111111-1111-4111-8111-111111111111', authenticationTime: 90, brokerSubject: `slb:v1:k01:google:${'A'.repeat(43)}` })),
@@ -235,7 +268,7 @@ describe('PHASE 10P preview provider foundation', () => {
     const browserCookie = sealBrowserContinuity({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
     const finalizeReadyAttempt = vi.fn(async () => ({ redirectUri: PREVIEW_SUPABASE_CALLBACK, authorizationCode: 'D'.repeat(43), downstreamState: 'resume-state' }))
     const adapter = createPreviewRouteAdapter({
-      now: () => 100, browserSessionKey: sessionKey,
+      now: () => 100, browserSessionKey: sessionKey, downstreamCallback: PREVIEW_SUPABASE_CALLBACK,
       orchestrator: {
         continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
         callback: vi.fn(async () => ({ outcome: 'PROVISIONAL_RESUME_READY', trustedAttemptId, authenticationTime: 90, brokerSubject: `slb:v1:k01:google:${'C'.repeat(43)}` })),
@@ -262,7 +295,7 @@ describe('PHASE 10P preview provider foundation', () => {
     const browserCookie = sealBrowserContinuity({ provider: 'google', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
     const finalizeReadyAttempt = vi.fn(async () => ({ redirectUri: PREVIEW_SUPABASE_CALLBACK, authorizationCode: 'E'.repeat(43), downstreamState: 'bound-reauth' }))
     const adapter = createPreviewRouteAdapter({
-      now: () => 100, browserSessionKey: sessionKey,
+      now: () => 100, browserSessionKey: sessionKey, downstreamCallback: PREVIEW_SUPABASE_CALLBACK,
       orchestrator: {
         continueFromHandle: vi.fn(async () => ({ provider: 'google', authorization: { rawState } })),
         callback: vi.fn(async () => ({ outcome: 'BOUND_PROVISIONAL_REAUTH_READY', trustedAttemptId, authenticationTime: 90, brokerSubject: `slb:v1:k01:google:${'D'.repeat(43)}` })),
@@ -282,7 +315,7 @@ describe('PHASE 10P preview provider foundation', () => {
     const browserCookie = sealBrowserContinuity({ provider: 'naver', brokerHandle: 'H'.repeat(43), browserBindingSecret: 'B'.repeat(43), issuedAt: 1, expiresAt: 600 }, sessionKey)
     const finalizeReadyAttempt = vi.fn()
     const adapter = createPreviewRouteAdapter({
-      now: () => 100, browserSessionKey: sessionKey,
+      now: () => 100, browserSessionKey: sessionKey, downstreamCallback: PREVIEW_SUPABASE_CALLBACK,
       orchestrator: {
         continueFromHandle: vi.fn(async () => ({ provider: 'naver', authorization: { rawState } })),
         callback: vi.fn(async () => ({ outcome: 'RECOVERY_REQUIRED', trustedAttemptId: '22222222-2222-4222-8222-222222222222', authenticationTime: 90, brokerSubject: `slb:v1:k01:naver:${'B'.repeat(43)}` })),

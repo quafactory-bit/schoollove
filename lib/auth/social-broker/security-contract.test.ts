@@ -52,8 +52,8 @@ describe('social broker security and feature-off contract', () => {
     expect(login).toContain('Google로 계속하기')
     expect(login).not.toMatch(/kakao|naver/i)
     expect(googleStart).toContain("custom:schoollove-google")
-    expect(googleStart).toContain("destination.searchParams.set('redirect_to', COMPLETION_ROUTE)")
-    expect(googleStart).toContain('new URL(request.url).origin !== PREVIEW_ORIGIN')
+    expect(googleStart).toContain("destination.searchParams.set('redirect_to', config.completionRoute)")
+    expect(googleStart).toContain('new URL(request.url).origin !== config.issuer')
     expect(googleStart).not.toMatch(/headers\.get|searchParams\.get/)
     expect(read('app/api/auth/request-otp/route.ts')).not.toContain('social-broker')
     expect(read('app/api/auth/verify-otp/route.ts')).not.toContain('social-broker')
@@ -62,7 +62,7 @@ describe('social broker security and feature-off contract', () => {
       'app/.well-known/openid-configuration/route.ts', 'app/.well-known/jwks.json/route.ts', 'app/oauth/authorize/route.ts', 'app/oauth/token/route.ts',
     ]) expect(read(route)).toContain('darkOidcRouteNotFound')
     for (const route of ['app/auth/social/callback/kakao/route.ts', 'app/auth/social/callback/naver/route.ts']) {
-      expect(read(route)).not.toMatch(/activePreviewRouteAdapter|upstream-adapters/)
+      expect(read(route)).not.toMatch(/activeBrokerRouteAdapter|upstream-adapters/)
     }
   })
 

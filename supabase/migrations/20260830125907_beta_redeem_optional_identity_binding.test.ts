@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 
 const migrationPath=join(process.cwd(),'supabase/migrations/20260830125907_beta_redeem_optional_identity_binding.sql')
 const priorPath=join(process.cwd(),'supabase/migrations/20260730100000_first_controlled_beta_safety_boundaries.sql')
-const sql=readFileSync(migrationPath,'utf8')
-const priorSql=readFileSync(priorPath,'utf8')
+const sql=readFileSync(migrationPath,'utf8').replace(/\r\n/g,'\n')
+const priorSql=readFileSync(priorPath,'utf8').replace(/\r\n/g,'\n')
 
 const functionStart='CREATE OR REPLACE FUNCTION public.redeem_beta_invite('
 const functionEnd='END; $$;'
@@ -55,7 +55,7 @@ describe('beta redeem optional identity binding migration',()=>{
   })
 
   it('changes only the three approved identity-validation boundaries in the prior function body',()=>{
-    const priorFunction=extractRedeemFunction(priorSql).replace(/\r\n/g,'\n')
+    const priorFunction=extractRedeemFunction(priorSql)
     const expected=priorFunction
       .replace(
         "IF requested_token_hash !~ '^[0-9a-f]{64}$' OR actor_email_hash !~ '^[0-9a-f]{64}$'\n    OR actor_domain_hash !~ '^[0-9a-f]{64}$' THEN RETURN 'INVALID'; END IF;",
@@ -69,7 +69,7 @@ describe('beta redeem optional identity binding migration',()=>{
         "IF invite.domain_hash IS NOT NULL AND invite.domain_hash<>actor_domain_hash THEN RETURN 'IDENTITY_MISMATCH'; END IF;",
         ()=>"IF invite.domain_hash IS NOT NULL\n    AND (actor_domain_hash IS NULL OR invite.domain_hash<>actor_domain_hash) THEN RETURN 'IDENTITY_MISMATCH'; END IF;",
       )
-    expect(extractRedeemFunction(sql).replace(/\r\n/g,'\n')).toBe(expected)
+    expect(extractRedeemFunction(sql)).toBe(expected)
   })
 
   it('does not add schema objects or mutate existing beta data',()=>{

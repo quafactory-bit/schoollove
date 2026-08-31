@@ -52,8 +52,8 @@ export default function OnboardingClient() {
           </li>})}
         </ol>
       </section>
-      {state.stage!=='access_paused'&&state.stage!=='ready' ? <Link href="/account" className="schoollove-focus mt-5 block min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-center text-sm font-semibold text-white">내 계정에서 다음 단계 완료하기</Link> : null}
-      {state.stage==='ready' ? <Link href="/account" className="schoollove-focus mt-5 block min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-center text-sm font-semibold text-white">내 계정 요약 보기</Link> : null}
+      {state.stage!=='access_paused'&&state.stage!=='ready' ? <Link href="/account" className="schoollove-dark-action schoollove-focus mt-5 block min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-center text-sm font-semibold text-white">내 계정에서 다음 단계 완료하기</Link> : null}
+      {state.stage==='ready' ? <Link href="/account" className="schoollove-dark-action schoollove-focus mt-5 block min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-center text-sm font-semibold text-white">내 계정 요약 보기</Link> : null}
     </>}
     {notice ? <div className="mt-5 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700" role="alert"><p>{notice}</p><button type="button" onClick={()=>void load()} className="schoollove-focus mt-3 min-h-11 underline">다시 시도</button></div> : null}
     <p className="mt-8 text-xs leading-5 text-gray-500">로그아웃 후 다시 로그인해도 완료 상태는 실제 비공개 DB 기록을 기준으로 복원됩니다.</p>
