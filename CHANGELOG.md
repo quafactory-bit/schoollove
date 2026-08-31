@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-31 Production social-login bootstrap gate (local)
+
+- Added a fail-closed `production-bootstrap` broker exposure that serves only the immutable Production OIDC discovery document and JWKS for Supabase validation while keeping the Google CTA, start, callback, recovery, completion, authorization, and token surfaces unavailable.
+- Made `/login` server-rendered and conditional on a fully active user-login profile. Broker `off`, malformed configuration, and Production bootstrap show a coarse preparation state instead of a link that would fail after navigation.
+- Preserved the verified Preview login behavior and the final Production profile. Added no migration, provider, credential, database/Auth row, Vercel setting, deployment, or Production change.
+
 ## 2026-08-27 PHASE 10AA grade/class history foundation (local / Draft)
 
 - Replaced the new-account single-class write contract with optional K12 grade/class child history beneath one school + graduation-year membership. Elementary supports grades 1–6, middle/high supports 1–3, and university/college collects no grade/class history in this phase.

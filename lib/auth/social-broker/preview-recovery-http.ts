@@ -2,7 +2,7 @@ import 'server-only'
 import { recoveryOtpMac } from '../social-account/recovery'
 import { prepareAndDeliverAttemptRecovery, type RecoveryDeliveryDatabase, type RecoveryOtpDeliveryTransport } from '../social-account/recovery-delivery'
 import { ResendRecoveryOtpDeliveryTransport } from '../social-account/resend-recovery-transport'
-import { loadBrokerConfig } from './preview-config'
+import { loadUserLoginBrokerConfig } from './preview-config'
 import { activatePreviewSocialAccountFromAttempt, bindPreviewAuthPrincipal, consumePreviewRecoveryDecision, createPreviewRecoveryDatabase, type PreviewRpcClient } from './preview-persistence'
 import { createActiveBrokerServices, type ActiveBrokerServices } from './preview-runtime'
 import { openRecoveryContinuity, recoveryContinuityCookie, sealRecoveryContinuity, type RecoveryContinuity } from './recovery-continuity-session'
@@ -34,8 +34,8 @@ async function rpcText(client: PreviewRpcClient, name: string, args: Record<stri
 
 export async function activeBrokerRecoveryServices(request: Request): Promise<ActiveBrokerServices | null> {
   try {
-    const config = loadBrokerConfig()
-    if (config.exposure === 'off' || new URL(request.url).origin !== config.issuer) return null
+    const config = loadUserLoginBrokerConfig()
+    if (!config || new URL(request.url).origin !== config.issuer) return null
     const { getSupabaseAdmin } = await import('@/lib/supabase')
     return createActiveBrokerServices(config, getSupabaseAdmin())
   } catch { return null }

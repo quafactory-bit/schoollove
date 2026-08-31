@@ -9,6 +9,7 @@ import {
   PRODUCTION_BROKER_ISSUER,
   PRODUCTION_SUPABASE_CALLBACK,
   loadBrokerConfig,
+  loadUserLoginBrokerConfig,
 } from './preview-config'
 import { activeBrokerRouteAdapter, createActiveBrokerRuntime, createActiveBrokerServices } from './preview-runtime'
 import { createServerUpstreamTransport } from './server-transport'
@@ -74,6 +75,24 @@ describe('PHASE 10P preview provider foundation', () => {
     expect(jwks.keys[0]).toMatchObject({ kid: 'production-rs256-v1' })
     expect(() => loadBrokerConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'production', VERCEL_ENV: 'preview' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
     expect(() => loadBrokerConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'preview', VERCEL_ENV: 'production' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
+  })
+
+  it('serves the Production issuer in bootstrap while every user-login surface stays dark', async () => {
+    const input = env({ SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'production-bootstrap', VERCEL_ENV: 'production' })
+    const config = loadBrokerConfig(input)
+    if (config.exposure !== 'production-bootstrap') throw new Error('expected Production bootstrap config')
+    expect(config).toMatchObject({
+      issuer: PRODUCTION_BROKER_ISSUER,
+      supabaseCallback: PRODUCTION_SUPABASE_CALLBACK,
+      oidcSigningKey: { kid: 'production-rs256-v1' },
+    })
+    const runtime = createActiveBrokerRuntime(config, { rpc: vi.fn(async () => ({ data: null, error: null })) })
+    expect(await runtime.discovery().json()).toMatchObject({ issuer: PRODUCTION_BROKER_ISSUER })
+    expect((await runtime.jwks().json() as { keys: Array<Record<string, unknown>> }).keys[0]).toMatchObject({ kid: 'production-rs256-v1' })
+    expect(loadUserLoginBrokerConfig(input)).toBeNull()
+    expect(loadUserLoginBrokerConfig(env())).toMatchObject({ exposure: 'preview' })
+    expect(loadUserLoginBrokerConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'production', VERCEL_ENV: 'production' }))).toMatchObject({ exposure: 'production' })
+    expect(() => loadBrokerConfig(env({ SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE: 'production-bootstrap', VERCEL_ENV: 'preview' }))).toThrow('SOCIAL_BROKER_CONFIG_INVALID')
   })
 
   it('PHASE10P_DURABLE_SIGNING_CUSTODY_OK keeps RS256 JWKS public and stable across runtime reconstruction', async () => {

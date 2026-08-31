@@ -12,8 +12,9 @@ export const PREVIEW_SUPABASE_CALLBACK = 'https://hukokfyphyrpfouazxhq.supabase.
 export const PRODUCTION_BROKER_ISSUER = 'https://www.schoollove.kr'
 export const PRODUCTION_SUPABASE_CALLBACK = 'https://ucnybhzpbatzcipwqtox.supabase.co/auth/v1/callback'
 
-export type BrokerExposureMode = 'off' | 'preview' | 'production'
-export type BrokerProfile = Exclude<BrokerExposureMode, 'off'>
+export type BrokerExposureMode = 'off' | 'preview' | 'production-bootstrap' | 'production'
+export type BrokerProfile = 'preview' | 'production'
+export type BrokerActiveExposure = Exclude<BrokerExposureMode, 'off'>
 export type BrokerSigningKid = 'preview-rs256-v1' | 'production-rs256-v1'
 
 const BROKER_PROFILES = Object.freeze({
@@ -47,7 +48,7 @@ const BROKER_PROFILES = Object.freeze({
 
 export type ProviderCredential = Readonly<{ clientId: string; clientSecret: string }>
 export type BrokerActiveConfig = Readonly<{
-  exposure: BrokerProfile
+  exposure: BrokerActiveExposure
   issuer: string
   supabaseAuthority: string
   supabaseCallback: string
@@ -109,8 +110,9 @@ function signingKey(env: Environment, kid: BrokerSigningKid): Readonly<{ kid: Br
 export function loadBrokerConfig(env: Environment = process.env): BrokerConfigResult {
   const mode = env.SCHOOLLOVE_SOCIAL_BROKER_EXPOSURE ?? 'off'
   if (mode === 'off') return Object.freeze({ exposure: 'off' })
-  if (mode !== 'preview' && mode !== 'production') invalid()
-  const profile = BROKER_PROFILES[mode]
+  if (mode !== 'preview' && mode !== 'production-bootstrap' && mode !== 'production') invalid()
+  const profileName: BrokerProfile = mode === 'production-bootstrap' ? 'production' : mode
+  const profile = BROKER_PROFILES[profileName]
   if (env.VERCEL_ENV !== profile.vercelEnvironment) invalid()
   const providers = Object.freeze({ google: Object.freeze({ clientId: required(env, 'SCHOOLLOVE_GOOGLE_CLIENT_ID'), clientSecret: required(env, 'SCHOOLLOVE_GOOGLE_CLIENT_SECRET') }) })
   const downstreamClients = Object.freeze([createDarkOidcClient(profile.downstreamClientId, required(env, 'SCHOOLLOVE_SUPABASE_GOOGLE_CLIENT_SECRET'), profile.supabaseCallback, 'google')])
@@ -144,6 +146,18 @@ export function loadBrokerConfig(env: Environment = process.env): BrokerConfigRe
     oidcSigningKey: signingKey(env, profile.signingKid),
     recovery,
   })
+}
+
+/**
+ * Browser-facing login is deliberately narrower than issuer exposure. Production
+ * bootstrap serves the OIDC authority for provider validation, but must not create
+ * an upstream login attempt or expose recovery/completion surfaces.
+ */
+export function loadUserLoginBrokerConfig(env: Environment = process.env): BrokerActiveConfig | null {
+  try {
+    const config = loadBrokerConfig(env)
+    return config.exposure === 'preview' || config.exposure === 'production' ? config : null
+  } catch { return null }
 }
 
 export const PROVIDER_CALLBACK_PATHS = Object.freeze({ google: '/auth/social/callback/google' })
