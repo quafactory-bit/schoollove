@@ -35,7 +35,7 @@ export async function getControlledBetaState(schoolQuery='') {
     admin.from('beta_readiness_snapshots').select('id,program_id,status,criteria,blocker_codes,operator_decision,decided_by,created_at').order('created_at',{ascending:false}).limit(30),
     admin.from('promotion_requests').select('id,status,requested_placement,submitted_at,updated_at,school_id').order('submitted_at',{ascending:false}).limit(100),
     admin.from('promotion_commercial_orders').select('id,request_id,status,total_krw,payment_provider,payment_due_at,updated_at').order('updated_at',{ascending:false}).limit(100),
-    admin.from('operational_incidents').select('id,incident_key,severity,status,safe_summary,created_at,resolved_at').order('created_at',{ascending:false}).limit(100),
+    admin.from('operational_incidents').select('id,incident_key,severity,status,summary,opened_at,resolved_at').order('opened_at',{ascending:false}).limit(100),
     schoolQuery.trim().length>=2?admin.rpc('search_schools_v2',{q:schoolQuery.trim(),lim:8}):Promise.resolve({data:[],error:null}),
   ])
   const progress=rows(progressResult)
