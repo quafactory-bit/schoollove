@@ -47,11 +47,12 @@ describe('/account private management UI', () => {
     expect(client).not.toMatch(/fetch\([^)]*my-schools/)
   })
 
-  it('public 또는 controlled beta 중 하나가 허용한 기능만 저장 가능하다',()=>{
+  it('public, active beta, exact invite onboarding 중 하나가 허용한 기능만 저장 가능하다',()=>{
     expect(page).toContain("hasBetaFeatureAccess(auth.client,auth.user.id,'private_profile')")
-    expect(client).toContain('(launch.privateProfileEnabled||controlledBetaAccess)&&!launch.emergencyStopped')
-    expect(client).toContain('(launch.schoolMembershipEnabled||controlledBetaAccess)&&!launch.emergencyStopped')
-    expect(client).toContain('controlledBetaAccess?1:3')
+    expect(page).toContain('getBetaOnboardingState(auth.user.id)')
+    expect(client).toContain('(launch.privateProfileEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped')
+    expect(client).toContain('(launch.schoolMembershipEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped')
+    expect(client).toContain('controlledBetaAccess||inviteOnboardingAccess?1:3')
   })
 
   it('선택한 K12 학교에만 학년별 반 입력을 제공하고 학교 수와 분리한다',()=>{
@@ -60,7 +61,7 @@ describe('/account private management UI', () => {
     expect(client).toContain('{grade}학년 반')
     expect(client).toContain('grade_classes:buildGradeClassPayload(gradeClassValues)')
     expect(client).not.toContain('class_number:classNumber')
-    expect(client).toContain('controlledBetaAccess?1:3')
+    expect(client).toContain('controlledBetaAccess||inviteOnboardingAccess?1:3')
   })
 
   it('어두운 계정 동작 버튼과 상태 알림은 흰 글자 대비를 강제한다',()=>{
@@ -68,9 +69,9 @@ describe('/account private management UI', () => {
     expect(client).toContain('className={`schoollove-dark-action sticky bottom-24')
   })
 
-  it('authenticated account에서만 명시적으로 beta invite를 기존 API에 제출한다',()=>{
+  it('authenticated account에서만 token을 invite-onboarding API에 제출한다',()=>{
     expect(client).toContain('제한 베타 초대 등록')
-    expect(client).toContain("fetch('/api/beta/redeem'")
+    expect(client).toContain("fetch('/api/beta/onboarding/claim'")
     expect(client).toContain('JSON.stringify({token:inviteToken})')
     expect(client).toContain("if(inviteBusy)return")
     expect(client).toContain('inviteBusy||inviteToken.trim().length<24')
@@ -80,9 +81,16 @@ describe('/account private management UI', () => {
   })
 
   it('beta invite success와 coarse failure 상태를 토큰 반사 없이 표시한다',()=>{
-    for(const state of ['PENDING_REVIEW','ACTIVE','ALREADY_REDEEMED','UNAVAILABLE','INVALID','PROGRAM_FULL'])expect(client).toContain(state)
+    for(const state of ['ONBOARDING_CLAIMED','PENDING_REVIEW','ACTIVE','ALREADY_REDEEMED','UNAVAILABLE','INVALID','PROGRAM_FULL'])expect(client).toContain(state)
     expect(client).toContain("if(success){setInviteToken('');router.refresh()}")
     expect(client).not.toContain('setInviteStatus(inviteToken')
+  })
+
+  it('claim과 finalize UX를 분리하고 pending review 전에는 beta feature CTA를 만들지 않는다',()=>{
+    expect(client).toContain('초대 확인 완료')
+    expect(client).toContain("fetch('/api/beta/onboarding/finalize'")
+    expect(client).toContain('베타 참여 신청 완료')
+    expect(client).not.toContain('href="/people/search"')
   })
 
 })

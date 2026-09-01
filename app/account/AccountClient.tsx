@@ -9,14 +9,15 @@ import type { PublicAccountLaunch } from '@/lib/publicAccountLaunch'
 import MySchoolsPanel from '@/components/account/MySchoolsPanel'
 import { buildGradeClassPayload, formatGradeClassHistory, gradeNumbersForSchoolType } from '@/lib/accountGradeClass'
 import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
+import type { BetaOnboardingState } from '@/lib/betaOnboarding'
 
-type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;currentYear:number}
+type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number}
 
 async function readResult(response:Response):Promise<{error?:string}>{
   try{return await response.json() as {error?:string}}catch{return {}}
 }
 
-export default function AccountClient({state,launch,controlledBetaAccess,currentYear}:Props){
+export default function AccountClient({state,launch,controlledBetaAccess,betaOnboardingState,currentYear}:Props){
   const router=useRouter()
   const [status,setStatus]=useState('')
   const [isError,setIsError]=useState(false)
@@ -38,10 +39,11 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
   const [inviteError,setInviteError]=useState(false)
   const schools=useSchoolAutocomplete(schoolQuery)
   const deletionBlocked=state.deletionStatus!==null
-  const privateProfileWritable=(launch.privateProfileEnabled||controlledBetaAccess)&&!launch.emergencyStopped&&!deletionBlocked
-  const schoolMembershipWritable=(launch.schoolMembershipEnabled||controlledBetaAccess)&&!launch.emergencyStopped&&!deletionBlocked
+  const inviteOnboardingAccess=betaOnboardingState==='claimed'
+  const privateProfileWritable=(launch.privateProfileEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped&&!deletionBlocked
+  const schoolMembershipWritable=(launch.schoolMembershipEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped&&!deletionBlocked
   const accountWritable=privateProfileWritable||schoolMembershipWritable
-  const membershipLimit=controlledBetaAccess?1:3
+  const membershipLimit=controlledBetaAccess||inviteOnboardingAccess?1:3
   const onboardingCompleted=1+Number(state.adultEligible)+Number(state.consentsComplete)+Number(Boolean(state.profile))+Number(state.memberships.length>0)
   const onboardingComplete=state.adultEligible&&state.consentsComplete&&Boolean(state.profile)&&state.memberships.length>0
   const selectedGradeNumbers=gradeNumbersForSchoolType(selectedSchoolType)
@@ -69,13 +71,14 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
     if(inviteBusy)return
     setInviteBusy(true);setInviteStatus('');setInviteError(false)
     try{
-      const response=await fetch('/api/beta/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:inviteToken})})
+      const response=await fetch('/api/beta/onboarding/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:inviteToken})})
       const result=await response.json().catch(()=>({})) as {status?:string;error?:string}
       if(!response.ok){
-        setInviteStatus(result.error==='INVALID_INVITE'?'초대 토큰 형식을 확인해 주세요.':result.error==='AUTH_REQUIRED'?'로그인 세션을 다시 확인해 주세요.':'초대를 등록할 수 없습니다. 만료 여부를 확인해 주세요.')
+        setInviteStatus(result.error==='INVALID_INVITE'?'초대 토큰 형식을 확인해 주세요.':result.error==='AUTH_REQUIRED'?'로그인 세션을 다시 확인해 주세요.':'초대를 확인할 수 없습니다.')
         setInviteError(true);return
       }
       const messages:Record<string,string>={
+        ONBOARDING_CLAIMED:'초대 확인 완료. 성인 확인, 필수 동의, 비공개 프로필과 대상 학교 등록을 진행해 주세요.',
         PENDING_REVIEW:'초대를 등록했습니다. 운영자 승인 후 베타 기능을 사용할 수 있습니다.',
         ACTIVE:'초대를 등록했습니다. 베타 기능을 사용할 수 있습니다.',
         ALREADY_REDEEMED:'이미 등록한 베타 초대입니다.',
@@ -89,10 +92,26 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
         INVALID:'초대 토큰 형식을 확인해 주세요.',
         ACCESS_DENIED:'이 계정으로 초대를 등록할 수 없습니다.',
       }
-      const success=['PENDING_REVIEW','ACTIVE','ALREADY_REDEEMED'].includes(result.status??'')
+      const success=['ONBOARDING_CLAIMED','PENDING_REVIEW','ACTIVE','ALREADY_REDEEMED'].includes(result.status??'')
       setInviteStatus(messages[result.status??'']??'초대를 등록할 수 없습니다.')
       setInviteError(!success)
       if(success){setInviteToken('');router.refresh()}
+    }catch{setInviteStatus('네트워크 연결을 확인한 뒤 다시 시도해 주세요.');setInviteError(true)}
+    finally{setInviteBusy(false)}
+  }
+
+  async function finalizeBetaOnboarding(){
+    if(inviteBusy)return
+    setInviteBusy(true);setInviteStatus('');setInviteError(false)
+    try{
+      const response=await fetch('/api/beta/onboarding/finalize',{method:'POST'})
+      const result=await response.json().catch(()=>({})) as {status?:string;error?:string}
+      if(!response.ok){
+        setInviteStatus(result.error==='ONBOARDING_REQUIRED'?'성인 확인, 필수 동의, 비공개 프로필과 대상 학교 등록을 모두 완료해 주세요.':'베타 참여 신청을 완료할 수 없습니다.')
+        setInviteError(true);return
+      }
+      setInviteStatus('베타 참여 신청 완료. 운영자 승인 후 사람 찾기와 연결 요청을 사용할 수 있습니다.')
+      router.refresh()
     }catch{setInviteStatus('네트워크 연결을 확인한 뒤 다시 시도해 주세요.');setInviteError(true)}
     finally{setInviteBusy(false)}
   }
@@ -114,11 +133,11 @@ export default function AccountClient({state,launch,controlledBetaAccess,current
     <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5" aria-label="제한 베타 초대 등록">
       <h2 className="text-lg font-bold text-gray-950">제한 베타 초대 등록</h2>
       <p className="mt-2 text-sm leading-6 text-gray-600">운영자에게 받은 초대 토큰을 직접 제출할 때만 등록합니다. 토큰은 주소나 브라우저 저장소에 보관하지 않습니다.</p>
-      <form className="mt-4 space-y-3" onSubmit={redeemBetaInvite}>
+      {betaOnboardingState==='claimed'?<div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900"><p className="font-semibold">초대 확인 완료</p><p className="mt-1 leading-6">아래 온보딩 항목을 완료한 뒤 베타 참여를 신청해 주세요.</p>{onboardingComplete?<button type="button" disabled={inviteBusy} onClick={()=>void finalizeBetaOnboarding()} className="schoollove-dark-action schoollove-focus mt-3 min-h-12 rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-40">{inviteBusy?'신청 중…':'베타 참여 신청 완료'}</button>:null}</div>:betaOnboardingState==='pending_review'?<p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">베타 참여 신청 완료 · 운영자 승인 대기 중</p>:betaOnboardingState==='active'?<p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">People Discovery 베타 참여 승인 완료</p>:<form className="mt-4 space-y-3" onSubmit={redeemBetaInvite}>
         <label htmlFor="beta-invite-token" className="block text-sm font-medium text-gray-800">초대 토큰</label>
         <input id="beta-invite-token" type="password" required minLength={24} maxLength={256} autoComplete="off" spellCheck={false} value={inviteToken} onChange={(event)=>setInviteToken(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/>
-        <button disabled={inviteBusy||inviteToken.trim().length<24} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{inviteBusy?'초대 확인 중…':'초대 등록'}</button>
-      </form>
+        <button disabled={inviteBusy||inviteToken.trim().length<24} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{inviteBusy?'초대 확인 중…':'초대 확인'}</button>
+      </form>}
       {inviteStatus?<p role={inviteError?'alert':'status'} aria-live="polite" className={`mt-3 rounded-xl px-4 py-3 text-sm ${inviteError?'bg-red-50 text-red-900':'bg-emerald-50 text-emerald-900'}`}>{inviteStatus}</p>:null}
     </section>
     <MySchoolsPanel memberships={state.memberships}/>
