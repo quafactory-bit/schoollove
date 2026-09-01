@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
-import { hasPublicAccountWriteAccess } from '@/lib/publicAccountLaunch'
+import { hasAccountOnboardingWriteAccess } from '@/lib/publicAccountLaunch'
 
 const safeText = z.string().transform((value)=>value.normalize('NFKC').trim())
   .refine((value)=>!/[\p{Cc}\p{Cf}]/u.test(value),'control characters are not allowed')
@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
-  const writeAllowed = await hasPublicAccountWriteAccess(auth.client,auth.user.id,'private_profile')
+  const writeAllowed = await hasAccountOnboardingWriteAccess(
+    auth.client,auth.user.id,'private_profile','private_profile',
+  )
   if (!writeAllowed) return NextResponse.json({error:'비공개 프로필 저장은 아직 준비 중입니다.'},{status:403})
 
   let body: unknown
