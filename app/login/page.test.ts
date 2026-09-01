@@ -15,7 +15,7 @@ describe('/login', () => {
     expect(source).not.toContain("'use client'")
     expect(source).toContain("export const dynamic = 'force-dynamic'")
     expect(source).toContain('loadUserLoginBrokerConfig() !== null')
-    expect(source).toContain("loginAvailable\n        ? <a href=\"/auth/social/start/google\"")
+    expect(source).toMatch(/loginAvailable\s*\? <a href="\/auth\/social\/start\/google"/)
     expect(source).toContain('로그인은 아직 열리지 않았습니다.')
   })
 

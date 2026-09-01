@@ -5,14 +5,16 @@ import { isAdultEligibleInKst } from '@/lib/policy/adultEligibility'
 import { ACCOUNT_POLICY_VERSION } from '@/lib/policy/accountPolicy'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
-import { hasPublicAccountWriteAccess } from '@/lib/publicAccountLaunch'
+import { hasAccountOnboardingWriteAccess } from '@/lib/publicAccountLaunch'
 
 const EligibilitySchema = z.object({ dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
-  const writeAllowed = await hasPublicAccountWriteAccess(auth.client,auth.user.id,'private_profile')
+  const writeAllowed = await hasAccountOnboardingWriteAccess(
+    auth.client,auth.user.id,'private_profile','adult_eligibility',
+  )
   if (!writeAllowed) return NextResponse.json({ error:'계정 설정은 아직 준비 중입니다.' },{status:403})
 
   let body: unknown

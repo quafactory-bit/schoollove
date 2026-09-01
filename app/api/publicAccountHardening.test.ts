@@ -55,7 +55,7 @@ describe('PHASE 10N-B application hardening',()=>{
     expect(access).toContain("client.rpc('public_account_access_active'")
     expect(access.indexOf("client.rpc('public_account_access_active'")).toBeLessThan(access.indexOf('hasPublicAccountFeatureAccess(client,feature)'))
     for(const name of ['eligibility','consents','profile','memberships']){
-      expect(source(`app/api/account/${name}/route.ts`)).toContain('hasPublicAccountWriteAccess')
+      expect(source(`app/api/account/${name}/route.ts`)).toContain('hasAccountOnboardingWriteAccess')
     }
   })
 
