@@ -8,7 +8,8 @@ import { validateDownstreamAuthorizationRequest, type DarkOidcClient, type Valid
 import { prepareTransactionBoundBrokerCode, type TrustedAuthorizationTransactionIssuanceContext } from './transaction-bound-code-issuance'
 import type { BrokerAuthorizationCodeNonceKey } from './durable-code'
 import { deriveBrokerSubject } from './subject'
-import { SocialBrokerError } from './errors'
+import { extractGoogleCallbackDiagnostic, extractSocialBrokerErrorCode, type ExtractedGoogleCallbackDiagnostic, type GoogleCallbackDiagnosticReason } from './errors'
+import { writeGoogleCallbackDiagnostic } from './google-callback-diagnostics'
 import type { SocialProvider } from './types'
 
 /** Deliberately narrow service-RPC port; implementations must not use direct private-table SQL. */
@@ -18,8 +19,13 @@ export type DarkBrokerPersistence = Readonly<{
   resolveDurableContinuation(handleDigest: Uint8Array): Promise<DurableContinuationResult>
   createOrResumeDurableContinuation(input: DurableContinuationCreate): Promise<DurableContinuationResult>
   claimCallback: ClaimByState
-  failClaimedUpstreamLeg(input: Readonly<{ attemptId: string; legId: string; reason: 'provider_failure' | 'identity_failure' | 'expired' }>): Promise<'REJECTED' | 'EXPIRED' | 'REPLAY_REJECTED'>
-  recordVerifiedIdentity(input: Readonly<{ attemptId: string; legId: string; provider: SocialProvider; brokerSubject: string; subjectDigest: Uint8Array; subjectKeyVersion: number }>): Promise<'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'>
+  failClaimedUpstreamLeg(input: Readonly<{
+    attemptId: string
+    legId: string
+    reason: 'provider_failure' | 'identity_failure' | 'expired'
+    diagnostic?: Readonly<{ reason: GoogleCallbackDiagnosticReason; upstreamStatus?: number }>
+  }>): Promise<'REJECTED' | 'EXPIRED' | 'REPLAY_REJECTED'>
+  recordVerifiedIdentity(input: Readonly<{ attemptId: string; legId: string; provider: SocialProvider; brokerSubject: string; subjectDigest: Uint8Array; subjectKeyVersion: number }>): Promise<'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'BOUND_PROVISIONAL_REAUTH_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'>
   resolveIssuanceContext(attemptId: string): Promise<TrustedAuthorizationTransactionIssuanceContext | null>
   issueTransactionBoundCode(input: ReturnType<typeof prepareTransactionBoundBrokerCode>['database']): Promise<'AUTHORIZATION_CODE_CREATED' | 'AUTHORIZATION_CODE_REJECTED'>
 }>
@@ -53,6 +59,12 @@ export type DurableContinuationCreate = Readonly<{
   continuationDigest: Uint8Array
   leg: PreparedDurableUpstreamLoginLeg['database']
   continuation: Readonly<{ ciphertext: Uint8Array; iv: Uint8Array; keyVersion: number }>
+}>
+export type TrustedCallbackResult = Readonly<{
+  outcome: 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'BOUND_PROVISIONAL_REAUTH_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'
+  trustedAttemptId: string
+  authenticationTime: number
+  brokerSubject: string
 }>
 /** Provider verification consumes only the callback-correlated durable context, never browser IDs. */
 export type DurableProviderVerifier = Readonly<{
@@ -91,6 +103,18 @@ export class DarkBrokerOrchestrator {
     return this.canonicalAuthorization(bound)
   }
 
+  /** Resolves opaque browser continuity to server-only authority. The durable ID
+   * returned here must never be serialized outside an authenticated server cookie. */
+  async resolveTrustedAttempt(input: Readonly<{ brokerHandle: string; browserBindingSecret: string }>): Promise<Readonly<{ attemptId: string; provider: SocialProvider }>> {
+    const resolved = await this.input.persistence.resolveDurableContinuation(
+      downstreamAuthorizationBoundHandleDigest(input.brokerHandle, input.browserBindingSecret),
+    )
+    if ((resolved.outcome !== 'CONTINUATION_BOUND' && resolved.outcome !== 'CONTINUATION_RESUMED') || !resolved.attemptId || !resolved.provider) {
+      throw new Error('DARK_CONTINUATION_REJECTED')
+    }
+    return Object.freeze({ attemptId: resolved.attemptId, provider: resolved.provider })
+  }
+
   private canonicalAuthorization(result: DurableContinuationResult): Readonly<{ provider: SocialProvider; authorization: PreparedDurableUpstreamLoginLeg['authorization'] }> {
     if (!result.attemptId || !result.clientId || !result.provider || !result.legId || !result.clientBindingDigest || !result.stateDigest || !result.continuationCiphertext || !result.continuationIv || !result.continuationKeyVersion) throw new Error('DARK_CONTINUATION_REJECTED')
     const client = this.input.clients.find(value => value.clientId === result.clientId)
@@ -103,21 +127,40 @@ export class DarkBrokerOrchestrator {
     return Object.freeze({ provider: result.provider, authorization: Object.freeze({ rawState: restored.rawState, rawNonce: restored.rawNonce, pkceChallenge: result.pkceS256Challenge }) })
   }
 
-  async callback(input: Readonly<{ provider: SocialProvider; callbackUrl: string; verifier: DurableProviderVerifier }>): Promise<'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'> {
+  async callback(input: Readonly<{ provider: SocialProvider; callbackUrl: string; verifier: DurableProviderVerifier }>): Promise<TrustedCallbackResult> {
     const correlated = await correlateUpstreamCallback({ provider: input.provider, callbackUrl: input.callbackUrl, registry: this.input.upstream as UpstreamCallbackRegistry, claimByState: this.input.persistence.claimCallback })
     if (!correlated.context || correlated.context.provider !== input.provider) throw new Error('DARK_CALLBACK_REJECTED')
     let verifiedUpstream: Readonly<{ provider: SocialProvider; upstreamSubject: Uint8Array; authenticationTime: number }>
     try { verifiedUpstream = await input.verifier.verify(correlated.context) }
     catch (error) {
       // A claimed callback must never be abandoned: transition through the approved M failure RPC.
-      const code = error instanceof SocialBrokerError ? error.code : undefined
-      await this.input.persistence.failClaimedUpstreamLeg({ attemptId: correlated.context.attemptId, legId: correlated.context.legId, reason: code === 'UPSTREAM_RESPONSE_EXPIRED' ? 'expired' : 'provider_failure' })
+      const code = extractSocialBrokerErrorCode(error)
+      let durableDiagnostic: ExtractedGoogleCallbackDiagnostic | undefined
+      if (input.provider === 'google') {
+        const diagnostic: ExtractedGoogleCallbackDiagnostic = extractGoogleCallbackDiagnostic(error) ?? Object.freeze({ reason: 'verifier_unclassified_failure' })
+        durableDiagnostic = diagnostic
+        try {
+          writeGoogleCallbackDiagnostic({
+            attemptId: correlated.context.attemptId,
+            reason: diagnostic.reason,
+            at: this.input.now(),
+            ...(diagnostic.upstreamStatus === undefined ? {} : { upstreamStatus: diagnostic.upstreamStatus }),
+          })
+        } catch { /* Diagnostics must never alter the fail-closed transition. */ }
+      }
+      await this.input.persistence.failClaimedUpstreamLeg({
+        attemptId: correlated.context.attemptId,
+        legId: correlated.context.legId,
+        reason: code === 'UPSTREAM_RESPONSE_EXPIRED' ? 'expired' : 'provider_failure',
+        ...(durableDiagnostic === undefined ? {} : { diagnostic: durableDiagnostic }),
+      })
       throw new Error('DARK_CALLBACK_REJECTED')
     }
     if (verifiedUpstream.provider !== input.provider || !Number.isSafeInteger(verifiedUpstream.authenticationTime) || verifiedUpstream.authenticationTime < 0) throw new Error('DARK_CALLBACK_REJECTED')
     const brokerSubject = deriveBrokerSubject({ provider: input.provider, upstreamSubject: verifiedUpstream.upstreamSubject, keyVersion: `k${String(this.input.keys.brokerSubjectKeyVersion).padStart(2, '0')}`, key: this.input.keys.brokerSubject })
     const digest = Buffer.from(brokerSubject.split(':').at(-1)!, 'base64url')
-    return this.input.persistence.recordVerifiedIdentity({ attemptId: correlated.context.attemptId, legId: correlated.context.legId, provider: input.provider, brokerSubject, subjectDigest: digest, subjectKeyVersion: this.input.keys.brokerSubjectKeyVersion })
+    const outcome = await this.input.persistence.recordVerifiedIdentity({ attemptId: correlated.context.attemptId, legId: correlated.context.legId, provider: input.provider, brokerSubject, subjectDigest: digest, subjectKeyVersion: this.input.keys.brokerSubjectKeyVersion })
+    return Object.freeze({ outcome, trustedAttemptId: correlated.context.attemptId, authenticationTime: verifiedUpstream.authenticationTime, brokerSubject })
   }
 
   async finalizeReadyAttempt(input: Readonly<{ trustedAttemptId: string; authenticationTime: number }>): Promise<Readonly<{ redirectUri: string; authorizationCode: string; downstreamState: string | null }>> {

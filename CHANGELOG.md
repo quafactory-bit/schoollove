@@ -1,5 +1,75 @@
 # Changelog
 
+## 2026-08-31 Production social-login bootstrap gate (local)
+
+- Added a fail-closed `production-bootstrap` broker exposure that serves only the immutable Production OIDC discovery document and JWKS for Supabase validation while keeping the Google CTA, start, callback, recovery, completion, authorization, and token surfaces unavailable.
+- Made `/login` server-rendered and conditional on a fully active user-login profile. Broker `off`, malformed configuration, and Production bootstrap show a coarse preparation state instead of a link that would fail after navigation.
+- Preserved the verified Preview login behavior and the final Production profile. Added no migration, provider, credential, database/Auth row, Vercel setting, deployment, or Production change.
+
+## 2026-08-27 PHASE 10AA grade/class history foundation (local / Draft)
+
+- Replaced the new-account single-class write contract with optional K12 grade/class child history beneath one school + graduation-year membership. Elementary supports grades 1–6, middle/high supports 1–3, and university/college collects no grade/class history in this phase.
+- Added one owner-safe atomic RPC and one owner-private RLS/FORCE RLS child table. Parent and child ownership must match, authenticated browser mutation is revoked, and membership/profile deletion cascades the child data.
+- Retained the legacy parent `class_number` without inferring or backfilling a grade; every new membership write stores it as NULL. Owner account read, display, export, and tests now use sorted child history.
+- Kept school limits, public routes/pages/analytics, and people matching unchanged. Preview migration/data, beta membership/invites/search, external settings, and Production remain untouched.
+
+## 2026-08-27 PHASE 10X people-discovery controlled-beta contract (local / Draft)
+
+- Preserved the exact legacy `account_registration` + `private_profile` contract and added one second exact controlled-beta contract: `people_search` + `connection_request`. Mixed, partial, duplicate, and expanded sets remain invalid.
+- Made immutable setup snapshots authoritative for server readiness, full eight-row program flags, start/reactivation, and effective feature access while retaining one school, a 20-user cap, exactly 14 days, admin approval, one-use/seven-day invites, and mandatory privacy/RLS/health stop conditions.
+- Added one replacement-only migration with no new table, column, function, route, or provider. Messaging and Instagram remain excluded, and stopping `people_search` also fails closed for dependent connection expansion.
+- Feature activation, Preview migration/data writes, external configuration/provider calls, and Production mutation remain out of scope.
+
+## 2026-08-26 PHASE 10V narrow people-discovery safety hardening (local / Draft)
+
+- Hardened all two P0 and eight P1 findings from the PHASE 10U readiness audit without activating people discovery: public emergency stops search/request/reminder/accept, while authenticated receiver safety closure and existing relationship safety operations remain available.
+- Contracted exact search to same-target-school authority, a single browser-visible unavailable state, and five attempts per day for both IP and account. Request creation rechecks current school authority and deletion state; acceptance atomically rechecks both parties.
+- Hardened TypeScript and PostgreSQL greeting validation against practical contact obfuscation, gated Instagram GET before private lookup, and added one replacement-only migration with no new table, column, function, page, API route, telemetry event, or provider.
+- Preview migration/feature activation, external configuration changes, and Production mutation remain out of scope.
+
+## 2026-08-26 PHASE 10T privacy-safe school share and return loop (local / Draft)
+
+- Added a generic public-school share action to valid owner-only `/account` school cards. It resolves the existing safe school path against the current deployment origin and carries no membership, sender, graduation/class, Instagram, referral, or tracking data.
+- Kept native share cancellation as cancellation, limited clipboard fallback to the same generic school text and URL, and added temporary accessible copy feedback without persistence or telemetry.
+- Corrected active Home account-start copy and CTA to the fixed Google-only `/login` authority while leaving people discovery, public school privacy, routes, APIs, schema, Auth, Preview data, and Production unchanged.
+
+## 2026-08-25 PHASE 10S private-account first-value “내 학교” (local / Draft)
+
+- Added a private `/account` summary of the current user's registered schools, own graduation year, and optional class after onboarding, with a clear private-account completion state and factual zero state.
+- Linked DB-derived school slugs as one safely encoded route segment to the privacy-safe public school basics page; slash/traversal values fail closed, and the public page adds a generic account-management CTA without membership personalization or private queries.
+- Kept people discovery, public lists, Year/Class person navigation, Instagram exposure, counts/activity claims, new telemetry, schema, API routes, and Production/external-provider changes out of scope.
+
+## 2026-08-25 PHASE 10R Google-only account onboarding alignment (local / Draft)
+
+- Removed the account header's dependency on an Auth email and replaced it with a coarse Google signed-in label; no Google profile, email, subject, token, or provider payload is persisted or displayed.
+- Aligned active account governance and login metadata with the Google-only Preview policy while preserving the separate eight-digit SchoolLove recovery boundary and historical evidence.
+- Migrated the disposable account lifecycle authority away from Supabase Email Auth, Mailpit, and six-digit login OTP to a genuine local Supabase session rebound to the exact `custom:schoollove-google` identity contract.
+- Kept the canonical post-login destination at `/account`, preserved the four DB-authoritative onboarding stages, and made no Production or external-provider configuration change.
+
+## 2026-08-24 PHASE 10Q Google-only Preview authentication consolidation (local / Draft)
+
+- Consolidated the Preview/Draft user-facing authentication path to Google only, with a fixed first-party Google start route and no client-selected provider or redirect destination.
+- Darkened Supabase email OTP user-login routes and Kakao/Naver deployed callback runtime; SchoolLove custom recovery remains available with its eight-digit OTP contract.
+- No external provider or Supabase/Vercel configuration, Production system, database, Auth, launch, email, or recovery delivery was mutated in this phase. External provider decommission remains separately approved work.
+
+## 2026-08-22 PHASE 10P social activation and bound-provisional reauthentication (local / Draft / Preview-only)
+
+- Added one forward-only migration that restores a missing launch singleton only to the exact closed state, preserves an existing valid singleton unchanged, and hardens social activation so only an exact open launch can activate an attempt-derived account and primary identity atomically.
+- Added exact same-provider reauthentication for a recovery-verified provisional account already bound to one matching Supabase Custom OIDC principal. It reuses `auth_principal_bound`, creates no recovery/email/OTP work, and completes authentication while a closed launch keeps the account provisional.
+- No Preview/Production migration apply, remote database mutation, provider call, Resend call, Auth/provider setting, Vercel setting, login control, or launch-state change is included.
+
+## 2026-08-20 PHASE 10P stale social-attempt expiry (local / Draft / Preview-only)
+
+- Added a forward-only boundary that terminalizes an expired `upstream_verified`/`recovery_required`/`recovery_pending`/`recovery_verified` broker-subject owner before a replacement identity decision. The existing live-subject unique index remains unchanged.
+- Stale expiry scrubs pending recovery challenge material and live downstream nonce/state, preserves sent/failed delivery history and terminal upstream legs, and uses the frozen recovery-lock → broker-lock ordering. Migration apply performs one bounded cleanup; later requests use the same on-demand helper.
+- No Preview/Production database apply, provider call, email, Auth/provider configuration, Vercel setting, login UI, or Production change is included.
+
+## 2026-08-19 PHASE 10P first social login recovery/finalization (local / Draft / Preview-only)
+
+- Wired verified callback outcomes to exact transaction-bound downstream finalization or an encrypted, browser-bound recovery route; `RECOVERY_REQUIRED` can no longer end as a false 204 success.
+- Added reserve-before-send Resend transport, OTP decision handling, and a server-authoritative Supabase session/principal completion boundary. A forward-only migration permits only recovery-decided provisional identities to complete the OIDC exchange before exact post-exchange binding.
+- Production remains hard-off. No credential value, provider call, email, Preview/Production mutation, Custom Provider change, social control, or launch-state change is included.
+
 ## 2026-08-13 PHASE 10O-R downstream terminal scrub boundary (local / Draft / feature-off)
 
 - Added a forward-only terminal-context check: expired, rejected, and consumed downstream authorization transactions retain neither raw nonce nor raw state.

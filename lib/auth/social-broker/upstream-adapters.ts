@@ -4,7 +4,7 @@ import { createNonceLeg, type NonceBinding } from './nonce'
 import { calculateS256Challenge, createPkceVerifier } from './pkce'
 import { createStateLeg, type StateBinding } from './state'
 import { verifyDurableUpstreamNonce } from './durable-upstream-leg'
-import { brokerFailure } from './errors'
+import { brokerFailure, diagnosticFailure, extractGoogleCallbackDiagnostic } from './errors'
 import type { SocialProvider } from './types'
 
 const MAX_RESPONSE_BYTES = 16 * 1024
@@ -82,6 +82,23 @@ function parseExpectedJson(response: UpstreamHttpResponse, expectedUrl: string):
   if (response.url !== expectedUrl) brokerFailure('UPSTREAM_ERROR')
   return parseJson(response)
 }
+function parseOidcResponse(response: UpstreamHttpResponse, expectedUrl: string, kind: 'token' | 'jwks'): unknown {
+  const transportReason = kind === 'token' ? 'token_exchange_transport_failed' : 'jwks_fetch_failed'
+  const httpReason = kind === 'token' ? 'token_exchange_http_failed' : 'jwks_fetch_failed'
+  const malformedReason = kind === 'token' ? 'token_response_malformed' : 'jwks_key_rejected'
+  if (response.url !== expectedUrl) diagnosticFailure('UPSTREAM_ERROR', transportReason)
+  if (response.status !== 200) diagnosticFailure('UPSTREAM_ERROR', httpReason, response.status)
+  if (!exactJsonContentType(response.contentType) || Buffer.byteLength(response.body, 'utf8') > MAX_RESPONSE_BYTES) {
+    diagnosticFailure(kind === 'token' ? 'UPSTREAM_RESPONSE_MALFORMED' : 'UPSTREAM_ERROR', malformedReason)
+  }
+  try { return JSON.parse(response.body) } catch {
+    diagnosticFailure(kind === 'token' ? 'UPSTREAM_RESPONSE_MALFORMED' : 'UPSTREAM_ERROR', malformedReason)
+  }
+}
+function oidcResponseObject(value: unknown, reason: 'token_response_malformed' | 'jwks_key_rejected'): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', reason)
+  return value as Record<string, unknown>
+}
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
   return value as Record<string, unknown>
@@ -108,41 +125,62 @@ function single(params: URLSearchParams, name: string): string {
 }
 function decodeJwt(token: string): Readonly<{ header: Record<string, unknown>; payload: Record<string, unknown>; signed: Buffer; signature: Buffer }> {
   const parts = token.split('.')
-  if (parts.length !== 3 || parts.some(part => !/^[A-Za-z0-9_-]+$/.test(part))) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+  if (parts.length !== 3 || parts.some(part => !/^[A-Za-z0-9_-]+$/.test(part))) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_missing_or_malformed')
   try {
+    const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'))
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
+    if (!header || typeof header !== 'object' || Array.isArray(header) || !payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_missing_or_malformed')
+    }
     return Object.freeze({
-      header: object(JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'))),
-      payload: object(JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))),
+      header: header as Record<string, unknown>,
+      payload: payload as Record<string, unknown>,
       signed: Buffer.from(`${parts[0]}.${parts[1]}`, 'ascii'),
       signature: Buffer.from(parts[2], 'base64url'),
     })
-  } catch { brokerFailure('UPSTREAM_RESPONSE_MALFORMED') }
+  } catch (error) {
+    if (extractGoogleCallbackDiagnostic(error)) throw error
+    diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_missing_or_malformed')
+  }
 }
 function validateJwt(input: Readonly<{ idToken: string; provider: 'kakao' | 'google'; config: OidcProviderConfig; nonce?: NonceBinding; nonceDigest?: Uint8Array; transport: UpstreamHttpTransport; now: number }>): Promise<VerifiedProviderIdentity> {
   return (async () => {
     const jwt = decodeJwt(input.idToken)
-    if (jwt.header.alg !== 'RS256' || typeof jwt.header.kid !== 'string' || !jwt.header.kid) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
-    const jwksResponse = await input.transport.fetchJwks({ provider: input.provider, jwksUri: input.config.jwksUri })
-    const jwks = object(parseExpectedJson(jwksResponse, input.config.jwksUri)); const keys = jwks.keys
-    if (!Array.isArray(keys) || keys.length === 0 || keys.length > MAX_JWKS_KEYS) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+    if (jwt.header.alg !== 'RS256' || typeof jwt.header.kid !== 'string' || !jwt.header.kid) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_missing_or_malformed')
+    let jwksResponse: UpstreamHttpResponse
+    try { jwksResponse = await input.transport.fetchJwks({ provider: input.provider, jwksUri: input.config.jwksUri }) }
+    catch (error) {
+      if (extractGoogleCallbackDiagnostic(error)) throw error
+      diagnosticFailure('UPSTREAM_ERROR', 'jwks_fetch_failed')
+    }
+    const jwks = oidcResponseObject(parseOidcResponse(jwksResponse, input.config.jwksUri, 'jwks'), 'jwks_key_rejected'); const keys = jwks.keys
+    if (!Array.isArray(keys) || keys.length === 0 || keys.length > MAX_JWKS_KEYS) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'jwks_key_rejected')
     const key = keys.find(candidate => {
       const value = candidate as Record<string, unknown>
       return value && typeof value === 'object' && value.kid === jwt.header.kid && value.kty === 'RSA' && value.use === 'sig' && value.alg === 'RS256' && typeof value.n === 'string' && typeof value.e === 'string' && !('d' in value || 'p' in value || 'q' in value || 'dp' in value || 'dq' in value || 'qi' in value)
     }) as Record<string, unknown> | undefined
-    if (!key) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
-    try { if (!verify('RSA-SHA256', jwt.signed, createPublicKey({ key, format: 'jwk' }), jwt.signature)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED') } catch { brokerFailure('UPSTREAM_RESPONSE_MALFORMED') }
+    if (!key) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'jwks_key_rejected')
+    let publicKey: ReturnType<typeof createPublicKey>
+    try { publicKey = createPublicKey({ key, format: 'jwk' }) } catch { diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'jwks_key_rejected') }
+    try {
+      if (!verify('RSA-SHA256', jwt.signed, publicKey, jwt.signature)) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_signature_failed')
+    } catch (error) {
+      if (extractGoogleCallbackDiagnostic(error)) throw error
+      diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_signature_failed')
+    }
     const payload = jwt.payload
-    if (typeof payload.iss !== 'string' || !input.config.issuers.includes(payload.iss) || payload.aud !== input.config.clientId) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+    if (typeof payload.iss !== 'string' || !input.config.issuers.includes(payload.iss) || payload.aud !== input.config.clientId) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'issuer_or_audience_failed')
     const exp = payload.exp; const iat = payload.iat
-    if (!Number.isSafeInteger(exp) || !Number.isSafeInteger(iat)) brokerFailure('UPSTREAM_RESPONSE_EXPIRED')
+    if (!Number.isSafeInteger(exp) || !Number.isSafeInteger(iat)) diagnosticFailure('UPSTREAM_RESPONSE_EXPIRED', 'token_time_failed')
     const expNumber = exp as number; const iatNumber = iat as number
-    if (expNumber <= input.now || iatNumber > input.now + 30 || iatNumber > expNumber) brokerFailure('UPSTREAM_RESPONSE_EXPIRED')
-    if (typeof payload.nonce !== 'string' || !(input.nonce ? input.nonce.verifyAndConsume(payload.nonce) : input.nonceDigest && verifyDurableUpstreamNonce(payload.nonce, input.nonceDigest))) brokerFailure('NONCE_REJECTED')
-    const subject = nonEmpty(payload.sub)
+    if (expNumber <= input.now || iatNumber > input.now + 30 || iatNumber > expNumber) diagnosticFailure('UPSTREAM_RESPONSE_EXPIRED', 'token_time_failed')
+    if (typeof payload.nonce !== 'string' || !(input.nonce ? input.nonce.verifyAndConsume(payload.nonce) : input.nonceDigest && verifyDurableUpstreamNonce(payload.nonce, input.nonceDigest))) diagnosticFailure('NONCE_REJECTED', 'nonce_failed')
+    if (typeof payload.sub !== 'string' || payload.sub.length === 0 || Buffer.byteLength(payload.sub, 'utf8') > 2048) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'provider_identity_malformed')
+    const subject = payload.sub
     const authenticationTime = payload.auth_time
-    if (authenticationTime !== undefined && !Number.isSafeInteger(authenticationTime)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+    if (authenticationTime !== undefined && !Number.isSafeInteger(authenticationTime)) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'provider_identity_malformed')
     const authenticationTimeNumber = authenticationTime as number | undefined
-    if (authenticationTimeNumber !== undefined && (authenticationTimeNumber < 0 || authenticationTimeNumber > input.now + 30)) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+    if (authenticationTimeNumber !== undefined && (authenticationTimeNumber < 0 || authenticationTimeNumber > input.now + 30)) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'provider_identity_malformed')
     return Object.freeze({ provider: input.provider, upstreamSubject: Buffer.from(subject, 'utf8'), ...(authenticationTimeNumber === undefined ? {} : { authenticationTime: authenticationTimeNumber }) })
   })()
 }
@@ -157,9 +195,18 @@ function oidcConfig(provider: 'kakao' | 'google', input: ClientCallbackConfig): 
 /** Stateless durable-resume verifier: it has no process-local pending state. */
 export async function verifyResumedOidcIdentity(input: Readonly<{ provider: 'kakao' | 'google'; authorizationCode: string; clientId: string; redirectUri: string; codeVerifier: string; nonceDigest: Uint8Array; transport: UpstreamHttpTransport; now: number }>): Promise<VerifiedProviderIdentity> {
   const config = oidcConfig(input.provider, input)
-  if (!input.authorizationCode || !input.codeVerifier || input.nonceDigest.byteLength !== 32) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
-  const response = await input.transport.exchangeCode({ provider: input.provider, tokenEndpoint: config.tokenEndpoint, clientId: config.clientId, redirectUri: config.redirectUri, authorizationCode: opaqueAuthorizationCode(input.authorizationCode), codeVerifier: input.codeVerifier })
-  const token = object(parseExpectedJson(response, config.tokenEndpoint)); const idToken = nonEmpty(token.id_token)
+  if (!input.authorizationCode) brokerFailure('UPSTREAM_RESPONSE_MALFORMED')
+  if (!input.codeVerifier) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'pkce_resume_failed')
+  if (input.nonceDigest.byteLength !== 32) diagnosticFailure('NONCE_REJECTED', 'nonce_failed')
+  let response: UpstreamHttpResponse
+  try { response = await input.transport.exchangeCode({ provider: input.provider, tokenEndpoint: config.tokenEndpoint, clientId: config.clientId, redirectUri: config.redirectUri, authorizationCode: opaqueAuthorizationCode(input.authorizationCode), codeVerifier: input.codeVerifier }) }
+  catch (error) {
+    if (extractGoogleCallbackDiagnostic(error)) throw error
+    diagnosticFailure('UPSTREAM_ERROR', 'token_exchange_transport_failed')
+  }
+  const token = oidcResponseObject(parseOidcResponse(response, config.tokenEndpoint, 'token'), 'token_response_malformed')
+  if (typeof token.id_token !== 'string' || token.id_token.length === 0 || Buffer.byteLength(token.id_token, 'utf8') > 16 * 1024) diagnosticFailure('UPSTREAM_RESPONSE_MALFORMED', 'id_token_missing_or_malformed')
+  const idToken = token.id_token
   return validateJwt({ idToken, provider: input.provider, config, nonceDigest: input.nonceDigest, transport: input.transport, now: input.now })
 }
 

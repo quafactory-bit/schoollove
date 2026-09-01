@@ -30,6 +30,7 @@ export function buildProviderAuthorizationRequest(input: ProviderAuthorizationIn
   if (input.provider === 'naver') return urlWith(url, parameters)
   const nonce = opaque(input.nonce); const challenge = opaque(input.pkceChallenge)
   parameters.set('scope', input.provider === 'google' ? 'openid profile' : 'openid')
+  if (input.provider === 'google') parameters.set('prompt', 'select_account')
   parameters.set('nonce', nonce); parameters.set('code_challenge', challenge); parameters.set('code_challenge_method', 'S256')
   return urlWith(url, parameters)
 }

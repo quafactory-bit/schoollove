@@ -1,3 +1,4 @@
 import { darkOidcRouteNotFound } from '@/lib/auth/social-broker/http'
+import { activeBrokerRouteAdapter } from '@/lib/auth/social-broker/preview-runtime'
 export const dynamic = 'force-dynamic'
-export function GET() { return darkOidcRouteNotFound() }
+export async function GET(request: Request) { const adapter = await activeBrokerRouteAdapter(request); return adapter ? adapter.discovery() : darkOidcRouteNotFound() }

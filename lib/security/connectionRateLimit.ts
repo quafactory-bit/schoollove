@@ -18,7 +18,7 @@ export function hashConnectionRateIdentity(kind: 'ip' | 'account', value: string
 }
 
 const limits: Record<ConnectionRateAction, { count: number; window: `${number} ${'s' | 'm' | 'h' | 'd'}` }> = {
-  search: { count: 20, window: '1 d' },
+  search: { count: 5, window: '1 d' },
   request: { count: 5, window: '1 d' },
   reminder: { count: 3, window: '1 d' },
   response: { count: 20, window: '10 m' },

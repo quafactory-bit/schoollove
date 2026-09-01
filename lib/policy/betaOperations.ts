@@ -5,8 +5,78 @@ export const betaReadinessStates = ['blocked','internal_only','limited_beta','be
 export const betaTaskTypes = ['beta_approval','onboarding_failure','report','block_review','deletion_request','advertiser_verification','advertiser_review','quote','payment_confirmation','ad_schedule','refund','cron_failure','outbox_failure','feedback','health_warning'] as const
 export const requiredBetaStopConditions = ['PRIVACY_EXPOSURE','RLS_FAILURE','HEALTH_FAILURE'] as const
 export const firstControlledBetaEnabledFeatures = ['account_registration','private_profile'] as const
+export const peopleDiscoveryControlledBetaEnabledFeatures = ['people_search','connection_request'] as const
+export type ControlledBetaContractKind = 'account_private'|'people_discovery'
+export type BetaFeatureKey = typeof betaFeatureKeys[number]
+
+const exactFeatureSet = (features:readonly BetaFeatureKey[],expected:readonly BetaFeatureKey[]) => {
+  const unique=new Set(features)
+  return features.length===expected.length&&unique.size===expected.length&&expected.every((feature)=>unique.has(feature))
+}
+
+export function classifyControlledBetaFeatureSet(features:readonly BetaFeatureKey[]):ControlledBetaContractKind|null {
+  if(exactFeatureSet(features,firstControlledBetaEnabledFeatures)) return 'account_private'
+  if(exactFeatureSet(features,peopleDiscoveryControlledBetaEnabledFeatures)) return 'people_discovery'
+  return null
+}
+
+export function assessControlledBetaFeatureContract(input:{
+  snapshotFeatures:readonly BetaFeatureKey[]|null|undefined
+  programFlags:readonly {feature_key:BetaFeatureKey;enabled:boolean}[]
+  globalFlags:readonly {feature_key:BetaFeatureKey;enabled:boolean}[]
+}) {
+  const contractKind=input.snapshotFeatures?classifyControlledBetaFeatureSet(input.snapshotFeatures):null
+  const expected=contractKind==='account_private'?firstControlledBetaEnabledFeatures:contractKind==='people_discovery'?peopleDiscoveryControlledBetaEnabledFeatures:null
+  const enabled=input.programFlags.filter((flag)=>flag.enabled).map((flag)=>flag.feature_key)
+  const programFlagsComplete=expected!==null
+    && input.programFlags.length===betaFeatureKeys.length
+    && exactFeatureSet(enabled,expected)
+    && betaFeatureKeys.every((feature)=>input.programFlags.filter((flag)=>flag.feature_key===feature).length===1)
+  const globalFeatureStopped=Boolean(expected?.some((feature)=>input.globalFlags.some((flag)=>flag.feature_key===feature&&!flag.enabled)))
+  return {contractKind,programFlagsComplete,globalFeatureStopped}
+}
+
+export function assessControlledBetaInvitationEligibility(input:{
+  snapshotFeatures:readonly BetaFeatureKey[]|null|undefined
+  programFlags:readonly {feature_key:BetaFeatureKey;enabled:boolean}[]
+  globalFlags:readonly {feature_key:BetaFeatureKey;enabled:boolean}[]
+  snapshotBacked:boolean
+  schoolAllowlistCount:number
+  schoolContractMatches:boolean
+  invitePolicy:{maxUsesPerInvite?:number;expiresInDays?:number}|null|undefined
+  approvalWaitlistEnabled:boolean|null|undefined
+  startsAt:string|null
+  endsAt:string|null
+  status:string
+  emergencyDisabledAt:string|null
+  now?:number
+}):boolean {
+  const featureContract=assessControlledBetaFeatureContract({
+    snapshotFeatures:input.snapshotFeatures,
+    programFlags:input.programFlags,
+    globalFlags:input.globalFlags,
+  })
+  const startsAt=input.startsAt?new Date(input.startsAt).getTime():NaN
+  const endsAt=input.endsAt?new Date(input.endsAt).getTime():NaN
+  const now=input.now??Date.now()
+  return featureContract.contractKind!==null
+    && featureContract.programFlagsComplete
+    && !featureContract.globalFeatureStopped
+    && input.snapshotBacked
+    && input.schoolAllowlistCount===1
+    && input.schoolContractMatches
+    && input.invitePolicy?.maxUsesPerInvite===1
+    && input.invitePolicy.expiresInDays===7
+    && input.approvalWaitlistEnabled===true
+    && Number.isFinite(startsAt)
+    && Number.isFinite(endsAt)
+    && now>=startsAt
+    && now<endsAt
+    && input.status==='active'
+    && input.emergencyDisabledAt===null
+}
 export const controlledBetaSafeErrorCodes = [
-  'TARGET_SCHOOL_REQUIRED','TARGET_SCHOOL_NOT_FOUND','INVALID_FIRST_BETA_FEATURE_SET',
+  'TARGET_SCHOOL_REQUIRED','TARGET_SCHOOL_NOT_FOUND','INVALID_FIRST_BETA_FEATURE_SET','INVALID_CONTROLLED_BETA_FEATURE_SET',
   'INVALID_FIRST_BETA_INVITE_POLICY','INVALID_FIRST_BETA_CONTRACT','DRAFT_ALREADY_ACTIVATED',
   'PROGRAM_NOT_FOUND','PROGRAM_NOT_PAUSED','PROGRAM_NOT_CONFIGURABLE','PROGRAM_ALREADY_USED',
   'PROGRAM_SETUP_SNAPSHOT_REQUIRED','PROGRAM_SETUP_CONTRACT_INVALID','PROGRAM_SCHOOL_CONTRACT_INVALID',
@@ -58,8 +128,7 @@ export const BetaSetupSchema = z.object({
   if (value.enabledFeatures.includes('messaging') && !value.enabledFeatures.includes('connection_request')) context.addIssue({code:'custom',path:['enabledFeatures'],message:'MESSAGING_REQUIRES_CONNECTIONS'})
   if (value.enabledFeatures.includes('connection_request') && !value.enabledFeatures.includes('people_search')) context.addIssue({code:'custom',path:['enabledFeatures'],message:'CONNECTIONS_REQUIRE_SEARCH'})
   for(const condition of requiredBetaStopConditions) if(value.stopConditions[condition]!==true) context.addIssue({code:'custom',path:['stopConditions',condition],message:'REQUIRED_STOP_CONDITION_MISSING'})
-  const enabled=new Set(value.enabledFeatures)
-  if(enabled.size!==2 || !firstControlledBetaEnabledFeatures.every((feature)=>enabled.has(feature))) context.addIssue({code:'custom',path:['enabledFeatures'],message:'INVALID_FIRST_BETA_FEATURE_SET'})
+  if(!classifyControlledBetaFeatureSet(value.enabledFeatures)) context.addIssue({code:'custom',path:['enabledFeatures'],message:'INVALID_CONTROLLED_BETA_FEATURE_SET'})
   if(value.status==='validated') {
     if(!value.targetSchoolId) context.addIssue({code:'custom',path:['targetSchoolId'],message:'TARGET_SCHOOL_REQUIRED'})
     if(value.maxUsers!==20) context.addIssue({code:'custom',path:['maxUsers'],message:'FIRST_BETA_MAX_USERS_MUST_BE_20'})
@@ -72,7 +141,7 @@ export const BetaSetupSchema = z.object({
 export const BetaAdminActionSchema = z.discriminatedUnion('action',[
   z.object({action:z.literal('save_setup'),setup:BetaSetupSchema}),
   z.object({action:z.literal('activate_setup'),draftId:z.string().uuid()}),
-  z.object({action:z.literal('configure_features'),programId:z.string().uuid(),enabledFeatures:z.array(z.enum(betaFeatureKeys)).length(2).refine((value)=>firstControlledBetaEnabledFeatures.every((feature)=>value.includes(feature)),'INVALID_FIRST_BETA_FEATURE_SET')}),
+  z.object({action:z.literal('configure_features'),programId:z.string().uuid(),enabledFeatures:z.array(z.enum(betaFeatureKeys)).length(2).refine((value)=>classifyControlledBetaFeatureSet(value)!==null,'INVALID_CONTROLLED_BETA_FEATURE_SET')}),
   z.object({action:z.literal('start_program'),programId:z.string().uuid(),reason:reasonCode}),
   z.object({action:z.literal('reactivate_program'),programId:z.string().uuid(),reason:reasonCode,resolutionCode:reasonCode}),
   z.object({action:z.literal('review_member'),memberId:z.string().uuid(),status:z.enum(['active','suspended','rejected','withdrawn']),reason:reasonCode}),

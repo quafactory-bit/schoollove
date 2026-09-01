@@ -1,6 +1,7 @@
 ﻿node_modules/
 .next/
 .env.local
+.local/phase10p-preview-clone/
 
 *.bak
 tsconfig.tsbuildinfo

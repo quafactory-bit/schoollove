@@ -32,7 +32,7 @@ describe('PHASE 10H route boundaries',()=>{
       expect(route).toContain('if (error) return NextResponse.json')
       expect(route).toContain('syncOnboardingProgressSafely')
       expect(route).not.toContain('recordPublicAccountEvent')
-      expect(route).toMatch(/rpc\('(upsert_own_private_profile|add_own_school_membership)'/)
+      expect(route).toMatch(/rpc\('(upsert_own_private_profile|add_own_school_membership_with_class_history)'/)
     }
   })
 
@@ -42,10 +42,19 @@ describe('PHASE 10H route boundaries',()=>{
     expect(source('app/admin/operations/OperationsClient.tsx')).toContain('개인 원문 없이')
   })
 
-  it('restricts login continuation to account or onboarding',()=>{
+  it('pins login to the fixed first-party Google start route',()=>{
     const login=source('app/login/page.tsx')
-    expect(login).toContain('safeLoginDestination')
-    expect(source('lib/policy/onboarding.ts')).toContain("value === '/onboarding'")
+    const googleStart=source('app/auth/social/start/google/route.ts')
+    const socialComplete=source('app/auth/social/complete/SocialCompleteClient.tsx')
+    expect(login).toContain('href="/auth/social/start/google"')
+    expect(login).not.toMatch(/safeLoginDestination|redirect_to|provider=/)
+    expect(googleStart).toContain("destination.searchParams.set('provider', 'custom:schoollove-google')")
+    expect(googleStart).toContain("destination.searchParams.set('redirect_to', config.completionRoute)")
+    expect(googleStart).toContain('new URL(request.url).origin !== config.issuer')
+    expect(googleStart).not.toMatch(/headers\.get|searchParams\.get/)
+    expect(socialComplete).toContain("result.redirect !== '/account'")
+    expect(socialComplete).toContain("window.location.replace('/account')")
+    expect(source('lib/policy/onboarding.ts')).not.toContain('safeLoginDestination')
   })
 
   it('chains people-search shutdown into greeting creation without blocking safety actions',()=>{

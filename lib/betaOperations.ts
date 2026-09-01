@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import type { z } from 'zod'
 import type { BetaAdminActionSchema } from '@/lib/policy/betaOperations'
-import { controlledBetaSafeErrorCodes, firstControlledBetaEnabledFeatures, maskSmallAggregate } from '@/lib/policy/betaOperations'
+import { assessControlledBetaFeatureContract, controlledBetaSafeErrorCodes, maskSmallAggregate } from '@/lib/policy/betaOperations'
+import type { BetaFeatureKey } from '@/lib/policy/betaOperations'
 import { csvSafe } from '@/lib/policy/operations'
 
 type AdminAction = z.infer<typeof BetaAdminActionSchema>
@@ -49,14 +50,18 @@ export async function getControlledBetaState(schoolQuery='') {
     const snapshot=snapshots.find((item)=>item.program_id===program.id)??null
     const allowed=programSchools.filter((item)=>item.program_id===program.id)
     const flags=programFlags.filter((item)=>item.program_id===program.id)
-    const globalFeatureStopped=programFlags.some((item)=>item.program_id===null&&!item.enabled&&firstControlledBetaEnabledFeatures.includes(item.feature_key as typeof firstControlledBetaEnabledFeatures[number]))
-    const enabled=flags.filter((item)=>item.enabled).map((item)=>item.feature_key).sort()
-    const flagsComplete=flags.length===8&&enabled.length===2&&enabled[0]==='account_registration'&&enabled[1]==='private_profile'
+    const globalFlags=programFlags.filter((item)=>item.program_id===null)
+    const featureContract=assessControlledBetaFeatureContract({
+      snapshotFeatures:Array.isArray(snapshot?.enabled_features)?snapshot.enabled_features as BetaFeatureKey[]:null,
+      programFlags:flags,
+      globalFlags,
+    })
+    const {contractKind,programFlagsComplete:flagsComplete,globalFeatureStopped}=featureContract
     const latestReadiness=readiness.find((item)=>item.program_id===program.id)??null
     const blockers:string[]=[]
     const startsAt=program.starts_at?new Date(program.starts_at).getTime():NaN
     const endsAt=program.ends_at?new Date(program.ends_at).getTime():NaN
-    const exactFeatures=Array.isArray(snapshot?.enabled_features)&&snapshot.enabled_features.length===2&&firstControlledBetaEnabledFeatures.every((feature)=>snapshot.enabled_features.includes(feature))
+    const exactFeatures=contractKind!==null
     const exactWindow=Number.isFinite(startsAt)&&Number.isFinite(endsAt)&&endsAt-startsAt===14*24*60*60*1000&&Date.now()>=startsAt&&Date.now()<endsAt
     const stopConditions=snapshot?.stop_conditions??{}
     const contractComplete=snapshot?.max_users===20&&exactFeatures&&exactWindow&&snapshot?.approval_waitlist_enabled===true&&snapshot?.invite_policy?.maxUsesPerInvite===1&&snapshot?.invite_policy?.expiresInDays===7&&['PRIVACY_EXPOSURE','RLS_FAILURE','HEALTH_FAILURE'].every((condition)=>stopConditions[condition]===true)
@@ -69,7 +74,7 @@ export async function getControlledBetaState(schoolQuery='') {
     if(!readinessValid||!readinessAfterEmergency)blockers.push('FRESH_READINESS_REQUIRED')
     if(program.emergency_disabled_at)blockers.push('REACTIVATION_REQUIRED')
     const reactivationBlockers=blockers.filter((code)=>code!=='REACTIVATION_REQUIRED')
-    return {...program,snapshot_backed:Boolean(snapshot),selected_school:allowed[0]?.school??null,school_allowlist_count:allowed.length,program_feature_flags:flags,program_feature_flags_complete:flagsComplete,activation_blockers:blockers,activation_ready:program.status==='paused'&&!program.emergency_disabled_at&&blockers.length===0,invite_eligible:program.status==='active'&&!program.emergency_disabled_at&&Boolean(snapshot)&&allowed.length===1&&flagsComplete,reactivation_required:Boolean(snapshot&&program.emergency_disabled_at),reactivation_ready:Boolean(snapshot&&program.status==='paused'&&program.emergency_disabled_at&&reactivationBlockers.length===0)}
+    return {...program,contract_kind:contractKind,snapshot_backed:Boolean(snapshot),selected_school:allowed[0]?.school??null,school_allowlist_count:allowed.length,program_feature_flags:flags,program_feature_flags_complete:flagsComplete,activation_blockers:blockers,activation_ready:program.status==='paused'&&!program.emergency_disabled_at&&blockers.length===0,invite_eligible:program.status==='active'&&!program.emergency_disabled_at&&Boolean(snapshot)&&allowed.length===1&&flagsComplete,reactivation_required:Boolean(snapshot&&program.emergency_disabled_at),reactivation_ready:Boolean(snapshot&&program.status==='paused'&&program.emergency_disabled_at&&reactivationBlockers.length===0)}
   })
   return {
     programs, drafts:rows(draftsResult), snapshots, programSchools, programFlags, members,

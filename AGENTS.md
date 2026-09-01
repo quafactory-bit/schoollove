@@ -1,5 +1,19 @@
 # SchoolLoveI 작업 규칙
 
+> PHASE 10AA 현재 결정: 학교 이력의 authority는 계속 학교 1곳+졸업연도 1개이며, 학년별 반은 owner-private 자식 `profile_school_class_histories`로 저장한다. 초등학교는 1~6학년, 중·고등학교는 1~3학년만 허용하고 대학·전문대학은 이 단계에서 학년/반을 받지 않는다. 학교 유형은 DB의 `public.schools` 값으로만 판단한다. 새 owner-safe RPC가 parent membership을 legacy `class_number=NULL`로 만들고 child 전체를 한 transaction으로 저장한다. 기존 `class_number`는 유지하되 grade authority가 없으므로 backfill하지 않는다. 사람 검색은 여전히 학교+졸업연도+정확한 이름이며 학년/반 matching은 별도 승인 전까지 금지한다. Preview migration 적용·beta 초대/member·people search·Production 변경은 이 단계의 범위가 아니다.
+
+> PHASE 10X 현재 결정: controlled-beta snapshot이 표현할 수 있는 feature contract는 정확히 두 개다. 기존 `ACCOUNT_PRIVATE_BETA`는 `account_registration`+`private_profile`, 새 `PEOPLE_DISCOVERY_BETA`는 `people_search`+`connection_request`이며 순서와 무관한 정확한 2개 집합만 허용한다. 두 계약 모두 단일 학교·최대 20명·정확히 14일·관리자 승인·초대 1회/7일·필수 중단 조건을 유지하고, immutable snapshot과 8개 program flag 전체가 일치해야 시작·재활성화할 수 있다. messaging·Instagram은 제외하며 `people_search` 중단은 connection expansion에도 우선한다. 10X는 계약 추가만 수행하며 Preview migration 적용, beta draft/program/invite/member 생성, feature 활성화와 Production 변경은 별도 승인 전까지 금지한다.
+
+> PHASE 10V 현재 결정: PHASE 10U의 사람 발견 P0 2개/P1 8개를 runtime·API·DB 방어선에서 폐쇄한다. 정확 검색은 actor가 target 학교 membership을 실제 보유할 때만 opaque token을 발급하고, 모든 유효 non-match/관계 상태는 하나의 generic unavailable 응답으로 수축하며 검색은 IP·account 각각 5회/일이다. `emergency_stopped`는 검색·요청·reminder·accept보다 우선하지만 기존 pending 요청의 decline·not-the-person·block·report와 기존 관계의 disconnect·report는 유지한다. 탈퇴 lifecycle, request-time 학교 authority, accept-time 양측 eligibility를 원자적으로 재검사하고 greeting의 실용적 연락처 우회와 Instagram GET 선행 조회를 차단한다. 새 migration은 기존 함수만 교체하며 table·column·function·route 증가는 없다. `people_search`, `connection_request`, `messaging`, `instagram_permission`은 계속 비활성이고 Preview migration 적용·Ready·merge·Production 변경은 별도 승인 전까지 금지한다.
+
+> PHASE 10U 현재 결정: 사람 발견 readiness audit는 local/disposable 환경에서 완료했지만 public emergency 우회와 Instagram GET feature-gate 공백을 포함한 P0/P1 선행 수정이 남아 있다. `people_search`, `connection_request`, `messaging`, `instagram_permission`은 PHASE 10V 구현·재검증·별도 승인 전까지 계속 비활성 상태다.
+
+> PHASE 10T 현재 결정: 첫 privacy-safe cold-start loop는 `/account`의 유효한 내 학교 card에서 membership과 무관한 공개 `/school/{encoded-slug}` 페이지를 공유하는 것이다. payload는 공개 학교명, `buildSafeMySchoolHref()` 결과와 현재 origin만 사용하며 졸업연도·반·Instagram·sender/membership/user/Auth ID, referral·tracking을 포함하지 않는다. Web Share 취소(`AbortError`)는 clipboard 복사로 바꾸지 않고, 공유·복사 telemetry와 client persistence를 만들지 않는다. 공개 학교 페이지는 개인화하지 않으며 사람 검색·명단·연결·메시지는 계속 닫혀 있고 신규 schema·API·route는 없다.
+
+> PHASE 10S 현재 결정: `/account`는 Google-only 온보딩을 마친 사용자의 비공개 first-value home이며, 기존 owner-only `AccountState.memberships`로 본인의 학교명·유형·지역·졸업연도·선택 반을 보여 줄 수 있다. 학교 CTA는 DB relation의 유효한 slug로 만든 `/school/{slug}` 기본 경로만 사용하고 Year/Class 경로를 첫 가치 동선으로 사용하지 않는다. 공개 학교 페이지는 membership과 무관한 학교 기본 정보와 일반 `/account` 관리 CTA만 제공하며 개인화하지 않는다. 공개 사람 발견·명단은 계속 꺼져 있고 대표/선호 학교, 가짜 활동·인원·성장 수치, 신규 telemetry·schema·API를 만들지 않는다.
+
+> PHASE 10R 현재 결정: `docs/decisions/2026-08-24-google-only-auth-policy.md`가 일반 사용자 인증의 최신 권위다. 유일한 사용자-facing 로그인 provider는 Google이며 `/login`에서 시작해 검증된 session으로 `/account`와 `/onboarding`을 이용한다. Kakao·Naver와 Supabase Email Auth는 지원하지 않는다. SchoolLove custom recovery email은 로그인과 분리된 소유권·중복 보호 경계로만 유지하고 OTP는 8자리다. 관리자 인증은 별도 경계다. 이 Preview 결정만으로 Production Google rollout은 승인되지 않는다.
+
 > PHASE 10N-C2 현재 결정: disposable provider matrix에서 public `emergency_stopped`인데 active controlled-beta 사용자의 eligibility route가 200을 반환하는 우회를 발견해, 네 account write route와 onboarding writable 판정이 공통 `public_account_access_active` 선검사를 거치도록 수정했다. `closed`에서는 valid active beta 권한을 유지하고, `open`에서도 beta one-school 계약이 우선하며, emergency는 public/beta account 신규·수정 write보다 우선한다. 개인정보 owner 삭제와 탈퇴 요청 권리는 별도 경계로 유지한다. 최신 local 검증은 targeted 8 files/54 tests, full 114 files/1,008 tests, TypeScript, 58 pages/routes build, isolated 18 rollback 및 PHASE 10J/10N 회귀, disposable provider Chromium/mobile 360/390/412 각 5/5(총 20/20, workers=1, retries=0)다. 외부 이메일·Production Auth·Production mutation은 0이며 PR #39는 계속 Draft, Ready·merge·Production migration/deploy/open은 금지한다.
 
 > PHASE 10N-B 현재 결정: PR #39는 Draft에서 공개 계정 경계를 강화한다. 미적용 migration `20260803120000`은 68→71 public-table/UUID person-link/Production post-reset 기준을 영구 DDL 전에 검증하고 전체 transaction으로 rollback한다. authenticated의 consent·deletion·private profile·membership 직접 write를 폐쇄하고 `auth.uid()` owner RPC만 사용한다. activity 요청량과 계정별 최초 milestone을 분리하고 `return_session`은 제거한다. 탈퇴는 public data 삭제→Auth Admin 실제 삭제→완료의 2단계이며 실패는 `failed_safe`, 비식별 운영 기록은 90일 후 파기한다. generic state RPC는 ready/open을 허용하지 않고 최신 immutable readiness와 별도 open RPC를 요구한다. Production migration·배포·환경 변경·실제 Auth/OTP·open·학교/beta/commercial mutation, PR Ready·merge는 계속 금지한다.
@@ -23,7 +37,7 @@
 
 - 이 절은 아래의 기존 제품·FROZEN 계약과 충돌할 때 우선한다.
 - 공개 `POST /api/profiles`와 제3자 등록은 계속 항상 차단한다.
-- 공개 계정이 별도 승인으로 open된 뒤의 개인 등록은 이메일 OTP session, KST 기준 만 19세 이상 자기진술, 필수 동의, 본인 소유권을 모두 검증한 `/account` 경계에서만 허용한다. closed/internal_test/ready/emergency_stopped에서는 신규 Production Auth user 생성을 금지한다.
+- 공개 계정이 별도 승인으로 open된 뒤의 개인 등록은 Google 로그인으로 얻은 검증된 session, KST 기준 만 19세 이상 자기진술, 필수 동의, 본인 소유권을 모두 검증한 `/account` 경계에서만 허용한다. closed/internal_test/ready/emergency_stopped에서는 신규 Production Auth user 생성을 금지한다.
 - 개인 정보는 기본 비공개이며, 상대방 승인 전에는 Instagram을 공개하지 않는다.
 - 공개 사람 명단, 이름 검색, Year/Class 개인 카드와 개인 Instagram 노출을 금지한다.
 - 학교명·지역·학교 유형 등 학교 기본 정보 검색은 유지한다.
@@ -58,7 +72,7 @@
 
 ## D. 공개 사용자 UX 계약
 
-- 일반 사용자 인증은 승인된 PHASE 10B 이메일 OTP 경계만 사용한다.
+- 일반 사용자 인증은 Google-only 경계만 사용한다. Kakao·Naver와 Supabase Email Auth를 사용자 로그인으로 다시 도입하지 않으며, 8자리 SchoolLove custom recovery는 별도 경계로 유지한다.
 - 관리자 로그인은 일반 사용자 흐름과 분리된 별도 경계다.
 - 공개 개인 Profile 페이지를 만들지 않는다. `/account`는 본인 전용 관리 화면이다.
 - 공개 프로필, Year/Class 사람 목록, nickname 검색과 Instagram 노출을 금지한다.

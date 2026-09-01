@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { RequestActionSchema } from '@/lib/policy/connectionSafety'
-import { requireConnectionContext, readJson } from '@/lib/api/connectionRoute'
+import { requireConnectionActionContext, requireConnectionContext, readJson } from '@/lib/api/connectionRoute'
 import { cancelConnectionRequest, respondConnectionRequest } from '@/lib/connections'
 
 const IdSchema = z.string().uuid()
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const context = await requireConnectionContext(request, 'response')
+  const context = await requireConnectionContext(request)
   if ('response' in context) return context.response
   const id = IdSchema.safeParse((await params).id)
   const body = RequestActionSchema.safeParse(await readJson(request))
   if (!id.success || !body.success) return NextResponse.json({ error: '요청을 확인해 주세요.' }, { status: 400 })
+  const actionContext = await requireConnectionActionContext(
+    request,
+    context.auth,
+    'response',
+    body.data.action === 'accept' ? ['people_search','connection_request'] : [],
+    { requirePublicAccountActive: body.data.action === 'accept' },
+  )
+  if ('response' in actionContext) return actionContext.response
   const result = await respondConnectionRequest({
     userId: context.auth.user.id, requestId: id.data, action: body.data.action, reasonCode: body.data.reason_code,
   })

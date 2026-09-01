@@ -8,7 +8,3 @@ export type OnboardingSource = typeof onboardingSources[number]
 
 export const OnboardingSourceSchema = z.enum(onboardingSources)
 export const OnboardingQuerySchema = z.object({ source: OnboardingSourceSchema.default('unknown') })
-
-export function safeLoginDestination(value: string | null): '/account' | '/onboarding' {
-  return value === '/onboarding' ? '/onboarding' : '/account'
-}

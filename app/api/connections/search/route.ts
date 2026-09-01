@@ -26,7 +26,9 @@ export async function POST(request: NextRequest) {
     exactName: parsed.data.exact_name,
   })
   await waitForMinimumDuration(startedAt)
-  if (!result) return NextResponse.json({ state: 'request_unavailable' }, { status: 503 })
+  if (!result) return NextResponse.json({ state: 'service_unavailable' }, { status: 503 })
   await recordLimitedLaunchEvent('people_search_completed')
-  return NextResponse.json({ state: result.state, ...(result.matchToken ? { matchToken: result.matchToken } : {}) })
+  return result.state === 'match_available' && result.matchToken
+    ? NextResponse.json({ state: 'match_available', matchToken: result.matchToken })
+    : NextResponse.json({ state: 'unavailable' })
 }

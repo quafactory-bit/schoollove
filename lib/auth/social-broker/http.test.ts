@@ -155,9 +155,9 @@ describe('dark OIDC HTTP boundary', () => {
 
   it('PHASE10O_K_PRODUCTION_HTTP_SURFACE_404_OK: keeps every deployed protocol route hard-off', async () => {
     expect(darkOidcRouteNotFound().status).toBe(404)
-    expect(discoveryGet().status).toBe(404)
-    expect(jwksGet().status).toBe(404)
-    expect(authorizeGet().status).toBe(404)
-    expect(tokenPost().status).toBe(404)
+    expect((await discoveryGet(new Request(`${issuer}/.well-known/openid-configuration`))).status).toBe(404)
+    expect((await jwksGet(new Request(`${issuer}/.well-known/jwks.json`))).status).toBe(404)
+    expect((await authorizeGet(new Request(`${issuer}/oauth/authorize`))).status).toBe(404)
+    expect((await tokenPost(new Request(`${issuer}/oauth/token`, { method: 'POST' }))).status).toBe(404)
   })
 })

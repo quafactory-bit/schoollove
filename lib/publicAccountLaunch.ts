@@ -77,15 +77,22 @@ export async function hasPublicAccountFeatureAccess(
   return !error && data === true
 }
 
+export async function hasPublicAccountAccessActive(
+  client: SupabaseClient,
+  userId: string,
+): Promise<boolean> {
+  const { data,error } = await client.rpc('public_account_access_active',{
+    target_user_id:userId,
+  })
+  return !error&&data===true
+}
+
 export async function hasPublicAccountWriteAccess(
   client: SupabaseClient,
   userId: string,
   feature: Exclude<PublicAccountFeature,'account_registration'>,
 ): Promise<boolean> {
-  const {data:active,error:activeError}=await client.rpc('public_account_access_active',{
-    target_user_id:userId,
-  })
-  if(activeError||active!==true)return false
+  if(!await hasPublicAccountAccessActive(client,userId))return false
   if(await hasPublicAccountFeatureAccess(client,feature))return true
   const {data:betaAccess,error:betaError}=await client.rpc('has_beta_feature_access',{
     target_user_id:userId,requested_feature:'private_profile',
@@ -140,6 +147,9 @@ export async function getPublicAccountAdminState() {
 
 const safeMembershipErrors: Record<string,string> = {
   INVALID_SCHOOL_MEMBERSHIP:'학교 이력 입력값을 확인해 주세요.',
+  INVALID_GRADE_CLASS_HISTORY:'학년별 반 입력값을 확인해 주세요.',
+  DUPLICATE_GRADE_CLASS_HISTORY:'같은 학년은 한 번만 입력할 수 있습니다.',
+  GRADE_CLASS_HISTORY_NOT_ALLOWED_FOR_SCHOOL_TYPE:'대학교와 전문대학은 학년별 반을 저장하지 않습니다.',
   SCHOOL_MEMBERSHIP_CLOSED:'학교 이력 저장은 아직 준비 중입니다.',
   PUBLIC_ACCOUNT_SCHOOL_MEMBERSHIP_CLOSED:'학교 이력 저장은 아직 준비 중입니다.',
   PUBLIC_ACCOUNT_SCHOOL_LIMIT_REACHED:'학교 이력은 최대 3개까지 저장할 수 있습니다.',

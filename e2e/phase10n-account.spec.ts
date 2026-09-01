@@ -4,18 +4,11 @@ import {expect,test} from '@playwright/test'
 const supabaseUrl=process.env.PHASE10N_E2E_SUPABASE_URL
 const serviceKey=process.env.PHASE10N_E2E_SERVICE_KEY
 const anonKey=process.env.PHASE10N_E2E_ANON_KEY
-const mailpitUrl=process.env.PHASE10N_E2E_MAILPIT_URL
 const proxyControlToken=process.env.PHASE10N_E2E_PROXY_CONTROL_TOKEN
-test.skip(!supabaseUrl||!serviceKey||!anonKey||!mailpitUrl||!proxyControlToken,'requires disposable local Supabase Auth')
+test.skip(!supabaseUrl||!serviceKey||!anonKey||!proxyControlToken,'requires disposable local Supabase Auth')
 test.describe.configure({mode:'serial'})
 
 function headers(admin=false){const key=admin?serviceKey!:anonKey!;return {'content-type':'application/json',apikey:key,Authorization:`Bearer ${key}`}}
-
-async function createLocalUser(email:string){
-  const response=await fetch(`${supabaseUrl}/auth/v1/admin/users`,{method:'POST',headers:headers(true),body:JSON.stringify({email,email_confirm:true})})
-  expect(response.ok).toBeTruthy()
-  return (await response.json() as {id:string}).id
-}
 
 async function createControlledBetaFixture(userId:string,suffix:string){
   const draftId=crypto.randomUUID(),programId=crypto.randomUUID(),snapshotId=crypto.randomUUID()
@@ -32,23 +25,6 @@ async function createControlledBetaFixture(userId:string,suffix:string){
     'account_registration','private_profile','people_search','connection_request','messaging','instagram_permission','promotion_application','promotion_operations',
   ].map((feature_key)=>({program_id:programId,feature_key,enabled:['account_registration','private_profile'].includes(feature_key),reason_code:'E2E_SNAPSHOT_CONTRACT',updated_by:'test:playwright'})))
   await insert('beta_members',{program_id:programId,user_id:userId,status:'active',reviewed_at:new Date().toISOString(),reviewed_by:'test:playwright',reason_code:'E2E_APPROVED'})
-}
-
-async function hasMessageFor(email:string){
-  const response=await fetch(`${mailpitUrl}/api/v1/messages`)
-  expect(response.ok).toBeTruthy()
-  const body=await response.json() as {messages?:Array<{To?:Array<{Address?:string}>}>}
-  return (body.messages??[]).some((item)=>item.To?.some((to)=>to.Address===email))
-}
-
-async function messageIdsFor(email:string){
-  const response=await fetch(`${mailpitUrl}/api/v1/messages`)
-  expect(response.ok).toBeTruthy()
-  const body=await response.json() as {messages?:Array<{ID?:string;To?:Array<{Address?:string}>}>}
-  return new Set((body.messages??[])
-    .filter((item)=>item.To?.some((to)=>to.Address===email))
-    .map((item)=>item.ID)
-    .filter((id):id is string=>typeof id==='string'))
 }
 
 async function setLaunchState(state:string,reason:string){
@@ -85,50 +61,30 @@ async function aggregateCount(eventKey:string){
   return rows.reduce((sum,row)=>sum+row.event_count,0)
 }
 
-async function readOtp(email:string,excludedIds:Set<string>){
-  for(let attempt=0;attempt<40;attempt++){
-    const response=await fetch(`${mailpitUrl}/api/v1/messages`)
-    if(response.ok){
-      const body=await response.json() as {messages?:Array<{ID?:string;To?:Array<{Address?:string}>}>}
-      const message=(body.messages??[]).find((item)=>item.ID&&!excludedIds.has(item.ID)&&item.To?.some((to)=>to.Address===email))
-      if(message?.ID){
-        const detail=await fetch(`${mailpitUrl}/api/v1/message/${message.ID}`).then((result)=>result.json()) as {Text?:string;HTML?:string;Subject?:string}
-        const token=`${detail.Subject??''}\n${detail.Text??''}\n${detail.HTML??''}`.match(/\b\d{6}\b/)?.[0]
-        if(token)return token
-      }
-    }
-    await new Promise((resolve)=>setTimeout(resolve,250))
-  }
-  throw new Error('local OTP not found')
-}
-
-async function loginWithOtp(page:import('@playwright/test').Page,email:string,verifyWrongOtp=false){
-  await page.goto('/login?next=/account')
-  await page.getByLabel('이메일').fill(email)
-  const priorMessageIds=await messageIdsFor(email)
-  await page.getByRole('button',{name:'인증번호 받기'}).click()
-  await expect(page.getByText('입력한 이메일로 인증번호를 보냈습니다.')).toBeVisible({timeout:30_000})
-  const token=await readOtp(email,priorMessageIds)
-  if(verifyWrongOtp){
-    const wrongToken=`${token.slice(0,5)}${token[5]==='9'?'0':String(Number(token[5])+1)}`
-    await page.getByLabel('인증번호 6자리').fill(wrongToken)
-    const rejected=page.waitForResponse((response)=>response.url().includes('/api/auth/verify-otp')&&response.request().method()==='POST')
-    await page.getByRole('button',{name:'로그인'}).click()
-    expect((await rejected).status()).toBe(401)
-    await expect(page).toHaveURL(/\/login/)
-  }
-  await page.getByLabel('인증번호 6자리').fill(token)
-  await page.getByRole('button',{name:'로그인'}).click()
-  await page.waitForURL('**/account')
+async function loginWithSyntheticGoogle(page:import('@playwright/test').Page,fixtureKey:string){
+  await page.goto('/login')
+  await expect(page.getByRole('link',{name:'Google로 계속하기'})).toHaveCount(1)
+  await expect(page.getByText(/이메일 OTP|인증번호 받기|6자리 인증번호/)).toHaveCount(0)
+  const response=await page.request.post(`${supabaseUrl}/phase10r-google-session`,{
+    headers:{'x-phase10n-control':proxyControlToken!},
+    data:{fixtureKey},
+  })
+  const responseBody=await response.text()
+  expect(response.ok(),responseBody).toBeTruthy()
+  const fixture=JSON.parse(responseBody) as {userId:string;provider:string;identityCount:number}
+  expect(fixture.provider).toBe('custom:schoollove-google')
+  expect(fixture.identityCount).toBe(1)
+  await page.goto('/account')
   await expect(page.getByRole('heading',{name:'내 계정',exact:true})).toBeVisible({timeout:60_000})
+  await expect(page.getByText('Google 계정으로 로그인됨')).toBeVisible()
+  return fixture
 }
 
-test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
-  let suffix='';let email='';let closedEmail=''
+test.describe('PHASE 10R Google-only disposable account flow',()=>{
+  let suffix='';let primaryFixture=''
   test.beforeAll(async({},testInfo)=>{
     suffix=testInfo.project.name.replace(/[^a-z0-9]/gi,'-').toLowerCase()
-    email=`phase10n-${suffix}@example.invalid`
-    closedEmail=`phase10n-closed-${suffix}@example.invalid`
+    primaryFixture=`phase10r-${suffix}`
     await setLaunchState('internal_test','LOCAL_AUTH_TEST_PROJECT_RESET')
   })
 
@@ -149,15 +105,15 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy()
   })
 
-  test('registration closed keeps a generic response and creates no auth user',async({page})=>{
+  test('unauthenticated account redirects and removed Email Auth surfaces stay dark',async({page})=>{
+    await page.goto('/account')
+    await expect(page).toHaveURL(/\/login\?next=/)
     await page.goto('/login')
-    await page.getByLabel('이메일').fill(closedEmail)
-    const requestResponse=page.waitForResponse((response)=>response.url().includes('/api/auth/request-otp')&&response.request().method()==='POST',{timeout:60_000})
-    await page.getByRole('button',{name:'인증번호 받기'}).click()
-    expect((await requestResponse).status()).toBe(200)
-    await expect(page.getByText('입력한 이메일로 인증번호를 보냈습니다.')).toBeVisible({timeout:30_000})
-    await page.waitForTimeout(500)
-    expect(await hasMessageFor(closedEmail)).toBeFalsy()
+    await expect(page.getByRole('link',{name:'Google로 계속하기'})).toHaveCount(1)
+    await expect(page.getByText(/이메일 OTP|인증번호 받기|6자리 인증번호/)).toHaveCount(0)
+    for(const endpoint of ['/api/auth/request-otp','/api/auth/verify-otp']){
+      expect((await page.request.post(endpoint,{data:{}})).status()).toBe(404)
+    }
     await page.context().addCookies([
       {name:'sl_user_access',value:'header.eyJleHAiOjF9.signature',url:process.env.PLAYWRIGHT_BASE_URL!,httpOnly:true,sameSite:'Lax'},
       {name:'sl_user_refresh',value:'invalid-refresh-token',url:process.env.PLAYWRIGHT_BASE_URL!,httpOnly:true,sameSite:'Lax'},
@@ -168,10 +124,10 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     expect(cleared.some((cookie)=>cookie.name==='sl_user_access'||cookie.name==='sl_user_refresh')).toBeFalsy()
   })
 
-  test('real OTP, refresh rotation, adult consent, profile, school, relogin, emergency and deletion lifecycle',async({page})=>{
+  test('genuine Google-bound session, refresh, onboarding, relogin, emergency and deletion lifecycle',async({page})=>{
     test.setTimeout(300_000)
-    const userId=await createLocalUser(email)
-    await loginWithOtp(page,email,true)
+    const firstLogin=await loginWithSyntheticGoogle(page,primaryFixture)
+    const userId=firstLogin.userId
     const accessToken=(await page.context().cookies()).find((cookie)=>cookie.name==='sl_user_access')?.value
     expect(accessToken).toBeTruthy()
     const userHeaders={'content-type':'application/json',apikey:anonKey!,Authorization:`Bearer ${accessToken}`}
@@ -184,7 +140,6 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
       const response=await fetch(`${supabaseUrl}/rest/v1/${path}`,{method,headers:userHeaders,body:JSON.stringify(body)})
       expect([401,403]).toContain(response.status)
     }
-    const otpMilestone=await aggregateCount('otp_verify_succeeded')
     const adultBefore=await aggregateCount('adult_eligibility_completed')
     const consentBefore=await aggregateCount('required_consents_completed')
     const profileBefore=await aggregateCount('private_profile_created')
@@ -227,8 +182,73 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     await page.getByLabel('학교 검색').press('ArrowDown')
     await page.getByLabel('학교 검색').press('Enter')
     await page.getByLabel('졸업연도').fill('2020')
+    await expect(page.getByText('기억나는 학년의 반만 입력해도 됩니다.')).toBeVisible()
+    await page.getByLabel('1학년 반').fill('2')
+    await page.getByLabel('2학년 반').fill('5')
+    await page.getByLabel('3학년 반').fill('2')
     await page.getByRole('button',{name:'학교 이력 추가'}).click()
     await expect(page.getByRole('heading',{name:/내 학교 이력.*1\/3/})).toBeVisible({timeout:20_000})
+    await expect(page.getByText('비공개 계정 준비 완료')).toBeVisible()
+    const mySchools=page.locator('section').filter({has:page.getByRole('heading',{name:'내 학교',exact:true})})
+    await expect(mySchools).toContainText('TEST School 1')
+    await expect(mySchools).toContainText('2020년 졸업')
+    await expect(mySchools).toContainText('1학년 2반 · 2학년 5반 · 3학년 2반')
+    const storedMembershipResponse=await fetch(`${supabaseUrl}/rest/v1/profile_school_memberships?select=id,class_number&owner_user_id=eq.${userId}&limit=1`,{headers:headers(true)})
+    expect(storedMembershipResponse.ok).toBeTruthy()
+    const storedMemberships=await storedMembershipResponse.json() as Array<{id:string;class_number:number|null}>
+    expect(storedMemberships).toHaveLength(1)
+    expect(storedMemberships[0].class_number).toBeNull()
+    const firstMembershipId=storedMemberships[0].id
+    const storedHistoryResponse=await fetch(`${supabaseUrl}/rest/v1/profile_school_class_histories?select=grade_number,class_number&membership_id=eq.${firstMembershipId}&order=grade_number.asc`,{headers:headers(true)})
+    expect(storedHistoryResponse.ok).toBeTruthy()
+    expect(await storedHistoryResponse.json()).toEqual([
+      {grade_number:1,class_number:2},
+      {grade_number:2,class_number:5},
+      {grade_number:3,class_number:2},
+    ])
+    const directHistoryMutation=await fetch(`${supabaseUrl}/rest/v1/profile_school_class_histories`,{method:'POST',headers:{...userHeaders,Prefer:'return=minimal'},body:JSON.stringify({membership_id:firstMembershipId,owner_user_id:userId,grade_number:4,class_number:1})})
+    expect([401,403]).toContain(directHistoryMutation.status)
+    const schoolLink=mySchools.getByRole('link',{name:'학교 페이지 보기'})
+    const schoolHref=await schoolLink.getAttribute('href')
+    expect(schoolHref).toMatch(/^\/school\/[A-Za-z0-9_-]+$/)
+    expect(schoolHref).not.toContain('/2020')
+    expect(schoolHref).not.toContain('/3')
+    await page.evaluate(()=>{
+      Object.defineProperty(navigator,'share',{
+        configurable:true,
+        value:async(payload:ShareData)=>{Reflect.set(window,'__phase10tSharePayload',payload)},
+      })
+    })
+    await mySchools.getByRole('button',{name:'학교 링크 공유'}).click()
+    const sharedPayload=await page.evaluate(()=>Reflect.get(window,'__phase10tSharePayload') as ShareData)
+    expect(sharedPayload).toEqual({
+      title:'스쿨러브아이',
+      text:'스쿨러브아이에서 TEST School 1 학교 정보를 확인해 보세요.',
+      url:`${await page.evaluate(()=>window.location.origin)}${schoolHref}`,
+    })
+    const serializedShare=JSON.stringify(sharedPayload)
+    for(const privateValue of ['2020','1학년 2반','2학년 5반','3학년 2반','test.private',`TEST ${suffix}`,userId])expect(serializedShare).not.toContain(privateValue)
+    for(const privateKey of ['graduationYear','classNumber','instagram','displayName','membershipId','schoolId','userId','authUuid'])expect(serializedShare).not.toContain(privateKey)
+    expect(sharedPayload.url).not.toMatch(/[?#]/)
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy()
+    await page.goto(schoolHref!)
+    await expect(page).toHaveURL(new RegExp(`${schoolHref!}$`))
+    await expect(page.getByRole('heading',{name:'TEST School 1',exact:true})).toBeVisible()
+    await expect(page.getByRole('heading',{name:'개인 명단은 현재 공개하지 않습니다'})).toBeVisible()
+    await expect(page.getByText(`TEST ${suffix}`,{exact:true})).toHaveCount(0)
+    await expect(page.getByText('test.private',{exact:true})).toHaveCount(0)
+    await expect(page.getByText('2020년 졸업',{exact:true})).toHaveCount(0)
+    for(const privateValue of ['1학년 2반','2학년 5반','3학년 2반']){
+      await expect(page.getByText(privateValue,{exact:true})).toHaveCount(0)
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy()
+    await page.goBack()
+    await expect(page).toHaveURL(/\/account$/)
+    const restoredMySchools=page.locator('section').filter({has:page.getByRole('heading',{name:'내 학교',exact:true})})
+    await expect(restoredMySchools).toContainText('TEST School 1')
+    await expect(restoredMySchools).toContainText('2020년 졸업')
+    await expect(restoredMySchools).toContainText('1학년 2반 · 2학년 5반 · 3학년 2반')
+    await expect(restoredMySchools.getByRole('button',{name:'학교 링크 공유'})).toBeVisible()
     expect(await aggregateCount('first_school_membership_created')).toBe(schoolBefore+1)
     expect(await aggregateCount('onboarding_completed')).toBe(onboardingBefore+1)
     const refreshedAccess=(await page.context().cookies()).find((cookie)=>cookie.name==='sl_user_access')?.value
@@ -241,8 +261,9 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     }
 
     await page.getByRole('button',{name:'로그아웃'}).click()
-    await loginWithOtp(page,email)
-    expect(await aggregateCount('otp_verify_succeeded')).toBe(otpMilestone)
+    const secondLogin=await loginWithSyntheticGoogle(page,primaryFixture)
+    expect(secondLogin.userId).toBe(userId)
+    expect(secondLogin.identityCount).toBe(1)
     await page.goto('/onboarding')
     await expect(page.getByText('비공개 계정 시작 준비를 모두 마쳤습니다.')).toBeVisible({timeout:20_000})
     await page.goto('/people/search')
@@ -259,23 +280,53 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     expect(currentMembership.ok).toBeTruthy()
     const membershipRows=await currentMembership.json() as Array<{school_id:string}>
     expect(membershipRows).toHaveLength(1)
-    const duplicateSchool=await page.evaluate((schoolId)=>fetch('/api/account/memberships',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({school_id:schoolId,graduation_year:2020,class_number:null})}).then((response)=>response.status),membershipRows[0].school_id)
+    const duplicateSchool=await page.evaluate((schoolId)=>fetch('/api/account/memberships',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({school_id:schoolId,graduation_year:2020,grade_classes:[]})}).then((response)=>response.status),membershipRows[0].school_id)
     expect(duplicateSchool).toBe(409)
-    const profileDeleted=await page.evaluate(()=>fetch('/api/account/profile',{method:'DELETE'}).then((response)=>response.status))
-    expect(profileDeleted).toBe(200)
-    const profileRestored=await page.evaluate((displayName)=>fetch('/api/account/profile',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({display_name:displayName,instagram_handle:'test.private',introduction:'TEST restored and updated'})}).then((response)=>response.status),`TEST ${suffix}`)
-    expect(profileRestored).toBe(200)
-    expect(await aggregateCount('private_profile_created')).toBe(profileBefore+1)
-    const futureSchool=await page.evaluate(()=>fetch('/api/account/memberships',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({school_id:'a8811f19-e7ae-93a0-1140-ec8ef0e990d8',graduation_year:2200,class_number:null})}).then((response)=>response.status))
-    expect(futureSchool).toBe(400)
     await page.locator('section').filter({hasText:'내 학교 이력'}).getByRole('button',{name:'삭제'}).click()
     await expect(page.getByRole('heading',{name:/내 학교 이력.*0\/3/})).toBeVisible({timeout:20_000})
+    const membershipCascade=await fetch(`${supabaseUrl}/rest/v1/profile_school_class_histories?select=id&membership_id=eq.${firstMembershipId}`,{headers:headers(true)})
+    expect(membershipCascade.ok).toBeTruthy()
+    expect(await membershipCascade.json()).toEqual([])
+    await expect(page.getByRole('heading',{name:'내 학교',exact:true})).toHaveCount(0)
+    await expect(page.getByRole('button',{name:'학교 링크 공유'})).toHaveCount(0)
+    await expect(page.getByText('학교 이력을 한 곳 등록하면 비공개 계정에서 내 학교를 확인할 수 있습니다.')).toBeVisible()
     await page.getByLabel('학교 검색').fill('TEST School 1')
     await expect(page.getByRole('option').first()).toBeVisible()
     await page.getByRole('option').first().click()
     await page.getByLabel('졸업연도').fill('2020')
+    await page.getByLabel('1학년 반').fill('4')
     await page.getByRole('button',{name:'학교 이력 추가'}).click()
     await expect(page.getByRole('heading',{name:/내 학교 이력.*1\/3/})).toBeVisible({timeout:20_000})
+    const profileCascadeMembershipResponse=await fetch(`${supabaseUrl}/rest/v1/profile_school_memberships?select=id&owner_user_id=eq.${userId}&limit=1`,{headers:headers(true)})
+    const profileCascadeMemberships=await profileCascadeMembershipResponse.json() as Array<{id:string}>
+    expect(profileCascadeMemberships).toHaveLength(1)
+    const profileCascadeMembershipId=profileCascadeMemberships[0].id
+    const profileDeleted=await page.evaluate(()=>fetch('/api/account/profile',{method:'DELETE'}).then((response)=>response.status))
+    expect(profileDeleted).toBe(200)
+    const profileCascade=await fetch(`${supabaseUrl}/rest/v1/profile_school_class_histories?select=id&membership_id=eq.${profileCascadeMembershipId}`,{headers:headers(true)})
+    expect(profileCascade.ok).toBeTruthy()
+    expect(await profileCascade.json()).toEqual([])
+    await page.reload()
+    await expect(page.getByRole('heading',{name:'내 학교',exact:true})).toHaveCount(0)
+    await expect(page.getByRole('button',{name:'학교 링크 공유'})).toHaveCount(0)
+    await expect(page.getByText('학교 이력을 한 곳 등록하면 비공개 계정에서 내 학교를 확인할 수 있습니다.')).toBeVisible()
+    const profileRestored=await page.evaluate((displayName)=>fetch('/api/account/profile',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({display_name:displayName,instagram_handle:'test.private',introduction:'TEST restored and updated'})}).then((response)=>response.status),`TEST ${suffix}`)
+    expect(profileRestored).toBe(200)
+    await page.reload()
+    expect(await aggregateCount('private_profile_created')).toBe(profileBefore+1)
+    const futureSchool=await page.evaluate(()=>fetch('/api/account/memberships',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({school_id:'a8811f19-e7ae-93a0-1140-ec8ef0e990d8',graduation_year:2200,grade_classes:[]})}).then((response)=>response.status))
+    expect(futureSchool).toBe(400)
+    await page.getByLabel('학교 검색').fill('TEST School 1')
+    await expect(page.getByRole('option').first()).toBeVisible()
+    await page.getByRole('option').first().click()
+    await page.getByLabel('졸업연도').fill('2020')
+    await page.getByLabel('3학년 반').fill('7')
+    await page.getByRole('button',{name:'학교 이력 추가'}).click()
+    await expect(page.getByRole('heading',{name:/내 학교 이력.*1\/3/})).toBeVisible({timeout:20_000})
+    const accountCascadeMembershipResponse=await fetch(`${supabaseUrl}/rest/v1/profile_school_memberships?select=id&owner_user_id=eq.${userId}&limit=1`,{headers:headers(true)})
+    const accountCascadeMemberships=await accountCascadeMembershipResponse.json() as Array<{id:string}>
+    expect(accountCascadeMemberships).toHaveLength(1)
+    const accountCascadeMembershipId=accountCascadeMemberships[0].id
     expect(await aggregateCount('first_school_membership_created')).toBe(schoolBefore+1)
     expect(await aggregateCount('onboarding_completed')).toBe(onboardingBefore+1)
 
@@ -315,6 +366,9 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     expect(await completed.json()).toEqual([{status:'done',user_id:null}])
     const deletedIdentity=await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`,{headers:headers(true)})
     expect(deletedIdentity.status).toBe(404)
+    const accountCascade=await fetch(`${supabaseUrl}/rest/v1/profile_school_class_histories?select=id&membership_id=eq.${accountCascadeMembershipId}`,{headers:headers(true)})
+    expect(accountCascade.ok).toBeTruthy()
+    expect(await accountCascade.json()).toEqual([])
     await page.reload()
     await expect(page).toHaveURL(/\/login\?next=/)
   })
@@ -326,11 +380,11 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
     await expect(page).toHaveURL(/\/login\?next=/)
     await page.goto('/connections')
     await expect(page).toHaveURL(/\/login\?next=/)
-    const betaEmail=`phase10n-beta-${suffix}@example.invalid`
-    const betaUserId=await createLocalUser(betaEmail)
+    const betaLogin=await loginWithSyntheticGoogle(page,`phase10r-beta-${suffix}`)
+    const betaUserId=betaLogin.userId
     await createControlledBetaFixture(betaUserId,suffix)
     await setLaunchState('closed','PLAYWRIGHT_BETA_UI_CLOSED')
-    await loginWithOtp(page,betaEmail)
+    await page.reload()
     await expect(page.getByRole('button',{name:'만 19세 이상 확인'})).toBeEnabled()
     await expect(page.getByRole('heading',{name:/내 학교 이력.*0\/1/})).toBeVisible()
     await page.goto('/people/search')
@@ -350,7 +404,7 @@ test.describe('PHASE 10N-B hardened real local auth account flow',()=>{
 
   test('public pages expose no account identity and legacy write APIs stay fixed 503',async({page})=>{
     await page.goto('/')
-    await expect(page.getByText(email)).toHaveCount(0)
+    await expect(page.getByText('Google 계정으로 로그인됨')).toHaveCount(0)
     await expect(page.getByText(`TEST ${suffix}`)).toHaveCount(0)
     for(const endpoint of ['/api/profiles','/api/reports','/api/traces']){
       const status=await page.evaluate((url)=>fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then((response)=>response.status),endpoint)

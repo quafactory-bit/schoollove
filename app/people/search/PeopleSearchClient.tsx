@@ -34,15 +34,13 @@ export default function PeopleSearchClient() {
     const result = await response.json() as { state?: string; matchToken?: string }
     setBusy(false)
     const copy: Record<string, string> = {
-      not_found: '일치하는 등록을 확인하지 못했습니다.',
-      already_requested: '이미 안부를 보낸 대상입니다.',
-      already_connected: '이미 연결된 대상입니다.',
-      request_unavailable: '현재 연결 요청을 보낼 수 없습니다.',
+      unavailable: '일치 여부를 확인하지 못했습니다.',
       invalid_search: '학교, 졸업연도와 정확한 이름을 확인해 주세요.',
+      service_unavailable: '검색을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.',
     }
     if (result.state === 'match_available' && result.matchToken) {
       setMatchToken(result.matchToken); setStatus('일치하는 등록자가 있습니다. 개인정보는 안부 수락 전까지 공개되지 않습니다.')
-    } else setStatus(copy[result.state ?? ''] ?? '검색을 완료할 수 없습니다.')
+    } else setStatus(copy[result.state ?? ''] ?? '일치 여부를 확인하지 못했습니다.')
   }
 
   async function sendGreeting() {
@@ -80,7 +78,7 @@ export default function PeopleSearchClient() {
           <div><label htmlFor="person-name" className="text-sm font-semibold text-gray-900">정확한 이름</label><input id="person-name" minLength={2} maxLength={50} required value={exactName} onChange={(event) => { setExactName(event.target.value); setMatchToken('') }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></div>
         </div>
         <p className="text-xs leading-5 text-gray-500">부분 이름, 초성, 한 글자 검색과 전체 명단 조회는 제공하지 않습니다.</p>
-        <button disabled={busy} className="w-full rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">정확히 일치하는지 확인</button>
+        <button disabled={busy} className="schoollove-dark-action w-full rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">정확히 일치하는지 확인</button>
       </form>
 
       {matchToken && <section className="mt-5 space-y-4 rounded-2xl border border-red-200 bg-red-50 p-5">
@@ -91,7 +89,7 @@ export default function PeopleSearchClient() {
         {preview && <div className="rounded-xl border border-gray-200 bg-white p-4"><p className="text-xs font-semibold text-gray-500">전송 전 미리보기 · 전송 후 수정 불가</p><p className="mt-2 whitespace-pre-wrap text-sm text-gray-900">{message}</p></div>}
         <button type="button" disabled={busy || !message.trim()} onClick={sendGreeting} className="w-full rounded-xl bg-red-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{preview ? '이 안부를 한 번 보내기' : '안부 미리보기'}</button>
       </section>}
-      {status && <p role="status" className="mt-5 rounded-xl bg-gray-950 px-4 py-3 text-sm text-white">{status}</p>}
+      {status && <p role="status" className="schoollove-dark-action mt-5 rounded-xl bg-gray-950 px-4 py-3 text-sm text-white">{status}</p>}
     </main>
   )
 }

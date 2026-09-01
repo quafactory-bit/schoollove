@@ -19,6 +19,10 @@ export type SchoolMembership = {
   school_id: string
   graduation_year: number
   class_number: number | null
+  class_history: Array<{
+    grade_number: number
+    class_number: number
+  }>
   school: {
     id: string
     school_name: string
@@ -80,12 +84,16 @@ export async function getAccountState(
   if (profile) {
     const membershipResult = await client
       .from('profile_school_memberships')
-      .select('id, school_id, graduation_year, class_number, school:schools(id, school_name, school_type, sido, sigungu, slug)')
+      .select('id, school_id, graduation_year, class_number, class_history:profile_school_class_histories(grade_number, class_number), school:schools(id, school_name, school_type, sido, sigungu, slug)')
       .eq('owner_user_id', userId)
       .eq('profile_id', profile.id)
       .order('graduation_year', { ascending: false })
     if (membershipResult.error) throw new Error('ACCOUNT_STATE_UNAVAILABLE')
-    memberships = (membershipResult.data ?? []) as unknown as SchoolMembership[]
+    memberships = ((membershipResult.data ?? []) as unknown as SchoolMembership[]).map((membership) => ({
+      ...membership,
+      class_history: [...(membership.class_history ?? [])]
+        .sort((left, right) => left.grade_number - right.grade_number),
+    }))
   }
 
   const consentTypes = Array.from(new Set(

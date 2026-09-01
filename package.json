@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:e2e": "powershell -ExecutionPolicy Bypass -File scripts/phase10f/run-playwright.ps1",
@@ -42,6 +42,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@playwright/test": "^1.62.0",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -128,8 +128,12 @@ export function resumeDurableUpstreamLoginLeg(input: Readonly<{
 
 export function verifyDurableUpstreamNonce(rawNonce: string, storedDigest: Uint8Array): boolean {
   if (storedDigest.byteLength !== 32) return false
-  const candidate = Buffer.from(upstreamNonceDigest(rawNonce))
-  return timingSafeEqual(candidate, Buffer.from(storedDigest))
+  try {
+    const candidate = Buffer.from(upstreamNonceDigest(rawNonce))
+    return timingSafeEqual(candidate, Buffer.from(storedDigest))
+  } catch {
+    return false
+  }
 }
 
 export function prepareDurableUpstreamLoginLeg(input: Readonly<{
