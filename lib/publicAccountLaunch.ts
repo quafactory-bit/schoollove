@@ -9,6 +9,11 @@ export type PublicAccountLaunchState =
   | 'emergency_stopped'
 
 export type PublicAccountFeature = 'account_registration' | 'private_profile' | 'school_membership'
+export type BetaOnboardingCapability =
+  | 'adult_eligibility'
+  | 'required_consents'
+  | 'private_profile'
+  | 'school_membership'
 
 export type PublicAccountLaunch = {
   state: PublicAccountLaunchState
@@ -98,6 +103,20 @@ export async function hasPublicAccountWriteAccess(
     target_user_id:userId,requested_feature:'private_profile',
   })
   return !betaError&&betaAccess===true
+}
+
+export async function hasAccountOnboardingWriteAccess(
+  client: SupabaseClient,
+  userId: string,
+  feature: Exclude<PublicAccountFeature,'account_registration'>,
+  capability: BetaOnboardingCapability,
+): Promise<boolean> {
+  if(await hasPublicAccountWriteAccess(client,userId,feature))return true
+  const {data,error}=await client.rpc('has_beta_onboarding_access',{
+    target_user_id:userId,
+    requested_capability:capability,
+  })
+  return !error&&data===true
 }
 
 export const PUBLIC_ACCOUNT_EVENTS = [

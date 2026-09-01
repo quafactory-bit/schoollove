@@ -19,7 +19,8 @@
     "test:phase10i:db": "powershell -ExecutionPolicy Bypass -File scripts/phase10i/run-isolated-db.ps1",
     "test:phase10i:e2e": "powershell -ExecutionPolicy Bypass -File scripts/phase10i/run-playwright.ps1",
     "test:phase10j:db": "powershell -ExecutionPolicy Bypass -File scripts/phase10j/run-isolated-db.ps1",
-    "test:phase10j:e2e": "powershell -ExecutionPolicy Bypass -File scripts/phase10j/run-playwright.ps1"
+    "test:phase10j:e2e": "powershell -ExecutionPolicy Bypass -File scripts/phase10j/run-playwright.ps1",
+    "test:controlled-beta-onboarding:db": "powershell -ExecutionPolicy Bypass -File scripts/controlled-beta-onboarding/run-isolated-db.ps1"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",

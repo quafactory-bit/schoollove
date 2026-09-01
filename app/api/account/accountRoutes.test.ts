@@ -60,8 +60,12 @@ describe('PHASE 10B account API boundaries', () => {
 
   it('public soft launch와 controlled beta를 분리된 server access 경로로 평가한다',()=>{
     for(const source of [eligibility,consents,profile,memberships]){
-      expect(source).toContain('hasPublicAccountWriteAccess')
+      expect(source).toContain('hasAccountOnboardingWriteAccess')
     }
+    expect(eligibility).toContain("'adult_eligibility'")
+    expect(consents).toContain("'required_consents'")
+    expect(profile).toContain("'private_profile'")
+    expect(memberships).toContain("'school_membership'")
     expect(profile).not.toContain('LIMITED_BETA_ACCESS_REQUIRED')
     expect(memberships).toContain('getSafeMembershipError')
   })

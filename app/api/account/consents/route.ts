@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { ACCOUNT_POLICY_VERSION } from '@/lib/policy/accountPolicy'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
-import { hasPublicAccountWriteAccess } from '@/lib/publicAccountLaunch'
+import { hasAccountOnboardingWriteAccess } from '@/lib/publicAccountLaunch'
 
 const ConsentSchema = z.object({
   terms: z.literal(true),
@@ -15,7 +15,9 @@ const ConsentSchema = z.object({
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
-  const writeAllowed = await hasPublicAccountWriteAccess(auth.client,auth.user.id,'private_profile')
+  const writeAllowed = await hasAccountOnboardingWriteAccess(
+    auth.client,auth.user.id,'private_profile','required_consents',
+  )
   if (!writeAllowed) return NextResponse.json({ error:'계정 설정은 아직 준비 중입니다.' },{status:403})
 
   let body: unknown
