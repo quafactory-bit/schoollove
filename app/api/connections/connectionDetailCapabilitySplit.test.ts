@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   readJson: vi.fn(),
   beta: vi.fn(),
   detail: vi.fn(),
+  instagramState: vi.fn(),
   conversation: vi.fn(),
   sendMessage: vi.fn(),
   markRead: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock('@/lib/api/connectionRoute', () => ({
 vi.mock('@/lib/beta', () => ({ hasBetaFeatureAccess: mocks.beta }))
 vi.mock('@/lib/connections', () => ({
   getConnectionDetail: mocks.detail,
+  getConnectionInstagramState: mocks.instagramState,
   getConversation: mocks.conversation,
   sendConnectionMessage: mocks.sendMessage,
   markConversationRead: mocks.markRead,
@@ -50,6 +52,11 @@ describe('connection detail capability split', () => {
       displayName: '연결된 사용자',
       instagramHandle: null,
       messages: [],
+    })
+    mocks.instagramState.mockResolvedValue({
+      instagramHandle: null,
+      myInstagramConfigured: true,
+      myInstagramVisible: false,
     })
     mocks.sendMessage.mockResolvedValue(connectionId)
     mocks.markRead.mockResolvedValue(true)
@@ -119,7 +126,7 @@ describe('connection detail capability split', () => {
     const response = await handler(request as never, routeContext)
     expect(response?.status).toBe(403)
     expect(mocks.context).toHaveBeenCalledWith(request, 'instagram')
-    expect(mocks.conversation).not.toHaveBeenCalled()
+    expect(mocks.instagramState).not.toHaveBeenCalled()
     expect(mocks.setInstagram).not.toHaveBeenCalled()
   })
 
@@ -134,6 +141,10 @@ describe('connection detail capability split', () => {
   })
 
   it('preserves enabled Instagram read and permission changes', async () => {
+    mocks.instagramState
+      .mockResolvedValueOnce({ instagramHandle: null, myInstagramConfigured: true, myInstagramVisible: false })
+      .mockResolvedValueOnce({ instagramHandle: null, myInstagramConfigured: true, myInstagramVisible: false })
+      .mockResolvedValueOnce({ instagramHandle: null, myInstagramConfigured: true, myInstagramVisible: true })
     const getResponse = await getInstagram(request as never, routeContext)
     expect(getResponse?.status).toBe(200)
 
