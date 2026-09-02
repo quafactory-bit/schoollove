@@ -8,6 +8,8 @@ import {
   BetaFeedbackSchema,
   BetaSetupSchema,
   classifyControlledBetaFeatureSet,
+  connectedInstagramControlledBetaEnabledFeatures,
+  controlledBetaMaxUsers,
   feedbackTextIsSafe,
   firstControlledBetaEnabledFeatures,
   isSyntheticModeAllowed,
@@ -27,19 +29,24 @@ describe('controlled beta operations policy',()=>{
   it('masks every segment below ten',()=>{expect(maskSmallAggregate(9)).toEqual({count:null,masked:true,label:'10명 미만'});expect(maskSmallAggregate(10)).toEqual({count:10,masked:false,label:'10'})})
   it('rejects identifiers and query-bearing paths in feedback',()=>{for(const value of ['name@example.com','@somebody','https://example.com','010-1234-5678'])expect(feedbackTextIsSafe(value)).toBe(false);expect(BetaFeedbackSchema.safeParse({programId:crypto.randomUUID(),kind:'error',description:'버튼을 누르면 화면이 멈춥니다',pagePath:'/account',coarseBrowser:'chrome',coarseDevice:'mobile'}).success).toBe(true);expect(BetaFeedbackSchema.safeParse({programId:crypto.randomUUID(),kind:'error',description:'오류입니다',pagePath:'/search?q=name'}).success).toBe(false)})
 
-  it('classifies only the two exact order-independent controlled-beta contracts',()=>{
+  it('classifies only the three exact order-independent controlled-beta contracts',()=>{
     expect(classifyControlledBetaFeatureSet(firstControlledBetaEnabledFeatures)).toBe('account_private')
     expect(classifyControlledBetaFeatureSet([...peopleDiscoveryControlledBetaEnabledFeatures].reverse())).toBe('people_discovery')
+    expect(classifyControlledBetaFeatureSet(connectedInstagramControlledBetaEnabledFeatures)).toBe('connected_instagram')
+    expect(controlledBetaMaxUsers('connected_instagram')).toBe(3)
     for(const invalid of [
       ['people_search'],['connection_request'],['people_search','messaging'],['people_search','instagram_permission'],
       ['account_registration','people_search'],['private_profile','connection_request'],
       ['people_search','connection_request','messaging'],['people_search','people_search'],
+      ['instagram_permission','people_search'],['instagram_permission','instagram_permission'],
     ] as const) expect(classifyControlledBetaFeatureSet(invalid)).toBeNull()
   })
 
   it('validates either exact contract with the same single-school safety envelope',()=>{
     expect(BetaSetupSchema.safeParse({...baseSetup,enabledFeatures:[...firstControlledBetaEnabledFeatures]}).success).toBe(true)
     expect(BetaSetupSchema.safeParse({...baseSetup,enabledFeatures:[...peopleDiscoveryControlledBetaEnabledFeatures]}).success).toBe(true)
+    expect(BetaSetupSchema.safeParse({...baseSetup,maxUsers:3,enabledFeatures:[...connectedInstagramControlledBetaEnabledFeatures]}).success).toBe(true)
+    expect(BetaSetupSchema.safeParse({...baseSetup,maxUsers:20,enabledFeatures:[...connectedInstagramControlledBetaEnabledFeatures]}).success).toBe(false)
     expect(BetaSetupSchema.safeParse({...baseSetup,targetSchoolId:null,enabledFeatures:[...peopleDiscoveryControlledBetaEnabledFeatures]}).success).toBe(false)
     expect(BetaSetupSchema.safeParse({...baseSetup,enabledFeatures:['account_registration','people_search']}).success).toBe(false)
     expect(BetaSetupSchema.safeParse({...baseSetup,enabledFeatures:['people_search','connection_request'],endsAt:'2026-08-14T00:00:00.000Z'}).success).toBe(false)
@@ -51,6 +58,8 @@ describe('controlled beta operations policy',()=>{
     expect(account).toEqual({contractKind:'account_private',programFlagsComplete:true,globalFeatureStopped:false})
     const people=assessControlledBetaFeatureContract({snapshotFeatures:peopleDiscoveryControlledBetaEnabledFeatures,programFlags:programFlags(peopleDiscoveryControlledBetaEnabledFeatures),globalFlags:[]})
     expect(people).toEqual({contractKind:'people_discovery',programFlagsComplete:true,globalFeatureStopped:false})
+    const instagram=assessControlledBetaFeatureContract({snapshotFeatures:connectedInstagramControlledBetaEnabledFeatures,programFlags:programFlags(connectedInstagramControlledBetaEnabledFeatures),globalFlags:[]})
+    expect(instagram).toEqual({contractKind:'connected_instagram',programFlagsComplete:true,globalFeatureStopped:false})
     expect(assessControlledBetaFeatureContract({snapshotFeatures:peopleDiscoveryControlledBetaEnabledFeatures,programFlags:programFlags(firstControlledBetaEnabledFeatures),globalFlags:[]}).programFlagsComplete).toBe(false)
     expect(assessControlledBetaFeatureContract({snapshotFeatures:peopleDiscoveryControlledBetaEnabledFeatures,programFlags:programFlags(peopleDiscoveryControlledBetaEnabledFeatures),globalFlags:[{feature_key:'people_search',enabled:false}]}).globalFeatureStopped).toBe(true)
   })
@@ -66,6 +75,7 @@ describe('controlled beta operations policy',()=>{
       schoolContractMatches:true,
       invitePolicy:{maxUsesPerInvite:1,expiresInDays:7},
       approvalWaitlistEnabled:true,
+      maxUsers:features.includes('instagram_permission')?3:20,
       startsAt:'2026-08-27T00:00:00.000Z',
       endsAt:'2026-09-10T00:00:00.000Z',
       status:'active',
@@ -75,6 +85,8 @@ describe('controlled beta operations policy',()=>{
     })
     expect(assess(firstControlledBetaEnabledFeatures)).toBe(true)
     expect(assess(peopleDiscoveryControlledBetaEnabledFeatures)).toBe(true)
+    expect(assess(connectedInstagramControlledBetaEnabledFeatures)).toBe(true)
+    expect(assess(connectedInstagramControlledBetaEnabledFeatures,{maxUsers:20})).toBe(false)
     expect(assess(['people_search'])).toBe(false)
     expect(assess(peopleDiscoveryControlledBetaEnabledFeatures,{status:'paused'})).toBe(false)
     expect(assess(peopleDiscoveryControlledBetaEnabledFeatures,{endsAt:'2026-08-28T00:00:00.000Z'})).toBe(false)
@@ -87,6 +99,7 @@ describe('controlled beta operations policy',()=>{
     expect(BetaAdminActionSchema.safeParse({action:'reactivate_program',programId,reason:'OPERATOR_APPROVED_REACTIVATION',resolutionCode:'INCIDENT_RESOLVED'}).success).toBe(true)
     expect(BetaAdminActionSchema.safeParse({action:'configure_features',programId,enabledFeatures:[...firstControlledBetaEnabledFeatures]}).success).toBe(true)
     expect(BetaAdminActionSchema.safeParse({action:'configure_features',programId,enabledFeatures:[...peopleDiscoveryControlledBetaEnabledFeatures]}).success).toBe(true)
+    expect(BetaAdminActionSchema.safeParse({action:'configure_features',programId,enabledFeatures:[...connectedInstagramControlledBetaEnabledFeatures]}).success).toBe(true)
     expect(BetaAdminActionSchema.safeParse({action:'configure_features',programId,enabledFeatures:['account_registration','people_search']}).success).toBe(false)
   })
 
