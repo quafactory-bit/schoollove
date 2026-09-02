@@ -6,7 +6,8 @@ export const betaTaskTypes = ['beta_approval','onboarding_failure','report','blo
 export const requiredBetaStopConditions = ['PRIVACY_EXPOSURE','RLS_FAILURE','HEALTH_FAILURE'] as const
 export const firstControlledBetaEnabledFeatures = ['account_registration','private_profile'] as const
 export const peopleDiscoveryControlledBetaEnabledFeatures = ['people_search','connection_request'] as const
-export type ControlledBetaContractKind = 'account_private'|'people_discovery'
+export const connectedInstagramControlledBetaEnabledFeatures = ['instagram_permission'] as const
+export type ControlledBetaContractKind = 'account_private'|'people_discovery'|'connected_instagram'
 export type BetaFeatureKey = typeof betaFeatureKeys[number]
 
 const exactFeatureSet = (features:readonly BetaFeatureKey[],expected:readonly BetaFeatureKey[]) => {
@@ -17,7 +18,12 @@ const exactFeatureSet = (features:readonly BetaFeatureKey[],expected:readonly Be
 export function classifyControlledBetaFeatureSet(features:readonly BetaFeatureKey[]):ControlledBetaContractKind|null {
   if(exactFeatureSet(features,firstControlledBetaEnabledFeatures)) return 'account_private'
   if(exactFeatureSet(features,peopleDiscoveryControlledBetaEnabledFeatures)) return 'people_discovery'
+  if(exactFeatureSet(features,connectedInstagramControlledBetaEnabledFeatures)) return 'connected_instagram'
   return null
+}
+
+export function controlledBetaMaxUsers(contractKind:ControlledBetaContractKind):number {
+  return contractKind==='connected_instagram'?3:20
 }
 
 export function assessControlledBetaFeatureContract(input:{
@@ -26,7 +32,9 @@ export function assessControlledBetaFeatureContract(input:{
   globalFlags:readonly {feature_key:BetaFeatureKey;enabled:boolean}[]
 }) {
   const contractKind=input.snapshotFeatures?classifyControlledBetaFeatureSet(input.snapshotFeatures):null
-  const expected=contractKind==='account_private'?firstControlledBetaEnabledFeatures:contractKind==='people_discovery'?peopleDiscoveryControlledBetaEnabledFeatures:null
+  const expected=contractKind==='account_private'?firstControlledBetaEnabledFeatures
+    :contractKind==='people_discovery'?peopleDiscoveryControlledBetaEnabledFeatures
+    :contractKind==='connected_instagram'?connectedInstagramControlledBetaEnabledFeatures:null
   const enabled=input.programFlags.filter((flag)=>flag.enabled).map((flag)=>flag.feature_key)
   const programFlagsComplete=expected!==null
     && input.programFlags.length===betaFeatureKeys.length
@@ -45,6 +53,7 @@ export function assessControlledBetaInvitationEligibility(input:{
   schoolContractMatches:boolean
   invitePolicy:{maxUsesPerInvite?:number;expiresInDays?:number}|null|undefined
   approvalWaitlistEnabled:boolean|null|undefined
+  maxUsers:number|null|undefined
   startsAt:string|null
   endsAt:string|null
   status:string
@@ -60,6 +69,7 @@ export function assessControlledBetaInvitationEligibility(input:{
   const endsAt=input.endsAt?new Date(input.endsAt).getTime():NaN
   const now=input.now??Date.now()
   return featureContract.contractKind!==null
+    && input.maxUsers===controlledBetaMaxUsers(featureContract.contractKind)
     && featureContract.programFlagsComplete
     && !featureContract.globalFeatureStopped
     && input.snapshotBacked
@@ -86,6 +96,7 @@ export const controlledBetaSafeErrorCodes = [
   'INVITE_POLICY_NOT_ACTIVE','MEMBER_NOT_PENDING_REVIEW','ADULT_CONSENT_REQUIRED',
   'INVITE_CONTRACT_INVALID','APPROVAL_POLICY_INVALID','SCHOOL_OUTSIDE_BETA_SCOPE',
   'SECOND_SCHOOL_NOT_ALLOWED','ACTIVE_CONTROLLED_BETA_MEMBERSHIP_REQUIRED',
+  'CONNECTED_INSTAGRAM_PREREQUISITES_REQUIRED','CONNECTED_INSTAGRAM_APPROVAL_PREREQUISITES_REQUIRED',
 ] as const
 
 const reasonCode = z.string().regex(/^[A-Z0-9_]{2,60}$/)
@@ -131,7 +142,8 @@ export const BetaSetupSchema = z.object({
   if(!classifyControlledBetaFeatureSet(value.enabledFeatures)) context.addIssue({code:'custom',path:['enabledFeatures'],message:'INVALID_CONTROLLED_BETA_FEATURE_SET'})
   if(value.status==='validated') {
     if(!value.targetSchoolId) context.addIssue({code:'custom',path:['targetSchoolId'],message:'TARGET_SCHOOL_REQUIRED'})
-    if(value.maxUsers!==20) context.addIssue({code:'custom',path:['maxUsers'],message:'FIRST_BETA_MAX_USERS_MUST_BE_20'})
+    const contractKind=classifyControlledBetaFeatureSet(value.enabledFeatures)
+    if(contractKind&&value.maxUsers!==controlledBetaMaxUsers(contractKind)) context.addIssue({code:'custom',path:['maxUsers'],message:contractKind==='connected_instagram'?'CONNECTED_INSTAGRAM_MAX_USERS_MUST_BE_3':'FIRST_BETA_MAX_USERS_MUST_BE_20'})
     if(!value.startsAt || !value.endsAt || new Date(value.endsAt).getTime()-new Date(value.startsAt).getTime()!==14*24*60*60*1000) context.addIssue({code:'custom',path:['endsAt'],message:'FIRST_BETA_DURATION_MUST_BE_14_DAYS'})
     if(value.invitePolicy.maxUsesPerInvite!==1 || value.invitePolicy.expiresInDays!==7) context.addIssue({code:'custom',path:['invitePolicy'],message:'INVALID_FIRST_BETA_INVITE_POLICY'})
     if(!value.approvalWaitlistEnabled) context.addIssue({code:'custom',path:['approvalWaitlistEnabled'],message:'APPROVAL_WAITLIST_REQUIRED'})
@@ -141,7 +153,7 @@ export const BetaSetupSchema = z.object({
 export const BetaAdminActionSchema = z.discriminatedUnion('action',[
   z.object({action:z.literal('save_setup'),setup:BetaSetupSchema}),
   z.object({action:z.literal('activate_setup'),draftId:z.string().uuid()}),
-  z.object({action:z.literal('configure_features'),programId:z.string().uuid(),enabledFeatures:z.array(z.enum(betaFeatureKeys)).length(2).refine((value)=>classifyControlledBetaFeatureSet(value)!==null,'INVALID_CONTROLLED_BETA_FEATURE_SET')}),
+  z.object({action:z.literal('configure_features'),programId:z.string().uuid(),enabledFeatures:z.array(z.enum(betaFeatureKeys)).min(1).max(2).refine((value)=>classifyControlledBetaFeatureSet(value)!==null,'INVALID_CONTROLLED_BETA_FEATURE_SET')}),
   z.object({action:z.literal('start_program'),programId:z.string().uuid(),reason:reasonCode}),
   z.object({action:z.literal('reactivate_program'),programId:z.string().uuid(),reason:reasonCode,resolutionCode:reasonCode}),
   z.object({action:z.literal('review_member'),memberId:z.string().uuid(),status:z.enum(['active','suspended','rejected','withdrawn']),reason:reasonCode}),
