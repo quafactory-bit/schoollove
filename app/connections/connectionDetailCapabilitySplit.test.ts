@@ -22,7 +22,7 @@ describe('connection detail client capability contract', () => {
     expect(service).toContain('export async function getConnectionDetail')
     const detailService = service.slice(
       service.indexOf('export async function getConnectionDetail'),
-      service.indexOf('export async function getConversation'),
+      service.indexOf('type InstagramPermissionRow'),
     )
     expect(detailService).toContain('![row.user_low_id, row.user_high_id].includes(userId)')
     expect(detailService).toContain(".select('display_name')")
@@ -52,8 +52,8 @@ describe('connection detail client capability contract', () => {
   it('uses finite loading and a safe explicit detail error state', () => {
     expect(client).toContain("useState<'loading' | 'loaded' | 'error'>('loading')")
     expect(client).toContain('연결 정보를 불러올 수 없습니다.')
-    expect(client).toContain("catch {\n      setLoadState('error')")
-    expect(client).toContain("catch {\n      setMessagesState('error')")
+    expect(client).toMatch(/catch \{\s+setLoadState\('error'\)/)
+    expect(client).toMatch(/catch \{\s+setMessagesState\('error'\)/)
     expect(client).not.toContain('if (!conversation) return')
   })
 
