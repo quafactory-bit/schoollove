@@ -7,6 +7,11 @@ import { useRouter } from 'next/navigation'
 type ConnectionDetail = { id: string; status: string; displayName: string }
 type Capabilities = { messaging: boolean; instagramPermission: boolean }
 type Message = { id: string; mine: boolean; message: string; sentAt: string; read: boolean }
+type InstagramState = {
+  instagramHandle: string | null
+  myInstagramConfigured: boolean
+  myInstagramVisible: boolean
+}
 
 export default function ConversationClient({ connectionId }: { connectionId: string }) {
   const router = useRouter()
@@ -15,7 +20,8 @@ export default function ConversationClient({ connectionId }: { connectionId: str
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [messagesState, setMessagesState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
-  const [instagramHandle, setInstagramHandle] = useState<string | null>(null)
+  const [instagramState, setInstagramState] = useState<InstagramState | null>(null)
+  const [instagramLoadState, setInstagramLoadState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState('')
 
@@ -37,16 +43,19 @@ export default function ConversationClient({ connectionId }: { connectionId: str
   }, [connectionId])
 
   const loadInstagram = useCallback(async () => {
+    setInstagramLoadState('loading')
+    setInstagramState(null)
     try {
       const response = await fetch(`/api/connections/${connectionId}/instagram`)
       if (!response.ok) {
-        setInstagramHandle(null)
+        setInstagramLoadState('error')
         return
       }
-      const data = await response.json() as { instagramHandle: string | null }
-      setInstagramHandle(data.instagramHandle)
+      const data = await response.json() as InstagramState
+      setInstagramState(data)
+      setInstagramLoadState('loaded')
     } catch {
-      setInstagramHandle(null)
+      setInstagramLoadState('error')
     }
   }, [connectionId])
 
@@ -70,7 +79,10 @@ export default function ConversationClient({ connectionId }: { connectionId: str
         setMessagesState('idle')
       }
       if (data.capabilities.instagramPermission) await loadInstagram()
-      else setInstagramHandle(null)
+      else {
+        setInstagramState(null)
+        setInstagramLoadState('idle')
+      }
     } catch {
       setLoadState('error')
     }
@@ -100,9 +112,23 @@ export default function ConversationClient({ connectionId }: { connectionId: str
     })
     setStatus(response.ok ? '안전 설정을 반영했습니다.' : '요청을 처리할 수 없습니다.')
     if (!response.ok) return
-    if (endpoint.endsWith('/instagram')) await loadInstagram()
-    else if (method === 'DELETE') router.push('/connections')
+    if (method === 'DELETE') router.push('/connections')
     else await loadDetail()
+  }
+
+  async function changeInstagram(method: 'POST' | 'DELETE') {
+    if (!capabilities?.instagramPermission || !instagramState) return
+    if (method === 'POST' && !instagramState.myInstagramConfigured) return
+    const response = await fetch(`/api/connections/${connectionId}/instagram`, { method })
+    if (!response.ok) {
+      const data = await response.json().catch(() => null) as { error?: string } | null
+      setStatus(data?.error === 'INSTAGRAM_HANDLE_REQUIRED'
+        ? '내 계정에 Instagram 아이디를 먼저 등록해 주세요.'
+        : 'Instagram 공개 상태를 바꿀 수 없습니다.')
+      return
+    }
+    setStatus(method === 'POST' ? '이 연결 상대에게 Instagram을 공개했습니다.' : 'Instagram 공개를 취소했습니다.')
+    await loadInstagram()
   }
 
   if (loadState === 'loading') {
@@ -118,13 +144,27 @@ export default function ConversationClient({ connectionId }: { connectionId: str
       <div>
         <h1 className="text-2xl font-bold">{detail.displayName}</h1>
         <p className="mt-1 text-sm text-gray-600">연결 상태 · {detail.status === 'active' ? '연결됨' : '종료됨'}</p>
-        {capabilities.instagramPermission ? <p className="mt-1 text-sm text-gray-600">{instagramHandle ? `Instagram · @${instagramHandle}` : 'Instagram은 상대가 별도로 공개해야 보입니다.'}</p> : null}
+        {capabilities.instagramPermission && instagramState?.instagramHandle ? <p className="mt-1 text-sm text-gray-600">Instagram · @{instagramState.instagramHandle}</p> : null}
       </div>
-      {capabilities.instagramPermission ? <div className="flex gap-2">
-        <button onClick={() => act(`/api/connections/${connectionId}/instagram`, 'POST')} className="rounded-lg border px-3 py-2 text-xs">내 Instagram 공개</button>
-        <button onClick={() => act(`/api/connections/${connectionId}/instagram`, 'DELETE')} className="rounded-lg border px-3 py-2 text-xs">공개 취소</button>
-      </div> : null}
     </div>
+
+    {capabilities.instagramPermission ? <section className="mt-5 rounded-xl border border-gray-200 px-4 py-4">
+      {instagramLoadState === 'loading' ? <p className="text-sm text-gray-600">Instagram 공개 상태를 확인하고 있습니다.</p> : null}
+      {instagramLoadState === 'error' ? <p className="text-sm text-gray-600">Instagram 공개 상태를 불러올 수 없습니다.</p> : null}
+      {instagramLoadState === 'loaded' && instagramState ? <div className="space-y-3">
+        {!instagramState.myInstagramConfigured ? <div>
+          <p className="text-sm text-gray-700">Instagram 아이디를 등록하면 연결된 사람에게 선택적으로 공개할 수 있습니다.</p>
+          <Link href="/account" className="mt-2 inline-block text-sm font-semibold text-gray-900 underline underline-offset-4">내 계정에서 Instagram 등록</Link>
+        </div> : null}
+        {instagramState.myInstagramVisible ? <>
+          <p className="text-sm text-gray-700">이 연결 상대에게 내 Instagram이 공개되어 있습니다.</p>
+          <button type="button" onClick={() => changeInstagram('DELETE')} className="rounded-lg border px-3 py-2 text-xs">Instagram 공개 취소</button>
+        </> : instagramState.myInstagramConfigured ? <>
+          <p className="text-sm text-gray-700">이 연결 상대에게만 공개됩니다.</p>
+          <button type="button" onClick={() => changeInstagram('POST')} className="rounded-lg border px-3 py-2 text-xs">내 Instagram 공개</button>
+        </> : null}
+      </div> : null}
+    </section> : null}
 
     {capabilities.messaging ? <>
       {messagesState === 'loading' ? <p className="mt-6">대화를 불러오는 중입니다.</p> : null}

@@ -80,7 +80,7 @@ describe('PHASE 10V narrow people-discovery hardening contract',()=>{
     expect(respond.slice(respond.indexOf("next_status := CASE response_action"))).not.toContain('has_beta_feature_access')
     const get = instagram.slice(instagram.indexOf('export async function GET'),instagram.indexOf('export async function POST'))
     expect(get).toContain("requireConnectionContext(request, 'instagram')")
-    expect(get.indexOf("requireConnectionContext(request, 'instagram')")).toBeLessThan(get.indexOf('getConversation('))
+    expect(get.indexOf("requireConnectionContext(request, 'instagram')")).toBeLessThan(get.indexOf('getConnectionInstagramState('))
   })
 
   it('retains service-role-only execute authority after replacement',()=>{

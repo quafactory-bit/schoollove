@@ -209,6 +209,74 @@ export async function getConnectionDetail(userId: string, connectionId: string) 
   }
 }
 
+type InstagramPermissionRow = {
+  grantor_user_id: string
+  grantee_user_id: string
+}
+
+export type ConnectionInstagramState = {
+  instagramHandle: string | null
+  myInstagramConfigured: boolean
+  myInstagramVisible: boolean
+}
+
+export async function getConnectionInstagramState(
+  userId: string,
+  connectionId: string,
+): Promise<ConnectionInstagramState | null> {
+  const admin = getSupabaseAdmin()
+  const { data: connection, error } = await admin.from('connections')
+    .select('id,user_low_id,user_high_id,status')
+    .eq('id', connectionId)
+    .maybeSingle()
+  const row = connection as ConnectionRow | null
+  if (error || !row || row.status !== 'active' || ![row.user_low_id, row.user_high_id].includes(userId)) return null
+
+  const otherId = row.user_low_id === userId ? row.user_high_id : row.user_low_id
+  const [ownProfileResult, permissionResult, blockResult] = await Promise.all([
+    admin.from('private_profiles')
+      .select('instagram_handle')
+      .eq('owner_user_id', userId)
+      .maybeSingle(),
+    admin.from('connection_instagram_permissions')
+      .select('grantor_user_id,grantee_user_id')
+      .eq('connection_id', connectionId)
+      .eq('status', 'active'),
+    admin.from('user_blocks')
+      .select('id')
+      .or(`and(blocker_user_id.eq.${userId},blocked_user_id.eq.${otherId}),and(blocker_user_id.eq.${otherId},blocked_user_id.eq.${userId})`)
+      .limit(1),
+  ])
+  if (ownProfileResult.error || permissionResult.error || blockResult.error || (blockResult.data?.length ?? 0) > 0) return null
+
+  const permissions = (permissionResult.data ?? []) as InstagramPermissionRow[]
+  const myInstagramVisible = permissions.some((permission) => (
+    permission.grantor_user_id === userId && permission.grantee_user_id === otherId
+  ))
+  const counterpartGranted = permissions.some((permission) => (
+    permission.grantor_user_id === otherId && permission.grantee_user_id === userId
+  ))
+  const ownHandle = (ownProfileResult.data as { instagram_handle?: string | null } | null)?.instagram_handle
+  let instagramHandle: string | null = null
+
+  // Do not even read the counterpart handle until their directed grant exists.
+  if (counterpartGranted) {
+    const { data: counterpartProfile, error: counterpartProfileError } = await admin.from('private_profiles')
+      .select('instagram_handle')
+      .eq('owner_user_id', otherId)
+      .maybeSingle()
+    if (counterpartProfileError) return null
+    const grantedHandle = (counterpartProfile as { instagram_handle?: string | null } | null)?.instagram_handle
+    instagramHandle = typeof grantedHandle === 'string' && grantedHandle.trim().length > 0 ? grantedHandle : null
+  }
+
+  return {
+    instagramHandle,
+    myInstagramConfigured: typeof ownHandle === 'string' && ownHandle.trim().length > 0,
+    myInstagramVisible,
+  }
+}
+
 export async function getConversation(userId: string, connectionId: string) {
   const admin = getSupabaseAdmin()
   const { data: connection, error } = await admin.from('connections')
