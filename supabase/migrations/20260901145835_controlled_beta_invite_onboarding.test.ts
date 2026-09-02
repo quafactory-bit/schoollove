@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe,expect,it } from 'vitest'
 
-const sql=readFileSync(join(process.cwd(),'supabase/migrations/20260901145835_controlled_beta_invite_onboarding.sql'),'utf8')
+const sql=readFileSync(join(process.cwd(),'supabase/migrations/20260901145835_controlled_beta_invite_onboarding.sql'),'utf8').replace(/\r\n/g,'\n')
 const fn=(name:string)=>{
   const match=sql.match(new RegExp(`CREATE(?: OR REPLACE)? FUNCTION public\\.${name}\\([\\s\\S]*?\\n\\$\\$;`))
   if(!match)throw new Error(`missing ${name}`)

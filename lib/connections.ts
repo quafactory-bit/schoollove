@@ -189,6 +189,26 @@ export async function getConnections(userId: string) {
   })
 }
 
+export async function getConnectionDetail(userId: string, connectionId: string) {
+  const admin = getSupabaseAdmin()
+  const { data: connection, error } = await admin.from('connections')
+    .select('id,user_low_id,user_high_id,status,connected_at')
+    .eq('id', connectionId).maybeSingle()
+  const row = connection as ConnectionRow | null
+  if (error || !row || ![row.user_low_id, row.user_high_id].includes(userId)) return null
+  const otherId = row.user_low_id === userId ? row.user_high_id : row.user_low_id
+  const { data: profile, error: profileError } = await admin.from('private_profiles')
+    .select('display_name')
+    .eq('owner_user_id', otherId)
+    .maybeSingle()
+  if (profileError) return null
+  return {
+    id: row.id,
+    status: row.status,
+    displayName: typeof profile?.display_name === 'string' ? profile.display_name : '연결된 사용자',
+  }
+}
+
 export async function getConversation(userId: string, connectionId: string) {
   const admin = getSupabaseAdmin()
   const { data: connection, error } = await admin.from('connections')
