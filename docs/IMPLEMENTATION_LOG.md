@@ -1,5 +1,13 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-02 Connected Instagram add-on beta contract (local / Draft)
+
+- Preserved the exact two-feature People Discovery contract and added the separate exact `CONNECTED_INSTAGRAM_BETA` contract with only `instagram_permission`. The admin console now exposes exactly three canonical presets and renders the add-on as ON 1 / OFF 7 with a fixed 3-user cap.
+- Added forward-only migration `20260902060904_connected_instagram_beta_contract.sql`. It replaces only existing controlled-beta contract functions and adds private helper functions; it adds no table or column and does not alter any historical migration. Redeem and approval independently revalidate adult eligibility, four consents, active private profile, target-school membership, active People Discovery membership, and an active connection.
+- Kept the existing invite → pending review → administrator approval lifecycle, prevented provisional onboarding claims for the add-on, verified simultaneous People Discovery and Connected Instagram memberships, and kept messaging disabled and feature access separated.
+- Final local evidence: targeted Vitest 3 files / 27 tests, full Vitest 181 passed files / 3 skipped files with 1,496 passed / 4 skipped, TypeScript PASS, ESLint 0 errors with 86 existing warnings, and a 60-page production build PASS. Disposable PostgreSQL verified the fresh 40-migration chain and 39→40 upgrade, the 20/20 contract matrix, fixed-search-path privilege boundaries, and unchanged pre-existing table/column/data fingerprints; the container was removed.
+- Preview database migration/application, Preview program/invite/member/feature mutation, actual Instagram permission, Production database/environment/deployment, and Production user data changes remain zero.
+
 ## 2026-08-27 PHASE 10AA grade/class history foundation (local / Draft)
 
 - Added forward-only migration `20260827104800_grade_class_history_foundation.sql`. It creates one seven-column owner-private child table beneath `profile_school_memberships`, guarantees parent/child owner equality with a composite foreign key, enforces one row per grade and class 1–100, and leaves all legacy parent `class_number` values unmodified while requiring new values to be NULL.

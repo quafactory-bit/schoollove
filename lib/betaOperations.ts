@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import type { z } from 'zod'
 import type { BetaAdminActionSchema } from '@/lib/policy/betaOperations'
-import { assessControlledBetaFeatureContract, controlledBetaSafeErrorCodes, maskSmallAggregate } from '@/lib/policy/betaOperations'
+import { assessControlledBetaFeatureContract, controlledBetaMaxUsers, controlledBetaSafeErrorCodes, maskSmallAggregate } from '@/lib/policy/betaOperations'
 import type { BetaFeatureKey } from '@/lib/policy/betaOperations'
 import { csvSafe } from '@/lib/policy/operations'
 
@@ -64,7 +64,7 @@ export async function getControlledBetaState(schoolQuery='') {
     const exactFeatures=contractKind!==null
     const exactWindow=Number.isFinite(startsAt)&&Number.isFinite(endsAt)&&endsAt-startsAt===14*24*60*60*1000&&Date.now()>=startsAt&&Date.now()<endsAt
     const stopConditions=snapshot?.stop_conditions??{}
-    const contractComplete=snapshot?.max_users===20&&exactFeatures&&exactWindow&&snapshot?.approval_waitlist_enabled===true&&snapshot?.invite_policy?.maxUsesPerInvite===1&&snapshot?.invite_policy?.expiresInDays===7&&['PRIVACY_EXPOSURE','RLS_FAILURE','HEALTH_FAILURE'].every((condition)=>stopConditions[condition]===true)
+    const contractComplete=contractKind!==null&&snapshot?.max_users===controlledBetaMaxUsers(contractKind)&&exactFeatures&&exactWindow&&snapshot?.approval_waitlist_enabled===true&&snapshot?.invite_policy?.maxUsesPerInvite===1&&snapshot?.invite_policy?.expiresInDays===7&&['PRIVACY_EXPOSURE','RLS_FAILURE','HEALTH_FAILURE'].every((condition)=>stopConditions[condition]===true)
     if(!snapshot)blockers.push('PROGRAM_SETUP_SNAPSHOT_REQUIRED')
     else if(!contractComplete)blockers.push('PROGRAM_SETUP_CONTRACT_INVALID')
     if(allowed.length!==1||!snapshot||allowed[0]?.school_id!==snapshot.target_school_id)blockers.push('PROGRAM_SCHOOL_CONTRACT_INVALID')

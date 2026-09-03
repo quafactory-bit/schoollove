@@ -55,6 +55,7 @@ export async function getBetaAdminState() {
       schoolContractMatches:Boolean(snapshot)&&snapshot?.target_school_id===allowed[0]?.school_id,
       invitePolicy:snapshot?.invite_policy,
       approvalWaitlistEnabled:snapshot?.approval_waitlist_enabled,
+      maxUsers:snapshot?.max_users,
       startsAt:program.starts_at,
       endsAt:program.ends_at,
       status:program.status,

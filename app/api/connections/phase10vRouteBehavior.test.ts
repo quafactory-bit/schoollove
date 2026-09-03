@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   createRequest: vi.fn(),
   respondRequest: vi.fn(),
   remindRequest: vi.fn(),
-  getConversation: vi.fn(),
+  getInstagramState: vi.fn(),
   setInstagramPermission: vi.fn(),
   cancelRequest: vi.fn(),
   record: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock('@/lib/connections', () => ({
   createConnectionRequest: mocks.createRequest,
   respondConnectionRequest: mocks.respondRequest,
   remindConnectionRequest: mocks.remindRequest,
-  getConversation: mocks.getConversation,
+  getConnectionInstagramState: mocks.getInstagramState,
   setInstagramPermission: mocks.setInstagramPermission,
   cancelConnectionRequest: mocks.cancelRequest,
 }))
@@ -50,7 +50,11 @@ describe('PHASE 10V connection route action boundaries', () => {
     mocks.createRequest.mockResolvedValue({ created: true, requestId: objectId, state: 'pending' })
     mocks.respondRequest.mockResolvedValue({ handled: true, state: 'declined', connectionId: null })
     mocks.remindRequest.mockResolvedValue(true)
-    mocks.getConversation.mockResolvedValue({ instagramHandle: null })
+    mocks.getInstagramState.mockResolvedValue({
+      instagramHandle: null,
+      myInstagramConfigured: true,
+      myInstagramVisible: false,
+    })
   })
 
   it('keeps an authenticated existing-request safety read available without discovery feature gates', async () => {
@@ -113,6 +117,6 @@ describe('PHASE 10V connection route action boundaries', () => {
     const response = await getInstagram(request as never, routeContext)
     expect(response?.status).toBe(403)
     expect(mocks.context).toHaveBeenCalledWith(request, 'instagram')
-    expect(mocks.getConversation).not.toHaveBeenCalled()
+    expect(mocks.getInstagramState).not.toHaveBeenCalled()
   })
 })
