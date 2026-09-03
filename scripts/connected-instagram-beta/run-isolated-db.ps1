@@ -3,7 +3,8 @@ $container='schoollove-connected-instagram-beta-db'
 $fresh='connected_instagram_fresh'
 $upgrade='connected_instagram_upgrade'
 $image='public.ecr.aws/supabase/postgres:17.6.1.143'
-$migration=(Resolve-Path 'supabase/migrations/20260902060904_connected_instagram_beta_contract.sql').Path
+$contractMigration=(Resolve-Path 'supabase/migrations/20260902060904_connected_instagram_beta_contract.sql').Path
+$handleMigration=(Resolve-Path 'supabase/migrations/20260903023006_connected_instagram_owner_handle_update.sql').Path
 $created=$false
 $temp=Join-Path ([IO.Path]::GetTempPath()) ('schoollove-connected-instagram-'+[guid]::NewGuid().ToString('N'))
 
@@ -57,14 +58,15 @@ AS 'SELECT NULLIF(current_setting(''request.jwt.claim.role'',true),'''')';
   Invoke-SqlFile $database (Resolve-Path 'supabase/migrations/20260802120000_legacy_person_data_reset.sql').Path
   Invoke-SqlFile $database (Resolve-Path 'supabase/migrations/20260803120000_public_account_soft_launch.sql').Path
 }
-function Apply-PostReset([string]$database,[bool]$includeContract){
+function Apply-PostReset([string]$database,[string[]]$excludedMigrations=@()){
   Get-ChildItem -LiteralPath 'supabase/migrations' -Filter '*.sql'|Sort-Object Name|
-    Where-Object{$_.Name-gt'20260803120000_public_account_soft_launch.sql'-and($includeContract-or$_.FullName-ne$migration)}|
+    Where-Object{$_.Name-gt'20260803120000_public_account_soft_launch.sql'-and$_.FullName-notin$excludedMigrations}|
     ForEach-Object{Invoke-SqlFile $database $_.FullName}
 }
 function Invoke-Lifecycle([string]$database){
   Invoke-SqlFile $database (Resolve-Path 'scripts/controlled-beta-onboarding/lifecycle-smoke.sql').Path
   Invoke-SqlFile $database (Resolve-Path 'scripts/connected-instagram-beta/lifecycle-smoke.sql').Path
+  Invoke-SqlFile $database (Resolve-Path 'scripts/connected-instagram-beta/handle-smoke.sql').Path
   Invoke-SqlFile $database (Resolve-Path 'scripts/connected-instagram-beta/permission-smoke.sql').Path
 }
 
@@ -83,22 +85,23 @@ try{
   if(-not$ready){throw 'PostgreSQL healthcheck did not become ready.'}
 
   $migrationCount=(Get-ChildItem -LiteralPath 'supabase/migrations' -Filter '*.sql').Count
-  if($migrationCount-ne 40){throw "Unexpected migration inventory: $migrationCount"}
+  if($migrationCount-ne 41){throw "Unexpected migration inventory: $migrationCount"}
 
   Initialize-Base $fresh
-  Apply-PostReset $fresh $true
+  Apply-PostReset $fresh
   Invoke-Lifecycle $fresh
-  Write-Output 'CONNECTED_INSTAGRAM_FRESH_CHAIN_OK migrations=40 lifecycle=20/20 permissions=pass'
+  Write-Output 'CONNECTED_INSTAGRAM_FRESH_CHAIN_OK migrations=41 lifecycle=20/20 handle=pass permissions=pass'
 
   Initialize-Base $upgrade
-  Apply-PostReset $upgrade $false
+  Apply-PostReset $upgrade @($contractMigration,$handleMigration)
   $before=Scalar $upgrade "SELECT concat_ws('|',(SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r'),(SELECT count(*) FROM information_schema.columns WHERE table_schema='public'),(SELECT count(*) FROM public.beta_programs),(SELECT count(*) FROM public.beta_program_setup_snapshots),(SELECT count(*) FROM public.beta_members),(SELECT count(*) FROM public.beta_invites))"
-  Invoke-SqlFile $upgrade $migration
+  Invoke-SqlFile $upgrade $contractMigration
+  Invoke-SqlFile $upgrade $handleMigration
   $after=Scalar $upgrade "SELECT concat_ws('|',(SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r'),(SELECT count(*) FROM information_schema.columns WHERE table_schema='public'),(SELECT count(*) FROM public.beta_programs),(SELECT count(*) FROM public.beta_program_setup_snapshots),(SELECT count(*) FROM public.beta_members),(SELECT count(*) FROM public.beta_invites))"
   if($before-ne$after){throw "Upgrade table/column/data delta detected: before=$before after=$after"}
   Invoke-Lifecycle $upgrade
-  Write-Output "CONNECTED_INSTAGRAM_UPGRADE_CHAIN_OK migrations=39_to_40 preexisting_data=$after lifecycle=20/20 permissions=pass"
-  Write-Output 'CONNECTED_INSTAGRAM_BETA_ISOLATED_DB_OK fresh=PASS upgrade=PASS matrix=20/20 permissions=PASS rollback=container_removed'
+  Write-Output "CONNECTED_INSTAGRAM_UPGRADE_CHAIN_OK migrations=39_to_41 preexisting_data=$after lifecycle=20/20 handle=pass permissions=pass"
+  Write-Output 'CONNECTED_INSTAGRAM_BETA_ISOLATED_DB_OK fresh=PASS upgrade=PASS matrix=20/20 handle=PASS permissions=PASS rollback=container_removed'
 }
 finally{
   if($created){$old=$ErrorActionPreference;$ErrorActionPreference='SilentlyContinue';docker rm -f $container 2>$null|Out-Null;$ErrorActionPreference=$old}

@@ -30,6 +30,11 @@ BEGIN
     OR NOT has_function_privilege('authenticated','public.has_beta_feature_access(uuid,text)','EXECUTE')
     OR NOT has_function_privilege('service_role','public.has_beta_feature_access(uuid,text)','EXECUTE')
   THEN RAISE EXCEPTION 'CONNECTED_INSTAGRAM_ACCESS_PRIVILEGE_FAILED'; END IF;
+  IF has_function_privilege('public','public.update_own_connected_instagram_handle(text)','EXECUTE')
+    OR has_function_privilege('anon','public.update_own_connected_instagram_handle(text)','EXECUTE')
+    OR NOT has_function_privilege('authenticated','public.update_own_connected_instagram_handle(text)','EXECUTE')
+    OR NOT has_function_privilege('service_role','public.update_own_connected_instagram_handle(text)','EXECUTE')
+  THEN RAISE EXCEPTION 'CONNECTED_INSTAGRAM_HANDLE_PRIVILEGE_FAILED'; END IF;
   SELECT count(*) INTO secure_count
   FROM pg_proc procedure
   JOIN pg_namespace namespace ON namespace.oid=procedure.pronamespace
@@ -45,11 +50,12 @@ BEGIN
     ('public','admin_issue_beta_invite'),
     ('public','redeem_beta_invite'),
     ('public','admin_review_beta_member'),
-    ('public','has_beta_feature_access')
+    ('public','has_beta_feature_access'),
+    ('public','update_own_connected_instagram_handle')
   )
     AND procedure.prosecdef
     AND procedure.proconfig @> ARRAY['search_path=""'];
-  IF secure_count<>10 THEN RAISE EXCEPTION 'CONNECTED_INSTAGRAM_SECURITY_CONFIG_FAILED:%',secure_count; END IF;
+  IF secure_count<>11 THEN RAISE EXCEPTION 'CONNECTED_INSTAGRAM_SECURITY_CONFIG_FAILED:%',secure_count; END IF;
   SELECT count(*) INTO invoker_helper_count
   FROM pg_proc procedure
   JOIN pg_namespace namespace ON namespace.oid=procedure.pronamespace
