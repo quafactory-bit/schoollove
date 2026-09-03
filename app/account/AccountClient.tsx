@@ -11,13 +11,13 @@ import { buildGradeClassPayload, formatGradeClassHistory, gradeNumbersForSchoolT
 import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
 import type { BetaOnboardingState } from '@/lib/betaOnboarding'
 
-type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number}
+type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number}
 
 async function readResult(response:Response):Promise<{error?:string}>{
   try{return await response.json() as {error?:string}}catch{return {}}
 }
 
-export default function AccountClient({state,launch,controlledBetaAccess,betaOnboardingState,currentYear}:Props){
+export default function AccountClient({state,launch,controlledBetaAccess,instagramBetaAccess,betaOnboardingState,currentYear}:Props){
   const router=useRouter()
   const [status,setStatus]=useState('')
   const [isError,setIsError]=useState(false)
@@ -42,7 +42,9 @@ export default function AccountClient({state,launch,controlledBetaAccess,betaOnb
   const inviteOnboardingAccess=betaOnboardingState==='claimed'
   const privateProfileWritable=(launch.privateProfileEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped&&!deletionBlocked
   const schoolMembershipWritable=(launch.schoolMembershipEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped&&!deletionBlocked
-  const accountWritable=privateProfileWritable||schoolMembershipWritable
+  const instagramHandleSetWritable=Boolean(state.profile)&&instagramBetaAccess&&!deletionBlocked
+  const instagramHandleClearWritable=Boolean(state.profile?.instagram_handle)&&!deletionBlocked
+  const accountWritable=privateProfileWritable||schoolMembershipWritable||instagramHandleSetWritable||instagramHandleClearWritable
   const membershipLimit=controlledBetaAccess||inviteOnboardingAccess?1:3
   const onboardingCompleted=1+Number(state.adultEligible)+Number(state.consentsComplete)+Number(Boolean(state.profile))+Number(state.memberships.length>0)
   const onboardingComplete=state.adultEligible&&state.consentsComplete&&Boolean(state.profile)&&state.memberships.length>0
@@ -168,11 +170,12 @@ export default function AccountClient({state,launch,controlledBetaAccess,betaOnb
     <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">3. 내 비공개 프로필</h2>
       <p className="mt-2 text-sm leading-6 text-gray-600">이름·Instagram·소개는 본인만 조회할 수 있습니다. Instagram은 사람 검색이나 공개 화면에 표시되지 않습니다. 안전한 업로드 경로가 준비되기 전까지 프로필 사진은 받지 않습니다.</p>
       <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();await submit('/api/account/profile',{display_name:displayName,instagram_handle:instagram||null,introduction:introduction||null})}}>
-        <label htmlFor="display-name" className="block text-sm font-medium text-gray-800">내 이름</label><input id="display-name" required maxLength={50} value={displayName} onChange={(event)=>setDisplayName(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/>
-        <label htmlFor="instagram" className="block text-sm font-medium text-gray-800">Instagram 아이디 (선택·비공개)</label><input id="instagram" maxLength={30} pattern="[A-Za-z0-9._]{1,30}" value={instagram} onChange={(event)=>setInstagram(event.target.value.replace(/^@/,''))} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/>
-        <label htmlFor="introduction" className="block text-sm font-medium text-gray-800">소개 (선택·비공개)</label><textarea id="introduction" maxLength={300} value={introduction} onChange={(event)=>setIntroduction(event.target.value)} className="schoollove-focus min-h-24 w-full rounded-xl border border-gray-300 px-4 py-3"/>
+        <label htmlFor="display-name" className="block text-sm font-medium text-gray-800">내 이름</label><input id="display-name" required maxLength={50} disabled={!privateProfileWritable} value={displayName} onChange={(event)=>setDisplayName(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
+        <label htmlFor="instagram" className="block text-sm font-medium text-gray-800">Instagram 아이디 (선택·비공개)</label><input id="instagram" maxLength={30} pattern="[A-Za-z0-9._]{1,30}" disabled={!privateProfileWritable&&!instagramHandleSetWritable} value={instagram} onChange={(event)=>setInstagram(event.target.value.replace(/^@/,''))} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
+        <label htmlFor="introduction" className="block text-sm font-medium text-gray-800">소개 (선택·비공개)</label><textarea id="introduction" maxLength={300} disabled={!privateProfileWritable} value={introduction} onChange={(event)=>setIntroduction(event.target.value)} className="schoollove-focus min-h-24 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
         <button disabled={busy||!privateProfileWritable||!state.adultEligible||!state.consentsComplete} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{state.profile?'내 프로필 수정 저장':'내 프로필 저장'}</button>
       </form>
+      {state.profile&&(instagramHandleSetWritable||instagramHandleClearWritable)?<div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"><p className="text-xs leading-5 text-gray-600">이 동작은 Instagram 아이디만 저장하거나 삭제하며 이름·소개·학교 이력은 변경하지 않습니다.</p>{instagramHandleSetWritable?<button type="button" disabled={busy} onClick={()=>void submit('/api/account/instagram',{instagram_handle:instagram||null},'PATCH',instagram?'Instagram 아이디를 저장했습니다.':'Instagram 아이디를 삭제했습니다.')} className="schoollove-focus mt-2 min-h-11 rounded-lg border border-gray-900 px-3 py-2 text-sm font-semibold text-gray-900 disabled:opacity-40">{instagram?'Instagram 값만 저장':'Instagram 값 삭제'}</button>:<button type="button" disabled={busy} onClick={()=>void submit('/api/account/instagram',{instagram_handle:null},'PATCH','Instagram 아이디를 삭제했습니다.')} className="schoollove-focus mt-2 min-h-11 text-sm font-medium text-red-700 disabled:opacity-40">Instagram 값 삭제</button>}</div>:null}
       {state.profile?<><p className="mt-4 text-xs leading-5 text-gray-500">프로필을 삭제하면 연결된 학교 이력도 함께 삭제됩니다.</p><button type="button" disabled={busy} onClick={async()=>{if(window.confirm('내 비공개 프로필과 연결된 학교 이력을 모두 삭제할까요?'))await submit('/api/account/profile',{},'DELETE','내 프로필과 학교 이력을 삭제했습니다.')}} className="schoollove-focus mt-2 min-h-11 text-sm font-medium text-red-700">내 프로필 삭제</button></>:null}
     </section>
 
