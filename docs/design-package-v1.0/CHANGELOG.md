@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-09-03
+
+- Connected Instagram add-on 회원이 public account launch를 열지 않고 기존 비공개 profile의 Instagram handle만 owner-safe 경로로 설정·삭제할 수 있도록 계약을 추가했다. 이름·소개·사진·학교·학년/반은 변경하지 않으며, non-null 저장은 active add-on 권한을 요구하고 null 삭제는 개인정보 제거권으로 유지한다.
+
 ## 2026-07-29
 
 - 승인된 PHASE 10F 결정으로 개인 기능을 제한 베타 회원에게만 여는 초대·검수·기능 flag·비상 차단 계약을 추가했다.

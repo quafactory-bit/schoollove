@@ -49,10 +49,19 @@ describe('/account private management UI', () => {
 
   it('public, active beta, exact invite onboarding 중 하나가 허용한 기능만 저장 가능하다',()=>{
     expect(page).toContain("hasBetaFeatureAccess(auth.client,auth.user.id,'private_profile')")
+    expect(page).toContain("hasBetaFeatureAccess(auth.client,auth.user.id,'instagram_permission')")
     expect(page).toContain('getBetaOnboardingState(auth.user.id)')
     expect(client).toContain('(launch.privateProfileEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped')
     expect(client).toContain('(launch.schoolMembershipEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped')
     expect(client).toContain('controlledBetaAccess||inviteOnboardingAccess?1:3')
+  })
+
+  it('Connected Instagram add-on은 기존 profile의 handle만 별도 저장·삭제한다',()=>{
+    expect(client).toContain('instagramHandleSetWritable=Boolean(state.profile)&&instagramBetaAccess&&!deletionBlocked')
+    expect(client).toContain('instagramHandleClearWritable=Boolean(state.profile?.instagram_handle)&&!deletionBlocked')
+    expect(client).toContain("submit('/api/account/instagram',{instagram_handle:instagram||null},'PATCH'")
+    expect(client).toContain("submit('/api/account/instagram',{instagram_handle:null},'PATCH'")
+    expect(client).toContain('이 동작은 Instagram 아이디만 저장하거나 삭제하며 이름·소개·학교 이력은 변경하지 않습니다.')
   })
 
   it('선택한 K12 학교에만 학년별 반 입력을 제공하고 학교 수와 분리한다',()=>{
