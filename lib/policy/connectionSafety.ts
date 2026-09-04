@@ -53,6 +53,26 @@ export const ExactPersonSearchSchema = z.object({
   ),
 }).strict()
 
+export const SameClassSearchSchema = z.object({
+  school_id: z.string().uuid(),
+  graduation_year: z.number().int().min(1900).max(2200),
+  exact_name: z.string().transform((value) => value.normalize('NFKC').trim()).pipe(
+    z.string().min(2).max(50).refine((value) => !/^[\u1100-\u11FF\u3130-\u318F\s]+$/u.test(value), {
+      message: '초성 검색은 지원하지 않습니다.',
+    })
+  ),
+  search_mode: z.literal('same_class'),
+  grade_number: z.number().int().min(1).max(6),
+  class_number: z.number().int().min(1).max(100),
+}).strict()
+
+// The legacy exact-person payload remains its own strict shape. Grade/class values
+// are accepted only when an explicit same_class mode accompanies both values.
+export const PersonDiscoverySearchSchema = z.union([
+  ExactPersonSearchSchema,
+  SameClassSearchSchema,
+])
+
 export const ConnectionRequestSchema = z.object({
   match_token: z.string().uuid(),
   relationship_type: z.enum(CONNECTION_RELATIONSHIPS),

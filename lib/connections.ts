@@ -30,6 +30,31 @@ export async function findExactConnectionMatch(input: {
   }
 }
 
+export async function findExactClassConnectionMatch(input: {
+  userId: string
+  schoolId: string
+  graduationYear: number
+  gradeNumber: number
+  classNumber: number
+  exactName: string
+}) {
+  const { data, error } = await getSupabaseAdmin().rpc('find_exact_private_profile_class_match', {
+    actor_user_id: input.userId,
+    target_school_id: input.schoolId,
+    target_graduation_year: input.graduationYear,
+    target_grade_number: input.gradeNumber,
+    target_class_number: input.classNumber,
+    exact_display_name: input.exactName,
+  })
+  if (error) return null
+  const row = firstRpcRow(data)
+  if (!row || typeof row.match_state !== 'string') return null
+  return {
+    state: row.match_state,
+    matchToken: typeof row.match_token === 'string' ? row.match_token : null,
+  }
+}
+
 export async function createConnectionRequest(input: {
   userId: string
   matchToken: string

@@ -3,6 +3,7 @@ import {
   ConnectionMessageSchema,
   ConnectionRequestSchema,
   ExactPersonSearchSchema,
+  PersonDiscoverySearchSchema,
   containsExternalContact,
   maskDisplayName,
 } from './connectionSafety'
@@ -14,6 +15,17 @@ describe('PHASE 10C connection safety policy', () => {
     expect(ExactPersonSearchSchema.safeParse({ ...base, exact_name: '김' }).success).toBe(false)
     expect(ExactPersonSearchSchema.safeParse({ ...base, exact_name: 'ㄱㅎㄴ' }).success).toBe(false)
     expect(ExactPersonSearchSchema.safeParse({ ...base, exact_name: '김하늘', page: 2 }).success).toBe(false)
+  })
+
+  it('same_class는 명시된 mode와 학년·반 모두가 있을 때만 허용한다', () => {
+    const base = { school_id: '11111111-1111-4111-8111-111111111111', graduation_year: 2005, exact_name: '김하늘' }
+    expect(PersonDiscoverySearchSchema.safeParse(base).success).toBe(true)
+    expect(PersonDiscoverySearchSchema.safeParse({ ...base, search_mode: 'same_class', grade_number: 3, class_number: 2 }).success).toBe(true)
+    expect(PersonDiscoverySearchSchema.safeParse({ ...base, grade_number: 3 }).success).toBe(false)
+    expect(PersonDiscoverySearchSchema.safeParse({ ...base, class_number: 2 }).success).toBe(false)
+    expect(PersonDiscoverySearchSchema.safeParse({ ...base, search_mode: 'same_class', grade_number: 0, class_number: 2 }).success).toBe(false)
+    expect(PersonDiscoverySearchSchema.safeParse({ ...base, search_mode: 'same_class', grade_number: 3, class_number: 101 }).success).toBe(false)
+    expect(PersonDiscoverySearchSchema.safeParse({ ...base, search_mode: 'same_class', grade_number: 3, class_number: 2, receiver_user_id: 'nope' }).success).toBe(false)
   })
 
   it.each([
