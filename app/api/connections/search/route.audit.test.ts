@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   context: vi.fn(),
   readJson: vi.fn(),
   find: vi.fn(),
+  findClass: vi.fn(),
   record: vi.fn(),
 }))
 
@@ -11,7 +12,7 @@ vi.mock('@/lib/api/connectionRoute', () => ({
   requireConnectionContext: mocks.context,
   readJson: mocks.readJson,
 }))
-vi.mock('@/lib/connections', () => ({ findExactConnectionMatch: mocks.find }))
+vi.mock('@/lib/connections', () => ({ findExactConnectionMatch: mocks.find, findExactClassConnectionMatch: mocks.findClass }))
 vi.mock('@/lib/onboarding', () => ({ recordLimitedLaunchEvent: mocks.record }))
 
 import { POST } from './route'
@@ -66,6 +67,15 @@ describe('PHASE 10V contracted search response and timing', () => {
     expect(performance.now() - started).toBeGreaterThanOrEqual(230)
     expect(invalid.status).toBe(400)
     expect(await invalid.json()).toEqual({ state: 'invalid_search' })
+    expect(mocks.find).not.toHaveBeenCalled()
+  }, 5_000)
+
+  it('routes only the explicit same_class payload to the additive class RPC', async () => {
+    mocks.readJson.mockResolvedValueOnce({ ...valid, search_mode: 'same_class', grade_number: 3, class_number: 2 })
+    mocks.findClass.mockResolvedValueOnce({ state: 'match_available', matchToken: '11111111-1111-4111-8111-111111111111' })
+    const response = await POST(request as never)
+    expect(await response?.json()).toEqual({ state: 'match_available', matchToken: '11111111-1111-4111-8111-111111111111' })
+    expect(mocks.findClass).toHaveBeenCalledWith(expect.objectContaining({ gradeNumber: 3, classNumber: 2 }))
     expect(mocks.find).not.toHaveBeenCalled()
   }, 5_000)
 })

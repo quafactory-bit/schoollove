@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSchoolAutocomplete } from '@/lib/hooks/useSchoolAutocomplete'
+import type { SchoolType } from '@/types/school'
 
 const relationships = [
   ['same_class', '같은 반'], ['same_school', '같은 학교'], ['senior_junior', '선후배'],
@@ -13,8 +14,12 @@ export default function PeopleSearchClient() {
   const router = useRouter()
   const [schoolQuery, setSchoolQuery] = useState('')
   const [schoolId, setSchoolId] = useState('')
+  const [schoolType, setSchoolType] = useState<SchoolType | null>(null)
   const [graduationYear, setGraduationYear] = useState('')
   const [exactName, setExactName] = useState('')
+  const [sameClassMode, setSameClassMode] = useState(false)
+  const [gradeNumber, setGradeNumber] = useState('')
+  const [classNumber, setClassNumber] = useState('')
   const [matchToken, setMatchToken] = useState('')
   const [relationship, setRelationship] = useState('same_school')
   const [message, setMessage] = useState('')
@@ -22,14 +27,20 @@ export default function PeopleSearchClient() {
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
   const schools = useSchoolAutocomplete(schoolQuery)
+  const sameClassAvailable = schoolType === 'elementary' || schoolType === 'middle' || schoolType === 'high'
+  const maximumGrade = schoolType === 'elementary' ? 6 : 3
 
   async function search(event: React.FormEvent) {
     event.preventDefault()
     if (!schoolId) { setStatus('검색 결과에서 학교를 선택해 주세요.'); return }
     setBusy(true); setStatus(''); setMatchToken('')
+    setRelationship(sameClassMode ? 'same_class' : 'same_school')
     const response = await fetch('/api/connections/search', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ school_id: schoolId, graduation_year: Number(graduationYear), exact_name: exactName }),
+      body: JSON.stringify(sameClassMode ? {
+        search_mode: 'same_class', school_id: schoolId, graduation_year: Number(graduationYear),
+        grade_number: Number(gradeNumber), class_number: Number(classNumber), exact_name: exactName,
+      } : { school_id: schoolId, graduation_year: Number(graduationYear), exact_name: exactName }),
     })
     const result = await response.json() as { state?: string; matchToken?: string }
     setBusy(false)
@@ -66,13 +77,17 @@ export default function PeopleSearchClient() {
       <form onSubmit={search} className="mt-7 space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
         <div>
           <label htmlFor="person-school" className="text-sm font-semibold text-gray-900">학교</label>
-          <input id="person-school" value={schoolQuery} onChange={(event) => { setSchoolQuery(event.target.value); setSchoolId(''); setMatchToken('') }} autoComplete="off" className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
+          <input id="person-school" value={schoolQuery} onChange={(event) => { setSchoolQuery(event.target.value); setSchoolId(''); setSchoolType(null); setSameClassMode(false); setGradeNumber(''); setClassNumber(''); setMatchToken('') }} autoComplete="off" className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
           {schoolQuery.trim().length >= 2 && schools.status === 'ok' && schools.results.length > 0 && (
             <div className="mt-1 rounded-xl border border-gray-200 bg-white p-1">
-              {schools.results.map((school) => <button type="button" key={school.id} onClick={() => { setSchoolId(school.id); setSchoolQuery(`${school.school_name} · ${school.sido} ${school.sigungu}`) }} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-50">{school.school_name} · {school.sido} {school.sigungu}</button>)}
+              {schools.results.map((school) => <button type="button" key={school.id} onClick={() => { setSchoolId(school.id); setSchoolType(school.school_type); setSameClassMode(false); setGradeNumber(''); setClassNumber(''); setSchoolQuery(`${school.school_name} · ${school.sido} ${school.sigungu}`) }} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-50">{school.school_name} · {school.sido} {school.sigungu}</button>)}
             </div>
           )}
         </div>
+        {sameClassAvailable && <fieldset className="rounded-xl border border-gray-200 p-4">
+          <label className="flex items-center gap-3 text-sm font-semibold text-gray-900"><input type="checkbox" checked={sameClassMode} onChange={(event) => { setSameClassMode(event.target.checked); setGradeNumber(''); setClassNumber(''); setMatchToken('') }} />같은 반까지 기억나요</label>
+          {sameClassMode && <><p className="mt-3 text-xs leading-5 text-gray-600">내 계정에 등록한 같은 학교·졸업연도·학년·반 정보와 정확히 일치할 때만 확인할 수 있습니다.</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label htmlFor="person-grade" className="text-sm font-semibold text-gray-900">학년<input id="person-grade" type="number" min={1} max={maximumGrade} required value={gradeNumber} onChange={(event) => { setGradeNumber(event.target.value); setMatchToken('') }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></label><label htmlFor="person-class" className="text-sm font-semibold text-gray-900">반<input id="person-class" type="number" min={1} max={100} required value={classNumber} onChange={(event) => { setClassNumber(event.target.value); setMatchToken('') }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></label></div></>}
+        </fieldset>}
         <div className="grid gap-3 sm:grid-cols-2">
           <div><label htmlFor="person-year" className="text-sm font-semibold text-gray-900">졸업연도</label><input id="person-year" type="number" min={1900} max={2200} required value={graduationYear} onChange={(event) => { setGraduationYear(event.target.value); setMatchToken('') }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></div>
           <div><label htmlFor="person-name" className="text-sm font-semibold text-gray-900">정확한 이름</label><input id="person-name" minLength={2} maxLength={50} required value={exactName} onChange={(event) => { setExactName(event.target.value); setMatchToken('') }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></div>
