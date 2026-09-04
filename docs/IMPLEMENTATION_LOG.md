@@ -1,5 +1,13 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-03 Connected Instagram owner handle management (local / Draft)
+
+- Added forward-only migration `20260903023006_connected_instagram_owner_handle_update.sql` (SHA-256 `89c7b8bb6d14463a82cb9ba705f76541ce8984b8b090939595111ab02eac9090`). The owner-safe `update_own_connected_instagram_handle(text)` RPC derives ownership from `auth.uid()`, requires an existing active private profile and current `instagram_permission` for non-null values, and changes only `instagram_handle` plus `updated_at`.
+- Preserved the authenticated owner's privacy-removal right by allowing a null clear after the add-on gate stops. The SECURITY DEFINER function has a fixed empty search path, no public/anon execution, explicit authenticated/service-role grants, and no owner/profile ID parameter; direct table writes remain unchanged.
+- Added strict private/no-store `PATCH /api/account/instagram` and a dedicated `/account` handle-only action. General profile fields remain disabled when `private_profile` is unavailable, and the add-on path cannot create a profile or change name, introduction, photo, status, visibility, school membership, or grade/class history.
+- Validation passed targeted Vitest 6 files / 60 tests, full Vitest 183 passed files / 3 skipped files with 1,508 passed / 4 skipped, TypeScript PASS, ESLint 0 errors with 86 existing warnings, and a 61-page production build PASS. Disposable PostgreSQL passed the fresh 41-migration chain and 39→41 upgrade, existing Connected Instagram lifecycle 20/20, handle set/normalize/gate/clear/side-effect checks, and explicit function privileges; the container was removed.
+- Local verification performed no remote migration, Preview/Production database write, feature flag, account/profile/connection/message/Instagram permission mutation, deployment, environment change, commit, push, or merge. Any later promotion remains separately auditable.
+
 ## 2026-09-02 Connected Instagram add-on beta contract (local / Draft)
 
 - Preserved the exact two-feature People Discovery contract and added the separate exact `CONNECTED_INSTAGRAM_BETA` contract with only `instagram_permission`. The admin console now exposes exactly three canonical presets and renders the add-on as ON 1 / OFF 7 with a fixed 3-user cap.

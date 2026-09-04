@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-03 Connected Instagram owner handle management (local / Draft)
+
+- Added a narrow owner-only Instagram-handle write contract for existing private profiles without reopening the closed public-account launch or granting the add-on general `private_profile` access.
+- Non-null values require active `instagram_permission`; an authenticated owner may still clear the value after feature access stops. The dedicated API and RPC accept no owner/profile ID and cannot change display name, introduction, photo, visibility, status, school membership, or grade/class history.
+- Production and Preview migration application, deployment, feature flags, user data, permissions, messages, and connection state remain outside this local implementation approval.
+
 ## 2026-08-31 Production social-login bootstrap gate (local)
 
 - Added a fail-closed `production-bootstrap` broker exposure that serves only the immutable Production OIDC discovery document and JWKS for Supabase validation while keeping the Google CTA, start, callback, recovery, completion, authorization, and token surfaces unavailable.

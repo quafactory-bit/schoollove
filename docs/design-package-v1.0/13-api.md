@@ -8,6 +8,8 @@ Status: **FROZEN**
 
 > **PHASE 10C APPROVED SUPERSESSION (2026-07-28):** 사람 검색 API는 exact match 최소 상태와 짧게 만료되는 opaque token만 반환한다. 안부·재알림·응답·대화·Instagram 공개는 검증된 session user를 actor로 전달하는 service-role 전용 RPC를 사용하고, Production rate-limit 설정이 없으면 503으로 fail-closed 한다. body의 sender/receiver user ID는 받지 않는다.
 
+> **CONNECTED INSTAGRAM OWNER-WRITE SUPERSESSION (2026-09-03):** `PATCH /api/account/instagram`은 검증된 session owner의 기존 비공개 프로필에서 Instagram handle 하나만 설정·교체·삭제한다. non-null 설정은 active `instagram_permission` 권한을 요구하고, null 삭제는 기능 중단 뒤에도 본인 개인정보 제거권으로 유지한다. user/profile ID를 받지 않고 이름·소개·학교 이력을 함께 저장하지 않는다.
+
 ## 0. 원칙
 
 API는 제품 정책의 통로다.

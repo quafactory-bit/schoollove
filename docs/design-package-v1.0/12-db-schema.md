@@ -6,6 +6,8 @@ Status: **FROZEN**
 
 > **PHASE 10C APPROVED SUPERSESSION (2026-07-28):** 연결 요청, 수락된 연결, 텍스트 대화, 차단·신고, 일반 알림과 상대별 Instagram 공개 승인은 별도 private 테이블과 service-role 전용 원자 RPC로 관리한다. 모든 PHASE 10C 개인 테이블은 RLS와 FORCE RLS를 사용하며 Production 적용 전 별도 검토가 필요하다.
 
+> **CONNECTED INSTAGRAM OWNER-WRITE SUPERSESSION (2026-09-03):** 기존 `private_profiles` 행의 `instagram_handle`만 변경하는 owner-safe RPC를 둔다. owner는 `auth.uid()`에서 파생하며 non-null 저장은 active `instagram_permission`을 요구한다. null 삭제는 권한 중단 뒤에도 허용하지만 새 profile 생성과 display name·소개·사진·visibility·status·학교/학년/반 변경은 허용하지 않는다. authenticated의 직접 table write는 계속 폐쇄한다.
+
 ## 0. 원칙
 
 DB는 제품 정책을 소유하지 않는다.

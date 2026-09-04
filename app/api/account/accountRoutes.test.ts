@@ -6,12 +6,13 @@ const route = (name: string) => readFileSync(join(process.cwd(), `app/api/accoun
 const eligibility = route('eligibility')
 const consents = route('consents')
 const profile = route('profile')
+const instagram = route('instagram')
 const memberships = route('memberships')
 const deletion = route('deletion-request')
 
 describe('PHASE 10B account API boundaries', () => {
   it.each([
-    ['eligibility', eligibility], ['consents', consents], ['profile', profile],
+    ['eligibility', eligibility], ['consents', consents], ['profile', profile], ['instagram', instagram],
     ['memberships', memberships], ['deletion', deletion],
   ])('%s route는 body보다 먼저 session user를 검증한다', (_name, source) => {
     expect(source.indexOf('getAuthenticatedRequestContext(request)')).toBeLessThan(source.indexOf('request.json()'))
@@ -35,6 +36,8 @@ describe('PHASE 10B account API boundaries', () => {
   it('위조 user_id를 신뢰하지 않고 검증된 session ID를 사용한다', () => {
     expect(profile).toContain("rpc('upsert_own_private_profile'")
     expect(profile).not.toMatch(/owner_user_id\s*:/)
+    expect(instagram).toContain("rpc('update_own_connected_instagram_handle'")
+    expect(instagram).not.toMatch(/(owner_user_id|profile_id|user_id)\s*:/)
     expect(memberships).toContain("rpc('add_own_school_membership_with_class_history'")
     expect(memberships).toContain('requested_grade_classes: parsed.data.grade_classes')
     expect(memberships).not.toMatch(/owner_user_id\s*:/)
@@ -42,6 +45,13 @@ describe('PHASE 10B account API boundaries', () => {
     expect(memberships).not.toMatch(/school_type\s*:/)
     expect(deletion).toContain("rpc('request_own_account_deletion'")
     expect(deletion).not.toMatch(/user_id\s*:/)
+  })
+
+  it('Instagram add-on route는 strict handle-only payload와 private no-store 응답을 사용한다',()=>{
+    expect(instagram).toContain("instagram_handle: z.string().trim().regex(/^[A-Za-z0-9._]{1,30}$/).nullable()")
+    expect(instagram).toContain('}).strict()')
+    expect(instagram).toContain("'Cache-Control': 'private, no-store, max-age=0'")
+    expect(instagram).not.toMatch(/display_name|introduction|school|class_history/)
   })
 
   it('다른 사용자의 row ID만으로 수정·삭제할 수 없다', () => {
