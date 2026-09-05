@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8')
+const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8').replace(/\r\n/g, '\n')
 const migration = read('supabase/migrations/20260904083736_same_class_exact_discovery.sql')
 const route = read('app/api/connections/search/route.ts')
 const service = read('lib/connections.ts')

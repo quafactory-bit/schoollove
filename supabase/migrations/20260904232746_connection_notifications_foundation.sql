@@ -1,0 +1,18 @@
+BEGIN;
+ALTER TABLE public.notifications ADD COLUMN in_app_visible boolean NOT NULL DEFAULT false;
+CREATE UNIQUE INDEX notifications_in_app_visible_request_kind_unique ON public.notifications (user_id, request_id, kind) WHERE in_app_visible = true AND request_id IS NOT NULL AND kind IN ('connection_request', 'connection_reminder', 'request_accepted');
+CREATE INDEX notifications_in_app_visible_owner_read_created_idx ON public.notifications (user_id, read_at, created_at DESC) WHERE in_app_visible = true;
+CREATE OR REPLACE FUNCTION public.set_connection_notification_visibility() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$ BEGIN NEW.in_app_visible := NEW.kind IN ('connection_request', 'connection_reminder', 'request_accepted'); RETURN NEW; END; $$;
+CREATE TRIGGER notifications_set_connection_in_app_visibility BEFORE INSERT ON public.notifications FOR EACH ROW EXECUTE FUNCTION public.set_connection_notification_visibility();
+CREATE OR REPLACE FUNCTION public.get_own_connection_notifications(requested_limit integer DEFAULT 20) RETURNS TABLE (id uuid, event_type text, created_at timestamptz, read_at timestamptz) LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$ SELECT notification.id, CASE notification.kind WHEN 'connection_request' THEN 'request_received' WHEN 'connection_reminder' THEN 'request_reminded' WHEN 'request_accepted' THEN 'request_accepted' END, notification.created_at, notification.read_at FROM public.notifications notification WHERE auth.uid() IS NOT NULL AND notification.user_id = auth.uid() AND notification.in_app_visible = true AND notification.request_id IS NOT NULL ORDER BY notification.created_at DESC LIMIT LEAST(GREATEST(COALESCE(requested_limit,20),1),50); $$;
+CREATE OR REPLACE FUNCTION public.get_own_connection_notification_unread_count() RETURNS integer LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$ SELECT count(*)::integer FROM public.notifications notification WHERE auth.uid() IS NOT NULL AND notification.user_id = auth.uid() AND notification.in_app_visible = true AND notification.request_id IS NOT NULL AND notification.read_at IS NULL; $$;
+CREATE OR REPLACE FUNCTION public.mark_own_connection_notification_read(target_notification_id uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$ BEGIN IF auth.uid() IS NULL OR target_notification_id IS NULL THEN RETURN false; END IF; UPDATE public.notifications notification SET read_at=COALESCE(notification.read_at,now()) WHERE notification.id=target_notification_id AND notification.user_id=auth.uid() AND notification.in_app_visible=true AND notification.request_id IS NOT NULL; RETURN FOUND; END; $$;
+REVOKE SELECT ON TABLE public.notifications FROM authenticated;
+REVOKE ALL ON FUNCTION public.set_connection_notification_visibility() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.get_own_connection_notifications(integer) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_own_connection_notification_unread_count() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.mark_own_connection_notification_read(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_own_connection_notifications(integer) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_own_connection_notification_unread_count() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.mark_own_connection_notification_read(uuid) TO authenticated, service_role;
+COMMIT;
