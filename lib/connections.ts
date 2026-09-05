@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { maskDisplayName } from '@/lib/policy/connectionSafety'
 
 type RpcRow = Record<string, unknown>
@@ -374,6 +375,46 @@ export async function reportConnectionSafety(input: { userId: string; connection
 export async function setInstagramPermission(userId: string, connectionId: string, visible: boolean) {
   const { data, error } = await getSupabaseAdmin().rpc('set_connection_instagram_permission', {
     actor_user_id: userId, target_connection_id: connectionId, make_visible: visible,
+  })
+  return !error && data === true
+}
+
+type ConnectionNotificationRpcRow = {
+  id?: unknown
+  event_type?: unknown
+  created_at?: unknown
+  read_at?: unknown
+}
+
+export type ConnectionNotification = {
+  id: string
+  type: 'request_received' | 'request_reminded' | 'request_accepted'
+  createdAt: string
+  read: boolean
+}
+
+function parseConnectionNotification(row: ConnectionNotificationRpcRow): ConnectionNotification | null {
+  if (typeof row.id !== 'string' || typeof row.created_at !== 'string') return null
+  if (row.event_type !== 'request_received' && row.event_type !== 'request_reminded' && row.event_type !== 'request_accepted') return null
+  return { id: row.id, type: row.event_type, createdAt: row.created_at, read: row.read_at !== null }
+}
+
+export async function getOwnConnectionNotifications(client: SupabaseClient, requestedLimit = 20) {
+  const { data, error } = await client.rpc('get_own_connection_notifications', { requested_limit: requestedLimit })
+  if (error || !Array.isArray(data)) return null
+  return data
+    .map((row) => parseConnectionNotification(row as ConnectionNotificationRpcRow))
+    .filter((row): row is ConnectionNotification => row !== null)
+}
+
+export async function getOwnConnectionNotificationUnreadCount(client: SupabaseClient) {
+  const { data, error } = await client.rpc('get_own_connection_notification_unread_count')
+  return !error && typeof data === 'number' && Number.isInteger(data) && data >= 0 ? data : null
+}
+
+export async function markOwnConnectionNotificationRead(client: SupabaseClient, notificationId: string) {
+  const { data, error } = await client.rpc('mark_own_connection_notification_read', {
+    target_notification_id: notificationId,
   })
   return !error && data === true
 }

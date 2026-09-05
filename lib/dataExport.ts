@@ -3,13 +3,14 @@ import { csvSafe } from '@/lib/policy/operations'
 
 export async function buildOwnerExport(userId: string) {
   const admin = getSupabaseAdmin()
-  const [profile, memberships, classHistories, requests, connections, messages, consents, eligibility, promotionAccounts, promotionRequests, promotionOrders, promotionReports, payments, paymentRefunds, paymentDocuments] = await Promise.all([
+  const [profile, memberships, classHistories, requests, connections, messages, connectionNotifications, consents, eligibility, promotionAccounts, promotionRequests, promotionOrders, promotionReports, payments, paymentRefunds, paymentDocuments] = await Promise.all([
     admin.from('private_profiles').select('display_name,instagram_handle,profile_photo_url,introduction,profile_visibility,status,created_at,updated_at').eq('owner_user_id',userId).maybeSingle(),
     admin.from('profile_school_memberships').select('id,school_id,graduation_year,class_number,created_at').eq('owner_user_id',userId),
     admin.from('profile_school_class_histories').select('membership_id,grade_number,class_number,created_at,updated_at').eq('owner_user_id',userId).order('grade_number',{ascending:true}),
     admin.from('connection_requests').select('relationship_type,message,status,sent_at,opened_at,reminder_sent_at,responded_at,cancelled_at').eq('sender_user_id',userId),
     admin.from('connections').select('status,connected_at,disconnected_at,updated_at').or(`user_low_id.eq.${userId},user_high_id.eq.${userId}`),
     admin.from('connection_messages').select('message,sent_at,read_at,hidden_at').eq('sender_user_id',userId),
+    admin.from('connection_notifications').select('event_type,created_at,read_at').eq('owner_user_id',userId).order('created_at',{ascending:false}),
     admin.from('consent_records').select('consent_type,consented,policy_version,consented_at').eq('user_id',userId),
     admin.from('adult_eligibility_records').select('adult_eligible,verification_method,policy_version,adult_verified_at').eq('user_id',userId).order('adult_verified_at',{ascending:false}).limit(1).maybeSingle(),
     admin.from('promotion_accounts').select('account_kind,instagram_url,display_name,status,verified_at,created_at,updated_at').eq('owner_user_id',userId),
@@ -20,7 +21,7 @@ export async function buildOwnerExport(userId: string) {
     admin.from('payment_refund_attempts').select('payment_transaction_id,provider,requested_amount_krw,completed_amount_krw,status,requested_at,completed_at,payment_transactions!inner(owner_user_id)').eq('payment_transactions.owner_user_id',userId),
     admin.from('payment_document_requests').select('payment_transaction_id,document_type,status,issued_reference,requested_at,updated_at').eq('owner_user_id',userId),
   ])
-  const failed = [profile,memberships,classHistories,requests,connections,messages,consents,eligibility,promotionAccounts,promotionRequests,promotionOrders,promotionReports,payments,paymentRefunds,paymentDocuments].find((value) => value.error)
+  const failed = [profile,memberships,classHistories,requests,connections,messages,connectionNotifications,consents,eligibility,promotionAccounts,promotionRequests,promotionOrders,promotionReports,payments,paymentRefunds,paymentDocuments].find((value) => value.error)
   if (failed?.error) throw new Error('EXPORT_BUILD_FAILED')
   const exportedMemberships = (memberships.data ?? []).map(({ id, ...membership }) => ({
     ...membership,
@@ -35,6 +36,7 @@ export async function buildOwnerExport(userId: string) {
     sentConnectionRequests: requests.data ?? [],
     connectionStates: connections.data ?? [],
     messagesAuthoredByYou: messages.data ?? [],
+    connectionNotifications: connectionNotifications.data ?? [],
     consents: consents.data ?? [],
     adultEligibility: eligibility.data ?? null,
     promotionAccounts: promotionAccounts.data ?? [],
@@ -56,6 +58,7 @@ export function ownerExportCsv(data: Awaited<ReturnType<typeof buildOwnerExport>
     ['sent_connection_requests', JSON.stringify(data.sentConnectionRequests)],
     ['connection_states', JSON.stringify(data.connectionStates)],
     ['messages_authored_by_you', JSON.stringify(data.messagesAuthoredByYou)],
+    ['connection_notifications', JSON.stringify(data.connectionNotifications)],
     ['consents', JSON.stringify(data.consents)],
     ['adult_eligibility', JSON.stringify(data.adultEligibility)],
     ['promotion_accounts', JSON.stringify(data.promotionAccounts)],

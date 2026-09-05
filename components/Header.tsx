@@ -3,13 +3,34 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, ShieldCheck, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export default function Header() {
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState<number | null>(null)
   const isActive = (href: string) => pathname === href
+
+  useEffect(() => {
+    let active = true
+    void (async () => {
+      try {
+        const response = await fetch('/api/connections/notifications/summary', { cache: 'no-store' })
+        if (!response.ok) {
+          if (active) setUnreadCount(null)
+          return
+        }
+        const payload = await response.json() as { unreadCount?: unknown }
+        if (active) setUnreadCount(typeof payload.unreadCount === 'number' && Number.isInteger(payload.unreadCount) && payload.unreadCount > 0 ? payload.unreadCount : null)
+      } catch {
+        if (active) setUnreadCount(null)
+      }
+    })()
+    return () => { active = false }
+  }, [pathname])
+
+  const unreadLabel = unreadCount ? unreadCount > 9 ? '9+' : String(unreadCount) : null
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white">
@@ -20,6 +41,7 @@ export default function Header() {
           <NavLink href="/search" active={isActive('/search')}>학교 검색</NavLink>
           <NavLink href="/submit" active={isActive('/submit')}>계정 시작</NavLink>
           <NavLink href="/account" active={isActive('/account')}>내 계정</NavLink>
+          <NavLink href="/connections" active={isActive('/connections')} badge={unreadLabel}>내 연결</NavLink>
           <NavLink href="/privacy" active={isActive('/privacy')}>개인정보 안내</NavLink>
         </nav>
 
@@ -44,6 +66,7 @@ export default function Header() {
           <MobileNavLink href="/search" onClick={() => setMenuOpen(false)}>학교 검색</MobileNavLink>
           <MobileNavLink href="/submit" onClick={() => setMenuOpen(false)}>계정 시작</MobileNavLink>
           <MobileNavLink href="/account" onClick={() => setMenuOpen(false)}>내 계정</MobileNavLink>
+          <MobileNavLink href="/connections" onClick={() => setMenuOpen(false)} badge={unreadLabel}>내 연결</MobileNavLink>
           <MobileNavLink href="/privacy" onClick={() => setMenuOpen(false)}>개인정보 안내</MobileNavLink>
         </div>
       )}
@@ -51,7 +74,7 @@ export default function Header() {
   )
 }
 
-function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+function NavLink({ href, active, badge, children }: { href: string; active: boolean; badge?: string | null; children: React.ReactNode }) {
   return (
     <Link
       href={href}
@@ -60,11 +83,11 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
         active ? 'bg-gray-100 font-semibold text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
       )}
     >
-      {children}
+      <span>{children}</span>{badge ? <span aria-label={`읽지 않은 알림 ${badge}개`} className="ml-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{badge}</span> : null}
     </Link>
   )
 }
 
-function MobileNavLink({ href, onClick, children }: { href: string; onClick: () => void; children: React.ReactNode }) {
-  return <Link href={href} onClick={onClick} className="block rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50">{children}</Link>
+function MobileNavLink({ href, onClick, badge, children }: { href: string; onClick: () => void; badge?: string | null; children: React.ReactNode }) {
+  return <Link href={href} onClick={onClick} className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"><span>{children}</span>{badge ? <span aria-label={`읽지 않은 알림 ${badge}개`} className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{badge}</span> : null}</Link>
 }
