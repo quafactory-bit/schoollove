@@ -22,6 +22,7 @@ const adminMock = vi.hoisted(() => {
       filters.push({ table, column, value })
       return builder
     })
+    builder.not = vi.fn(() => builder)
     builder.or = vi.fn(() => builder)
     builder.order = vi.fn(() => builder)
     builder.limit = vi.fn(() => builder)
