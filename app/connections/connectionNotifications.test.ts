@@ -17,8 +17,10 @@ describe('connection notifications product contract', () => {
     expect(notificationSection).not.toMatch(/senderName|displayName|schoolName|graduation|instagram|message/i)
   })
 
-  it('loads on mount and pathname only, with no interval, realtime, or browser permission request', () => {
+  it('loads on mount and refreshes once after a local read event, with no polling or realtime subscription', () => {
     expect(header).toContain("/api/connections/notifications/summary")
+    expect(header).toContain("window.addEventListener('connection-notifications-changed', loadUnreadCount)")
+    expect(client).toContain("window.dispatchEvent(new Event('connection-notifications-changed'))")
     expect(header).toContain('}, [pathname])')
     expect(header).not.toMatch(/setInterval|realtime|Notification\.requestPermission|serviceWorker|websocket/i)
     expect(client).toContain("fetch('/api/connections/notifications')")
@@ -32,9 +34,10 @@ describe('connection notifications product contract', () => {
   })
 
   it('adds only event type and timestamps to the owner export', () => {
-    const notificationExport = exportSource.match(/\.from\('connection_notifications'\)\.select\('([^']+)'\)/)?.[1]
-    expect(notificationExport).toBe('event_type,created_at,read_at')
-    expect(exportSource).toContain('connectionNotifications: connectionNotifications.data ?? []')
-    expect(notificationExport).not.toMatch(/request_id|owner_user_id/)
+    const notificationExport = exportSource.match(/\.from\('notifications'\)\.select\('([^']+)'\)/)?.[1]
+    expect(notificationExport).toBe('kind,created_at,read_at')
+    expect(exportSource).toContain(".eq('in_app_visible',true).not('request_id','is',null)")
+    expect(exportSource).toContain("event_type: kind === 'connection_request' ? 'request_received'")
+    expect(notificationExport).not.toMatch(/request_id|user_id/)
   })
 })

@@ -419,19 +419,6 @@ export async function markOwnConnectionNotificationRead(client: SupabaseClient, 
   return !error && data === true
 }
 
-export async function getNotifications(userId: string) {
-  const { data, error } = await getSupabaseAdmin().from('notifications')
-    .select('id,kind,request_id,connection_id,read_at,created_at')
-    .eq('user_id', userId).order('created_at', { ascending: false }).limit(100)
-  return error ? null : data ?? []
-}
-
-export async function markNotificationsRead(userId: string) {
-  const { error } = await getSupabaseAdmin().from('notifications')
-    .update({ read_at: new Date().toISOString() }).eq('user_id', userId).is('read_at', null)
-  return !error
-}
-
 export async function getAdminSafetyReports() {
   const { data, error } = await getSupabaseAdmin().from('safety_reports')
     .select('id,reason_code,status,request_id,connection_id,message_id,created_at,reviewed_at')

@@ -38,6 +38,7 @@ describe('connection notification routes', () => {
 
   it('returns only the minimal list payload through the owner boundary', async () => {
     const response = await getNotifications(request as never)
+    if (!response) throw new Error('route did not return a response')
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ notifications: [{ id: notificationId, type: 'request_received', createdAt: '2026-09-04T00:00:00.000Z', read: false }] })
     expect(mocks.list).toHaveBeenCalledWith(auth.client, 20)
@@ -45,6 +46,7 @@ describe('connection notification routes', () => {
 
   it('returns the own unread count without a polling contract', async () => {
     const response = await getSummary(request as never)
+    if (!response) throw new Error('route did not return a response')
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ unreadCount: 1 })
     expect(mocks.count).toHaveBeenCalledWith(auth.client)
@@ -52,6 +54,7 @@ describe('connection notification routes', () => {
 
   it('marks only the validated notification id as read', async () => {
     const response = await markRead(new Request('http://localhost/api/connections/notifications/id', { method: 'PATCH' }) as never, routeContext)
+    if (!response) throw new Error('route did not return a response')
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ read: true })
     expect(mocks.mark).toHaveBeenCalledWith(auth.client, notificationId)
@@ -60,6 +63,7 @@ describe('connection notification routes', () => {
   it('does not disclose unavailable or foreign ids', async () => {
     mocks.mark.mockResolvedValue(false)
     const response = await markRead(new Request('http://localhost/api/connections/notifications/id', { method: 'PATCH' }) as never, routeContext)
+    if (!response) throw new Error('route did not return a response')
     expect(response.status).toBe(404)
     await expect(response.json()).resolves.toEqual({ error: '알림을 처리할 수 없습니다.' })
   })

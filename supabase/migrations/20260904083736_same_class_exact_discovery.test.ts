@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const sql = readFileSync(join(process.cwd(), 'supabase/migrations/20260904083736_same_class_exact_discovery.sql'), 'utf8')
+const sql = readFileSync(join(process.cwd(), 'supabase/migrations/20260904083736_same_class_exact_discovery.sql'), 'utf8').replace(/\r\n/g, '\n')
 
 describe('SAME_CLASS exact discovery migration', () => {
   it('is additive: one new RPC only, with no table or column mutation', () => {

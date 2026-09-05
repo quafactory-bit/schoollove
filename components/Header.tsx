@@ -14,7 +14,7 @@ export default function Header() {
 
   useEffect(() => {
     let active = true
-    void (async () => {
+    const loadUnreadCount = () => { void (async () => {
       try {
         const response = await fetch('/api/connections/notifications/summary', { cache: 'no-store' })
         if (!response.ok) {
@@ -26,8 +26,10 @@ export default function Header() {
       } catch {
         if (active) setUnreadCount(null)
       }
-    })()
-    return () => { active = false }
+    })() }
+    loadUnreadCount()
+    window.addEventListener('connection-notifications-changed', loadUnreadCount)
+    return () => { active = false; window.removeEventListener('connection-notifications-changed', loadUnreadCount) }
   }, [pathname])
 
   const unreadLabel = unreadCount ? unreadCount > 9 ? '9+' : String(unreadCount) : null

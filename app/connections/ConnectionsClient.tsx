@@ -55,7 +55,10 @@ export default function ConnectionsClient() {
       ? null
       : await fetch(`/api/connections/notifications/${item.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'read' }) })
     if (response && !response.ok) setStatus('알림을 처리할 수 없습니다.')
-    if (!response || response.ok) setNotifications((current) => current.map((notification) => notification.id === item.id ? { ...notification, read: true } : notification))
+    if (!response || response.ok) {
+      setNotifications((current) => current.map((notification) => notification.id === item.id ? { ...notification, read: true } : notification))
+      window.dispatchEvent(new Event('connection-notifications-changed'))
+    }
     document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     window.history.replaceState(null, '', `#${target}`)
   }
