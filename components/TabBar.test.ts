@@ -25,8 +25,15 @@ describe('TabBar responsive navigation contract', () => {
     expect(SOURCE).toContain("{ href: '/account', label: '내 계정', icon: UserRound }")
   })
 
+  it('adds the private connection entry with a compact notification badge without removing existing tabs', () => {
+    expect(SOURCE).toContain("{ href: '/connections', label: '내 연결', icon: UsersRound, badge: true }")
+    expect(SOURCE).toContain('ConnectionNotificationBadge')
+    expect(SOURCE).toContain('min-w-0 flex-1')
+    expect(SOURCE).toContain('whitespace-nowrap')
+  })
+
   it('keeps every mobile tab at a 44px minimum touch height with route-aware active state', () => {
-    expect(SOURCE).toContain('min-h-11 flex-1')
+    expect(SOURCE).toContain('min-h-11 min-w-0 flex-1')
     expect(SOURCE).toContain("pathname.startsWith(href)")
   })
 })
