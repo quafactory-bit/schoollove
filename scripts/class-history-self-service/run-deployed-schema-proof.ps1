@@ -35,6 +35,13 @@ try {
   docker cp (Join-Path $PSScriptRoot 'search-regression.sql') "${container}:/tmp/search-regression.sql" | Out-Null
   Check-Exit 'Search matrix copy failed'
   Run-File (Join-Path $PSScriptRoot 'disposable-matrix.sql') 'matrix.sql'
+  docker cp (Join-Path $PSScriptRoot 'hardening-fixtures.sql') "${container}:/tmp/hardening-fixtures.sql" | Out-Null
+  Check-Exit 'Hardening fixture copy failed'
+  Run-File (Join-Path $PSScriptRoot 'hardening-access.sql') 'hardening-access.sql'
+  Run-File (Join-Path $PSScriptRoot 'hardening-search.sql') 'hardening-search.sql'
+  Run-File (Join-Path $PSScriptRoot 'hardening-fixtures.sql') 'hardening-fixtures.sql'
+  node (Join-Path $PSScriptRoot 'verify-concurrency.cjs') $container
+  Check-Exit 'Concurrency failed'
   Write-Output 'DEPLOYED_SCHEMA_43_TO_44_AND_BASIC_MATRIX_PASS'
 } finally {
   if($created){ docker rm -f -v $container | Out-Null }

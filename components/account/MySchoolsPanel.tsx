@@ -7,10 +7,10 @@ import ClassHistoryEditor from './ClassHistoryEditor'
 
 type Props = {
   memberships: SchoolMembership[]
-  schoolMembershipWritable?: boolean
+  classHistoryWritable?: boolean
 }
 
-export default function MySchoolsPanel({ memberships, schoolMembershipWritable = false }: Props) {
+export default function MySchoolsPanel({ memberships, classHistoryWritable = false }: Props) {
   if (memberships.length === 0) {
     return (
       <section className="mt-5 border border-schoollove-border bg-schoollove-surface p-5" aria-label="내 학교 안내">
@@ -48,7 +48,7 @@ export default function MySchoolsPanel({ memberships, schoolMembershipWritable =
                 {formatGradeClassHistory(school.classHistory)}
               </p>
             ) : null}
-            <ClassHistoryEditor membership={memberships[index]} writable={schoolMembershipWritable} />
+            <ClassHistoryEditor membership={memberships[index]} writable={classHistoryWritable} />
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
                 학교 페이지 보기

@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-07 PR100 class-history hardening (local verified / Draft)
+
+- Supersedes the initial access and unchanged-same-class claims below. AccountPage reads people_search separately; classHistoryWritable and a dedicated API helper leave private-profile/create capabilities unchanged. Exact target-school authority is enforced by the owner RPC.
+- Revised the same unapplied migration44, adding no table/column/index/trigger or feature flag. Same-class definition intentionally changed (signature/privacy/grants unchanged); legacy exact-person and membership-create definitions remain exact.
+- Deployed-schema43 clone → revised44: 73 tables / 723 columns / 194 functions. PD/public/onboarding allow/deny, owner/no-op/token/safety matrices, same-class suppression and legacy search passed. Observed two-session advisory waits prove actor edit-wins and receiver search-wins; final stale token 0 and failed subsequent request leave relations/notifications unchanged.
+- Real AccountClient fixtures at 360/390/412: class editor enabled, profile/create disabled, deletion/emergency/no-access/non-K12 editor hidden. Targeted 64 tests, full 1,560 tests, TypeScript pass; ESLint 0 errors / 86 existing warnings. Detailed evidence and release boundaries: `docs/decisions/2026-09-07-class-history-self-service-hardening.md`.
+
 ## 2026-09-07 Class history self-service (local verified / Draft)
 
 - Added one forward migration `20260907031506_class_history_self_service.sql`, owner-only full-replacement RPC, strict authenticated PATCH route and inline optional school-card editor. Parent school/year/owner/profile, existing search RPCs, flags and historical migrations are unchanged.

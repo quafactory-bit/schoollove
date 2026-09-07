@@ -4,6 +4,9 @@ CREATE TABLE class_history_audit.baseline AS
 SELECT (SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r') tables,
   (SELECT count(*) FROM information_schema.columns WHERE table_schema='public') columns,
   (SELECT count(*) FROM pg_proc WHERE pronamespace='public'::regnamespace) functions,
+  (SELECT count(*) FROM pg_indexes WHERE schemaname='public') indexes,
+  (SELECT count(*) FROM pg_trigger WHERE tgrelid IN (SELECT oid FROM pg_class WHERE relnamespace='public'::regnamespace) AND NOT tgisinternal) triggers,
+  (SELECT jsonb_agg(to_jsonb(p) ORDER BY policyname) FROM pg_policies p WHERE schemaname='public' AND tablename='profile_school_class_histories') policies,
   pg_get_functiondef('public.find_exact_private_profile_match(uuid,uuid,integer,text)'::regprocedure) exact_definition,
   pg_get_functiondef('public.find_exact_private_profile_class_match(uuid,uuid,integer,integer,integer,text)'::regprocedure) class_definition,
   pg_get_functiondef('public.add_own_school_membership_with_class_history(uuid,integer,jsonb)'::regprocedure) create_definition;

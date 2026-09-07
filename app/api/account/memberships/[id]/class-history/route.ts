@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
-import { hasAccountOnboardingWriteAccess } from '@/lib/publicAccountLaunch'
+import { hasClassHistorySelfServiceWriteAccess } from '@/lib/classHistoryAccess'
 
 const History = z.array(z.object({
   grade_number: z.number().int().min(1).max(6),
@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = Body.safeParse(await request.json().catch(() => null))
   if (!id.success || !body.success) return failure(400)
   try {
-    if (!await hasAccountOnboardingWriteAccess(auth.client, auth.user.id, 'school_membership', 'school_membership')) return failure(403)
+    if (!await hasClassHistorySelfServiceWriteAccess(auth.client, auth.user.id)) return failure(403)
     const access = await auth.client.rpc('has_current_adult_access', { target_user_id: auth.user.id })
     if (access.error || access.data !== true) return failure(403)
     const { data, error } = await auth.client.rpc('replace_own_school_class_history', {

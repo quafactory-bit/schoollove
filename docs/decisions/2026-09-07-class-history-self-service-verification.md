@@ -1,6 +1,6 @@
 # Class history self-service — local verification
 
-Status: LOCAL_VERIFIED. Not canonical Preview/Production verified.
+Historical pre-hardening verification only. The final PR100 authority, revised checksum, separate PD capability and deterministic concurrency results are in `2026-09-07-class-history-self-service-hardening.md`. Statements below describe the initial implementation, not the current release contract. Not canonical Preview/Production verified.
 
 ## Source and scope
 

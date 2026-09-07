@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-07 PR100 class-history hardening (local / Draft)
+
+- Added a separate class-history capability for active exact People Discovery target-school members, including closed public launch / consumed-or-absent claim / private_profile OFF. Profile edits and new school registration retain their existing gates.
+- Revised unapplied migration 44 in place: three narrow owner-edit paths with explicit adult/deletion/suspension/emergency checks; same-class search now takes ordered pair-user locks and revalidates before token insertion. Legacy exact-person and school-create functions are unchanged.
+- Schema-only disposable upgrade, deterministic edit-wins/search-wins tests and real AccountClient mobile fixtures pass. Remote migration, canonical merge and live-user edits remain deferred.
+
 ## 2026-09-07 Class history self-service (local / Draft)
 
 - Added an optional inline grade/class editor for existing K12 memberships, strict private PATCH API, and one additive owner replacement RPC. Empty arrays clear only child history; identical input preserves rows/timestamps and live tokens.

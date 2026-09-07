@@ -43,7 +43,7 @@ describe('/account private management UI', () => {
   })
 
   it('기존 account state membership을 별도 조회 없이 내 학교 첫 가치로 전달한다',()=>{
-    expect(client).toContain('<MySchoolsPanel memberships={state.memberships} schoolMembershipWritable={schoolMembershipWritable}/>')
+    expect(client).toContain('<MySchoolsPanel memberships={state.memberships} classHistoryWritable={classHistoryWritable}/>')
     expect(client).not.toMatch(/fetch\([^)]*my-schools/)
   })
 

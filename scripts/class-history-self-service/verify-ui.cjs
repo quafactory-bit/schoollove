@@ -14,14 +14,15 @@ async function main() {
   try {
     await new Promise((resolve, reject) => {
       const compiler = webpackModule.webpack({ mode: 'development', devtool: false, entry: path.join(__dirname, 'ui-entry.tsx'),
+        plugins: [new webpackModule.webpack.DefinePlugin({ 'process.env': JSON.stringify({ NODE_ENV: 'development' }) })],
         output: { path: temporary, filename: 'bundle.js' },
-        resolve: { extensions: ['.tsx', '.ts', '.js'], alias: { '@': process.cwd(), 'next/navigation': path.join(__dirname, 'navigation-shim.ts') } },
+        resolve: { extensions: ['.tsx', '.ts', '.js'], alias: { '@/lib/api/search': path.join(__dirname, 'search-shim.ts'), '@': process.cwd(), 'next/navigation': path.join(__dirname, 'navigation-shim.ts') } },
         module: { rules: [{ test: /\.tsx?$/, exclude: /node_modules/, use: path.join(__dirname, 'typescript-loader.cjs') }] },
       })
       compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve()))
     })
     const css = await require('postcss')([require('tailwindcss')({ ...require('../../tailwind.config.ts').default,
-      content: [path.join(process.cwd(), 'components/account/ClassHistoryEditor.tsx'), path.join(__dirname, 'ui-entry.tsx')],
+      content: ['components/account/*.tsx', 'app/account/AccountClient.tsx', path.join(__dirname, 'ui-entry.tsx')],
     })]).process(await fs.readFile('app/globals.css', 'utf8'), { from: path.resolve('app/globals.css') })
     server = http.createServer(async (req, res) => {
       res.setHeader('content-type', (req.url === '/bundle.js' ? 'text/javascript' : req.url === '/style.css' ? 'text/css' : 'text/html') + '; charset=utf-8')
@@ -70,6 +71,21 @@ async function main() {
       await expect(page.getByRole('button')).toHaveCount(0)
       await page.evaluate(() => window.fixture('high', false, []))
       await expect(page.getByRole('button')).toHaveCount(0)
+      await page.evaluate(() => window.accountFixture(true, false, false, 'high'))
+      await expect(page.getByText('People Discovery 베타 참여 승인 완료', { exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: '학년·반 추가', exact: true })).toBeEnabled()
+      await expect(page.getByRole('button', { name: '내 프로필 수정 저장', exact: true })).toBeDisabled()
+      await expect(page.getByRole('button', { name: '학교 이력 추가', exact: true })).toBeDisabled()
+      await expect(page.getByLabel('내 이름', { exact: true })).toBeDisabled()
+      await page.getByRole('button', { name: '학년·반 추가', exact: true }).click()
+      await expect(page.getByRole('spinbutton', { name: '1학년 반' })).toBeEnabled()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+      for (const [people, deletion, emergency, kind] of [[false,false,false,'high'],[true,true,false,'high'],[true,false,true,'high'],[true,false,false,'university']]) {
+        await page.evaluate(args => window.accountFixture(...args), [people, deletion, emergency, kind])
+        await expect(page.getByRole('button', { name: '학년·반 추가', exact: true })).toHaveCount(0)
+      }
+      expect(payloads).toHaveLength(2)
+      console.log(`CURRENT_AB_UI_PASS width=${width} class=enabled profile/create=disabled noaccess/deletion/emergency/nonK12=hidden`)
       console.log(`UI_PASS width=${width} add/replace/preload/cancel/clear/nonK12/closed overflow=0`)
       await page.close()
     }

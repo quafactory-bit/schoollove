@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), rpc: vi.fn(), access: vi.fn() }))
 vi.mock('@/lib/user-auth', () => ({ getAuthenticatedRequestContext: mocks.auth }))
-vi.mock('@/lib/publicAccountLaunch', () => ({ hasAccountOnboardingWriteAccess: mocks.access }))
+vi.mock('@/lib/classHistoryAccess', () => ({ hasClassHistorySelfServiceWriteAccess: mocks.access }))
 import { PATCH } from './route'
 
 const id = '00000000-0000-4000-8000-000000000001'
