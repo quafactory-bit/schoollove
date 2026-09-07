@@ -1,17 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSchoolAutocomplete } from '@/lib/hooks/useSchoolAutocomplete'
 import type { SchoolType } from '@/types/school'
+import type { OwnClassDiscoveryChoice } from '@/lib/peopleDiscoveryHistory'
+import OwnHistoryPicker, { ownHistoryChoiceKey } from './OwnHistoryPicker'
 
 const relationships = [
   ['same_class', '같은 반'], ['same_school', '같은 학교'], ['senior_junior', '선후배'],
   ['club', '동아리'], ['other', '기타'],
 ] as const
 
-export default function PeopleSearchClient() {
+type Props = { historyChoices?: OwnClassDiscoveryChoice[]; historyStatus?: 'ok' | 'unavailable' }
+
+export default function PeopleSearchClient({ historyChoices = [], historyStatus = 'ok' }: Props) {
   const router = useRouter()
+  const [entryMode, setEntryMode] = useState<'history' | 'manual'>(historyStatus === 'ok' && historyChoices.length > 0 ? 'history' : 'manual')
+  const [selectedKey, setSelectedKey] = useState(historyStatus === 'ok' && historyChoices.length === 1 ? ownHistoryChoiceKey(historyChoices[0]) : '')
+  const selectedHistory = historyStatus === 'ok' ? historyChoices.find(choice => ownHistoryChoiceKey(choice) === selectedKey) : undefined
+  const criteriaRevision = useRef(0)
+  const pending = useRef(false)
   const [schoolQuery, setSchoolQuery] = useState('')
   const [schoolId, setSchoolId] = useState('')
   const [schoolType, setSchoolType] = useState<SchoolType | null>(null)
@@ -30,28 +39,48 @@ export default function PeopleSearchClient() {
   const sameClassAvailable = schoolType === 'elementary' || schoolType === 'middle' || schoolType === 'high'
   const maximumGrade = schoolType === 'elementary' ? 6 : 3
 
+  function clearSearchResult() {
+    criteriaRevision.current += 1
+    setMatchToken(''); setPreview(false); setStatus('')
+  }
+
   async function search(event: React.FormEvent) {
     event.preventDefault()
-    if (!schoolId) { setStatus('검색 결과에서 학교를 선택해 주세요.'); return }
-    setBusy(true); setStatus(''); setMatchToken('')
-    setRelationship(sameClassMode ? 'same_class' : 'same_school')
-    const response = await fetch('/api/connections/search', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sameClassMode ? {
-        search_mode: 'same_class', school_id: schoolId, graduation_year: Number(graduationYear),
-        grade_number: Number(gradeNumber), class_number: Number(classNumber), exact_name: exactName,
-      } : { school_id: schoolId, graduation_year: Number(graduationYear), exact_name: exactName }),
-    })
-    const result = await response.json() as { state?: string; matchToken?: string }
-    setBusy(false)
-    const copy: Record<string, string> = {
-      unavailable: '일치 여부를 확인하지 못했습니다.',
-      invalid_search: '학교, 졸업연도와 정확한 이름을 확인해 주세요.',
-      service_unavailable: '검색을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+    if (pending.current) return
+    clearSearchResult()
+    if (entryMode === 'history' && !selectedHistory) { setStatus('내 학교 이력을 먼저 선택해 주세요.'); return }
+    if (entryMode === 'manual' && !schoolId) { setStatus('검색 결과에서 학교를 선택해 주세요.'); return }
+    const revision = criteriaRevision.current
+    pending.current = true
+    setBusy(true)
+    setRelationship(entryMode === 'history' || sameClassMode ? 'same_class' : 'same_school')
+    try {
+      const response = await fetch('/api/connections/search', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entryMode === 'history' && selectedHistory ? {
+          search_mode: 'same_class', school_id: selectedHistory.schoolId, graduation_year: selectedHistory.graduationYear,
+          grade_number: selectedHistory.gradeNumber, class_number: selectedHistory.classNumber, exact_name: exactName,
+        } : sameClassMode ? {
+          search_mode: 'same_class', school_id: schoolId, graduation_year: Number(graduationYear),
+          grade_number: Number(gradeNumber), class_number: Number(classNumber), exact_name: exactName,
+        } : { school_id: schoolId, graduation_year: Number(graduationYear), exact_name: exactName }),
+      })
+      const result = await response.json() as { state?: string; matchToken?: string }
+      if (revision !== criteriaRevision.current) return
+      const copy: Record<string, string> = {
+        unavailable: '일치 여부를 확인하지 못했습니다.',
+        invalid_search: '학교, 졸업연도와 정확한 이름을 확인해 주세요.',
+        service_unavailable: '검색을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+      }
+      if (response.ok && result.state === 'match_available' && typeof result.matchToken === 'string' && result.matchToken) {
+        setMatchToken(result.matchToken); setStatus('일치하는 등록자가 있습니다. 개인정보는 안부 수락 전까지 공개되지 않습니다.')
+      } else setStatus(copy[result.state ?? ''] ?? '일치 여부를 확인하지 못했습니다.')
+    } catch {
+      if (revision === criteriaRevision.current) setStatus('검색을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.')
+    } finally {
+      pending.current = false
+      setBusy(false)
     }
-    if (result.state === 'match_available' && result.matchToken) {
-      setMatchToken(result.matchToken); setStatus('일치하는 등록자가 있습니다. 개인정보는 안부 수락 전까지 공개되지 않습니다.')
-    } else setStatus(copy[result.state ?? ''] ?? '일치 여부를 확인하지 못했습니다.')
   }
 
   async function sendGreeting() {
@@ -75,25 +104,34 @@ export default function PeopleSearchClient() {
       <p className="mt-3 text-sm leading-6 text-gray-600">목록을 보여주지 않습니다. 기억하는 학교, 졸업연도와 정확한 이름이 하나의 비공개 등록과 일치할 때만 안부를 보낼 수 있습니다.</p>
 
       <form onSubmit={search} className="mt-7 space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
+        <fieldset className="min-w-0 space-y-2">
+          <legend className="mb-2 text-sm font-semibold text-gray-900">찾기 방법</legend>
+          {([['history', '내 학교 이력에서 찾기'], ['manual', '직접 입력해서 찾기']] as const).map(([mode, label]) => <label key={mode} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
+            <input type="radio" name="entry-mode" checked={entryMode === mode} onChange={() => { setEntryMode(mode); clearSearchResult() }} />{label}
+          </label>)}
+        </fieldset>
+        {(entryMode === 'history' || historyStatus === 'unavailable' || historyChoices.length === 0) && <OwnHistoryPicker choices={historyChoices} status={historyStatus} selectedKey={selectedKey} onSelect={key => { setSelectedKey(key); clearSearchResult() }} />}
+        {entryMode === 'manual' && <>
         <div>
           <label htmlFor="person-school" className="text-sm font-semibold text-gray-900">학교</label>
-          <input id="person-school" value={schoolQuery} onChange={(event) => { setSchoolQuery(event.target.value); setSchoolId(''); setSchoolType(null); setSameClassMode(false); setGradeNumber(''); setClassNumber(''); setMatchToken('') }} autoComplete="off" className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
+          <input id="person-school" value={schoolQuery} onChange={(event) => { setSchoolQuery(event.target.value); setSchoolId(''); setSchoolType(null); setSameClassMode(false); setGradeNumber(''); setClassNumber(''); clearSearchResult() }} autoComplete="off" className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
           {schoolQuery.trim().length >= 2 && schools.status === 'ok' && schools.results.length > 0 && (
             <div className="mt-1 rounded-xl border border-gray-200 bg-white p-1">
-              {schools.results.map((school) => <button type="button" key={school.id} onClick={() => { setSchoolId(school.id); setSchoolType(school.school_type); setSameClassMode(false); setGradeNumber(''); setClassNumber(''); setSchoolQuery(`${school.school_name} · ${school.sido} ${school.sigungu}`) }} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-50">{school.school_name} · {school.sido} {school.sigungu}</button>)}
+              {schools.results.map((school) => <button type="button" key={school.id} onClick={() => { setSchoolId(school.id); setSchoolType(school.school_type); setSameClassMode(false); setGradeNumber(''); setClassNumber(''); setSchoolQuery(`${school.school_name} · ${school.sido} ${school.sigungu}`); clearSearchResult() }} className="block w-full break-words rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-50">{school.school_name} · {school.sido} {school.sigungu}</button>)}
             </div>
           )}
         </div>
         {sameClassAvailable && <fieldset className="rounded-xl border border-gray-200 p-4">
-          <label className="flex items-center gap-3 text-sm font-semibold text-gray-900"><input type="checkbox" checked={sameClassMode} onChange={(event) => { setSameClassMode(event.target.checked); setGradeNumber(''); setClassNumber(''); setMatchToken('') }} />같은 반까지 기억나요</label>
-          {sameClassMode && <><p className="mt-3 text-xs leading-5 text-gray-600">내 계정에 등록한 같은 학교·졸업연도·학년·반 정보와 정확히 일치할 때만 확인할 수 있습니다.</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label htmlFor="person-grade" className="text-sm font-semibold text-gray-900">학년<input id="person-grade" type="number" min={1} max={maximumGrade} required value={gradeNumber} onChange={(event) => { setGradeNumber(event.target.value); setMatchToken('') }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></label><label htmlFor="person-class" className="text-sm font-semibold text-gray-900">반<input id="person-class" type="number" min={1} max={100} required value={classNumber} onChange={(event) => { setClassNumber(event.target.value); setMatchToken('') }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></label></div></>}
+          <label className="flex items-center gap-3 text-sm font-semibold text-gray-900"><input type="checkbox" checked={sameClassMode} onChange={(event) => { setSameClassMode(event.target.checked); setGradeNumber(''); setClassNumber(''); clearSearchResult() }} />같은 반까지 기억나요</label>
+          {sameClassMode && <><p className="mt-3 text-xs leading-5 text-gray-600">내 계정에 등록한 같은 학교·졸업연도·학년·반 정보와 정확히 일치할 때만 확인할 수 있습니다.</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label htmlFor="person-grade" className="text-sm font-semibold text-gray-900">학년<input id="person-grade" type="number" min={1} max={maximumGrade} required value={gradeNumber} onChange={(event) => { setGradeNumber(event.target.value); clearSearchResult() }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></label><label htmlFor="person-class" className="text-sm font-semibold text-gray-900">반<input id="person-class" type="number" min={1} max={100} required value={classNumber} onChange={(event) => { setClassNumber(event.target.value); clearSearchResult() }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></label></div></>}
         </fieldset>}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div><label htmlFor="person-year" className="text-sm font-semibold text-gray-900">졸업연도</label><input id="person-year" type="number" min={1900} max={2200} required value={graduationYear} onChange={(event) => { setGraduationYear(event.target.value); setMatchToken('') }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></div>
-          <div><label htmlFor="person-name" className="text-sm font-semibold text-gray-900">정확한 이름</label><input id="person-name" minLength={2} maxLength={50} required value={exactName} onChange={(event) => { setExactName(event.target.value); setMatchToken('') }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></div>
+        </>}
+        <div className={entryMode === 'manual' ? 'grid gap-3 sm:grid-cols-2' : ''}>
+          {entryMode === 'manual' && <div><label htmlFor="person-year" className="text-sm font-semibold text-gray-900">졸업연도</label><input id="person-year" type="number" min={1900} max={2200} required value={graduationYear} onChange={(event) => { setGraduationYear(event.target.value); clearSearchResult() }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></div>}
+          <div><label htmlFor="person-name" className="text-sm font-semibold text-gray-900">정확한 이름</label><input id="person-name" autoComplete="off" minLength={2} maxLength={50} required value={exactName} onChange={(event) => { setExactName(event.target.value); clearSearchResult() }} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" /></div>
         </div>
         <p className="text-xs leading-5 text-gray-500">부분 이름, 초성, 한 글자 검색과 전체 명단 조회는 제공하지 않습니다.</p>
-        <button disabled={busy} className="schoollove-dark-action w-full rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">정확히 일치하는지 확인</button>
+        <button disabled={busy || (entryMode === 'history' && !selectedHistory)} className="schoollove-dark-action w-full rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">정확히 일치하는지 확인</button>
       </form>
 
       {matchToken && <section className="mt-5 space-y-4 rounded-2xl border border-red-200 bg-red-50 p-5">

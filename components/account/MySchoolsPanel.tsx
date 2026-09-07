@@ -2,15 +2,23 @@ import Link from 'next/link'
 import type { SchoolMembership } from '@/lib/account'
 import { buildMySchoolCards } from '@/lib/accountFirstValue'
 import ShareButton from '@/components/ShareButton'
-import { formatGradeClassHistory } from '@/lib/accountGradeClass'
+import { formatGradeClassHistory, gradeNumbersForSchoolType } from '@/lib/accountGradeClass'
 import ClassHistoryEditor from './ClassHistoryEditor'
 
 type Props = {
   memberships: SchoolMembership[]
   classHistoryWritable?: boolean
+  peopleSearchEnabled?: boolean
 }
 
-export default function MySchoolsPanel({ memberships, classHistoryWritable = false }: Props) {
+function hasSavedK12Class(membership: SchoolMembership): boolean {
+  const kind = membership.school?.school_type
+  if (kind !== 'elementary' && kind !== 'middle' && kind !== 'high') return false
+  return membership.class_history.some(row => gradeNumbersForSchoolType(kind).includes(row.grade_number) &&
+    Number.isInteger(row.class_number) && row.class_number >= 1 && row.class_number <= 100)
+}
+
+export default function MySchoolsPanel({ memberships, classHistoryWritable = false, peopleSearchEnabled = false }: Props) {
   if (memberships.length === 0) {
     return (
       <section className="mt-5 border border-schoollove-border bg-schoollove-surface p-5" aria-label="내 학교 안내">
@@ -49,6 +57,7 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
               </p>
             ) : null}
             <ClassHistoryEditor membership={memberships[index]} writable={classHistoryWritable} />
+            {peopleSearchEnabled && hasSavedK12Class(memberships[index]) && <Link href="/people/search" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">저장한 반에서 사람 찾기</Link>}
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
                 학교 페이지 보기

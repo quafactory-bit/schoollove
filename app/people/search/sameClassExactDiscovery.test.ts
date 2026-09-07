@@ -14,7 +14,7 @@ describe('same-class exact discovery UI', () => {
 
   it('sends no class payload without explicit mode and defaults a successful same-class greeting relation', () => {
     expect(source).toContain("search_mode: 'same_class'")
-    expect(source).toContain("setRelationship(sameClassMode ? 'same_class' : 'same_school')")
+    expect(source).toContain("setRelationship(entryMode === 'history' || sameClassMode ? 'same_class' : 'same_school')")
     expect(source).not.toContain('receiver_user_id')
     expect(source).not.toContain('searchParams')
   })

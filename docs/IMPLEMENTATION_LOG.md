@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-07 Discovery from my history (local verified / Draft)
+
+- Added guarded authenticated-owner history projection, accessible history/manual modes and a gated account-card link to the existing private search page. Selection is local only; explicit submission uses the unchanged same-class API payload. Criteria changes invalidate old tokens/previews and ignore stale asynchronous results.
+- Real React browser fixtures passed at 360/390/412/1280px, including long names, account controls, empty/error/single/multiple choices, manual regressions, no auto-search and no URL/storage/remote-request leakage. Corrected only the existing account list's long-name wrapping for the responsive boundary.
+- Targeted 136 tests and full 1,599 tests passed (4 existing skips); typecheck, build, diff and scoped secret scan passed. ESLint remains 0 errors / 86 existing warnings. Search/API/RPC/rate-limit/migration/notification/Instagram authority is unchanged. Details: `docs/decisions/2026-09-07-discovery-from-my-history.md`.
+- Only source commit/push, Preview-base Draft PR and feature deployment are authorized; no canonical merge, live search/login, remote migration, A/B edit or Production change.
+
 ## 2026-09-07 PR100 class-history hardening (local verified / Draft)
 
 - Supersedes the initial access and unchanged-same-class claims below. AccountPage reads people_search separately; classHistoryWritable and a dedicated API helper leave private-profile/create capabilities unchanged. Exact target-school authority is enforced by the owner RPC.
