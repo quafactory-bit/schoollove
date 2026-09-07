@@ -4,6 +4,7 @@ import { getAuthenticatedServerContext } from '@/lib/user-auth'
 import { hasBetaFeatureAccess } from '@/lib/beta'
 import { hasPublicAccountAccessActive } from '@/lib/publicAccountLaunch'
 import PeopleSearchClient from './PeopleSearchClient'
+import { getOwnClassDiscoveryChoices } from '@/lib/peopleDiscoveryHistory'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
@@ -17,5 +18,6 @@ export default async function PeopleSearchPage() {
   if (!auth) redirect('/login?next=/people/search')
   if (!await hasBetaFeatureAccess(auth.client,auth.user.id,'people_search')) redirect('/account')
   if (!await hasPublicAccountAccessActive(auth.client,auth.user.id)) redirect('/account')
-  return <PeopleSearchClient />
+  const history = await getOwnClassDiscoveryChoices(auth.client, auth.user.id)
+  return <PeopleSearchClient historyChoices={history.choices} historyStatus={history.status} />
 }

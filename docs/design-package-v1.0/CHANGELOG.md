@@ -2,6 +2,8 @@
 
 ## 2026-09-07
 
+- 승인된 owner history 선택형 입력을 private People Discovery에 추가한다. 기존 manual 검색, 서버 authority, 공개 명단 금지와 history 비저장 경계는 유지한다.
+
 - 기존 내 학교 카드에 optional 학년·반 추가/수정/clear 계약을 추가했다. owner RPC가 기존 school_membership 권한과 DB 학교 유형을 검사하고, 실제 변경에서만 live unused match token을 무효화한다. 학교·졸업연도와 기존 관계는 보존한다.
 
 ## 2026-09-03

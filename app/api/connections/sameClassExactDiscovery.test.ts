@@ -38,6 +38,6 @@ describe('same-class exact discovery contract', () => {
     expect(service).not.toMatch(/findExactClassConnectionMatch[\s\S]*receiverUserId/)
     expect(client).toContain('같은 반까지 기억나요')
     expect(client).toContain("search_mode: 'same_class'")
-    expect(client).toContain("setRelationship(sameClassMode ? 'same_class' : 'same_school')")
+    expect(client).toContain("setRelationship(entryMode === 'history' || sameClassMode ? 'same_class' : 'same_school')")
   })
 })
