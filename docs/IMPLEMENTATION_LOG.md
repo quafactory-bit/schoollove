@@ -1,5 +1,20 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-07 PR100 class-history hardening (local verified / Draft)
+
+- Supersedes the initial access and unchanged-same-class claims below. AccountPage reads people_search separately; classHistoryWritable and a dedicated API helper leave private-profile/create capabilities unchanged. Exact target-school authority is enforced by the owner RPC.
+- Revised the same unapplied migration44, adding no table/column/index/trigger or feature flag. Same-class definition intentionally changed (signature/privacy/grants unchanged); legacy exact-person and membership-create definitions remain exact.
+- Deployed-schema43 clone → revised44: 73 tables / 723 columns / 194 functions. PD/public/onboarding allow/deny, owner/no-op/token/safety matrices, same-class suppression and legacy search passed. Observed two-session advisory waits prove actor edit-wins and receiver search-wins; final stale token 0 and failed subsequent request leave relations/notifications unchanged.
+- Real AccountClient fixtures at 360/390/412: class editor enabled, profile/create disabled, deletion/emergency/no-access/non-K12 editor hidden. Targeted 64 tests, full 1,560 tests, TypeScript pass; ESLint 0 errors / 86 existing warnings. Detailed evidence and release boundaries: `docs/decisions/2026-09-07-class-history-self-service-hardening.md`.
+
+## 2026-09-07 Class history self-service (local verified / Draft)
+
+- Added one forward migration `20260907031506_class_history_self_service.sql`, owner-only full-replacement RPC, strict authenticated PATCH route and inline optional school-card editor. Parent school/year/owner/profile, existing search RPCs, flags and historical migrations are unchanged.
+- Final deployed Preview schema-only disposable upgrade 43→44 passed: public tables/columns/functions 73/723/193→73/723/194. Owner, validation, no-op, token invalidation, safety, rollback, cascade and RLS/grants matrix passed; disposable containers and schema dump were removed.
+- Targeted 43 tests, full 1,552 tests, TypeScript, build and local responsive editor checks (360/390/412px) passed. ESLint: 0 errors / 86 existing warnings. Diff check and scoped secret-pattern scan passed.
+- After direct user approval resolved the initial automatic-review block, a fresh disposable schema-43 clone passed synthetic exact-person/same-class RPC regression: new history match, old/clear unavailable and legacy exact success/generic miss preserved. Source commit/push/Draft PR/feature deployment follow the original approval; canonical merge and remote migration remain deferred.
+- Preview/Production migration apply, live A/B edits/search/OAuth and external configuration changes are zero. Detailed limits and evidence: `docs/decisions/2026-09-07-class-history-self-service-verification.md`.
+
 ## 2026-09-03 Connected Instagram owner handle management (local / Draft)
 
 - Added forward-only migration `20260903023006_connected_instagram_owner_handle_update.sql` (SHA-256 `89c7b8bb6d14463a82cb9ba705f76541ce8984b8b090939595111ab02eac9090`). The owner-safe `update_own_connected_instagram_handle(text)` RPC derives ownership from `auth.uid()`, requires an existing active private profile and current `instagram_permission` for non-null values, and changes only `instagram_handle` plus `updated_at`.

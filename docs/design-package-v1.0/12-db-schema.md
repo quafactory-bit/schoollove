@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> **CLASS HISTORY SELF-SERVICE HARDENING (2026-09-07):** 기존 학교 membership의 owner-private 학년·반 child rows는 `replace_own_school_class_history(uuid,jsonb)`로 전체 교체한다. public school-membership, exact claimed onboarding, exact active People Discovery target-school 중 하나의 authority를 요구하며 프로필·새 학교 등록 권한은 넓히지 않는다. 성인·비공개 active profile·탈퇴·suspension·emergency·owner 경계를 유지한다. 학교·졸업연도·profile·owner·legacy class_number는 변경하지 않는다. 빈 배열은 child만 지우고 no-op은 rows/timestamps/tokens를 보존한다. 실제 변경은 owner 관련 미사용 live token만 제거한다. Same Class RPC는 동일 user-lock namespace의 정렬된 pair lock과 잠금 후 전체 재검사를 사용해 stale token race를 차단한다. Legacy exact-person, 기존 관계, K12 authority와 RLS/direct-write denial은 보존한다. 원격 적용은 별도 승인 대상이다.
+
 > **PHASE 10B APPROVED SUPERSESSION (2026-07-28):** 신규 개인 데이터는 Supabase Auth user와 연결된 owner-only `private_profiles`·학교 이력, KST 만 19세 자기진술 결과, append-only 동의 기록으로 분리한다. 기존 `profiles`는 자동 claim 없이 quarantined/unclaimed 및 기본 private 상태를 유지한다. 세부 결정은 `docs/decisions/2026-07-28-auth-adult-ownership-boundary.md`가 우선한다.
 
 > **PHASE 10C APPROVED SUPERSESSION (2026-07-28):** 연결 요청, 수락된 연결, 텍스트 대화, 차단·신고, 일반 알림과 상대별 Instagram 공개 승인은 별도 private 테이블과 service-role 전용 원자 RPC로 관리한다. 모든 PHASE 10C 개인 테이블은 RLS와 FORCE RLS를 사용하며 Production 적용 전 별도 검토가 필요하다.

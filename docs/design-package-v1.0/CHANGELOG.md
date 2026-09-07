@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-09-07
+
+- 기존 내 학교 카드에 optional 학년·반 추가/수정/clear 계약을 추가했다. owner RPC가 기존 school_membership 권한과 DB 학교 유형을 검사하고, 실제 변경에서만 live unused match token을 무효화한다. 학교·졸업연도와 기존 관계는 보존한다.
+
 ## 2026-09-03
 
 - Connected Instagram add-on 회원이 public account launch를 열지 않고 기존 비공개 profile의 Instagram handle만 owner-safe 경로로 설정·삭제할 수 있도록 계약을 추가했다. 이름·소개·사진·학교·학년/반은 변경하지 않으며, non-null 저장은 active add-on 권한을 요구하고 null 삭제는 개인정보 제거권으로 유지한다.
