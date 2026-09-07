@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-07 Discovery from my history (local / Draft)
+
+- Added a narrow authenticated-owner history read and accessible single-choice picker to private exact search. Manual exact-person/same-class payloads and server authority are unchanged; selection never initiates a search.
+- Added a gated account-card discovery link with no URL context. Criterion changes clear old matches/previews and discard late responses. Empty/unavailable history preserves manual entry.
+- No migration, remote data write, live search/login, canonical merge or Production change is included.
+
 ## 2026-09-07 PR100 class-history hardening (local / Draft)
 
 - Added a separate class-history capability for active exact People Discovery target-school members, including closed public launch / consumed-or-absent claim / private_profile OFF. Profile edits and new school registration retain their existing gates.
