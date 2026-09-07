@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> **APPROVED INPUT CONVENIENCE (2026-09-07):** 인증된 People Discovery 사용자는 owner-private 학교·졸업연도·학년·반 이력을 선택하고 정확한 이름만 입력해 기존 same-class 검색을 명시적으로 제출할 수 있다. 수동 exact-person/same-class 입력과 기존 서버 권한·rate limit·opaque token 계약은 유지한다. 선택은 검색을 실행하지 않으며 이력은 URL·storage·telemetry에 저장하지 않는다. 공개 명단/인원/새 검색 API는 추가하지 않는다. 상세: `docs/decisions/2026-09-07-discovery-from-my-history.md`.
+
 > **PHASE 10A SAFETY OVERRIDE (2026-07-28):** 공개 Year/Class/Profile 사람 발견 흐름, 이름 검색, 개인 카드와 Instagram 링크를 전면 중단한다. 해당 URL은 개인 행을 조회·렌더링하지 않는 비공개 안내와 noindex/nofollow/noarchive만 제공한다. 사람 발견은 PHASE 10B의 만 19세 이상 본인 인증·소유권·상호 승인 구조 이후 재정의한다.
 
 > **PHASE 10C APPROVED SUPERSESSION (2026-07-28):** 사람 발견은 공개 명단 대신 로그인한 성인이 입력한 학교·졸업연도·정확한 이름의 단일 일치 상태만 반환한다. 상대 user ID와 개인정보는 opaque token 뒤에 숨기며, 최초 안부 1회와 7일 후 동일 안부 재알림 1회, 수락 이후의 비공개 연결만 허용한다. 세부 계약은 `docs/decisions/2026-07-28-safe-connection-request-messaging.md`가 우선한다.
