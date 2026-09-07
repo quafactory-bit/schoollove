@@ -96,7 +96,8 @@ describe('private account first-value my schools', () => {
 
   it('0건 안내와 비공개 가치 문구를 제공하며 사람·활동·Instagram 가치를 만들지 않는다', () => {
     expect(COMPONENT_SOURCE).toContain('학교 이력을 한 곳 등록하면')
-    expect(COMPONENT_SOURCE).toContain('사람 찾기나 공개 명단으로 사용되지 않습니다')
+    expect(COMPONENT_SOURCE).toContain('학교·졸업연도·학년·반 정보는 공개 명단에 표시되지 않습니다')
+    expect(COMPONENT_SOURCE).toContain('정확히 일치하는 경우에만 비공개 매칭 조건으로 사용됩니다')
     expect(COMPONENT_SOURCE).not.toMatch(/Instagram|인스타|[0-9]+명|활동량|동문 찾기|사람 발견/)
   })
 })
