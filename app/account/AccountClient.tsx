@@ -11,13 +11,13 @@ import { buildGradeClassPayload, formatGradeClassHistory, gradeNumbersForSchoolT
 import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
 import type { BetaOnboardingState } from '@/lib/betaOnboarding'
 
-type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number}
+type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;peopleSearchBetaAccess?:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number}
 
 async function readResult(response:Response):Promise<{error?:string}>{
   try{return await response.json() as {error?:string}}catch{return {}}
 }
 
-export default function AccountClient({state,launch,controlledBetaAccess,instagramBetaAccess,betaOnboardingState,currentYear}:Props){
+export default function AccountClient({state,launch,controlledBetaAccess,peopleSearchBetaAccess=false,instagramBetaAccess,betaOnboardingState,currentYear}:Props){
   const router=useRouter()
   const [status,setStatus]=useState('')
   const [isError,setIsError]=useState(false)
@@ -42,6 +42,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,instagr
   const inviteOnboardingAccess=betaOnboardingState==='claimed'
   const privateProfileWritable=(launch.privateProfileEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped&&!deletionBlocked
   const schoolMembershipWritable=(launch.schoolMembershipEnabled||controlledBetaAccess||inviteOnboardingAccess)&&!launch.emergencyStopped&&!deletionBlocked
+  const classHistoryWritable=(schoolMembershipWritable||peopleSearchBetaAccess)&&!launch.emergencyStopped&&!deletionBlocked
   const instagramHandleSetWritable=Boolean(state.profile)&&instagramBetaAccess&&!deletionBlocked
   const instagramHandleClearWritable=Boolean(state.profile?.instagram_handle)&&!deletionBlocked
   const accountWritable=privateProfileWritable||schoolMembershipWritable||instagramHandleSetWritable||instagramHandleClearWritable
@@ -142,8 +143,8 @@ export default function AccountClient({state,launch,controlledBetaAccess,instagr
       </form>}
       {inviteStatus?<p role={inviteError?'alert':'status'} aria-live="polite" className={`mt-3 rounded-xl px-4 py-3 text-sm ${inviteError?'bg-red-50 text-red-900':'bg-emerald-50 text-emerald-900'}`}>{inviteStatus}</p>:null}
     </section>
-    <MySchoolsPanel memberships={state.memberships}/>
-    {!accountWritable&&!deletionBlocked ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900" role="status">계정 소프트런치를 준비 중이어서 현재 정보 저장은 닫혀 있습니다. 저장된 본인 정보 조회와 삭제·탈퇴 요청은 계속할 수 있습니다.</p>:null}
+    <MySchoolsPanel memberships={state.memberships} classHistoryWritable={classHistoryWritable}/>
+    {!accountWritable&&!classHistoryWritable&&!deletionBlocked ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900" role="status">계정 소프트런치를 준비 중이어서 현재 정보 저장은 닫혀 있습니다. 저장된 본인 정보 조회와 삭제·탈퇴 요청은 계속할 수 있습니다.</p>:null}
     {deletionBlocked ? <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900" role="status">{state.deletionStatus==='pending'?'탈퇴 요청이 접수되어 추가 정보 변경을 차단했습니다.':state.deletionStatus==='done'?'탈퇴 처리가 완료되었습니다.':'개인 데이터 삭제 또는 Auth identity 삭제를 진행 중이며 개인 기능 접근을 차단했습니다.'}</p>:null}
 
     <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">1. 만 19세 이상 확인</h2>
