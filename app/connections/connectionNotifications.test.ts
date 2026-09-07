@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest'
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8')
 const client = read('app/connections/ConnectionsClient.tsx')
-const header = read('components/Header.tsx')
+const provider = read('components/ConnectionNotificationProvider.tsx')
+const badge = read('components/ConnectionNotificationBadge.tsx')
+const tabBar = read('components/TabBar.tsx')
+const desktopNav = read('components/DesktopNav.tsx')
 const exportSource = read('lib/dataExport.ts')
 
 describe('connection notifications product contract', () => {
@@ -18,19 +21,20 @@ describe('connection notifications product contract', () => {
   })
 
   it('loads on mount and refreshes once after a local read event, with no polling or realtime subscription', () => {
-    expect(header).toContain("/api/connections/notifications/summary")
-    expect(header).toContain("window.addEventListener('connection-notifications-changed', loadUnreadCount)")
+    expect(provider).toContain("/api/connections/notifications/summary")
+    expect(provider).toContain("window.addEventListener('connection-notifications-changed', loadUnreadCount)")
     expect(client).toContain("window.dispatchEvent(new Event('connection-notifications-changed'))")
-    expect(header).toContain('}, [pathname])')
-    expect(header).not.toMatch(/setInterval|realtime|Notification\.requestPermission|serviceWorker|websocket/i)
+    expect(provider).toContain('}, [pathname, shouldLoad])')
+    expect(provider).not.toMatch(/setInterval|realtime|Notification\.requestPermission|serviceWorker|websocket/i)
     expect(client).toContain("fetch('/api/connections/notifications')")
     expect(client).not.toMatch(/notifications[\s\S]*\/messages|notifications[\s\S]*instagram/i)
   })
 
   it('renders the connection nav badge only for a non-zero unread count', () => {
-    expect(header).toContain("const unreadLabel = unreadCount ? unreadCount > 9 ? '9+' : String(unreadCount) : null")
-    expect(header).toContain('내 연결')
-    expect(header).toContain('badge={unreadLabel}')
+    expect(badge).toContain('if (!unreadCount) return null')
+    expect(badge).toContain("unreadCount > 9 ? '9+' : String(unreadCount)")
+    expect(tabBar).toContain("label: '내 연결'")
+    expect(desktopNav).toContain('내 연결')
   })
 
   it('adds only event type and timestamps to the owner export', () => {
