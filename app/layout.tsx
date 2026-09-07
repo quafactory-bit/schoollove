@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Providers } from './providers'
+import { ConnectionNotificationProvider } from '@/components/ConnectionNotificationProvider'
+import DesktopNav from '@/components/DesktopNav'
 import Footer from '@/components/Footer'
 import TabBar from '@/components/TabBar'
 import { Analytics } from '@vercel/analytics/next'
@@ -45,11 +47,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head />
       <body className="antialiased">
         <Providers>
-          <div className="pb-16">
-            {children}
-            <Footer />
-          </div>
-          <TabBar />
+          <ConnectionNotificationProvider>
+            <DesktopNav />
+            <div className="pb-16">
+              {children}
+              <Footer />
+            </div>
+            <TabBar />
+          </ConnectionNotificationProvider>
         </Providers>
         <Analytics />
       </body>
