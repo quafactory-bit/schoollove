@@ -1,5 +1,13 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-07 Class history self-service (local verified / Draft)
+
+- Added one forward migration `20260907031506_class_history_self_service.sql`, owner-only full-replacement RPC, strict authenticated PATCH route and inline optional school-card editor. Parent school/year/owner/profile, existing search RPCs, flags and historical migrations are unchanged.
+- Final deployed Preview schema-only disposable upgrade 43→44 passed: public tables/columns/functions 73/723/193→73/723/194. Owner, validation, no-op, token invalidation, safety, rollback, cascade and RLS/grants matrix passed; disposable containers and schema dump were removed.
+- Targeted 43 tests, full 1,552 tests, TypeScript, build and local responsive editor checks (360/390/412px) passed. ESLint: 0 errors / 86 existing warnings. Diff check and scoped secret-pattern scan passed.
+- After direct user approval resolved the initial automatic-review block, a fresh disposable schema-43 clone passed synthetic exact-person/same-class RPC regression: new history match, old/clear unavailable and legacy exact success/generic miss preserved. Source commit/push/Draft PR/feature deployment follow the original approval; canonical merge and remote migration remain deferred.
+- Preview/Production migration apply, live A/B edits/search/OAuth and external configuration changes are zero. Detailed limits and evidence: `docs/decisions/2026-09-07-class-history-self-service-verification.md`.
+
 ## 2026-09-03 Connected Instagram owner handle management (local / Draft)
 
 - Added forward-only migration `20260903023006_connected_instagram_owner_handle_update.sql` (SHA-256 `89c7b8bb6d14463a82cb9ba705f76541ce8984b8b090939595111ab02eac9090`). The owner-safe `update_own_connected_instagram_handle(text)` RPC derives ownership from `auth.uid()`, requires an existing active private profile and current `instagram_permission` for non-null values, and changes only `instagram_handle` plus `updated_at`.

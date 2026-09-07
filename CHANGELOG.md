@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-07 Class history self-service (local / Draft)
+
+- Added an optional inline grade/class editor for existing K12 memberships, strict private PATCH API, and one additive owner replacement RPC. Empty arrays clear only child history; identical input preserves rows/timestamps and live tokens.
+- Preserved the current adult/consent, deletion/emergency, beta/onboarding-school access gates, school-type authority, direct-write denial and parent membership fields. Actual changes invalidate only live unused match tokens involving the owner; established relationships remain intact.
+- Preview/Production migration application and live user edits are not part of this implementation phase.
+
 ## 2026-09-03 Connected Instagram owner handle management (local / Draft)
 
 - Added a narrow owner-only Instagram-handle write contract for existing private profiles without reopening the closed public-account launch or granting the add-on general `private_profile` access.
