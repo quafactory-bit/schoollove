@@ -22,14 +22,32 @@ const supabaseMock = vi.hoisted(() => {
     }).then(resolve, reject)
     return builder
   })
-  return { calls, from, state }
+  const rpc = vi.fn()
+  return { calls, from, state, rpc }
 })
 
 vi.mock('@/lib/supabase', () => ({
-  getSupabaseAdmin: () => ({ from: supabaseMock.from }),
+  getSupabaseAdmin: () => ({ from: supabaseMock.from, rpc: supabaseMock.rpc }),
 }))
 
-import { getControlledBetaState } from './betaOperations'
+import { applyControlledBetaAction, getControlledBetaState } from './betaOperations'
+
+describe('controlled beta operational capacity action', () => {
+  const operation = { action: 'set_operational_cap' as const, programId: '10000000-0000-4000-8000-000000000001', maxUsers: 5, reason: 'OPERATOR_APPROVED_CAP' }
+  beforeEach(() => supabaseMock.rpc.mockReset())
+  it('uses only the official audited RPC, not a direct table update', async () => {
+    supabaseMock.rpc.mockResolvedValue({ error: null })
+    await expect(applyControlledBetaAction(operation)).resolves.toEqual({ applied: true })
+    expect(supabaseMock.rpc).toHaveBeenCalledExactlyOnceWith('admin_set_beta_operational_cap', {
+      target_program_id: operation.programId, requested_max_users: 5,
+      requested_reason: operation.reason, admin_actor: expect.any(String),
+    })
+  })
+  it('does not claim success when the DB capacity gate rejects the action', async () => {
+    supabaseMock.rpc.mockResolvedValue({ error: { message: 'PROGRAM_FULL' } })
+    await expect(applyControlledBetaAction(operation)).rejects.toThrow()
+  })
+})
 
 describe('controlled beta operational incident state', () => {
   beforeEach(() => {

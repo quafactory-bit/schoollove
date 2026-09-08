@@ -151,6 +151,7 @@ export const BetaSetupSchema = z.object({
 })
 
 export const BetaAdminActionSchema = z.discriminatedUnion('action',[
+  z.object({action:z.literal('set_operational_cap'),programId:z.string().uuid(),maxUsers:z.number().int().min(1).max(20),reason:reasonCode}),
   z.object({action:z.literal('save_setup'),setup:BetaSetupSchema}),
   z.object({action:z.literal('activate_setup'),draftId:z.string().uuid()}),
   z.object({action:z.literal('configure_features'),programId:z.string().uuid(),enabledFeatures:z.array(z.enum(betaFeatureKeys)).min(1).max(2).refine((value)=>classifyControlledBetaFeatureSet(value)!==null,'INVALID_CONTROLLED_BETA_FEATURE_SET')}),
