@@ -26,7 +26,8 @@ describe('connection notifications product contract', () => {
     expect(client).toContain("window.dispatchEvent(new Event('connection-notifications-changed'))")
     expect(provider).toContain('}, [pathname, shouldLoad])')
     expect(provider).not.toMatch(/setInterval|realtime|Notification\.requestPermission|serviceWorker|websocket/i)
-    expect(client).toContain("fetch('/api/connections/notifications')")
+    expect(client).toContain('await loadConnectionFeed()')
+    expect(read('app/connections/connectionFeed.ts')).toContain("fetch('/api/connections/notifications')")
     expect(client).not.toMatch(/notifications[\s\S]*\/messages|notifications[\s\S]*instagram/i)
   })
 

@@ -119,6 +119,22 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     finally{setInviteBusy(false)}
   }
 
+  const optionalBetaEnrollment = launch.registrationEnabled && betaOnboardingState === 'none'
+  const betaInvitePanel = (
+    <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5" aria-label="제한 베타 초대 등록">
+      <h2 className="text-lg font-bold text-gray-950">사람 찾기 제한 베타 · 선택 참여</h2>
+      <p className="mt-2 text-sm leading-6 text-gray-600">비공개 계정 등록과 사람 찾기 참여는 별개입니다. 사람 찾기는 운영자 초대와 승인 후에만 사용할 수 있습니다.</p>
+      {launch.registrationEnabled ? <p className="mt-2 text-sm text-gray-600">초대가 없어도 내 계정에서 성인 확인, 동의, 내 프로필과 학교 이력을 등록할 수 있습니다.</p> : null}
+      <p className="mt-2 text-sm leading-6 text-gray-600">운영자에게 받은 초대 토큰을 직접 제출할 때만 등록합니다. 토큰은 주소나 브라우저 저장소에 보관하지 않습니다.</p>
+      {betaOnboardingState==='claimed'?<div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900"><p className="font-semibold">초대 확인 완료</p><p className="mt-1 leading-6">아래 온보딩 항목을 완료한 뒤 베타 참여를 신청해 주세요.</p>{onboardingComplete?<button type="button" disabled={inviteBusy} onClick={()=>void finalizeBetaOnboarding()} className="schoollove-dark-action schoollove-focus mt-3 min-h-12 rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-40">{inviteBusy?'신청 중…':'베타 참여 신청 완료'}</button>:null}</div>:betaOnboardingState==='pending_review'?<p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">베타 참여 신청 완료 · 운영자 승인 대기 중</p>:betaOnboardingState==='active'?<p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">People Discovery 베타 참여 승인 완료</p>:<form className="mt-4 space-y-3" onSubmit={redeemBetaInvite}>
+        <label htmlFor="beta-invite-token" className="block text-sm font-medium text-gray-800">초대 토큰</label>
+        <input id="beta-invite-token" type="password" required minLength={24} maxLength={256} autoComplete="off" spellCheck={false} value={inviteToken} onChange={(event)=>setInviteToken(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/>
+        <button disabled={inviteBusy||inviteToken.trim().length<24} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{inviteBusy?'초대 확인 중…':'초대 확인'}</button>
+      </form>}
+      {inviteStatus?<p role={inviteError?'alert':'status'} aria-live="polite" className={`mt-3 rounded-xl px-4 py-3 text-sm ${inviteError?'bg-red-50 text-red-900':'bg-emerald-50 text-emerald-900'}`}>{inviteStatus}</p>:null}
+    </section>
+  )
+
   return <main className="mx-auto max-w-2xl px-5 py-10">
     <div className="flex flex-wrap items-start justify-between gap-4"><div>
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Private account</p>
@@ -133,16 +149,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
       <Link href="/onboarding" className="schoollove-focus mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-gray-900 underline">온보딩 진행 상태 보기</Link>
       {onboardingComplete?<div className="mt-3 rounded-xl bg-emerald-50 px-4 py-3"><p className="font-semibold text-emerald-900">비공개 계정 준비 완료</p><p className="mt-1 text-xs leading-5 text-emerald-800">성인 확인, 필수 동의, 비공개 프로필과 학교 이력을 모두 저장했습니다.</p></div>:null}
     </section>
-    <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5" aria-label="제한 베타 초대 등록">
-      <h2 className="text-lg font-bold text-gray-950">제한 베타 초대 등록</h2>
-      <p className="mt-2 text-sm leading-6 text-gray-600">운영자에게 받은 초대 토큰을 직접 제출할 때만 등록합니다. 토큰은 주소나 브라우저 저장소에 보관하지 않습니다.</p>
-      {betaOnboardingState==='claimed'?<div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900"><p className="font-semibold">초대 확인 완료</p><p className="mt-1 leading-6">아래 온보딩 항목을 완료한 뒤 베타 참여를 신청해 주세요.</p>{onboardingComplete?<button type="button" disabled={inviteBusy} onClick={()=>void finalizeBetaOnboarding()} className="schoollove-dark-action schoollove-focus mt-3 min-h-12 rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-40">{inviteBusy?'신청 중…':'베타 참여 신청 완료'}</button>:null}</div>:betaOnboardingState==='pending_review'?<p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">베타 참여 신청 완료 · 운영자 승인 대기 중</p>:betaOnboardingState==='active'?<p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">People Discovery 베타 참여 승인 완료</p>:<form className="mt-4 space-y-3" onSubmit={redeemBetaInvite}>
-        <label htmlFor="beta-invite-token" className="block text-sm font-medium text-gray-800">초대 토큰</label>
-        <input id="beta-invite-token" type="password" required minLength={24} maxLength={256} autoComplete="off" spellCheck={false} value={inviteToken} onChange={(event)=>setInviteToken(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/>
-        <button disabled={inviteBusy||inviteToken.trim().length<24} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{inviteBusy?'초대 확인 중…':'초대 확인'}</button>
-      </form>}
-      {inviteStatus?<p role={inviteError?'alert':'status'} aria-live="polite" className={`mt-3 rounded-xl px-4 py-3 text-sm ${inviteError?'bg-red-50 text-red-900':'bg-emerald-50 text-emerald-900'}`}>{inviteStatus}</p>:null}
-    </section>
+    {!optionalBetaEnrollment ? betaInvitePanel : null}
       <MySchoolsPanel memberships={state.memberships} classHistoryWritable={classHistoryWritable} peopleSearchEnabled={peopleSearchBetaAccess && !launch.emergencyStopped && !deletionBlocked}/>
     {!accountWritable&&!classHistoryWritable&&!deletionBlocked ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900" role="status">계정 소프트런치를 준비 중이어서 현재 정보 저장은 닫혀 있습니다. 저장된 본인 정보 조회와 삭제·탈퇴 요청은 계속할 수 있습니다.</p>:null}
     {deletionBlocked ? <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900" role="status">{state.deletionStatus==='pending'?'탈퇴 요청이 접수되어 추가 정보 변경을 차단했습니다.':state.deletionStatus==='done'?'탈퇴 처리가 완료되었습니다.':'개인 데이터 삭제 또는 Auth identity 삭제를 진행 중이며 개인 기능 접근을 차단했습니다.'}</p>:null}
@@ -162,14 +169,14 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
           ['terms',<> <Link href="/terms" className="underline">이용약관</Link>에 동의합니다.</>],
           ['privacy_collection',<> <Link href="/privacy" className="underline">개인정보 수집·이용</Link>에 동의합니다.</>],
           ['adult_confirmation',<>만 19세 이상이며 본인 정보만 등록합니다.</>],
-          ['private_by_default',<>개인 정보가 기본 비공개이며 사람 검색에 노출되지 않음을 확인했습니다.</>],
+          ['private_by_default',<>개인 정보는 기본 비공개이며 공개 명단에 표시되지 않습니다. 별도 승인된 사람 찾기에서는 정확히 일치하는 조건으로만 연결을 요청할 수 있음을 확인했습니다.</>],
         ] as const).map(([key,label])=><label key={key} className="flex min-h-11 items-start gap-3 text-sm text-gray-700"><input type="checkbox" required checked={consents[key]} onChange={(event)=>setConsents((current)=>({...current,[key]:event.target.checked}))} className="mt-0.5 h-5 w-5"/><span>{label}</span></label>)}
         <button disabled={busy||!privateProfileWritable||!state.adultEligible} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">필수 동의 4개 기록</button>
       </form>}
     </section>
 
     <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">3. 내 비공개 프로필</h2>
-      <p className="mt-2 text-sm leading-6 text-gray-600">이름·Instagram·소개는 본인만 조회할 수 있습니다. Instagram은 사람 검색이나 공개 화면에 표시되지 않습니다. 안전한 업로드 경로가 준비되기 전까지 프로필 사진은 받지 않습니다.</p>
+      <p className="mt-2 text-sm leading-6 text-gray-600">프로필은 기본 비공개입니다. 승인된 사람 찾기에서는 정확한 조건만 확인하며, 안부 수락 전 이름은 가립니다. 연결 후 표시명이 보이며 Instagram은 별도 기능 권한과 상대별 공개 승인 없이는 보이지 않습니다. Instagram은 사람 검색이나 공개 화면에 표시되지 않습니다. 프로필 사진은 받지 않습니다.</p>
       <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();await submit('/api/account/profile',{display_name:displayName,instagram_handle:instagram||null,introduction:introduction||null})}}>
         <label htmlFor="display-name" className="block text-sm font-medium text-gray-800">내 이름</label><input id="display-name" required maxLength={50} disabled={!privateProfileWritable} value={displayName} onChange={(event)=>setDisplayName(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
         <label htmlFor="instagram" className="block text-sm font-medium text-gray-800">Instagram 아이디 (선택·비공개)</label><input id="instagram" maxLength={30} pattern="[A-Za-z0-9._]{1,30}" disabled={!privateProfileWritable&&!instagramHandleSetWritable} value={instagram} onChange={(event)=>setInstagram(event.target.value.replace(/^@/,''))} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
@@ -197,6 +204,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
 
     <section className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-5"><h2 className="text-lg font-bold text-red-950">계정 탈퇴 요청</h2><p className="mt-2 text-sm leading-6 text-red-900">요청 즉시 추가 개인 정보 변경을 차단합니다. 운영 확인 후 공개 계정 데이터를 먼저 삭제하고 Auth identity 실제 삭제를 요청하는 2단계 절차를 사용합니다. Auth 삭제가 실패하면 계정은 차단된 재시도 대기 상태로 남으며 완료로 표시하지 않습니다.</p><p className="mt-2 text-xs text-red-800">처리 상태나 오류 접수는 <Link href="/contact" className="underline">운영자 문의</Link>로 알려 주세요. 완료된 비식별 처리 기록은 재시도·장애 확인 목적의 제한 기간 후 정리됩니다.</p><button type="button" disabled={busy||deletionBlocked} onClick={async()=>{if(window.confirm('탈퇴 요청 후에는 정보 변경이 차단됩니다. 계속할까요?'))await submit('/api/account/deletion-request',{confirm:true},'POST','탈퇴 요청을 접수했습니다.')}} className="schoollove-dark-action schoollove-focus mt-4 min-h-12 rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{state.deletionStatus==='pending'?'탈퇴 요청 접수됨':state.deletionStatus==='public_data_deleted'?'개인 데이터 삭제 완료 · Auth 삭제 대기':state.deletionStatus==='failed_safe'?'Auth 삭제 재시도 대기':state.deletionStatus==='auth_deletion_pending'?'Auth 삭제 처리 중':state.deletionStatus==='done'?'탈퇴 처리 완료':'계정 탈퇴 요청'}</button></section>
 
+    {optionalBetaEnrollment ? betaInvitePanel : null}
     <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600" aria-label="계정 도움말"><Link href="/privacy" className="underline">개인정보처리방침</Link><Link href="/terms" className="underline">이용약관</Link><Link href="/contact" className="underline">운영자 문의</Link></nav>
     {status?<p role={isError?'alert':'status'} aria-live="polite" className={`schoollove-dark-action sticky bottom-24 z-30 mt-5 rounded-xl px-4 py-3 text-sm text-white shadow-lg ${isError?'bg-red-800':'bg-gray-950'}`}>{status}</p>:null}
   </main>

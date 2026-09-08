@@ -21,7 +21,7 @@ function safeDbError(error:unknown,fallback:string){
 export async function getControlledBetaState(schoolQuery='') {
   const admin=getSupabaseAdmin()
   const [programsResult,draftsResult,snapshotsResult,programSchoolsResult,programFlagsResult,membersResult,progressResult,feedbackResult,tasksResult,campaignsResult,aggregatesResult,readinessResult,requestsResult,ordersResult,incidentsResult,schoolOptionsResult] = await Promise.all([
-    admin.from('beta_programs').select('id,program_key,name,status,requires_admin_approval,starts_at,ends_at,emergency_disabled_at,updated_at').order('created_at'),
+    admin.from('beta_programs').select('id,program_key,name,status,requires_admin_approval,starts_at,ends_at,emergency_disabled_at,operational_max_users,updated_at').order('created_at'),
     admin.from('beta_setup_drafts').select('id,draft_key,name,starts_at,ends_at,max_users,target_scope,target_school_id,target_school:schools(id,school_name,school_type,sido,sigungu),enabled_features,invite_policy,approval_waitlist_enabled,stop_conditions,operator_memo,status,updated_at').order('updated_at',{ascending:false}).limit(20),
     admin.from('beta_program_setup_snapshots').select('id,program_id,source_draft_id,max_users,target_scope,target_school_id,target_school:schools(id,school_name,school_type,sido,sigungu),enabled_features,invite_policy,approval_waitlist_enabled,stop_conditions,created_at').order('created_at',{ascending:false}).limit(20),
     admin.from('beta_program_schools').select('program_id,school_id,source_snapshot_id,school:schools(id,school_name,school_type,sido,sigungu)').order('created_at'),
@@ -87,6 +87,11 @@ export async function getControlledBetaState(schoolQuery='') {
 }
 export async function applyControlledBetaAction(operation:AdminAction) {
   const admin=getSupabaseAdmin()
+  if(operation.action==='set_operational_cap') {
+    const {error}=await admin.rpc('admin_set_beta_operational_cap',{target_program_id:operation.programId,requested_max_users:operation.maxUsers,requested_reason:operation.reason,admin_actor:actor})
+    if(error) throw new Error(safeDbError(error,'OPERATIONAL_CAP_UPDATE_FAILED'))
+    return {applied:true}
+  }
   if(operation.action==='save_setup') {
     const setup=operation.setup
     const {data,error}=await admin.rpc('admin_save_beta_setup',{target_draft_id:setup.id??null,requested_draft_key:setup.draftKey,requested_name:setup.name,requested_starts_at:setup.startsAt,requested_ends_at:setup.endsAt,requested_max_users:setup.maxUsers,requested_target_scope:setup.targetScope,requested_target_school_id:setup.targetSchoolId,requested_features:setup.enabledFeatures,requested_invite_policy:setup.invitePolicy,requested_waitlist:setup.approvalWaitlistEnabled,requested_stop_conditions:setup.stopConditions,requested_memo:setup.operatorMemo,requested_status:setup.status,admin_actor:actor})

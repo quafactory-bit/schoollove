@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-08 Public launch readiness safety (local verified, release pending)
+
+- Confirmed deletion lifecycle and broker launch-boundary defects against a schema-only deployed44 disposable clone. Added narrow replacements, official audited operational-cap RPC and serialized capacity enforcement; historical migrations unchanged.
+- Local deletion failure/retry/connected-other-owner, ten bound/state broker cases, capacity lifecycle/race, no-invite public onboarding and emergency-write stop tests pass. Real users/relationships are not fixtures for these tests.
+- Full runtime Vitest1,616 PASS/4 existing skips, TypeScript PASS, ESLint0 errors/86 warnings. Additional cap action target21 PASS. Actual React fixture layouts at360/390/412/1280 have no overflow and prioritize account setup. Deployment/open are not yet claimed.
+- See decision and PUBLIC_LAUNCH_READINESS_FINAL, PUBLIC_LAUNCH_RUNBOOK, EMERGENCY_STOP_RUNBOOK for boundaries and remaining gates.
+
 ## 2026-09-07 Discovery from my history (local verified / Draft)
 
 - Added guarded authenticated-owner history projection, accessible history/manual modes and a gated account-card link to the existing private search page. Selection is local only; explicit submission uses the unchanged same-class API payload. Criteria changes invalidate old tokens/previews and ignore stale asynchronous results.
