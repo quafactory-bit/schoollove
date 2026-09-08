@@ -1,6 +1,15 @@
 # Public account launch readiness and controlled expansion
 
-Status: APPROVED SCOPE / AUDIT IN PROGRESS — NOT A LAUNCH APPROVAL RESULT
+Status: PUBLIC ACCOUNT OPEN / PEOPLE DISCOVERY OPERATIONAL CAP5.
+Explicit user reauthorization resolved the earlier action-review block without a
+workaround. At2026-09-08T07:13:52.7621Z the official open RPC moved ready to open
+after cap5/occupancy3 readback and latest readiness/source/data revalidation.
+Registration/profile/school flags are true; discovery remains controlled,
+messaging disabled, existing A/B Instagram scope unchanged. Initial postflight
+passed; the30–60-minute read-only follow-up is scheduled, not yet passed.
+The three result documents are committed/pushed only to the authorized release
+branch; deployed main8b2d0fd and migration45 remain unchanged in this resume.
+See PUBLIC_LAUNCH_READINESS_FINAL for observed release evidence and limitations.
 
 Authority: user runbook SCHOOLLOVE_PUBLIC_LAUNCH_READINESS_AND_EXPANSION,
 2026-09-08. Its conditional release/open authority supersedes earlier per-action

@@ -1,10 +1,17 @@
 # SchoolLoveI Implementation Log
 
-## 2026-09-08 Public launch readiness safety (local verified, release pending)
+## 2026-09-08 Public launch readiness safety (public open; controlled cap5)
+
+- PR104 Preview9871bd3 and PR105 Production8b2d0fd share exact tested tree1b9c6a7. Both canonical deployments READY; both migrations44 to45 applied once, pending0. Existing row fingerprints, RLS/policies and exact-search contracts preserved.
+- Production candidate repeated full1618 PASS/4 skips, typecheck/lint/build PASS. Preview authenticated UI and Production public/admin UI checked; Production end-user session expired and no redundant OAuth started.
+- Earlier automatic-review denial was preserved and resolved by the user's exact cap5/open/three-document commit-push authorization, without a workaround. Latest readiness48edff2e-853b-4172-bc4b-1d69b4baba4c was revalidated against current main/migration/baseline and remained fresh (<20min), blocker0. Official cap RPC returned true, readback5/occupancy3; official open RPC returned true at07:13:52.7621Z (16:13:52 KST), ready→open, all three owner-account flags true.
+- Final counts: Auth3/3, profiles/memberships3/3, classes0, requests/connections2/2, notifications8, messages0, Instagram handles/active grants0/0. See PUBLIC_LAUNCH_READINESS_FINAL for exact SHAs, deployment IDs, evidence limitations and required resume guard.
+- Initial open postflight preserved all seven owned-row fingerprints; actual feature access search3/request3/messaging0/Instagram2; incidents0/cleanup0. Browser home displays 성인 계정 시작; HTTP home/login200, anonymous account/connections307, discovery/JWKS200; grouped30min5xx empty. No new OAuth/user/invite/search or relationship mutation.
+- Read-only follow-up heartbeat schoollove-1 scheduled about40min later, then pause after one run;30–60min observation remains pending. Resume changes: two official operational RPCs with audits, three evidence documents only; no new runtime/migration/env/Preview change or Production redeploy.
 
 - Confirmed deletion lifecycle and broker launch-boundary defects against a schema-only deployed44 disposable clone. Added narrow replacements, official audited operational-cap RPC and serialized capacity enforcement; historical migrations unchanged.
 - Local deletion failure/retry/connected-other-owner, ten bound/state broker cases, capacity lifecycle/race, no-invite public onboarding and emergency-write stop tests pass. Real users/relationships are not fixtures for these tests.
-- Full runtime Vitest1,616 PASS/4 existing skips, TypeScript PASS, ESLint0 errors/86 warnings. Additional cap action target21 PASS. Actual React fixture layouts at360/390/412/1280 have no overflow and prioritize account setup. Deployment/open are not yet claimed.
+- Final runtime Vitest1,618 PASS/4 existing skips, TypeScript PASS, ESLint0 errors/86 warnings. Additional cap action target21 PASS. Actual React fixture layouts at360/390/412/1280 have no overflow and prioritize account setup. Deployment and initial public open are verified; the later observation is not yet claimed.
 - See decision and PUBLIC_LAUNCH_READINESS_FINAL, PUBLIC_LAUNCH_RUNBOOK, EMERGENCY_STOP_RUNBOOK for boundaries and remaining gates.
 
 ## 2026-09-07 Discovery from my history (local verified / Draft)
