@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-08 Public account launch safety (local verification)
+
+- Prepared official social deletion lifecycle before public/Auth cleanup; added launch-state checks at broker code consumption and an audited operational cohort ceiling.
+- Separated optional beta enrollment from public onboarding, corrected factual privacy/auth copy, and added explicit connection read failure/retry states and capability-neutral labels.
+- Migration45 is additive to deployed44; no existing rows/flags/launch state are changed by migration. Remote release/open results are tracked separately in `docs/PUBLIC_LAUNCH_READINESS_FINAL.md`.
+
 ## 2026-09-07 Discovery from my history (local / Draft)
 
 - Added a narrow authenticated-owner history read and accessible single-choice picker to private exact search. Manual exact-person/same-class payloads and server authority are unchanged; selection never initiates a search.

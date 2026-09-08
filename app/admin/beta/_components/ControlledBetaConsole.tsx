@@ -20,6 +20,25 @@ const allBetaFeatures=['account_registration','private_profile','people_search',
 const presetFromFeatures=(features:unknown):BetaPreset=>Array.isArray(features)&&features.length===1&&features[0]==='instagram_permission'?'connected_instagram':Array.isArray(features)&&features.length===2&&features.includes('people_search')&&features.includes('connection_request')?'people_discovery':'account_private'
 const presetMaxUsers=(preset:BetaPreset)=>preset==='connected_instagram'?3:20
 
+function OperationalCapForm({programs,mutate}:{programs:Array<{id:string;program_key:string;operational_max_users?:number|null}>;mutate:(payload:Record<string,unknown>)=>Promise<unknown>}) {
+  const [busy,setBusy]=useState(false)
+  async function submit(event:FormEvent<HTMLFormElement>){
+    event.preventDefault()
+    if(busy)return
+    const form=new FormData(event.currentTarget)
+    setBusy(true)
+    try{await mutate({action:'set_operational_cap',programId:String(form.get('programId')),maxUsers:Number(form.get('maxUsers')),reason:'OPERATOR_APPROVED_CAP'})}
+    finally{setBusy(false)}
+  }
+  return <form onSubmit={event=>void submit(event)} className="mt-5 space-y-3 rounded-xl border p-4">
+    <h3 className="font-bold">운영 인원 상한</h3>
+    <p className="text-sm text-gray-600">불변 snapshot 정원을 늘리지 않습니다. 대기·활성·정지 멤버와 유효 초대 자리를 포함한 DB 상한입니다. 현재 점유보다 낮출 수 없습니다.</p>
+    <label className="block">프로그램<select name="programId" required className={input}>{programs.map(program=><option key={program.id} value={program.id}>{program.program_key} · 운영 상한 {program.operational_max_users??'미설정 (snapshot 정원 적용)'}</option>)}</select></label>
+    <label className="block">승인된 운영 상한<input name="maxUsers" type="number" min={1} max={20} required className={input}/></label>
+    <button disabled={busy||programs.length===0} className="min-h-11 rounded-lg border px-4 disabled:opacity-40">{busy?'저장 중…':'운영 상한 저장'}</button>
+  </form>
+}
+
 export default function ControlledBetaConsole({view}:{view:View}) {
   const [state,setState]=useState<State|null>(null);const [error,setError]=useState('');const [notice,setNotice]=useState('')
   const [synthetic,setSynthetic]=useState<Synthetic|null>(null)
@@ -55,6 +74,7 @@ function SetupView({state,mutate}:{state:State;mutate:(payload:Record<string,unk
   const controlledPrograms=state.programs.filter(program=>program.snapshot_backed)
   return <section className={card}><h2 className="text-xl font-black">제한 베타 시작 마법사</h2><p className="mt-2 text-sm text-gray-600">미리보기와 위험 경고를 확인한 뒤 검증합니다. 활성화해도 프로그램은 paused로 생성되며 초대나 공개 기능은 켜지지 않습니다.</p><a className="mt-3 inline-block rounded-lg border border-blue-300 px-3 py-2 text-sm text-blue-800" href="/admin/beta/setup?synthetic=1">TEST 합성 lifecycle 미리보기</a>
     {state.snapshots.length?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm"><strong>활성화 계약 snapshot {state.snapshots.length}개</strong><p className="mt-1">정원·대상·허용 기능·초대 정책·승인 대기·중단 조건은 활성화 시 불변 snapshot으로 보존됩니다.</p></div>:null}
+    <OperationalCapForm programs={controlledPrograms} mutate={mutate}/>
     <form onSubmit={event=>void submit(event)} className="mt-5 grid gap-4 md:grid-cols-2">
       <label>프로그램 키<input className={input} name="draftKey" defaultValue={draft?.draft_key??'controlled_beta_01'} required pattern="[a-z0-9][a-z0-9_-]{2,39}"/></label>
       <label>프로그램 이름<input className={input} name="name" defaultValue={draft?.name??'성인 제한 베타'} required/></label>
