@@ -37,7 +37,9 @@ describe('PHASE 10V narrow people-discovery hardening contract',()=>{
     expect(action).toContain("body.data.action === 'accept' ? ['people_search','connection_request'] : []")
     expect(action).toContain("requirePublicAccountActive: body.data.action === 'accept'")
     expect(connectionsPage).toContain('getAuthenticatedServerContext')
-    expect(connectionsPage).not.toContain('hasBetaFeatureAccess')
+    // Capability controls only the expansion CTA, never existing safety access.
+    expect(connectionsPage).toContain('return <ConnectionsClient peopleSearchEnabled={searchAccess && accountAccess} />')
+    expect(connectionsPage).not.toMatch(/if\s*\([^)]*(?:searchAccess|accountAccess)[^)]*\)\s*redirect/)
     expect(connectionsPage).not.toContain("redirect('/account')")
   })
 
