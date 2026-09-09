@@ -1,7 +1,7 @@
 # Owner live growth — release evidence
 
-Status: LOCAL_VERIFIED / FEATURE_DEPLOYMENT_READY / REMOTE_MIGRATION_APPROVAL_BLOCKED.
-No genuine new participant. This is NOT a canonical Preview or Production verification claim.
+Status: OWNER_LIVE_GROWTH_COHERENCE_FIX_COMPLETE / REAL_USER_GROWTH_ACTIVATION_READY / AWAITING_FIRST_GENUINE_USER.
+Canonical Preview and Production release verified on 2026-09-09. No genuine new participant; positive remote growth activation is not claimed.
 
 ## Authority
 
@@ -71,7 +71,7 @@ referral, visit or attribution created. Do not report genuine activation PASS.
 Referral organic positive remains pending, not a coherence-release blocker.
 Used/expired referral physical purge remains the existing P2 follow-up.
 
-## 2026-09-09 execution checkpoint
+## 2026-09-09 historical execution checkpoint (superseded below)
 
 - Source commit: `d5ff74d34f2cc34ad4080712d18dd405079ba02e`.
 - Source tree: `890ae079fbf30ac30443be1fa2fa211fc67d3240`.
@@ -99,8 +99,101 @@ Used/expired referral physical purge remains the existing P2 follow-up.
 - Final scoped staged scan19 files/0 findings; working tree clean before this
   documentation-only checkpoint commit. Existing applied migration46 untouched.
 
-Next gate: explicit approval for Preview `hukokfyphyrpfouazxhq` to apply
+At that checkpoint, the next gate was explicit approval for Preview `hukokfyphyrpfouazxhq` to apply
 `20260909041329_owner_live_school_growth_projection.sql` exactly once, followed
 by the already scoped Preview/Production gates. Do not declare
 OWNER_LIVE_GROWTH_COHERENCE_FIX_COMPLETE or REAL_USER_GROWTH_ACTIVATION_READY yet.
 Actual genuine-user activation remains deferred by the user's choice.
+
+## Completed release and postflight — 2026-09-09
+
+The user explicitly approved Preview migration47 and continuation under the
+phase runbook. Preview succeeded before Production. A subsequent execution
+quota interruption was resolved by the user; remote state was re-read before
+continuing. PR109 already existed, so no duplicate PR was created.
+
+| Release authority | Preview | Production |
+| --- | --- | --- |
+| PR | [108](https://github.com/quafactory-bit/schoollove/pull/108) | [109](https://github.com/quafactory-bit/schoollove/pull/109) |
+| Base | preview | main |
+| Approved PR head | 28db6742393645fd85ce602d8a133c8ff9daae91 | 72cdba1471cb713e4c5c809ceff47947b6a680b2 |
+| Squash merge/source SHA | 4e2a9d095447c544696527427d8387debd4cd590 | 5dbba050a250c858a8527b6110bbf0a016549f62 |
+| Exact tree | 2ada9fffa23fe96991effb4a50042e6613e69e8e | 2ada9fffa23fe96991effb4a50042e6613e69e8e |
+| Deployment | dpl_71UuRkV9rGtjkTL36Ub9wsJCvjGE | dpl_EzbUJBKyqPxjHtWn2LhNxHB6ngZx |
+| Deployment status | READY | READY |
+| Canonical alias | preview.schoollove.kr | www.schoollove.kr (also schoollove.kr) |
+| Migrations before / after | 46 / 47 | 46 / 47 |
+| Exact migration version rows | 1 | 1 |
+| Dry-run pending before / after | exactly 1 / 0 | exactly 1 / 0 |
+
+Production branch: `codex/production-owner-live-school-growth`, based on old
+main `f4adbc26d9f2af57a1cecc01353b370eca9631b3` plus PR108's exact change only.
+Both deployments match their canonical source SHA. Migration47 was executed
+once per project, before each application deployment, with no repair/retry,
+seed, role or Vault change. LF SHA256 remains the authority recorded above.
+Branch checkout changed working-copy line endings only; the one migration
+was normalized back to its approved LF bytes, with no content diff.
+
+### Schema, permissions and data
+
+- New RPC: STABLE, SECURITY DEFINER, empty search_path; definition MD5
+  `89c86ca2c38c6a114d0377085142e8d6` on both projects.
+- PUBLIC/anon/service_role execute false; authenticated execute true.
+- Seven private growth tables retain RLS and FORCE RLS.
+- Null UID returns null. Read-only transactions under the authenticated role
+  returned the existing owner's eight-field projection (Lv1/0%, own XP0),
+  and null for a nonowned school. Transactions rolled back; no user row writes.
+- All eight pre-existing growth/public/award/referral function fingerprints
+  match their preflight values. Public school remains Lv1/0%, ranking empty.
+- Every metric and configuration in the baseline table above is unchanged,
+  except migration count47. Production Auth3/3, profiles/memberships3/3,
+  histories0, PDactive3/cap5, IGactive2, accepted2/connections2, notifications8,
+  messages0, handles0/active grants0/historical grants2 all preserved.
+- Existing membership ledgers remain Preview2/Production3 seen rows, awarded0,
+  live XP0; events/batches/referrals/visits/attributions all0. No fake growth,
+  new login, principal, invite, membership, class, connection or message.
+- Public account remains open; messaging OFF; Connected Instagram scope and
+  existing evidence retained. Environment/credential/protection changes0.
+
+### Deployed read-only UI/API evidence
+
+- Existing Preview B session and existing Production session remained usable;
+  no new OAuth was initiated. `/account` shows existing-school feedback and
+  the owner live progress label at0. Authenticated Home shows the same owner
+  live meter and empty public ranking.
+- Public School Hub shows the public growth label at0 and the delayed aggregate
+  explanation, with no owner-live label. Production actual screenshot reviewed.
+- Anonymous Home and School Hub HTTP200; owner growth API HTTP401 with generic
+  login-required response, Cache-Control private/no-store and Vary Cookie.
+- Preview and Production deployment-filtered error-log queries returned no
+  entries. Production scan occurred more than60 seconds after READY; this is
+  bounded smoke evidence, not a long-term uptime or load-test claim.
+- Remote +100/+150 UI cannot be tested without a new real participant; positive
+  values were verified only in the disposable matrix and local rendering tests.
+  No share/referral creation control was clicked during remote smoke.
+
+### Validation, residual risks and handoff
+
+- Release branch re-run: targeted28 PASS, TypeScript PASS, full1669 PASS /
+  4 existing SKIP, ESLint PASS with86 existing warnings, build PASS.
+- Earlier broader targeted51 and deployed-schema disposable proof remain valid
+  for the identical runtime tree. Release diff and scoped19-file secret scan PASS.
+- Supabase advisor categories match across projects: RLS-no-policy INFO51,
+  extension-in-public WARN1, anon SECURITY DEFINER WARN4, authenticated SECURITY
+  DEFINER WARN28, leaked-password-protection WARN1. The new authenticated
+  SECURITY DEFINER warning is intentional for the membership-checked RPC and
+  was reviewed against its narrow output, empty search_path and role tests.
+  Advisor results are not claimed to contain zero warnings.
+- Historical fresh-chain ordering and expired-referral physical purge remain
+  prior follow-ups; neither was modified in this release.
+- Prior Production READY deployment `dpl_9QaRmEEUCjSrxyk2j2W7qX6wFCNe` remains
+  the previous deployment reference. No rollback was performed; the additive
+  read-only RPC is compatible with the previous source.
+- This evidence update changes only this report and IMPLEMENTATION_LOG, to be
+  committed/pushed on the release branch. It does not alter deployed runtime.
+
+Final classification: OWNER_LIVE_GROWTH_COHERENCE_FIX_COMPLETE;
+REAL_USER_GROWTH_ACTIVATION_READY; AWAITING_FIRST_GENUINE_USER.
+REFERRAL_PRODUCTION_ORGANIC_PENDING. Real signup/adult consent/school entry
+must be performed by the future actual participant; no repeat release approval
+is needed for the completed source deployment.

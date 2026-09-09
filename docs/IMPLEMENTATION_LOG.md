@@ -1,13 +1,14 @@
 # SchoolLoveI Implementation Log
 
-## 2026-09-09 Owner live growth coherence (local verified / remote pending)
+## 2026-09-09 Owner live growth coherence (Production verified / genuine activation pending)
 
-- Checkpoint: PR108 Draft / feature source d5ff74d deployed READY. Preview apply was rejected before execution by the safety reviewer; no retry or workaround. Both remote histories remain46 and all baseline aggregates are unchanged. Canonical merge/Production rollout remain blocked pending exact-file migration approval. Temporary schema clone artifacts removed. See OWNER_LIVE_GROWTH_RELEASE.md.
+- Release complete after explicit migration approval and execution quota recovery: PR108 Preview merge4e2a9d09, PR109 main merge5dbba050; identical tree2ada9fff. Canonical Preview deployment dpl_71UuRkV9rGtjkTL36Ub9wsJCvjGE and Production dpl_EzbUJBKyqPxjHtWn2LhNxHB6ngZx READY with exact source SHA/alias. Both migrations46→47 exactly once, pending0; owner RPC/RLS/privileges and baseline preservation PASS. Earlier blocked checkpoint is retained as history in OWNER_LIVE_GROWTH_RELEASE.md.
 
 - Added one owner-membership-authorized, statement-consistent live projection. Account feedback and Home owner cards no longer use public delayed level/progress. Public RPC and award functions remain unchanged.
 - Private no-store responses, output allowlist, stale-school response rejection and level-free share text preserve the owner/public boundary.
 - Targeted51 PASS; full Vitest1669 PASS/4 existing SKIP; typecheck PASS; lint0 errors/86 existing warnings. Disposable deployed46→47: table/column delta0, function+1 (221→222); all existing function definitions unchanged. Owner/nullUID/anon/nonmember/cross-school/delete-owner and real-shaped local +100/+150 paths PASS. Existing full growth/privacy/referral/rollback matrix PASS.
-- No genuine new participant is available. No remote referral or signup is planned; remote rollout evidence is recorded in OWNER_LIVE_GROWTH_RELEASE.md.
+- Existing authenticated Preview/Production Account and Home show owner live growth at the existing zero-XP baseline; public Hub retains delayed growth. Anonymous owner API401/private-no-store. Release re-run targeted28/full1669/typecheck/lint/build PASS; bounded post-READY runtime error query empty. No new login or existing user data changes; Production PDcap5, public open, messagingOFF and Instagram scope preserved. Advisor intentional authenticated SECURITY DEFINER warning reviewed.
+- OWNER_LIVE_GROWTH_COHERENCE_FIX_COMPLETE / REAL_USER_GROWTH_ACTIVATION_READY / AWAITING_FIRST_GENUINE_USER. No actual new participant is available; remote positive +100/+150/referral activation was not run. Full evidence and remaining follow-ups: OWNER_LIVE_GROWTH_RELEASE.md.
 
 ## 2026-09-09 School Growth Game v1 (local verified, remote release pending)
 
