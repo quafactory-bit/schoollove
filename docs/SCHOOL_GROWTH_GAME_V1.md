@@ -75,14 +75,14 @@ cleanup job. Growth pseudonyms must remain for no-double-award/monotonic history
 No fake users were created remotely to demonstrate populated ranking. Positive
 award/referral tests are confined to disposable databases.
 
-## Preservation
+## Preservation at implementation checkpoint (historical)
 
 No Preview/Production DB writes, migration applies, canonical deploys, env changes
 or user logins have occurred. Feature PR106 deployment is READY. No A/B/C mutations.
 People Discovery cap=5, messaging OFF, existing Instagram scope are unchanged.
 Schema-only dump and owned disposable containers were removed after local proof.
 
-## Release checkpoint — 2026-09-09
+## Pre-approval release checkpoint — 2026-09-09 (historical)
 
 Source commit: `4bf6a6f527a307b1b5d98abb7b002aacd861ab81`.
 Source tree: `a9045ce17192c00ffe9625cfcd4dfc24ffe4277f`.
@@ -128,3 +128,33 @@ one Lv1 state, and zero events/batches/referrals/visits/attributions. Existing
 Preview account, relation, notification, Instagram and launch/beta counts and
 configuration are unchanged. Canonical Preview and Production release follow
 only after their remaining gates pass; earlier blocked checkpoint is historical.
+
+## Production release verified — 2026-09-09
+
+PR106 merged to Preview `2ad27b332bfe10f6b0adfb0fc6cef34626dac421`;
+canonical deployment `dpl_8RkSSzokofopGhBNAW6bVZKdyfEF` READY at
+preview.schoollove.kr. PR107 merged to main
+`f4adbc26d9f2af57a1cecc01353b370eca9631b3`; Production deployment
+`dpl_9QaRmEEUCjSrxyk2j2W7qX6wFCNe` READY at www.schoollove.kr.
+Both trees are `6f43bdd621eda4f9e1b775283360f127b02b0b90`.
+
+Migration20260909013012 applied exactly once to each environment,45→46,
+exact-version count1 and pending0. Seven new tables RLS/FORCE/ACLs and all
+new RPC grants match the contract. Preview2/Production3 existing membership
+pairs have seen rows with XP0; each environment has one Lv1/XP0 state.
+Events/batches/referrals/visits/attributions remain0. Existing accounts,
+memberships, class histories, connections, requests, notifications, Instagram
+counts, public launchOPEN, People Discovery cap5 and messagingOFF are preserved.
+
+Release-tree targeted31, full1649PASS/4existing skips, TypeScript, lint0errors,
+build66static pages, diff and scoped44-file secret-pattern scan passed. Actual
+canonical Preview/Production Home and Hub at360/390/412/1280 have no horizontal
+overflow. Home shows honest cold-start copy, HubLv1/progress0; existing-session
+owner school/share UI observed without creating referrals. Public HTTP Home,
+search, login, Hub, OG200; anonymous account growth401, account307. Production
+early5xx/error/fatal logs0 and checked-page console errors0.
+
+Remote positive growth/referral writes were deliberately not tested with fake
+users; disposable upgrade/atomic/replay/concurrency evidence supplies those
+proofs. Physical expiry purge remains a documented follow-up. Full72-field
+report: [release report](SCHOOL_GROWTH_GAME_RELEASE_CHECKPOINT.md).

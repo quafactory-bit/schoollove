@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-09 School Growth Game v1 — Production release verified
+
+- Explicit user approval enabled exact migration20260909013012 once per Preview/Production:45→46,pending0. RLS/FORCE/ACLs PASS; existing2/3 membership pairs XP0; events/referrals0; A/B/C and operational boundaries unchanged.
+- PR106 Preview2ad27b332bfe10f6b0adfb0fc6cef34626dac421 and PR107 mainf4adbc26d9f2af57a1cecc01353b370eca9631b3 share tree6f43bdd621eda4f9e1b775283360f127b02b0b90. Canonical deployments dpl_8RkSSzokofopGhBNAW6bVZKdyfEF / dpl_9QaRmEEUCjSrxyk2j2W7qX6wFCNe are READY with exact SHA/aliases.
+- Release validation:targeted31,full1649PASS/4existing skips,typecheck,lint0errors/86warnings,build,diff,44-file secret-pattern scan. Actual Home/Hub360/390/412/1280 and safe cold-start/owner UI verified. Public HTTP200,anonymous owner API401/account307; early Production5xx/error/fatal0.
+- No new OAuth, fake growth/referral data, account/history/connection/message/Instagram writes, env or credential changes. Positive-write proof remains disposable-only. Full evidence and limitations are in SCHOOL_GROWTH_GAME_RELEASE_CHECKPOINT.md.
+
 ## 2026-09-09 School Growth Game v1 (local verified, remote release pending)
 
 - Replaced the public Home and School Hub growth source with an independent private XP ledger and privacy-batched public projection. Existing public profile count/ranking authority is not reused. Level curve preserved; existing membership baseline receives zero XP.
