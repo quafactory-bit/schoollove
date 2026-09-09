@@ -1,31 +1,14 @@
 'use client'
 
-// PHASE 7B COMPLETION PATCH — SCHOOL SEARCH CONTINUITY
-// /search의 실제 화면. 검색어는 URL이 아니라 sessionStorage(SCHOOL_SEARCH_STORAGE_KEY)로
-// 전달된다 — Home/Submit의 SearchBar가 Enter 시 그 키에 정규화된 검색어를 저장하고
-// 여기로 이동하면, 마운트 시 그 값을 읽어 searchSchools()(학교 전용, 기존 함수 그대로)만
-// 호출한다. 사람 검색 함수는 이 컴포넌트를 포함해 어디에서도 호출하지 않는다.
-//
-// 이 페이지 자신의 SearchBar는 onFullSearch 콜백을 받아 라우팅 없이 runSearch를 직접
-// 호출한다 — buildFullSearchHref()가 항상 고정된 '/search' 경로만 반환하므로, 이미 이
-// 페이지에 있는 상태에서 같은 경로로 다시 이동을 시도해도 Next.js가 no-op으로 처리해
-// 화면이 갱신되지 않기 때문이다(§6 "/search 내부 SearchBar에서도 다시 검색 가능").
-//
-// 검색 입력창 자체는 재검색 시에도 항상 빈 채로 시작한다(이전 검색어를 prop으로
-// 되돌려주지 않음) — SearchBar의 내부 query state는 마운트 시 initialQuery로 한 번만
-// 초기화되고 이후 prop 변화를 동기화하지 않으므로, 비동기로 읽어온 sessionStorage 값을
-// 뒤늦게 initialQuery로 넘기면 SSR과 클라이언트 첫 렌더가 어긋나는(hydration mismatch)
-// 위험이 있다. 결과 영역은 별도로 마지막 검색어/결과를 그대로 보여주므로 기능 손실은
-// 없다(의도적으로 단순화한 부분, 최종 보고서에 기록).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { searchSchools, type SchoolSearchResult } from '@/lib/api/search'
 import SearchBar from './SearchBar'
 import { schoolTypeLabel } from '@/lib/utils'
+import { recallSchoolQuery } from '@/lib/policy/schoolJourney'
 import {
   AUTOCOMPLETE_MIN_QUERY_LENGTH,
   normalizeAutocompleteQuery,
-  SCHOOL_SEARCH_STORAGE_KEY,
 } from '@/lib/policy/schoolSearchAutocomplete'
 
 type Status = 'idle' | 'loading' | 'ok' | 'error'
@@ -70,27 +53,25 @@ export default function SchoolSearchResults() {
   }, [])
 
   useEffect(() => {
-    let saved: string | null = null
-    try {
-      saved = sessionStorage.getItem(SCHOOL_SEARCH_STORAGE_KEY)
-    } catch {
-      saved = null
-    }
+    const saved = recallSchoolQuery()
     if (saved) runSearch(saved)
+    return () => { executionRef.current += 1 }
   }, [runSearch])
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <SearchBar variant="search" onFullSearch={runSearch} />
+    <main className="growth-journey mx-auto max-w-2xl px-5 py-8">
+      <Link href="/" className="schoollove-focus inline-flex min-h-11 items-center font-bold">스쿨러브아이 ↗</Link>
+      <h1 className="mb-5 mt-3 text-3xl font-bold">우리 학교 찾기</h1>
+      <SearchBar variant="search" initialQuery={query} onFullSearch={runSearch} />
       <p className="mt-3 rounded-lg bg-white px-4 py-3 text-xs leading-5 text-gray-500">
-        학교 기본 정보만 검색합니다. 개인 이름 검색과 공개 명단은 성인 본인 인증 기반 구조로 전환하는 동안 제공하지 않습니다.
+        학교 이름과 지역 등 공개 학교 정보만 찾아요. 사람 찾기는 별도 승인된 제한 베타에서만 이용할 수 있어요.
       </p>
 
       {status === 'idle' && (
         <div className="mt-16 text-center">
           <p className="text-sm text-gray-500">학교 이름을 검색해보세요.</p>
           <p className="mt-1 text-xs text-gray-400">
-            학교 이름과 지역 등 기본 정보를 확인할 수 있어요.
+            다른 탭에서 왔거나 임시 검색어가 사라졌다면 이곳에 다시 입력해 주세요.
           </p>
         </div>
       )}
@@ -142,12 +123,12 @@ export default function SchoolSearchResults() {
                     </div>
                   </div>
                 </div>
-                <span className="text-xs text-gray-400">학교 정보 보기</span>
+                <span className="shrink-0 text-xs text-gray-600">학교 보기 →</span>
               </Link>
             ))}
           </div>
         </section>
       )}
-    </div>
+    </main>
   )
 }

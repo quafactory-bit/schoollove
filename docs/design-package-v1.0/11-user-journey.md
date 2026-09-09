@@ -2,6 +2,19 @@
 
 Status: **FROZEN**
 
+## Approved 2026-09-09 growth UX completion addendum
+
+See `../decisions/2026-09-09-school-growth-ux-completion.md`. Home search submits
+the current public-school query. Hub selection is an unconfirmed public slug,
+valid for at most 30 minutes in the same tab, consumed on authenticated arrival.
+Only an explicit existing owner API save creates membership; graduation year and
+class are never inferred. Completed accounts prioritize My Schools; management
+and deletion remain accessible. Sharing first opens a public-school-only
+preview; preparing a referral is a separate explicit action with in-memory
+reuse, expiry, native/copy/manual alternatives. Rewards, eligibility, privacy,
+public aggregation and feature access are unchanged. No actual signup/referral
+or private-data mutation is authorized by the verification fixtures.
+
 ## 0. 한 문장 여정
 
 > **찾는다 → 발견한다 → 등록한다 → 성장시킨다 → 다시 찾는다**

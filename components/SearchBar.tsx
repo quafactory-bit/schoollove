@@ -9,6 +9,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
+import { rememberSchoolQuery } from '@/lib/policy/schoolJourney'
 import { useSchoolAutocomplete } from '@/lib/hooks/useSchoolAutocomplete'
 import { schoolTypeLabel } from '@/lib/utils'
 import {
@@ -17,7 +18,6 @@ import {
   moveActiveIndex,
   normalizeAutocompleteQuery,
   resolveEnterAction,
-  SCHOOL_SEARCH_STORAGE_KEY,
 } from '@/lib/policy/schoolSearchAutocomplete'
 
 interface SchoolSearchAutocompleteProps {
@@ -40,6 +40,12 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
   const router = useRouter()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const listboxId = useId()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const composing = useRef(false)
+  const compositionEnded = useRef(0)
+  const submitted = useRef(false)
+  const [notice, setNotice] = useState('')
+  useEffect(() => { setQuery(initialQuery) }, [initialQuery])
 
   const { status, results } = useSchoolAutocomplete(query)
 
@@ -65,23 +71,26 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
   }, [])
 
   function navigateToSchool(slug: string) {
+    if (submitted.current) return
+    submitted.current = true
     setOpen(false)
     router.push(buildSchoolHubHref(slug))
   }
 
   function navigateToFullSearch(q: string) {
+    if (submitted.current) return
+    submitted.current = true
     setOpen(false)
     const normalized = normalizeAutocompleteQuery(q)
     // 검색어는 URL이 아니라 sessionStorage로만 전달한다(PHASE 7B COMPLETION PATCH) — 브라우저
     // 히스토리·서버 로그에 남지 않는다. 프라이빗 모드 등에서 sessionStorage 접근이 막혀도
     // 검색 자체(라우팅/콜백 호출)는 계속 진행되어야 하므로 실패를 조용히 무시한다.
-    try {
-      sessionStorage.setItem(SCHOOL_SEARCH_STORAGE_KEY, normalized)
-    } catch {
-      // sessionStorage 접근 실패는 무시 — 검색 흐름을 막지 않는다.
-    }
+    rememberSchoolQuery(normalized)
     if (onFullSearch) {
       onFullSearch(normalized)
+      // Prevent the same physical Enter/click from submitting twice, while
+      // allowing an intentional later retry of an unchanged query.
+      window.setTimeout(() => { submitted.current = false }, 400)
     } else {
       router.push(buildFullSearchHref(normalized))
     }
@@ -89,14 +98,17 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (composing.current || Date.now() - compositionEnded.current < 80) return
     // 폼 제출(Enter/모바일 검색 버튼)은 학교 전체 검색으로 보낸다 — 검색어는 URL에 붙이지
     // 않고 sessionStorage로만 전달한다(PHASE 7B COMPLETION PATCH). 후보 선택은 키보드
     // Enter(handleKeyDown)와 클릭에서만 처리한다.
     const action = resolveEnterAction(query, -1, [])
     if (action.type === 'search-all') navigateToFullSearch(query)
+    else { setNotice('학교 이름을 두 글자 이상 입력해 주세요.'); inputRef.current?.focus() }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (composing.current || e.nativeEvent.isComposing || e.keyCode === 229 || Date.now() - compositionEnded.current < 80) return
     if (e.key === 'ArrowDown') {
       if (!open || results.length === 0) return
       e.preventDefault()
@@ -119,10 +131,10 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
     if (e.key === 'Enter') {
       const action = resolveEnterAction(
         query,
-        activeIndex,
+        open ? activeIndex : -1,
         results.map((r) => r.slug)
       )
-      if (action.type === 'noop') return
+      if (action.type === 'noop') { e.preventDefault(); setNotice('학교 이름을 두 글자 이상 입력해 주세요.'); return }
       e.preventDefault()
       if (action.type === 'navigate-school') {
         navigateToSchool(results[activeIndex].slug)
@@ -158,6 +170,10 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
             </span>
           )}
           <input
+            ref={inputRef}
+            enterKeyHint="search"
+            onCompositionStart={() => { composing.current = true }}
+            onCompositionEnd={() => { composing.current = false; compositionEnded.current = Date.now() }}
             role="combobox"
             aria-label="학교 이름 찾기"
             aria-expanded={showDropdown}
@@ -167,18 +183,20 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
             name="q"
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { submitted.current = false; setNotice(''); setQuery(e.target.value) }}
             onFocus={handleFocus}
             onKeyDown={handleKeyDown}
             placeholder="학교 이름을 검색하세요"
             autoComplete="off"
             className={
               variant === 'home'
-                ? 'w-full rounded-full border border-schoollove-border bg-white py-2.5 pl-10 pr-4 text-[14px] outline-none transition focus:border-schoollove-electric-blue focus:ring-2 focus:ring-schoollove-electric-blue/15'
+                ? 'min-h-12 w-full rounded-xl border border-schoollove-border bg-white py-3 pl-10 pr-4 text-base outline-none transition focus:border-schoollove-electric-blue focus:ring-2 focus:ring-schoollove-electric-blue/15'
                 : 'w-full rounded-xl border border-schoollove-border bg-white py-3.5 pl-11 pr-4 text-sm focus:border-schoollove-electric-blue focus:outline-none focus:ring-2 focus:ring-schoollove-electric-blue/15'
             }
           />
         </div>
+        <button type="submit" className="schoollove-dark-action schoollove-focus mt-3 flex min-h-12 w-full items-center justify-center rounded-xl bg-[var(--schoollove-game-accent)] px-4 font-semibold text-white">{variant === 'home' ? '내 학교 찾기' : '학교 검색'}</button>
+        {notice && <p role="status" className="mt-2 text-sm text-schoollove-secondary">{notice}</p>}
       </form>
 
       {showDropdown && (
@@ -208,7 +226,7 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
                 onClick={() => navigateToFullSearch(query)}
                 className="font-medium text-schoollove-text hover:underline"
               >
-                '{query.trim()}' 전체 검색
+                &apos;{query.trim()}&apos; 전체 검색
               </button>
             </li>
           )}
@@ -223,8 +241,8 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
                 onMouseDown={(e) => {
                   // outside-click/blur보다 먼저 처리되도록 click이 아닌 mousedown에서 이동한다.
                   e.preventDefault()
-                  navigateToSchool(school.slug)
                 }}
+                onClick={() => navigateToSchool(school.slug)}
                 className={
                   'flex min-w-0 cursor-pointer items-center justify-between gap-3 border-b border-schoollove-border px-4 py-3 last:border-0 hover:bg-schoollove-surface-subtle ' +
                   (index === activeIndex ? 'bg-schoollove-surface-pressed' : '')

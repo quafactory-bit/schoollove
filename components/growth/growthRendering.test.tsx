@@ -10,6 +10,7 @@ vi.mock('@/lib/beta', () => ({ hasBetaFeatureAccess: mocks.beta }))
 vi.mock('@/lib/api/schools', () => ({ getSchoolBySlug: mocks.school }))
 vi.mock('@/lib/promotions', () => ({ getPublicPromotion: vi.fn().mockResolvedValue(null) }))
 vi.mock('@/components/SearchBar', () => ({ default: () => <input aria-label="학교 이름 찾기" /> }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }), notFound: vi.fn() }))
 vi.mock('@/components/growth/MyGrowthSchools', () => ({ default: () => null }))
 import Home from '@/app/page'
 import Hub from '@/app/school/[slug]/page'
@@ -36,7 +37,8 @@ describe('growth Home states', () => {
   it.each([1, 5])('renders exactly %i real ranking rows, no people fields', async count => {
     mocks.growth.mockResolvedValue({ status: 'ok', schools: Array.from({ length: count }, (_, i) => ({ ...school, schoolId: `${i}`, rank: i + 1, weeklyXp: 1000, level: 7 })) })
     const html = renderToStaticMarkup(await Home())
-    expect((html.match(/<li>/g) || []).length).toBe(count)
+    const ranking = html.split('aria-labelledby="weekly-growth"')[1].split('</section>')[0]
+    expect((ranking.match(/<li>/g) || []).length).toBe(count)
     expect(html).toContain('<ol')
     expect(html).toContain(school.schoolName)
     expect(html).not.toContain('weeklyXp')
@@ -50,7 +52,7 @@ describe('growth Home states', () => {
     mocks.growth.mockResolvedValue({ status: 'unavailable', schools: [] })
     const html = renderToStaticMarkup(await Home())
     expect(html).toContain('학교 찾기는 계속 이용할 수 있어요.')
-    expect(html).toContain('내 학교 찾기')
+    expect(html).toContain('학교 이름 찾기')
   })
   it('shows today growth only from a real published level-up today', async () => {
     mocks.growth.mockResolvedValue({ status: 'ok', schools: [{ ...school, level: 7, lastLevelUp: new Date().toISOString() }] })

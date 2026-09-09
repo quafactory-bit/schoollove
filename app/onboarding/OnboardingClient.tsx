@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback,useEffect,useState } from 'react'
 import type { OnboardingState } from '@/lib/onboarding'
+import SchoolSelection from '@/components/growth/SchoolSelection'
 
 const steps = [
   ['adultReady','만 19세 이상 자기진술'],
@@ -36,10 +37,12 @@ export default function OnboardingClient() {
   },[])
   useEffect(()=>{void load()},[load])
 
-  return <main className="mx-auto min-h-screen max-w-2xl px-5 py-10">
-    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Adult-only private account</p>
+  return <main className="growth-journey mx-auto min-h-screen max-w-2xl px-5 py-8">
+    <Link href="/" className="schoollove-focus mb-5 inline-flex min-h-11 items-center text-lg font-bold">스쿨러브아이 ↗</Link>
+    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">내 학교를 만나기 전, 안전한 시작</p>
     <h1 className="mt-2 text-3xl font-black tracking-tight text-gray-950">비공개 계정 시작하기</h1>
-    <p className="mt-3 text-sm leading-6 text-gray-600">본인 정보만 등록할 수 있고 모든 프로필은 비공개입니다. 공개 사람 명단·사람 검색·메시지·Instagram 공개는 제공하지 않습니다.</p>
+    <p className="mt-3 text-sm leading-6 text-gray-600">본인이 다닌 학교를 비공개로 기록해요. 사람 찾기는 별도 승인된 제한 베타 기능이며, 학교 등록만으로 활성화되지 않아요.</p>
+    <SchoolSelection />
 
     {!state ? <p className="mt-8 rounded-2xl bg-gray-50 p-5 text-sm" role="status">{busy?'안전한 시작 상태를 확인하고 있습니다.':'상태를 확인하지 못했습니다.'}</p> : <>
       <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
