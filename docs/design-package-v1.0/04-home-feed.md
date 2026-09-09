@@ -2,6 +2,8 @@
 
 Status: **FROZEN**
 
+> 2026-09-09 approved owner-live refinement: authenticated “내가 함께 키우는 학교” cards use the current member's authorized live school projection. Public ranking and growth moments remain ten-contributor/next-UTC-boundary aggregates. See `../decisions/2026-09-09-owner-live-growth.md`. No public live XP or member counts.
+
 ## 0. 정의
 
 Home은 검색 페이지가 아니다.
