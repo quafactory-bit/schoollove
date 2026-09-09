@@ -4,6 +4,7 @@ import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { isFutureGraduationYear } from '@/lib/policy/operations'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
 import { getSafeMembershipError, hasAccountOnboardingWriteAccess } from '@/lib/publicAccountLaunch'
+import { GROWTH_VISIT_COOKIE, GROWTH_TOKEN_PATTERN } from '@/lib/growthReferral'
 
 const GradeClassSchema = z.object({
   grade_number: z.number().int().min(1).max(6),
@@ -49,6 +50,11 @@ export async function POST(request: NextRequest) {
   if (!profile) return NextResponse.json({ error: '내 프로필을 먼저 만들어 주세요.' }, { status: 409 })
 
   // owner_user_id and profile_id are derived inside the database from auth.uid().
+  const growthProof = request.cookies.get(GROWTH_VISIT_COOKIE)?.value
+  if (growthProof && GROWTH_TOKEN_PATTERN.test(growthProof)) {
+    // Optional attribution failure never blocks the existing membership workflow.
+    try { await auth.client.rpc('bind_school_growth_visit', { requested_proof: growthProof }) } catch { /* optional */ }
+  }
   const { data, error } = await auth.client.rpc('add_own_school_membership_with_class_history', {
     requested_school_id: parsed.data.school_id,
     requested_graduation_year: parsed.data.graduation_year,

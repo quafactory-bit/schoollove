@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 :root {
+  --schoollove-game-accent: #3448c5;
+  --schoollove-game-surface: #f5f7ff;
   --schoollove-bg: #ffffff;
   --schoollove-surface: #ffffff;
   --schoollove-surface-subtle: #f7f7f7;

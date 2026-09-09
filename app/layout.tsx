@@ -5,7 +5,7 @@ import { ConnectionNotificationProvider } from '@/components/ConnectionNotificat
 import DesktopNav from '@/components/DesktopNav'
 import Footer from '@/components/Footer'
 import TabBar from '@/components/TabBar'
-import { Analytics } from '@vercel/analytics/next'
+import PrivacySafeAnalytics from '@/components/PrivacySafeAnalytics'
 
 export const viewport: Viewport = {
   themeColor: '#FFFFFF',
@@ -16,10 +16,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.schoollove.kr'),
   title: {
-    default: '스쿨러브아이 - 학교 정보 찾기',
+    default: '스쿨러브아이 - 우리 학교, 함께 키우기',
     template: '%s | 스쿨러브아이',
   },
-  description: '학교 기본 정보를 안전하게 검색하고 확인할 수 있는 스쿨러브아이입니다.',
+  description: '우리 학교는 지금 몇 레벨일까? 학교를 찾고, 비공개로 내 학교를 기록하고, 친구와 함께 학교를 키워요.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -56,7 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <TabBar />
           </ConnectionNotificationProvider>
         </Providers>
-        <Analytics />
+        <PrivacySafeAnalytics />
       </body>
     </html>
   )

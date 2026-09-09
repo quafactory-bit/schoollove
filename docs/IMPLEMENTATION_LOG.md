@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-09 School Growth Game v1 (local verified, remote release pending)
+
+- Replaced the public Home and School Hub growth source with an independent private XP ledger and privacy-batched public projection. Existing public profile count/ranking authority is not reused. Level curve preserved; existing membership baseline receives zero XP.
+- Added hashed seven-day school referral links, new-principal visit attribution, atomic +100/+50 awards, service/owner RPC boundaries and owner feedback. Game level never grants beta or communication capabilities.
+- Deployed schema45 disposable upgrade, pre-existing zero-XP baseline, replay/deletion/referral/privacy/rollback and concurrent same-owner school registration proofs passed. Full Vitest 1,648 PASS / 4 existing skips before the final today-growth rendering test; final release evidence is recorded in SCHOOL_GROWTH_GAME_V1.md.
+- Production build, Korean dynamic OG and responsive local Home/Hub verified. Remote migration/release are not claimed by this entry.
+
 ## 2026-09-08 Public launch readiness safety (local verified, release pending)
 
 - Confirmed deletion lifecycle and broker launch-boundary defects against a schema-only deployed44 disposable clone. Added narrow replacements, official audited operational-cap RPC and serialized capacity enforcement; historical migrations unchanged.

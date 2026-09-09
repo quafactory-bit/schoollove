@@ -66,15 +66,20 @@ describe('launch measurement minimum privacy contracts', () => {
   })
 
   it('renders Vercel Analytics exactly once without custom events', () => {
-    expect(rootLayout).toContain("import { Analytics } from '@vercel/analytics/next'")
-    expect(rootLayout.match(/<Analytics\s*\/>/g)).toHaveLength(1)
+    const safeAnalytics = readFileSync(join(process.cwd(), 'components/PrivacySafeAnalytics.tsx'), 'utf8')
+    expect(safeAnalytics).toContain("import { Analytics } from '@vercel/analytics/next'")
+    expect(rootLayout.match(/<PrivacySafeAnalytics\s*\/>/g)).toHaveLength(1)
+    expect(safeAnalytics.match(/<Analytics\s/g)).toHaveLength(1)
+    expect(safeAnalytics).toContain("url.hash = ''")
+    expect(safeAnalytics).toContain("url.search = ''")
+    expect(safeAnalytics).not.toMatch(/\btrack\s*\(/)
     expect(rootLayout).not.toMatch(/\btrack\s*\(/)
     expect(rootLayout).not.toMatch(/<Analytics\s+(?:debug|mode|beforeSend)=/)
 
     const analyticsFiles = tsxFiles(join(process.cwd(), 'app')).filter((file) =>
       readFileSync(file, 'utf8').includes('@vercel/analytics'),
     )
-    expect(analyticsFiles).toEqual([join(process.cwd(), 'app/layout.tsx')])
+    expect(analyticsFiles).toEqual([])
   })
 
   it('preserves the root layout structure', () => {

@@ -2,6 +2,11 @@
 
 Status: **FROZEN — XP Source 보류 유지 / State 경계·완성도·임박·대표학교 기준 확정**
 
+> 2026-09-09 승인된 부분 supersession: 새 School Growth Game의 XP source와
+> 공개 집계 경계는 `../decisions/2026-09-09-school-growth-game-loop-v2.md`를 따른다.
+> 기존 곡선과 레벨 비하락 원칙은 유지한다. 아래 내용은 당시 기준으로 보존하며
+> legacy 공개 profiles 수를 새 성장 authority로 사용하지 않는다.
+
 ## 0. 이 문서의 역할
 
 Level은 SchoolLoveI의 성장 체감 계약이다.
