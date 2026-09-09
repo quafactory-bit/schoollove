@@ -1,6 +1,7 @@
 # Owner live growth — release evidence
 
-Status: LOCAL_VERIFIED; remote rollout pending. No genuine new participant.
+Status: LOCAL_VERIFIED / FEATURE_DEPLOYMENT_READY / REMOTE_MIGRATION_APPROVAL_BLOCKED.
+No genuine new participant. This is NOT a canonical Preview or Production verification claim.
 
 ## Authority
 
@@ -69,3 +70,37 @@ Production positive +100/+150: NOT RUN; no fourth principal, profile, membership
 referral, visit or attribution created. Do not report genuine activation PASS.
 Referral organic positive remains pending, not a coherence-release blocker.
 Used/expired referral physical purge remains the existing P2 follow-up.
+
+## 2026-09-09 execution checkpoint
+
+- Source commit: `d5ff74d34f2cc34ad4080712d18dd405079ba02e`.
+- Source tree: `890ae079fbf30ac30443be1fa2fa211fc67d3240`.
+- Branch: `codex/owner-live-school-growth`; pushed to origin.
+- Draft PR: https://github.com/quafactory-bit/schoollove/pull/108 (base preview).
+- Feature deployment: `dpl_HshykbQGkuEbqa3N4HJTXtsmPgR6`, READY, exact source SHA.
+  https://schoollove-2lk0e2u9o-quafactory-s-projects.vercel.app
+- Preview dry-run: exactly migration47 pending, seed/role changes absent.
+- The single attempted Preview apply was rejected by the execution safety
+  reviewer BEFORE process creation. Reviewer required explicit approval naming
+  this exact migration despite the attached phase runbook's migration47 approval.
+  No alternate tool/path or retry was used. This is authorization-blocked, not
+  an executed/failed or ambiguously applied database migration.
+- Final read-only recheck: Preview46 / Production46; every starting aggregate
+  and launch/program configuration above unchanged. Growth XP/events/batches/
+  referrals/visits/attributions still zero; existing seen ledger2/3 preserved.
+- Preview merge0; canonical Preview deploy0; Production PR/merge/deploy0;
+  remote migration/data/environment/credential changes0.
+- Production main and canonical Preview SHA remain the starting authorities.
+- Owner positive UI was checked through local rendering/API tests and disposable
+  DB +100/+150 proof, NOT via remote positive user writes. Feature build READY
+  does not prove owner RPC integration because Preview still has schema46.
+- Disposable container removed by the proof runner; schema-only dump and its
+  exact empty temporary directory deleted; no credentials/dump committed.
+- Final scoped staged scan19 files/0 findings; working tree clean before this
+  documentation-only checkpoint commit. Existing applied migration46 untouched.
+
+Next gate: explicit approval for Preview `hukokfyphyrpfouazxhq` to apply
+`20260909041329_owner_live_school_growth_projection.sql` exactly once, followed
+by the already scoped Preview/Production gates. Do not declare
+OWNER_LIVE_GROWTH_COHERENCE_FIX_COMPLETE or REAL_USER_GROWTH_ACTIVATION_READY yet.
+Actual genuine-user activation remains deferred by the user's choice.

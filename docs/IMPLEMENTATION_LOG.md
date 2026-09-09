@@ -2,6 +2,8 @@
 
 ## 2026-09-09 Owner live growth coherence (local verified / remote pending)
 
+- Checkpoint: PR108 Draft / feature source d5ff74d deployed READY. Preview apply was rejected before execution by the safety reviewer; no retry or workaround. Both remote histories remain46 and all baseline aggregates are unchanged. Canonical merge/Production rollout remain blocked pending exact-file migration approval. Temporary schema clone artifacts removed. See OWNER_LIVE_GROWTH_RELEASE.md.
+
 - Added one owner-membership-authorized, statement-consistent live projection. Account feedback and Home owner cards no longer use public delayed level/progress. Public RPC and award functions remain unchanged.
 - Private no-store responses, output allowlist, stale-school response rejection and level-free share text preserve the owner/public boundary.
 - Targeted51 PASS; full Vitest1669 PASS/4 existing SKIP; typecheck PASS; lint0 errors/86 existing warnings. Disposable deployed46→47: table/column delta0, function+1 (221→222); all existing function definitions unchanged. Owner/nullUID/anon/nonmember/cross-school/delete-owner and real-shaped local +100/+150 paths PASS. Existing full growth/privacy/referral/rollback matrix PASS.
