@@ -1,5 +1,12 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-09 Owner live growth coherence (local verified / remote pending)
+
+- Added one owner-membership-authorized, statement-consistent live projection. Account feedback and Home owner cards no longer use public delayed level/progress. Public RPC and award functions remain unchanged.
+- Private no-store responses, output allowlist, stale-school response rejection and level-free share text preserve the owner/public boundary.
+- Targeted51 PASS; full Vitest1669 PASS/4 existing SKIP; typecheck PASS; lint0 errors/86 existing warnings. Disposable deployed46→47: table/column delta0, function+1 (221→222); all existing function definitions unchanged. Owner/nullUID/anon/nonmember/cross-school/delete-owner and real-shaped local +100/+150 paths PASS. Existing full growth/privacy/referral/rollback matrix PASS.
+- No genuine new participant is available. No remote referral or signup is planned; remote rollout evidence is recorded in OWNER_LIVE_GROWTH_RELEASE.md.
+
 ## 2026-09-09 School Growth Game v1 (local verified, remote release pending)
 
 - Replaced the public Home and School Hub growth source with an independent private XP ledger and privacy-batched public projection. Existing public profile count/ranking authority is not reused. Level curve preserved; existing membership baseline receives zero XP.
