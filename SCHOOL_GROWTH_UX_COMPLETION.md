@@ -108,7 +108,89 @@ may increment on read-only page requests; not an assertion of zero all DB writes
 
 ## Release/postflight
 
-LOCAL_VERIFIED; feature/canonical Preview and Production evidence pending.
-No remote source mutation before this checkpoint. Final report will record PRs,
-SHA/tree/deployment aliases, exact-source equality, public live results, baseline
-comparison, remaining docs-only commits and clean worktree state.
+Feature commit `2f9e3d5d6b035c59c5abf0666b2f7b9786fba769`; PR
+[110](https://github.com/quafactory-bit/schoollove/pull/110) Ready/squash merged.
+Canonical Preview `a28843d14277daed752e74e7f6897c6f06ae038b`.
+Feature `dpl_5tFE5AKf7Ub1yWQVuFvx67d5TzY4` READY; canonical Preview
+`dpl_J765QBdYDwEcmhHbMmvXTuYczEoY` READY, alias `preview.schoollove.kr`.
+Both exact source SHA checks passed and GitHub Vercel checks SUCCESS.
+
+Production branch `codex/production-school-growth-ux-completion` from original
+main, only the approved UX commit cherry-picked as
+`71b35ecee453f426f793fa9a8b6428fe2fca167b`. PR
+[111](https://github.com/quafactory-bit/schoollove/pull/111) checks SUCCESS,
+Ready/squash merged to main `bd38e1c53d70a3ccc4b5a6a31c320fc3e99a22d5`.
+Feature, canonical Preview, Production release and merged main ALL have exact
+whole tree `91a1a385e512e43a01230664f928620b0e869dec` (runtime/assets/tests/docs).
+No repeated full suite required for identical tree. Production deployment
+postflight is recorded below after READY.
+
+Actual live feature Home: current-input button and three-step guide present,
+overflow0. Canonical Preview Home390/Hub1280: same correct UI, public projection
+label and next goal, overflow0. Existing Preview authenticated account read:
+My Schools, management summary and unchanged private DesktopNav all present.
+No login or save performed. Preview deployment-scoped 5xx log query returned no
+counts; read-only user/configuration aggregates exactly match preflight.
+
+Local real React interaction matrix: 17/17 PASS including native-share success
+and link-only copy reuse. Additional isolated checks: touch candidate selection,
+deletion-pending write denial, long school name, semantic computed colors PASS.
+Body/secondary/success/error/dark-action sampled contrast range 7.29–20.13:1.
+The long-name supplemental fixture first retained its old mocked growth name;
+correcting that mock (not runtime) produced the intended long-name rendering.
+No blanket WCAG certification or all-browser testing claimed.
+
+All 32 Before/After manifest rows include route/viewport/exact source commit and
+local actual-React/network-mock labels. Share/viewport extra captures correspond
+to feature commit2f9e3d5. Live Before Production Home is source5dbba050; live
+After Preview Home/Hub are a28843d1. Private live personal values not saved in
+screenshots or logs. Final report amendment is documentation only and will be
+committed/pushed separately; it is not included in the above deployed tree.
+
+### Production postflight — VERIFIED
+
+- Deployment `dpl_9mHwHyYAy5xsh1uVVWgf3ahdf7gL`, READY, target production,
+  exact SHA `bd38e1c53d70a3ccc4b5a6a31c320fc3e99a22d5`, aliases
+  `www.schoollove.kr` and `schoollove.kr`, aliasError null.
+- Anonymous GET Home /login /school/seoul-yangcheon-jinmyeongyeojagodeunghaggyo
+  and `/api/schools/selection?slug=seoul-yangcheon-jinmyeongyeojagodeunghaggyo`
+  all HTTP200. Guest Hub contains explicit school-join CTA; login Google button
+  remains present (not clicked).
+- Live Chromium Home390: form CTA and three-step guide, overflow0. Hub1280:
+  public projection/next goal and existing member share CTA, overflow0. Login390:
+  brand/Google CTA readable, overflow0. Production screenshots use main bd38e1c5.
+- Existing Production authenticated session read at `/account`: My Schools,
+  account-management summary, private desktop nav and overflow0 confirmed.
+  No private values captured. Live new-user onboarding, actual save, school
+  selection across real OAuth, native external share and real referral issuance
+  remain NOT_EXECUTED; covered only to the stated local/mock extent.
+- More than 60 seconds after READY, deployment-scoped first-window 5xx query
+  returned no entries. This is a bounded postflight, not continuous monitoring
+  or a guarantee that all future requests will succeed.
+- All listed Preview/Production user and configuration aggregates unchanged.
+  Production contributions3, awarded0, XP0, referrals0, referral visits0 and
+  growth events0 remain equal. Migration47/pending0 retained. Existing page-view
+  accounting may execute; user-data mutation/referral/auth mutation by agent0.
+
+### Final status and remaining limits
+
+SCHOOL_SEARCH_CTA_CONTINUITY_VERIFIED
+SCHOOL_SELECTION_ONBOARDING_CONTINUITY_VERIFIED (actual React + mocked return/save)
+GROWTH_COLD_START_EXPERIENCE_VERIFIED (engineering review, not user research)
+GROWTH_VISUAL_HIERARCHY_VERIFIED
+SHARE_PREVIEW_AND_COPY_VERIFIED (local mocked APIs)
+PUBLIC_OWNER_PROJECTION_BOUNDARY_PRESERVED
+SCHOOL_GROWTH_UX_PREVIEW_VERIFIED
+SCHOOL_GROWTH_UX_PRODUCTION_RELEASE_VERIFIED
+
+Changed files: 43 approved runtime/helper/test/harness/document files in PR110
+and the identical PR111 source release; final amendment changes this report only.
+Unchanged: every SQL migration, existing account write/auth/broker/referral/growth/
+people search/request/accept/notification server implementation, env, lockfile,
+root navigation mounting and A/B/C data. No packages installed. Current tests,
+typecheck/build PASS, lint0 errors/84 legacy warnings, diff/secret scan PASS.
+Risk/limits: physical Safari/device/browser-UI zoom and genuine-user conversion
+unmeasured; existing probabilistic crypto test limitation documented above.
+No new feature, monitoring, real-user wait, or further approval is needed to
+close this UX scope. Final docs-only commit is pushed on the Production release
+branch, not merged into main; runtime equality is unaffected.
