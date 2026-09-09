@@ -107,7 +107,8 @@ describe('public social typography and text color system', () => {
     expect(GLOBALS).toContain('body .chip-active,')
     expect(GLOBALS).toContain('body .schoollove-dark-action,')
     expect(GLOBALS).toContain('color: #ffffff !important')
-    expect(HOME).toContain('schoollove-dark-action schoollove-focus')
+    expect(readFileSync(join(ROOT, 'components/SearchBar.tsx'), 'utf8')).toContain('schoollove-dark-action schoollove-focus')
+    expect(GLOBALS).not.toContain('body :where(h1, h2, h3')
     expect(NOT_FOUND).toContain('className="btn-primary')
     expect(GLOBALS).toContain('body .schoollove-dark-action-hover:hover')
   })
@@ -118,10 +119,11 @@ describe('public social typography and text color system', () => {
     expect(FOOTER).not.toMatch(/text-neutral-(400|500)/)
   })
 
-  it('forces enabled native input and textarea placeholders to opaque black', () => {
+  it('uses opaque accessible secondary text for native placeholders', () => {
     expect(GLOBALS).toContain('body input:not(:disabled)::placeholder')
     expect(GLOBALS).toContain('body textarea:not(:disabled)::placeholder')
-    expect(GLOBALS).toContain('color: var(--schoollove-text) !important')
+    expect(GLOBALS).toContain('color: var(--schoollove-text-secondary) !important')
+    expect(GLOBALS).toContain('--schoollove-text-secondary: #475569')
     expect(GLOBALS).toContain('opacity: 1 !important')
   })
 

@@ -10,7 +10,9 @@ const source = readFileSync(join(process.cwd(), 'components', 'SearchBar.tsx'), 
 
 describe('SearchBar — 전체 검색은 sessionStorage로만 검색어를 전달한다', () => {
   it('SCHOOL_SEARCH_STORAGE_KEY에 정규화된 검색어를 저장한다', () => {
-    expect(source).toMatch(/sessionStorage\.setItem\(SCHOOL_SEARCH_STORAGE_KEY, normalized\)/)
+    expect(source).toContain('rememberSchoolQuery(normalized)')
+    const policy = readFileSync(join(process.cwd(), 'lib/policy/schoolJourney.ts'), 'utf8')
+    expect(policy).toContain('sessionStorage.setItem(SCHOOL_SEARCH_STORAGE_KEY, query)')
   })
 
   it('router.push에 원본 query가 아니라 buildFullSearchHref(normalized)를 넘긴다(쿼리 없는 고정 경로)', () => {

@@ -15,6 +15,8 @@ import { hasBetaFeatureAccess } from '@/lib/beta'
 import { getPublicAccountLaunchState } from '@/lib/publicAccountLaunch'
 import TodayInstagramCard from '@/components/TodayInstagramCard'
 import { getPublicPromotion } from '@/lib/promotions'
+import { SchoolJoinButton } from '@/components/growth/SchoolSelection'
+import GrowthHowItWorks from '@/components/growth/GrowthHowItWorks'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -54,8 +56,9 @@ export default async function SchoolPage({ params }: PageProps) {
   const snapshot = growth.schools[0]
 
   return (
-    <main className="page-container space-y-5">
+    <main className="growth-journey mx-auto w-full max-w-5xl space-y-5 px-5 py-8 sm:px-8">
       <GrowthReferralLanding />
+      <Link href="/" className="schoollove-focus inline-flex min-h-11 items-center text-lg font-bold">스쿨러브아이 ↗</Link>
       <nav className="flex items-center gap-1 text-xs text-gray-400">
         <Link href="/" className="hover:text-gray-600">홈</Link>
         <ChevronRight size={12} />
@@ -64,8 +67,9 @@ export default async function SchoolPage({ params }: PageProps) {
         <span className="font-medium text-gray-600">{school.school_name}</span>
       </nav>
 
-      <section className="border border-schoollove-border bg-schoollove-surface p-6 sm:p-8">
-        <p className="schoollove-hud-label text-[12px] tracking-[0.14em]">OUR SCHOOL, NEXT LEVEL</p>
+      <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+      <section className="rounded-2xl border border-schoollove-border bg-[var(--schoollove-game-surface)] p-6 sm:p-8">
+        <p className="text-xs font-bold tracking-[0.14em] text-[var(--schoollove-game-accent)]">OUR SCHOOL, NEXT LEVEL</p>
         <h1 className="mt-3 text-2xl font-bold text-schoollove-text sm:text-3xl">{school.school_name}</h1>
         <p className="mt-3 flex items-center gap-1.5 text-sm text-schoollove-secondary">
           <MapPin size={14} aria-hidden="true" />
@@ -76,15 +80,18 @@ export default async function SchoolPage({ params }: PageProps) {
         {snapshot?.lastLevelUp && <p className="mt-2 text-sm">최근 공개 레벨업 · {new Date(snapshot.lastLevelUp).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })}</p>}
       </section>
 
-      <section className="border border-schoollove-border bg-schoollove-surface p-6 sm:p-8" aria-labelledby="private-account-cta">
+      <section className="rounded-2xl border border-schoollove-border bg-schoollove-surface p-6 sm:p-8" aria-labelledby="private-account-cta">
         <h2 id="private-account-cta" className="text-lg font-bold text-schoollove-text">{isMember ? '우리 학교, 함께 키워요' : '내 학교로 등록하고 키우기'}</h2>
         <p className="mt-2 text-sm leading-6 text-schoollove-secondary">
           첫 학교 등록은 학교 성장에 기여해요. 개인 이름·졸업연도·학년·반은 공개 명단으로 표시하지 않아요.
         </p>
-        <div className="mt-5">{isMember && snapshot ? <GrowthShareButton schoolId={school.id} schoolName={school.school_name} slug={school.slug} /> : launch.state === 'open' ? <Link href="/account" className="schoollove-dark-action schoollove-focus inline-flex min-h-12 items-center bg-[var(--schoollove-game-accent)] px-5 text-base font-semibold text-white">내 학교로 등록하고 키우기</Link> : <p className="text-sm">신규 계정 시작은 현재 준비 중입니다.</p>}</div>
+        <div className="mt-5">{isMember && snapshot ? <GrowthShareButton schoolId={school.id} schoolName={school.school_name} slug={school.slug} /> : launch.state === 'open' ? <SchoolJoinButton slug={school.slug} /> : <p className="text-sm">신규 계정 시작은 현재 준비 중입니다.</p>}</div>
+        {isMember && <Link href="/account#my-schools-heading" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm underline">내 학교 실시간 성장 확인</Link>}
         {peopleAccess && <Link href="/people/search" className="schoollove-focus mt-4 inline-flex min-h-11 items-center text-sm underline">기억나는 사람 찾아보기</Link>}
         <p className="mt-4 text-sm leading-6">학교 레벨과 사람 찾기 이용 권한은 별개예요. 친구 링크는 베타 초대가 아닙니다.</p>
       </section>
+      </div>
+      <GrowthHowItWorks />
       {promotion ? <TodayInstagramCard promotion={promotion} /> : null}
     </main>
   )

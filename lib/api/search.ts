@@ -29,7 +29,8 @@ async function fetchSchoolsBySearchRpc(
     lim: limit,
   })
 
-  if (error || !data) return []
+  if (error) throw new Error('SCHOOL_SEARCH_UNAVAILABLE')
+  if (!data) return []
 
   return data as Array<Omit<SchoolSearchResult, 'profile_count'>>
 }
