@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { Users, MapPin } from 'lucide-react'
-import { schoolTypeBadgeColor, formatNumber, cn } from '@/lib/utils'
+import { MapPin } from 'lucide-react'
+import { schoolTypeBadgeColor, cn } from '@/lib/utils'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import type { School } from '@/types/school'
 
@@ -52,13 +52,6 @@ export default function SchoolCard({ school, variant = 'default' }: SchoolCardPr
         <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-500">
           <MapPin size={11} />
           <span>{school.sido} {school.sigungu}</span>
-          {school.profile_count !== undefined && school.profile_count > 0 && (
-            <>
-              <span className="mx-1 text-gray-300">·</span>
-              <Users size={11} />
-              <span>{formatNumber(school.profile_count as number)}명 등록</span>
-            </>
-          )}
         </div>
       </div>
       <span className="text-gray-400 group-hover:text-schoollove-electric-blue transition-colors text-lg shrink-0">›</span>
