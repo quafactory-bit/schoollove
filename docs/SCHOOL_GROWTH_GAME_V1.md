@@ -1,6 +1,7 @@
 # School Growth Game v1 — implementation and evidence
 
-Status: LOCAL_VERIFIED. Preview/Production NOT YET APPLIED.
+Status: LOCAL_VERIFIED / FEATURE_PREVIEW_DEPLOYED / REMOTE_MIGRATION_APPROVAL_BLOCKED.
+Preview/Production migrations and canonical merges have NOT been applied.
 
 ## Authority and legacy audit
 
@@ -76,9 +77,54 @@ award/referral tests are confined to disposable databases.
 
 ## Preservation
 
-No Preview/Production DB writes, migration applies, deploys, env changes or user
-logins have occurred in this implementation phase so far. No A/B/C mutations.
+No Preview/Production DB writes, migration applies, canonical deploys, env changes
+or user logins have occurred. Feature PR106 deployment is READY. No A/B/C mutations.
 People Discovery cap=5, messaging OFF, existing Instagram scope are unchanged.
-Schema-only dump and disposable containers must be removed after final local
-proof. Remote release evidence must replace the pending status above only after
-actual gate completion.
+Schema-only dump and owned disposable containers were removed after local proof.
+
+## Release checkpoint — 2026-09-09
+
+Source commit: `4bf6a6f527a307b1b5d98abb7b002aacd861ab81`.
+Source tree: `a9045ce17192c00ffe9625cfcd4dfc24ffe4277f`.
+PR: https://github.com/quafactory-bit/schoollove/pull/106 (Draft, base preview).
+Feature deployment: `dpl_CzqcP5J61kn5QhCjmDbHcb7amPau`, READY, exact source SHA.
+Real in-app browser renders the new Home. Optional growth is unavailable until
+migration46, without breaking school search or account navigation.
+
+Migration LF SHA256: `0963e46d9293e3335ebe6beb66be8d9a9e7e62ec8924659b5a0e7e307bfca359`.
+Preview CLI dry-run: exactly `20260909013012_school_growth_game_loop.sql` pending;
+no seed, roles or vault updates requested. Actual apply was rejected by automatic
+safety review before execution, requiring explicit chat approval for this file and
+project. No retry or alternative transport was used. Both remote histories still
+45/latest20260908050649, and new growth schema is absent.
+
+Sensitive row-derived fingerprints were also rejected before execution. The
+successful replacement check contains only aggregate counts and operational
+configuration, not private row values or their fingerprints. It proves counts,
+not byte-for-byte private row equality.
+
+| Baseline | Preview | Production |
+| --- | ---: | ---: |
+| Auth users / identities | 2 / 2 | 3 / 3 |
+| Private profiles / memberships / classes | 2 / 2 / 2 | 3 / 3 / 0 |
+| Accepted requests / active connections | 1 / 1 | 2 / 2 |
+| Notifications / messages | 7 / 0 | 8 / 0 |
+| Instagram handles / active permissions / historical permissions | 0 / 0 / 2 | 0 / 0 / 2 |
+| People Discovery active / operational cap | 2 / unchanged NULL | 3 / 5 |
+| Connected Instagram active members | 2 | 2 |
+| Public launch | open | open |
+
+See [72-field release checkpoint](SCHOOL_GROWTH_GAME_RELEASE_CHECKPOINT.md).
+
+## Explicit release resume — Preview migration verified
+
+The user subsequently approved the exact Preview migration and conditional
+Production release in chat. CLI apply succeeded once (exit0), history45→46,
+version20260909013012 count1; post-apply dry-run pending0. SHA256 is unchanged.
+All seven new private tables retain RLS/FORCE and deny anon/authenticated direct
+access. Function grants and empty search_path match the approved boundaries.
+Existing two membership pairs produced two seen-only ledger rows, zero XP,
+one Lv1 state, and zero events/batches/referrals/visits/attributions. Existing
+Preview account, relation, notification, Instagram and launch/beta counts and
+configuration are unchanged. Canonical Preview and Production release follow
+only after their remaining gates pass; earlier blocked checkpoint is historical.
