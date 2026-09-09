@@ -159,6 +159,7 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
           )}
           <input
             role="combobox"
+            aria-label="학교 이름 찾기"
             aria-expanded={showDropdown}
             aria-controls={listboxId}
             aria-autocomplete="list"

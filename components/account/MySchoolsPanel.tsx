@@ -4,6 +4,7 @@ import { buildMySchoolCards } from '@/lib/accountFirstValue'
 import ShareButton from '@/components/ShareButton'
 import { formatGradeClassHistory, gradeNumbersForSchoolType } from '@/lib/accountGradeClass'
 import ClassHistoryEditor from './ClassHistoryEditor'
+import OwnerGrowthFeedback from '@/components/growth/OwnerGrowthFeedback'
 
 type Props = {
   memberships: SchoolMembership[]
@@ -57,6 +58,7 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
               </p>
             ) : null}
             <ClassHistoryEditor membership={memberships[index]} writable={classHistoryWritable} />
+            <OwnerGrowthFeedback schoolId={memberships[index].school_id} />
             {peopleSearchEnabled && hasSavedK12Class(memberships[index]) && <Link href="/people/search" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">저장한 반에서 사람 찾기</Link>}
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">

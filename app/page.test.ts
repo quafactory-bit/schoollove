@@ -11,7 +11,8 @@ describe('PHASE 10A safe home', () => {
 
   it('초등·중등을 포함한 사람 등록 경쟁과 등록 CTA를 노출하지 않는다', () => {
     expect(SOURCE).not.toMatch(/현재 학교 순위|다음 성장 단계|내 이름 남기기|친구 등록|LEVEL UP/)
-    expect(SOURCE).toContain('공개 개인 명단·사람 이름 검색·Instagram 노출 없이')
+    expect(SOURCE).toContain('개인 명단은 공개하지 않아요.')
+    expect(SOURCE).toContain('사람 찾기와 안부는 현재 승인된 제한 베타에서만')
   })
 
   it('학교 검색과 삭제·비공개 문의 경로를 유지한다', () => {
@@ -20,8 +21,9 @@ describe('PHASE 10A safe home', () => {
   })
 
   it('open 상태는 Google-only 계정 시작 권위와 고정 login 경로만 안내한다', () => {
-    expect(SOURCE).toContain('Google 로그인 후 자기 정보만 비공개로 기록할 수 있습니다.')
-    expect(SOURCE).toContain('href="/login"')
+    expect(SOURCE).toContain("launch.state === 'open'")
+    expect(SOURCE).toContain('href="/account"')
+    expect(SOURCE).toContain('내 학교 키우기')
     expect(SOURCE).not.toMatch(/이메일 인증|Email OTP|6자리/)
     expect(SOURCE).not.toContain('/login?next=/onboarding')
   })
