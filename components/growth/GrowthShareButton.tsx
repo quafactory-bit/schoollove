@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { buildGrowthShareUrl } from '@/lib/growthReferral'
 
-export default function GrowthShareButton({ schoolId, schoolName, slug, level }: { schoolId: string; schoolName: string; slug: string; level: number }) {
+export default function GrowthShareButton({ schoolId, schoolName, slug }: { schoolId: string; schoolName: string; slug: string }) {
   const [busy, setBusy] = useState(false)
   const [link, setLink] = useState<string | null>(null)
   const [message, setMessage] = useState('')
@@ -19,7 +19,7 @@ export default function GrowthShareButton({ schoolId, schoolName, slug, level }:
         url = buildGrowthShareUrl(window.location.origin, slug, data.token)
         setLink(url)
       }
-      const text = `${schoolName} Lv.${level}. 우리 학교 같이 키워보자!`
+      const text = `${schoolName}. 우리 학교 같이 키워보자!`
       if (navigator.share) await navigator.share({ title: schoolName, text, url })
       else { await navigator.clipboard.writeText(url); setMessage('링크를 복사했어요. 7일 동안 사용할 수 있어요.') }
     } catch (error) {

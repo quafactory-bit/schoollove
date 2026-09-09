@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-09 Owner live growth coherence (implementation / release pending)
+
+- Separate owner live level/progress from the unchanged delayed public projection.
+- Add a narrow membership-authorized read RPC; keep existing awards and public privacy batches unchanged.
+- Keep live levels out of referral share text. No genuine participant is available; activation remains pending.
+
 ## 2026-09-09 School growth game loop v1 (implementation / release pending)
 
 - Replaced safety-notice-led Home with school discovery, owner school growth, real ranking and privacy-batched milestones; retained launch and beta boundaries.
