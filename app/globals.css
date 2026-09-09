@@ -12,7 +12,7 @@
   --color-schoollove-date: #4b5563;
   --color-schoollove-hud-red: #c62828;
   --schoollove-text: var(--color-schoollove-text);
-  --schoollove-text-secondary: var(--color-schoollove-text);
+  --schoollove-text-secondary: #475569;
   --schoollove-text-muted: var(--color-schoollove-date);
   --schoollove-border: #e8e8e8;
   --schoollove-progress-track: #e8e8e8;
@@ -169,8 +169,9 @@
   }
 }
 
-body :where(h1, h2, h3, h4, h5, h6, p, a, button, label, input, textarea, select, option, td, th, dt, dd, li, summary, figcaption, caption, span, strong, b, small, em):not([aria-hidden="true"]):not(.text-schoollove-date):not(.text-schoollove-hud-red):not(.text-white):not(.text-schoollove-bg) {
-  color: var(--schoollove-text);
+/* Text inherits from body; semantic Tailwind colors must remain effective. */
+.growth-journey :where(.text-gray-400, .text-gray-500, .text-neutral-400) {
+  color: var(--schoollove-text-secondary);
 }
 
 body :where(time, .text-schoollove-date) {
@@ -232,7 +233,7 @@ body .schoollove-live-dot {
 
 body input:not(:disabled)::placeholder,
 body textarea:not(:disabled)::placeholder {
-  color: var(--schoollove-text) !important;
+  color: var(--schoollove-text-secondary) !important;
   opacity: 1 !important;
 }
 

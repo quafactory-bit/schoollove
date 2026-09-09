@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-09-09 Growth UX completion
+
+- Approved current-input school search, same-tab unconfirmed school selection,
+  three-step growth explanation, shared visual hierarchy, My Schools first and
+  explicit share preview/preparation/copy. Decision and journey addendum record
+  the source-only scope. Existing SQL, rewards, aggregation and permissions stay
+  unchanged. Detailed evidence: `../../SCHOOL_GROWTH_UX_COMPLETION.md`.
+
 ## 2026-09-07
 
 - 승인된 owner history 선택형 입력을 private People Discovery에 추가한다. 기존 manual 검색, 서버 authority, 공개 명단 금지와 history 비저장 경계는 유지한다.

@@ -10,14 +10,16 @@ import MySchoolsPanel from '@/components/account/MySchoolsPanel'
 import { buildGradeClassPayload, formatGradeClassHistory, gradeNumbersForSchoolType } from '@/lib/accountGradeClass'
 import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
 import type { BetaOnboardingState } from '@/lib/betaOnboarding'
+import SchoolSelection from '@/components/growth/SchoolSelection'
+import { clearSchoolIntent } from '@/lib/policy/schoolJourney'
 
-type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;peopleSearchBetaAccess?:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number}
+type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;peopleSearchBetaAccess?:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number;selectionOwner?:string}
 
 async function readResult(response:Response):Promise<{error?:string}>{
   try{return await response.json() as {error?:string}}catch{return {}}
 }
 
-export default function AccountClient({state,launch,controlledBetaAccess,peopleSearchBetaAccess=false,instagramBetaAccess,betaOnboardingState,currentYear}:Props){
+export default function AccountClient({state,launch,controlledBetaAccess,peopleSearchBetaAccess=false,instagramBetaAccess,betaOnboardingState,currentYear,selectionOwner}:Props){
   const router=useRouter()
   const [status,setStatus]=useState('')
   const [isError,setIsError]=useState(false)
@@ -58,6 +60,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
       const response=await fetch(endpoint,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       const result=await readResult(response)
       if(!response.ok){setStatus(result.error??'요청을 완료할 수 없습니다.');setIsError(true);return false}
+      if(endpoint==='/api/account/memberships' && method==='POST') clearSchoolIntent()
       setStatus(success);router.refresh();return true
     }catch{setStatus('네트워크 연결을 확인한 뒤 다시 시도해 주세요.');setIsError(true);return false}
     finally{setBusy(false)}
@@ -135,13 +138,14 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     </section>
   )
 
-  return <main className="mx-auto max-w-2xl px-5 py-10">
+  return <main className="growth-journey mx-auto max-w-2xl px-5 py-8">
+    <Link href="/" className="schoollove-focus mb-5 inline-flex min-h-11 items-center text-lg font-bold">스쿨러브아이 ↗</Link>
     <div className="flex flex-wrap items-start justify-between gap-4"><div>
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Private account</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">내 계정</h1>
       <p className="mt-2 text-sm text-gray-600">Google 계정으로 로그인됨</p>
       <p className="mt-1 text-xs text-gray-500">로그인 세션은 서버에서 검증하며 만료 시 다시 로그인해야 할 수 있습니다.</p>
-    </div><button type="button" disabled={busy} onClick={async()=>{await fetch('/api/auth/logout',{method:'POST'}).catch(()=>undefined);router.push('/login');router.refresh()}}
+    </div><button type="button" disabled={busy} onClick={async()=>{clearSchoolIntent();await fetch('/api/auth/logout',{method:'POST'}).catch(()=>undefined);router.push('/login');router.refresh()}}
       className="schoollove-focus min-h-11 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700">로그아웃</button></div>
 
     <section className="mt-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3" aria-label="온보딩 진행 상태">
@@ -149,12 +153,15 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
       <Link href="/onboarding" className="schoollove-focus mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-gray-900 underline">온보딩 진행 상태 보기</Link>
       {onboardingComplete?<div className="mt-3 rounded-xl bg-emerald-50 px-4 py-3"><p className="font-semibold text-emerald-900">비공개 계정 준비 완료</p><p className="mt-1 text-xs leading-5 text-emerald-800">성인 확인, 필수 동의, 비공개 프로필과 학교 이력을 모두 저장했습니다.</p></div>:null}
     </section>
-    {!optionalBetaEnrollment ? betaInvitePanel : null}
+    {!optionalBetaEnrollment && !onboardingComplete ? betaInvitePanel : null}
       <MySchoolsPanel memberships={state.memberships} classHistoryWritable={classHistoryWritable} peopleSearchEnabled={peopleSearchBetaAccess && !launch.emergencyStopped && !deletionBlocked}/>
+    {!onboardingComplete && <p className="mt-5 text-sm font-semibold text-[var(--schoollove-game-accent)]">{!state.adultEligible?'다음 단계 · 성인 확인':!state.consentsComplete?'다음 단계 · 필수 동의':!state.profile?'다음 단계 · 내 비공개 프로필':'다음 단계 · 내가 다닌 학교 등록'}</p>}
+    <SchoolSelection owner={selectionOwner} registeredSlugs={state.memberships.flatMap(m => m.school?.slug ? [m.school.slug] : [])} writable={schoolMembershipWritable && Boolean(state.profile) && state.memberships.length < membershipLimit} hasInput={Boolean(schoolQuery || schoolId || graduationYear || Object.values(gradeClassValues).some(Boolean))} onSelect={school => {setSchoolId(school.id);setSelectedSchoolType(school.school_type);setSchoolQuery(`${school.school_name} · ${SCHOOL_TYPE_LABELS[school.school_type]} · ${school.sido} ${school.sigungu}`)}} />
     {!accountWritable&&!classHistoryWritable&&!deletionBlocked ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900" role="status">계정 소프트런치를 준비 중이어서 현재 정보 저장은 닫혀 있습니다. 저장된 본인 정보 조회와 삭제·탈퇴 요청은 계속할 수 있습니다.</p>:null}
     {deletionBlocked ? <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900" role="status">{state.deletionStatus==='pending'?'탈퇴 요청이 접수되어 추가 정보 변경을 차단했습니다.':state.deletionStatus==='done'?'탈퇴 처리가 완료되었습니다.':'개인 데이터 삭제 또는 Auth identity 삭제를 진행 중이며 개인 기능 접근을 차단했습니다.'}</p>:null}
 
-    <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">1. 만 19세 이상 확인</h2>
+    <details open={!onboardingComplete || Boolean(schoolId)} className="mt-6"><summary className="schoollove-focus min-h-12 cursor-pointer rounded-xl border border-schoollove-border px-4 py-3 font-semibold">계정 정보 관리 · 프로필·학교·탈퇴</summary>
+    <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">1. 만 19세 이상 확인</h2>
       {state.adultEligible?<p className="mt-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">현재 정책 기준 성인 확인 완료</p>:<form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();await submit('/api/account/eligibility',{dateOfBirth:birthDate})}}>
         <label htmlFor="birth-date" className="block text-sm font-medium text-gray-800">생년월일</label>
         <input id="birth-date" type="date" required value={birthDate} onChange={(event)=>setBirthDate(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3" />
@@ -204,7 +211,8 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
 
     <section className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-5"><h2 className="text-lg font-bold text-red-950">계정 탈퇴 요청</h2><p className="mt-2 text-sm leading-6 text-red-900">요청 즉시 추가 개인 정보 변경을 차단합니다. 운영 확인 후 공개 계정 데이터를 먼저 삭제하고 Auth identity 실제 삭제를 요청하는 2단계 절차를 사용합니다. Auth 삭제가 실패하면 계정은 차단된 재시도 대기 상태로 남으며 완료로 표시하지 않습니다.</p><p className="mt-2 text-xs text-red-800">처리 상태나 오류 접수는 <Link href="/contact" className="underline">운영자 문의</Link>로 알려 주세요. 완료된 비식별 처리 기록은 재시도·장애 확인 목적의 제한 기간 후 정리됩니다.</p><button type="button" disabled={busy||deletionBlocked} onClick={async()=>{if(window.confirm('탈퇴 요청 후에는 정보 변경이 차단됩니다. 계속할까요?'))await submit('/api/account/deletion-request',{confirm:true},'POST','탈퇴 요청을 접수했습니다.')}} className="schoollove-dark-action schoollove-focus mt-4 min-h-12 rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{state.deletionStatus==='pending'?'탈퇴 요청 접수됨':state.deletionStatus==='public_data_deleted'?'개인 데이터 삭제 완료 · Auth 삭제 대기':state.deletionStatus==='failed_safe'?'Auth 삭제 재시도 대기':state.deletionStatus==='auth_deletion_pending'?'Auth 삭제 처리 중':state.deletionStatus==='done'?'탈퇴 처리 완료':'계정 탈퇴 요청'}</button></section>
 
-    {optionalBetaEnrollment ? betaInvitePanel : null}
+    </details>
+    {(optionalBetaEnrollment || onboardingComplete) ? <details className="mt-5"><summary className="schoollove-focus min-h-12 cursor-pointer py-3 font-semibold">사람 찾기 제한 베타 · 참여 상태</summary>{betaInvitePanel}</details> : null}
     <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600" aria-label="계정 도움말"><Link href="/privacy" className="underline">개인정보처리방침</Link><Link href="/terms" className="underline">이용약관</Link><Link href="/contact" className="underline">운영자 문의</Link></nav>
     {status?<p role={isError?'alert':'status'} aria-live="polite" className={`schoollove-dark-action sticky bottom-24 z-30 mt-5 rounded-xl px-4 py-3 text-sm text-white shadow-lg ${isError?'bg-red-800':'bg-gray-950'}`}>{status}</p>:null}
   </main>
