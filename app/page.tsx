@@ -5,6 +5,7 @@ import { getPublicAccountLaunchState, recordPublicAccountActivity } from '@/lib/
 import { getSchoolGrowth } from '@/lib/schoolGrowthGame'
 import MyGrowthSchools from '@/components/growth/MyGrowthSchools'
 import { Suspense } from 'react'
+import GrowthHowItWorks from '@/components/growth/GrowthHowItWorks'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,26 +15,26 @@ export default async function HomePage() {
   const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
   const today = day.format(new Date())
   const todaySchools = growth.schools.filter(school => school.lastLevelUp && day.format(new Date(school.lastLevelUp)) === today)
-  return <main className="mx-auto w-full max-w-[1180px] px-5 pb-20 sm:px-8">
+  return <main className="growth-journey mx-auto w-full max-w-[1180px] px-5 pb-20 sm:px-8">
     <header className="flex min-h-24 items-center justify-between gap-4 border-b border-schoollove-border">
       <Link href="/" className="schoollove-focus text-lg font-bold tracking-tight">스쿨러브아이<span className="ml-2 text-[var(--schoollove-game-accent)]">↗</span></Link>
       <Link href="/account" className="schoollove-focus inline-flex min-h-11 items-center text-sm">내 계정</Link>
     </header>
-    <section className="grid gap-10 py-12 lg:grid-cols-[1.2fr_1fr] lg:gap-16 lg:py-20" aria-labelledby="growth-title">
+    <section className="grid gap-6 py-8 lg:grid-cols-[1.2fr_1fr] lg:gap-16 lg:py-16" aria-labelledby="growth-title">
       <div>
         <p className="text-xs font-semibold tracking-[0.18em] text-[var(--schoollove-game-accent)]">OUR SCHOOL, NEXT LEVEL</p>
         <h1 id="growth-title" className="mt-5 break-keep text-[38px] font-bold leading-[1.16] tracking-[-0.045em] sm:text-5xl lg:text-[64px]">우리 학교는 지금<br /><span className="text-[var(--schoollove-game-accent)]">몇 레벨</span>일까?</h1>
         <p className="mt-6 max-w-lg break-keep text-base leading-7 text-schoollove-secondary">학교에 다시 모이는 사람이 늘고,<br className="hidden sm:block" /> 친구가 함께할수록 우리 학교도 성장해요.</p>
       </div>
-      <div className="self-center border border-schoollove-border bg-[var(--schoollove-game-surface)] p-6 sm:p-8">
+      <div className="self-center rounded-2xl border border-schoollove-border bg-[var(--schoollove-game-surface)] p-5 sm:p-8">
         <h2 className="text-xl font-bold">내 학교부터 찾아볼까요?</h2>
         <p className="mb-6 mt-2 text-sm leading-6">기억 속 학교 이름을 입력해 보세요.</p>
         <SearchBar variant="home" />
-        <Link href="/search" className="schoollove-dark-action schoollove-focus mt-4 flex min-h-12 items-center justify-between bg-[var(--schoollove-game-accent)] px-4 font-semibold text-white">내 학교 찾기<ArrowUpRight size={20} aria-hidden="true" /></Link>
         {launch.state === 'open' ? <Link href="/account" className="schoollove-focus mt-4 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">내 학교 키우기</Link> : <p className="mt-5 text-sm leading-6">계정 시작은 현재 준비 중입니다. 학교 정보는 계속 둘러볼 수 있어요.</p>}
       </div>
     </section>
     <Suspense fallback={null}><MyGrowthSchools /></Suspense>
+    <GrowthHowItWorks />
     {todaySchools.length > 0 && <section className="border-t border-schoollove-border py-8" aria-labelledby="today-growth"><h2 id="today-growth" className="text-xl font-bold">오늘, 한 단계 자란 학교</h2><p className="mt-2 text-sm">오늘 공개 집계에서 확인된 레벨업이에요.</p><ul className="mt-4 flex flex-wrap gap-3">{todaySchools.map(school => <li key={school.schoolId}><Link className="schoollove-focus inline-flex min-h-12 items-center gap-3 border border-schoollove-border px-4 py-3" href={`/school/${encodeURIComponent(school.slug)}`}><span className="break-words">{school.schoolName}</span><strong className="shrink-0">Lv.{school.level}</strong></Link></li>)}</ul></section>}
     <section className="border-t border-schoollove-border py-10" aria-labelledby="weekly-growth">
       <div className="flex flex-wrap items-end justify-between gap-3"><h2 id="weekly-growth" className="text-2xl font-bold tracking-tight">이번 주, 함께 자라는 학교</h2><span className="text-sm text-schoollove-secondary">최근 7일 · 공개 집계 기준</span></div>

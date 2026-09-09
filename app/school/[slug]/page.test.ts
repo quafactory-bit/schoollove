@@ -20,7 +20,8 @@ describe('public School Hub privacy boundary', () => {
   })
 
   it('owner-only membership으로 CTA만 개인화하고 개인 행을 공개 컴포넌트에 전달하지 않는다', () => {
-    expect(SOURCE).toContain('href="/account"')
+    expect(SOURCE).toContain('<SchoolJoinButton slug={school.slug}')
+    expect(SOURCE).toContain('href="/account#my-schools-heading"')
     expect(SOURCE).toContain(".eq('owner_user_id', auth.user.id)")
     expect(SOURCE).toContain('내 학교로 등록하고 키우기')
     expect(SOURCE).not.toMatch(/getAccountState|display_name|graduation_year/)

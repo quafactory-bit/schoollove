@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import type { SchoolMembership } from '@/lib/account'
 import { buildMySchoolCards } from '@/lib/accountFirstValue'
-import ShareButton from '@/components/ShareButton'
 import { formatGradeClassHistory, gradeNumbersForSchoolType } from '@/lib/accountGradeClass'
 import ClassHistoryEditor from './ClassHistoryEditor'
 import OwnerGrowthFeedback from '@/components/growth/OwnerGrowthFeedback'
@@ -32,7 +31,7 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
 
   return (
     <section className="mt-5 border border-schoollove-border bg-schoollove-surface p-5" aria-labelledby="my-schools-heading">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-600">Private first value</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>
       <h2 id="my-schools-heading" className="mt-2 text-xl font-bold text-schoollove-text">내 학교</h2>
       <p className="mt-2 text-sm leading-6 text-schoollove-secondary">
         학교·졸업연도·학년·반 정보는 공개 명단에 표시되지 않습니다. 사람 찾기에서는 내가 입력한 조건과 정확히 일치하는 경우에만 비공개 매칭 조건으로 사용됩니다.
@@ -62,14 +61,8 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
             {peopleSearchEnabled && hasSavedK12Class(memberships[index]) && <Link href="/people/search" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">저장한 반에서 사람 찾기</Link>}
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
-                학교 페이지 보기
+                공개 학교 성장 보기
               </Link>
-              <ShareButton
-                schoolName={school.schoolName}
-                url={school.href}
-                label="학교 링크 공유"
-                className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline"
-              />
             </div> : null}
           </li>
         ))}

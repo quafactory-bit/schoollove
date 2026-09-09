@@ -111,12 +111,12 @@ describe('searchSchoolsForAutocomplete — Phase 4C 자동완성 전용 조회',
     expect(from).not.toHaveBeenCalled()
   })
 
-  it('RPC 오류 시 예외를 던지지 않고 빈 배열을 반환한다 (테스트 항목 18)', async () => {
+  it('RPC 오류를 빈 결과와 구분해 안전한 재시도 UI로 전달한다', async () => {
     const { supabase } = createMockSupabase({ data: null, error: { message: 'db error' } })
     vi.doMock('@/lib/supabase', () => ({ supabase }))
     const { searchSchoolsForAutocomplete } = await import('./search')
 
-    await expect(searchSchoolsForAutocomplete('대치고')).resolves.toEqual([])
+    await expect(searchSchoolsForAutocomplete('대치고')).rejects.toThrow('SCHOOL_SEARCH_UNAVAILABLE')
   })
 })
 

@@ -16,7 +16,8 @@ describe('PHASE 10A safe home', () => {
   })
 
   it('학교 검색과 삭제·비공개 문의 경로를 유지한다', () => {
-    expect(SOURCE).toContain('href="/search"')
+    expect(SOURCE).toContain('<SearchBar variant="home" />')
+    expect(readFileSync(join(__dirname, '../components/SearchBar.tsx'), 'utf8')).toContain('type="submit"')
     expect(SOURCE).toContain('href="/contact"')
   })
 
