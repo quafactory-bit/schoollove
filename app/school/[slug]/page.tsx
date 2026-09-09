@@ -81,7 +81,7 @@ export default async function SchoolPage({ params }: PageProps) {
         <p className="mt-2 text-sm leading-6 text-schoollove-secondary">
           첫 학교 등록은 학교 성장에 기여해요. 개인 이름·졸업연도·학년·반은 공개 명단으로 표시하지 않아요.
         </p>
-        <div className="mt-5">{isMember && snapshot ? <GrowthShareButton schoolId={school.id} schoolName={school.school_name} slug={school.slug} level={snapshot.level} /> : launch.state === 'open' ? <Link href="/account" className="schoollove-dark-action schoollove-focus inline-flex min-h-12 items-center bg-[var(--schoollove-game-accent)] px-5 text-base font-semibold text-white">내 학교로 등록하고 키우기</Link> : <p className="text-sm">신규 계정 시작은 현재 준비 중입니다.</p>}</div>
+        <div className="mt-5">{isMember && snapshot ? <GrowthShareButton schoolId={school.id} schoolName={school.school_name} slug={school.slug} /> : launch.state === 'open' ? <Link href="/account" className="schoollove-dark-action schoollove-focus inline-flex min-h-12 items-center bg-[var(--schoollove-game-accent)] px-5 text-base font-semibold text-white">내 학교로 등록하고 키우기</Link> : <p className="text-sm">신규 계정 시작은 현재 준비 중입니다.</p>}</div>
         {peopleAccess && <Link href="/people/search" className="schoollove-focus mt-4 inline-flex min-h-11 items-center text-sm underline">기억나는 사람 찾아보기</Link>}
         <p className="mt-4 text-sm leading-6">학교 레벨과 사람 찾기 이용 권한은 별개예요. 친구 링크는 베타 초대가 아닙니다.</p>
       </section>

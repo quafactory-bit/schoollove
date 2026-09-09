@@ -59,10 +59,12 @@ describe('growth route boundaries', () => {
   it('owner feedback is private, not a school/user enumeration endpoint', async () => {
     mock.rpc.mockResolvedValue({error:null,data:null})
     expect((await own(new NextRequest(`https://www.schoollove.kr/api/account/growth?school=${schoolId}`))).status).toBe(404)
-    mock.rpc.mockResolvedValue({error:null,data:{contributed:true,xp:100,otherUser:'PRIVATE'}})
-    mock.growth.mockResolvedValue({schools:[]})
+    const growth = {schoolId,schoolName:'Fixture',slug:'fixture',level:1,progress:70,nearLevelUp:false,lastLevelUp:null,ownContributionXp:100}
+    mock.rpc.mockReturnValue({abortSignal:vi.fn().mockResolvedValue({error:null,data:{...growth,otherUser:'PRIVATE'}})})
     const response=await own(new NextRequest(`https://www.schoollove.kr/api/account/growth?school=${schoolId}`))
     expect(response.headers.get('cache-control')).toBe('private, no-store')
-    expect(await response.json()).toEqual({contribution:{contributed:true,xp:100},growth:null})
+    expect(await response.json()).toEqual({contribution:{contributed:true,xp:100},growth})
+    expect(mock.growth).not.toHaveBeenCalled()
+    expect(mock.rpc).toHaveBeenLastCalledWith('get_own_school_growth_live',{requested_school_id:schoolId})
   })
 })
