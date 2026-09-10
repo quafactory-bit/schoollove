@@ -18,7 +18,7 @@ export default function TabBar() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-schoollove-border bg-schoollove-surface/95 backdrop-blur lg:hidden"
+      className="sl-tabbar fixed inset-x-0 bottom-0 z-40 border-t border-schoollove-border bg-schoollove-surface/95 backdrop-blur lg:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="mx-auto flex w-full max-w-[420px] sm:max-w-[320px]">
@@ -29,7 +29,7 @@ export default function TabBar() {
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
-              className={`schoollove-focus relative flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-colors ${
+              className={`schoollove-focus relative flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors ${
                 active ? 'text-schoollove-text' : 'text-schoollove-muted'
               }`}
             >

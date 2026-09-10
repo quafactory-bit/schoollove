@@ -28,21 +28,23 @@ beforeEach(() => {
 describe('growth Home states', () => {
   it('renders honest empty state and preserves search/login/privacy', async () => {
     const html = renderToStaticMarkup(await Home())
-    expect(html).toContain('첫 성장 학교를 기다리고 있어요.')
+    expect(html).toContain('공개 성장 소식이 모이고 있어요.')
+    expect(html).toContain('내 학교의 성장은 계정에서 먼저 확인할 수 있어요.')
     expect(html).toContain('학교 이름 찾기')
     expect(html).toContain('내 학교 키우기')
     expect(html).toContain('/privacy')
     expect(html).not.toContain('Lv.2 달성')
   })
   it.each([1, 5])('renders exactly %i real ranking rows, no people fields', async count => {
-    mocks.growth.mockResolvedValue({ status: 'ok', schools: Array.from({ length: count }, (_, i) => ({ ...school, schoolId: `${i}`, rank: i + 1, weeklyXp: 1000, level: 7 })) })
+    // Unique privacy sentinel: 1000 is also the legitimate image intrinsic width.
+    mocks.growth.mockResolvedValue({ status: 'ok', schools: Array.from({ length: count }, (_, i) => ({ ...school, schoolId: `${i}`, rank: i + 1, weeklyXp: 987654, level: 7 })) })
     const html = renderToStaticMarkup(await Home())
     const ranking = html.split('aria-labelledby="weekly-growth"')[1].split('</section>')[0]
     expect((ranking.match(/<li>/g) || []).length).toBe(count)
     expect(html).toContain('<ol')
     expect(html).toContain(school.schoolName)
     expect(html).not.toContain('weeklyXp')
-    expect(html).not.toContain('1000')
+    expect(html).not.toContain('987654')
   })
   it('only shows a milestone when an actual published event exists', async () => {
     mocks.growth.mockResolvedValue({ status: 'ok', schools: [{ ...school, level: 7, lastLevelUp: '2026-09-09T00:00:00Z' }] })

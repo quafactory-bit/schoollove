@@ -1,6 +1,7 @@
 import {chromium} from '@playwright/test'
 import {mkdir,writeFile} from 'node:fs/promises'
 import path from 'node:path'
+import {fileURLToPath} from 'node:url'
 export const school={id:'11111111-1111-4111-8111-111111111111',school_name:'예시푸른고등학교',slug:'example-school',school_type:'high',sido:'예시시',sigungu:'예시구'}
 export async function setup(page){
  const calls=[]; const errors=[];page.on('pageerror',e=>errors.push(e.message))
@@ -11,7 +12,7 @@ export async function setup(page){
   let body={};const status=200
   if(url.pathname.startsWith('/mock/'))body=[school]
   else if(url.pathname==='/api/schools/selection')body={school:url.searchParams.get('slug')===school.slug?school:null}
-  else if(url.pathname==='/api/account/growth')body={contribution:{xp:0,contributed:false},growth:{schoolId:school.id,schoolName:school.school_name,slug:school.slug,level:1,progress:0,ownContributionXp:0}}
+  else if(url.pathname==='/api/account/growth'){const level=Number(new URL(page.url()).searchParams.get('level'))||1;body={contribution:{xp:0,contributed:false},growth:{schoolId:school.id,schoolName:school.school_name,slug:school.slug,level,progress:level>1?65:0,ownContributionXp:0}}}
   else if(url.pathname==='/api/growth/referral')body={token:'a'.repeat(64),expiresIn:604800}
   else if(url.pathname==='/api/onboarding')body={state:{stage:'school_required',adultReady:true,consentsReady:true,profileReady:true,schoolReady:false}}
   else if(url.pathname.includes('notifications'))body={items:[],unreadCount:0,notifications:[]}
@@ -37,4 +38,4 @@ export async function capture(phase){
  }
  await writeFile(path.join(out,'manifest.json'),JSON.stringify(result,null,2));await browser.close();console.log(JSON.stringify({phase,captures:result.length,overflow:result.filter(r=>r.overflow)}))
 }
-if(process.argv[2])await capture(process.argv[2])
+if(process.argv[1]&&fileURLToPath(import.meta.url)===path.resolve(process.argv[1])&&process.argv[2])await capture(process.argv[2])

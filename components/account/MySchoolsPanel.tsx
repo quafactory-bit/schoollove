@@ -30,25 +30,27 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
   }
 
   return (
-    <section className="mt-5 border border-schoollove-border bg-schoollove-surface p-5" aria-labelledby="my-schools-heading">
+    <section className="sl-my-schools mt-5" aria-labelledby="my-schools-heading">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>
       <h2 id="my-schools-heading" className="mt-2 text-xl font-bold text-schoollove-text">내 학교</h2>
-      <p className="mt-2 text-sm leading-6 text-schoollove-secondary">
+      <details className="sl-school-privacy"><summary className="schoollove-focus min-h-11 cursor-pointer py-3 text-sm">내 학교 정보의 공개 범위</summary><p className="mt-2 text-sm leading-6 text-schoollove-secondary">
         학교·졸업연도·학년·반 정보는 공개 명단에 표시되지 않습니다. 사람 찾기에서는 내가 입력한 조건과 정확히 일치하는 경우에만 비공개 매칭 조건으로 사용됩니다.
       </p>
       <p className="mt-1 text-sm leading-6 text-schoollove-secondary">
         다시 로그인하면 등록한 학교 이력을 내 계정에서 계속 확인할 수 있습니다.
       </p>
-      <ul className="mt-4 space-y-3">
+      </details>
+      <ul className="sl-school-cards mt-4">
         {buildMySchoolCards(memberships).map((school, index) => (
-          <li key={school.id} className="min-w-0 border border-schoollove-border bg-white p-4">
+          <li key={school.id} className="sl-school-card min-w-0">
             <p className="break-words text-base font-bold text-schoollove-text">{school.schoolName}</p>
             {school.schoolType ? (
               <p className="mt-1 break-words text-sm leading-6 text-schoollove-secondary">
                 {school.schoolType}{school.region ? ` · ${school.region}` : ''}
               </p>
             ) : null}
-            <p className="mt-2 text-sm font-medium text-schoollove-text">
+            <OwnerGrowthFeedback schoolId={memberships[index].school_id} />
+            <p className="mt-5 text-sm font-medium text-schoollove-text">
               {school.graduationYear}년 졸업
             </p>
             {school.classHistory.length > 0 ? (
@@ -57,7 +59,6 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
               </p>
             ) : null}
             <ClassHistoryEditor membership={memberships[index]} writable={classHistoryWritable} />
-            <OwnerGrowthFeedback schoolId={memberships[index].school_id} />
             {peopleSearchEnabled && hasSavedK12Class(memberships[index]) && <Link href="/people/search" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">저장한 반에서 사람 찾기</Link>}
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">

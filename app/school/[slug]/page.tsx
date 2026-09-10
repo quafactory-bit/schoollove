@@ -17,6 +17,8 @@ import TodayInstagramCard from '@/components/TodayInstagramCard'
 import { getPublicPromotion } from '@/lib/promotions'
 import { SchoolJoinButton } from '@/components/growth/SchoolSelection'
 import GrowthHowItWorks from '@/components/growth/GrowthHowItWorks'
+import SchoolWorld from '@/components/game/SchoolWorld'
+import GameHeader from '@/components/game/GameHeader'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -56,9 +58,9 @@ export default async function SchoolPage({ params }: PageProps) {
   const snapshot = growth.schools[0]
 
   return (
-    <main className="growth-journey mx-auto w-full max-w-5xl space-y-5 px-5 py-8 sm:px-8">
+    <main className="growth-journey sl-game sl-hub mx-auto w-full max-w-7xl space-y-5 px-5 pb-8 sm:px-8">
       <GrowthReferralLanding />
-      <Link href="/" className="schoollove-focus inline-flex min-h-11 items-center text-lg font-bold">스쿨러브아이 ↗</Link>
+      <GameHeader />
       <nav className="flex items-center gap-1 text-xs text-gray-400">
         <Link href="/" className="hover:text-gray-600">홈</Link>
         <ChevronRight size={12} />
@@ -67,8 +69,9 @@ export default async function SchoolPage({ params }: PageProps) {
         <span className="font-medium text-gray-600">{school.school_name}</span>
       </nav>
 
-      <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
-      <section className="rounded-2xl border border-schoollove-border bg-[var(--schoollove-game-surface)] p-6 sm:p-8">
+      <div className="sl-hub-board">
+      <div className="sl-hub-world"><SchoolWorld level={snapshot?.level} priority /><p>추억이 모여, 하나의 작은 세계가 돼요.</p><span className="sl-symbolic-caption">SchoolLove의 상징적인 학교 모습이에요.</span></div>
+      <section className="sl-hub-status">
         <p className="text-xs font-bold tracking-[0.14em] text-[var(--schoollove-game-accent)]">OUR SCHOOL, NEXT LEVEL</p>
         <h1 className="mt-3 text-2xl font-bold text-schoollove-text sm:text-3xl">{school.school_name}</h1>
         <p className="mt-3 flex items-center gap-1.5 text-sm text-schoollove-secondary">
@@ -80,7 +83,7 @@ export default async function SchoolPage({ params }: PageProps) {
         {snapshot?.lastLevelUp && <p className="mt-2 text-sm">최근 공개 레벨업 · {new Date(snapshot.lastLevelUp).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })}</p>}
       </section>
 
-      <section className="rounded-2xl border border-schoollove-border bg-schoollove-surface p-6 sm:p-8" aria-labelledby="private-account-cta">
+      <section className="sl-hub-join" aria-labelledby="private-account-cta">
         <h2 id="private-account-cta" className="text-lg font-bold text-schoollove-text">{isMember ? '우리 학교, 함께 키워요' : '내 학교로 등록하고 키우기'}</h2>
         <p className="mt-2 text-sm leading-6 text-schoollove-secondary">
           첫 학교 등록은 학교 성장에 기여해요. 개인 이름·졸업연도·학년·반은 공개 명단으로 표시하지 않아요.
