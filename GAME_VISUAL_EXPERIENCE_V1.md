@@ -155,6 +155,15 @@ operator postflight artifact `.local/game-visual/FINAL_REPORT.md` and final task
 response. Never infer live verification from source or local screenshots alone.
 Production main/deployment remains unchanged and requires later user approval.
 
+Deployed postflight accepts an official temporary Vercel review URL when protected.
+For no-write QA, browser school-search POSTs are intercepted and fulfilled from
+the Preview-only `search_schools_v2` GET result. The activity-recording wrapper is
+not executed. This is live public data with a read-only transport adapter, not an
+unmodified production-network search E2E. Other client non-read requests are blocked.
+Login checks accept the existing Google-only or explicit fail-closed state and
+record which was observed; no auth configuration is changed. Private owner/share
+screens are local synthetic-fixture verification, not authenticated Preview E2E.
+
 Changed files are the scoped pages/components, `app/game.css`, two web assets,
 test/harness and decision/design/log documentation. Existing API/auth/SQL/migration/
 growth/referral/connection implementations, package files, secrets, admin screens
