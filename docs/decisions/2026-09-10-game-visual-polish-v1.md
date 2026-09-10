@@ -84,3 +84,20 @@ access remain separate external blockers, not automatically restored by this
 approval. No PR retry before confirmed normal restoration; no new review link,
 protection change, alternate credential or proxy. No Ready/Preview merge while
 any gate remains, and no Production, DB/auth/growth-rule or real-user mutation.
+
+## Accepted V1 and authenticated web finalization
+
+The user accepts the 942a305 gate, cute duo and five rendered forms as V1.
+The c538e02 warm median552ms versus PR112460ms (+92ms) and the942a305 shared
+decoded JS increase5162 bytes are accepted known costs (PERFORMANCE_TRADEOFF_ACCEPTED),
+not NO_REGRESSION_PASS or a new942a305 timing measurement. Preserve all raw evidence.
+
+The subsequent explicit execution approval permits the owner's normal GitHub web
+workflow, distinct from the unresolved connector write scope. Draft PR113 was
+created through the authenticated owner UI, base preview. No protection bypass.
+
+Actual942a305 public School Hub at1440px revealed the scaled scene's motion button
+overlapping its following caption by16.29px. The approved local-regression clause
+authorizes only24px desktop caption top margin, preserving scale/art/motion logic.
+Reverify the corrected source and final feature deployment before Ready/merge.
+No redesign, new performance batch, DB/auth/rules or Production action.

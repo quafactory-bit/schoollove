@@ -169,3 +169,32 @@ mutation is performed. Canonical remains the prior PR112 release, not this candi
 Status: **FIVE_RENDERED_FORMS_LOCAL_VERIFIED**, **LAYER_TRANSPARENCY_LOCAL_VERIFIED**,
 **CUTE_DUO_PRESERVED**; **DESIGN_REVIEW_PENDING**, **WARM_DIFFERENCE_DECISION_PENDING**,
 **GITHUB_PR_PERMISSION_REQUIRED**, **BROWSER_NETWORK_ACCESS_REQUIRED**.
+
+## Subsequent user acceptance and web preflight — 2026-09-10
+
+The preceding sections are historical, not the current design decision. The user
+has accepted942a305's gate/duo/five rendered forms and the known warm+92ms and
+decoded-JS+5162B costs. DESIGN_ACCEPTED / PERFORMANCE_TRADEOFF_ACCEPTED does not
+mean NO_REGRESSION_PASS or a new942a305 measurement. Original raw data is retained.
+
+Following explicit approval of the owner's normal GitHub web workflow, the user
+completed GitHub authentication. Owner UI created Draft PR113 into preview after
+zero duplicate matches; existing connector installation metadata remains empty,
+and API write recovery is not claimed. No credential extraction/protection bypass.
+
+The actual942a305 feature Home rendered normally in the in-app browser at360/390/
+1440px: duo preserved, no broken images or horizontal overflow, mouse pause and
+keyboard resume working. Existing public Jinmyeong Girls High School slug rendered
+at actual Lv.1, with no data changes to manufacture Lv.10. Login entry was closed
+(`로그인 준비 중`); no SchoolLove OAuth/search/save/referral/share was executed.
+The captured Home/School/login error+warning console observations were empty.
+
+PC School Hub exposed a genuine16.29px motion-button/caption overlap at1440px.
+Only a desktop caption24px top margin is added under the approved local-regression
+clause. Final corrected-head deployment verification remains required before
+Ready/merge. Evidence is under ignored `.local/game-visual-polish/web-final/`;
+final postflight will be recorded on PR113 and in a local report, not fabricated
+in this pre-push record. Historical five-stage/alpha/private fixtures remain
+separate from live public observations. OS reduced-motion emulation is not exposed
+by this browser tool; its unchanged implementation retains the previous local
+initial/change evidence, not a new live OS-settings test.
