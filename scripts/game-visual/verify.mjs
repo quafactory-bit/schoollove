@@ -1,7 +1,7 @@
 import { chromium, expect } from '@playwright/test'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { setup } from '../growth-ux/browser.mjs'
-const folder='.local/game-visual/after'
+const folder=process.argv[2]||'.local/game-visual/after'
 await mkdir(folder,{recursive:true})
 const browser=await chromium.launch({channel:'chrome',headless:true})
 const results=[]
@@ -43,8 +43,8 @@ try {
  }
  const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'no-preference'})
  await setup(page);await page.goto('http://127.0.0.1:3117/')
- await expect(page.locator('.sl-hero-world img')).toBeVisible()
- expect(await page.locator('.sl-hero-world img').evaluate(e=>getComputedStyle(e).animationName)).toBe('sl-island-float')
+ await expect(page.locator('.sl-hero-world .sl-world-image')).toBeVisible()
+ expect(await page.locator('.sl-hero-world .sl-world-image').evaluate(e=>getComputedStyle(e).animationName)).toBe('sl-island-float')
  results.push({name:'ambient-motion',result:'PASS'})
  for(const [level,id] of [[1,'MEMORY_SEED'],[2,'FIRST_REUNION'],[4,'GROWING_CAMPUS'],[7,'LIVELY_SCHOOL'],[10,'BRIGHT_MEMORY']]){
   await page.goto('http://127.0.0.1:3117/school/example-school?level='+level)

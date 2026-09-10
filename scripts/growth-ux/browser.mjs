@@ -1,6 +1,7 @@
 import {chromium} from '@playwright/test'
 import {mkdir,writeFile} from 'node:fs/promises'
 import path from 'node:path'
+import {fileURLToPath} from 'node:url'
 export const school={id:'11111111-1111-4111-8111-111111111111',school_name:'예시푸른고등학교',slug:'example-school',school_type:'high',sido:'예시시',sigungu:'예시구'}
 export async function setup(page){
  const calls=[]; const errors=[];page.on('pageerror',e=>errors.push(e.message))
@@ -37,4 +38,4 @@ export async function capture(phase){
  }
  await writeFile(path.join(out,'manifest.json'),JSON.stringify(result,null,2));await browser.close();console.log(JSON.stringify({phase,captures:result.length,overflow:result.filter(r=>r.overflow)}))
 }
-if(process.argv[2])await capture(process.argv[2])
+if(process.argv[1]&&fileURLToPath(import.meta.url)===path.resolve(process.argv[1])&&process.argv[2])await capture(process.argv[2])
