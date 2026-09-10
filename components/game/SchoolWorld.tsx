@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import GameMotionControl from './GameMotionControl'
+import SchoolMemoryGate from './SchoolMemoryGate'
 import growingCampusAvif from '../../public/images/game/growing-campus-v2.avif'
 
 // Next emits a content-hashed immutable URL. Vite's local fixture emits a URL string.
@@ -10,8 +11,7 @@ export const SCHOOL_WORLD_STAGES = [
   { id: 'FIRST_REUNION', label: '다시 모이는 학교', asset: 'first-reunion-v1' },
   { id: 'GROWING_CAMPUS', label: '함께 자라는 교정', asset: 'growing-campus' },
   { id: 'LIVELY_SCHOOL', label: '활기로 물드는 학교', asset: 'lively-school-v1' },
-  // Final arch asset has not passed alpha QA; keep the previous form, not a regression.
-  // This is explicitly PARTIAL, not five-form completion or canonical-release ready.
+  // Same accepted raster plus an independent structural layer; no failed image input.
   { id: 'BRIGHT_MEMORY', label: '빛나는 우리 학교', asset: 'lively-school-v1' },
 ] as const
 
@@ -45,7 +45,8 @@ export default function SchoolWorld({ level, mode = 'hero', priority = false, im
     <span className="sl-world-orbit sl-world-orbit--one">✦</span>
     <span className="sl-world-orbit sl-world-orbit--two">✧</span>
     <span className="sl-world-orbit sl-world-orbit--three">✦</span>
-    {avifHero ? <picture><source srcSet={growingCampusAvifSrc} type="image/avif" />{campusImage}</picture> : campusImage}
+    {stage.id === 'BRIGHT_MEMORY' ? <div className="sl-world-structure">{campusImage}<SchoolMemoryGate /></div>
+      : avifHero ? <picture><source srcSet={growingCampusAvifSrc} type="image/avif" />{campusImage}</picture> : campusImage}
     {mode !== 'compact' ? <Image className="sl-world-friends" src="/images/game/school-friends-v1.webp" alt="" width={480} height={400} sizes="(max-width: 767px) 24vw, 173px" fetchPriority="low" /> : null}
   </div>
   if (mode === 'compact') return <div className={className} data-world-stage={stageId}>{picture}</div>

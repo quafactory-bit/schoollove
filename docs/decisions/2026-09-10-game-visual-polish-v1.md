@@ -63,3 +63,24 @@ PR112 link reuse or Production changes. Never persist the URL/cookie in Git,
 PR, public report, HAR or trace. If authorization is denied, stop that step.
 The existing GitHub connection permission problem remains separate; the current
 browser's installation settings entry requires login, which was not performed.
+
+## Remaining gates after c538e02 — explicit independent-layer approval
+
+The user now authorizes a new independent SVG/DOM campus structure on the
+unchanged accepted lively art for BRIGHT_MEMORY. This is original frontend
+geometry, not pixel extraction, raster editing or background removal of either
+rejected arch file. Keep the duo, four existing forms, stage thresholds, motion
+controls and immutable Home AVIF. No image-generation retries. Verify equal-size
+stationary/effects-off forms, white/pastel/navy compositing, mobile and synchronized
+motion. Only this layer and necessary tests/evidence/docs may change.
+
+Preserve all historical performance runs. The latest warm552ms vs original460ms
+(+92ms) is explicitly a user design-review decision, not no-regression PASS.
+Do not repeatedly optimize/re-measure to erase the difference. Validate the new
+layer's actual render/payload impact separately without a new invented target.
+
+Same-branch commit/push is approved. GitHub PR permission and browser network
+access remain separate external blockers, not automatically restored by this
+approval. No PR retry before confirmed normal restoration; no new review link,
+protection change, alternate credential or proxy. No Ready/Preview merge while
+any gate remains, and no Production, DB/auth/growth-rule or real-user mutation.

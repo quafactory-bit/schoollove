@@ -20,6 +20,27 @@ describe('school world presentation stages', () => {
   it('all stage assets resolve to actual optimized project files', () => {
     for (const stage of SCHOOL_WORLD_STAGES) expect(existsSync(`public/images/game/${stage.asset}.webp`)).toBe(true)
   })
+  it.each(['hero', 'dashboard', 'compact', 'share'] as const)('adds original geometry only at the final stage in %s mode', mode => {
+    const final = renderToStaticMarkup(<SchoolWorld level={10} mode={mode} />)
+    expect(final).toContain('data-campus-structure="memory-gate"')
+    expect(final).toContain('class="sl-world-structure"')
+    expect(final).toContain('lively-school-v1.webp')
+    expect(final).toContain('viewBox="0 0 1000 667"')
+    expect(final).toContain('focusable="false"')
+    expect(final).not.toMatch(/<filter|<image|<foreignObject|<animate|<script|<text|href=/)
+    for (const level of [undefined, 1, 2, 4, 7, 9]) {
+      const other = renderToStaticMarkup(<SchoolWorld level={level} mode={mode} />)
+      expect(other).not.toContain('data-campus-structure')
+      expect(other).not.toContain('sl-world-structure')
+    }
+  })
+  it('keeps gradient references unique when two final schools render together', () => {
+    const html = renderToStaticMarkup(<><SchoolWorld level={10} /><SchoolWorld level={10} /></>)
+    const ids = [...html.matchAll(/ id="([^"]+)"/g)].map(match => match[1])
+    expect(ids).toHaveLength(6)
+    expect(new Set(ids).size).toBe(6)
+    for (const id of ids) expect(html).toContain(`url(#${id})`)
+  })
   it('server output is paused and exposes a control outside the hidden decoration', () => {
     const html = renderToStaticMarkup(<SchoolWorld />)
     expect(html).toContain('data-motion="paused"')

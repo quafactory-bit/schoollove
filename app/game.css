@@ -45,6 +45,12 @@
 .sl-motion-toggle { position:absolute; z-index:4; bottom:0; left:50%; transform:translateX(-50%); min-height:44px; padding:7px 14px; border:1px solid #cdc1e6; border-radius:22px; background:#ffffffed; color:#513797; font-size:12px; font-weight:650; white-space:nowrap; }
 .sl-motion-toggle:disabled { cursor:default; color:#526078; background:#f3f2fa; }
 .sl-world-image { position:relative; z-index:1; width:100%; height:auto; display:block; filter:drop-shadow(0 16px 15px #66558714); animation:sl-island-float 8s ease-in-out infinite; }
+/* Only the final stage groups its unchanged campus and new gate into one motion plane. */
+.sl-world-structure { position:relative; z-index:1; width:100%; animation:sl-island-float 8s ease-in-out infinite; }
+.sl-world-structure .sl-world-image { animation:none; }
+.sl-memory-gate { position:absolute; inset:0; width:100%; height:auto; z-index:2; pointer-events:none; }
+.sl-world[data-motion=paused] .sl-world-structure { animation-play-state:paused; }
+.sl-world--compact .sl-world-structure { animation:none; }
 .sl-world-aura { position:absolute; inset:15% 6% 9%; border-radius:50%; background:radial-gradient(ellipse,#fff9e9cc,transparent 67%); filter:blur(16px); }
 .sl-world-orbit { position:absolute; z-index:2; color:#ad4ba7; font-size:24px; animation:sl-star-drift 9s ease-in-out infinite; }
 .sl-world-orbit--one { top:15%; left:16%; }.sl-world-orbit--two { top:34%; right:9%; animation-delay:-4s; }.sl-world-orbit--three { bottom:14%; left:13%; font-size:16px; animation-delay:-2s; }
