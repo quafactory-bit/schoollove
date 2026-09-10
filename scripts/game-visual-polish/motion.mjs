@@ -1,7 +1,7 @@
 import {chromium,expect} from '@playwright/test'
 import {mkdir,writeFile} from 'node:fs/promises'
 import {setup} from '../growth-ux/browser.mjs'
-const folder='.local/game-visual-polish/motion'
+const folder=process.argv[2]||'.local/game-visual-polish/motion'
 await mkdir(folder,{recursive:true})
 const browser=await chromium.launch({channel:'chrome',headless:true})
 const results=[]

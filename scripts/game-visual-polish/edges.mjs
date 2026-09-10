@@ -1,7 +1,7 @@
 import {chromium,expect} from '@playwright/test'
 import {mkdir,writeFile} from 'node:fs/promises'
 import {setup} from '../growth-ux/browser.mjs'
-const folder='.local/game-visual-polish/edges';await mkdir(folder,{recursive:true})
+const folder=process.argv[2]||'.local/game-visual-polish/edges';await mkdir(folder,{recursive:true})
 const browser=await chromium.launch({channel:'chrome',headless:true}),results=[]
 try {
  const long='아주 긴 이름을 가진 예시푸른추억국제문화예술고등학교'
@@ -28,14 +28,22 @@ try {
   await p.close()
  }
  const p=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'}),e=await setup(p)
- await p.route('**/images/game/**',r=>r.abort())
+ // Vite serves a JS URL module for static asset imports. Fail actual images,
+ // not that application module; Next's compiled URL is tested separately.
+ const failedImages=[]
+ await p.route('**/images/game/**',r=>{
+  if(r.request().resourceType()==='image'){failedImages.push(new URL(r.request().url()).pathname);return r.abort()}
+  return r.fallback()
+ })
  await p.goto('http://127.0.0.1:3117/')
  await expect(p.getByRole('button',{name:'내 학교 찾기'})).toBeEnabled()
  await expect(p.getByRole('combobox')).toBeVisible()
+ await expect.poll(()=>failedImages.length).toBeGreaterThan(0)
+ await expect.poll(()=>p.locator('.sl-world-image').evaluateAll(images=>images.length>0&&images.every(i=>i.complete&&i.naturalWidth===0))).toBe(true)
  expect(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false)
  await p.screenshot({path:`${folder}/image-failure.png`})
  expect(e.errors).toEqual([]);expect(e.calls.every(c=>c.method==='GET')).toBe(true)
- results.push({kind:'decorative image failure',searchUsable:true,overflow:false,explicitWrites:0})
+ results.push({kind:'decorative image failure',searchUsable:true,overflow:false,explicitWrites:0,failedImages})
  await p.close()
 } finally {await browser.close();await writeFile(`${folder}/results.json`,JSON.stringify(results,null,2))}
 console.log(JSON.stringify(results))

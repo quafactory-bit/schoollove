@@ -1,5 +1,9 @@
 import Image from 'next/image'
 import GameMotionControl from './GameMotionControl'
+import growingCampusAvif from '../../public/images/game/growing-campus-v2.avif'
+
+// Next emits a content-hashed immutable URL. Vite's local fixture emits a URL string.
+const growingCampusAvifSrc = typeof growingCampusAvif === 'string' ? growingCampusAvif : growingCampusAvif.src
 
 export const SCHOOL_WORLD_STAGES = [
   { id: 'MEMORY_SEED', label: '추억이 싹트는 학교', asset: 'memory-seed' },
@@ -36,12 +40,12 @@ export default function SchoolWorld({ level, mode = 'hero', priority = false, im
   const avifHero = mode === 'hero' && stage.asset === 'growing-campus'
   const campusImage = <Image className="sl-world-image" src={`/images/game/${stage.asset}.webp`} alt="" width={1000} height={667} quality={60} sizes={imageSizes ?? SCHOOL_WORLD_SIZES[mode]} priority={priority && !avifHero} loading={priority && avifHero ? 'eager' : undefined} fetchPriority={priority ? 'high' : undefined} />
   const picture = <div className="sl-world-canvas" aria-hidden="true">
-    {avifHero && priority ? <link rel="preload" as="image" type="image/avif" href="/images/game/growing-campus-v2.avif" fetchPriority="high" /> : null}
+    {avifHero && priority ? <link rel="preload" as="image" type="image/avif" href={growingCampusAvifSrc} fetchPriority="high" /> : null}
     <div className="sl-world-aura" />
     <span className="sl-world-orbit sl-world-orbit--one">✦</span>
     <span className="sl-world-orbit sl-world-orbit--two">✧</span>
     <span className="sl-world-orbit sl-world-orbit--three">✦</span>
-    {avifHero ? <picture><source srcSet="/images/game/growing-campus-v2.avif" type="image/avif" />{campusImage}</picture> : campusImage}
+    {avifHero ? <picture><source srcSet={growingCampusAvifSrc} type="image/avif" />{campusImage}</picture> : campusImage}
     {mode !== 'compact' ? <Image className="sl-world-friends" src="/images/game/school-friends-v1.webp" alt="" width={480} height={400} sizes="(max-width: 767px) 24vw, 173px" fetchPriority="low" /> : null}
   </div>
   if (mode === 'compact') return <div className={className} data-world-stage={stageId}>{picture}</div>

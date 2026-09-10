@@ -5,7 +5,7 @@ import {existsSync} from 'node:fs'
 import {createHash} from 'node:crypto'
 import {execFileSync} from 'node:child_process'
 const label=process.argv[2]
-if(!['before','after','after-avif'].includes(label))throw Error('Explicit before/after/after-avif required')
+if(!['before','after','after-avif','finish-before','finish-after'].includes(label))throw Error('Explicit approved measurement batch required')
 const folder=`.local/game-visual-polish/perf-${label}`
 if(existsSync(`${folder}/results.json`))throw Error('Preserve existing raw run set; choose a new evidence directory explicitly')
 await mkdir(folder,{recursive:true})

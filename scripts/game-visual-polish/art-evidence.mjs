@@ -4,7 +4,7 @@ import sharp from 'sharp'
 import {mkdir,writeFile,readFile} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
 import {setup} from '../growth-ux/browser.mjs'
-const out='.local/game-visual-polish'
+const out=process.argv[2]||'.local/game-visual-polish'
 await mkdir(`${out}/stages`,{recursive:true})
 const stages=[[1,'memory-seed'],[2,'first-reunion-v1'],[4,'growing-campus'],[7,'lively-school-v1'],[10,'lively-school-v1']]
 const files=[...stages.slice(0,4).map(([level,name])=>({level,name})),{level:null,name:'school-friends-v1'}]

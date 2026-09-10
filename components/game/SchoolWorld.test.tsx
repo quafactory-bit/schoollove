@@ -48,10 +48,21 @@ describe('school world presentation stages', () => {
   it('preloads only the typed AVIF hero and retains responsive WebP fallback', () => {
     const html = renderToStaticMarkup(<SchoolWorld priority />)
     expect(html).toContain('type="image/avif"')
-    expect(html).toContain('<picture><source srcSet="/images/game/growing-campus-v2.avif"')
+    const source = html.match(/<picture><source srcSet="([^"]+)" type="image\/avif"/)?.[1]
+    expect(source).toContain('growing-campus-v2')
     expect(html).toContain('growing-campus.webp')
     const hints = html.match(/<link[^>]+rel="preload"[^>]*>/g) ?? []
     expect(hints).toHaveLength(1)
     expect(hints[0]).toContain('growing-campus-v2.avif')
+    expect(hints[0]).toContain(`href="${source}"`)
+  })
+  it('does not request other stages or a second hero format via preload', () => {
+    const html = renderToStaticMarkup(<SchoolWorld priority />)
+    expect(html).not.toContain('first-reunion-v1.webp')
+    expect(html).not.toContain('lively-school-v1.webp')
+    const hints = html.match(/<link[^>]+rel="preload"[^>]*>/g) ?? []
+    expect(hints).toHaveLength(1)
+    expect(hints[0]).not.toContain('_next/image')
+    expect(renderToStaticMarkup(<SchoolWorld mode="share" priority />)).not.toContain('image/avif')
   })
 })
