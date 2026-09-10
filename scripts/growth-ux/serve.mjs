@@ -10,6 +10,7 @@ const server = await createServer({
     ...mocks.map(x => ({ find: `@/${x}`, replacement: path.join(root,'scripts/growth-ux/data.jsx') })),
     { find: 'next/navigation', replacement: path.join(root,'scripts/growth-ux/navigation.jsx') },
     { find: 'next/link', replacement: path.join(root,'scripts/growth-ux/link.jsx') },
+    { find: 'next/image', replacement: path.join(root,'scripts/game-visual/image.jsx') },
     { find: '@', replacement: root },
   ] },
   plugins: [{ name:'local-ui', configureServer(s) { s.middlewares.use((req,res,next) => {

@@ -3,6 +3,7 @@
 .env.local
 .local/phase10p-preview-clone/
 .local/growth-ux/
+.local/game-visual/
 
 *.bak
 tsconfig.tsbuildinfo

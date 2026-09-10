@@ -1,5 +1,21 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-10 Game Visual Experience V1
+
+- Implemented the approved AFTER SCHOOL / OUR SCHOOL WORLD presentation from
+  canonical Preview a28843d. Shared decorative/staged campus art, mobile/desktop
+  Home, school Hub, owner dashboard, Login/Search and share preview use scoped
+  tokens; Google auth, membership, XP/referral and feature authority are unchanged.
+- Two optimized transparent WebP assets and five frontend-only visual stages;
+  slow CSS ambient motion with reduced-motion override. No composite UI image,
+  fake members/activity or owner growth in sharing. Account management retained.
+- Local actual-React responsive matrix and 17 mocked interaction regressions
+  passed. Full Vitest1697 PASS/4 existing SKIP; typecheck PASS; lint0 errors/84
+  existing warnings. No migration or persisted environment changes.
+- See `../GAME_VISUAL_EXPERIENCE_V1.md` for evidence, art limitations and release
+  boundary. Preview release is approved after verification. Production still
+  requires the user's later visual approval; no Production rollout is claimed.
+
 ## 2026-09-09 School growth UX completion
 
 - Implemented five approved source/UI changes on canonical Preview baseline

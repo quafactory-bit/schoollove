@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-09-10 Game Visual Experience V1
+
+- User-approved floating SchoolWorld, pastel Home/Hub, owner growth dashboard,
+  game share preview, scoped tokens and reduced-motion behavior. Visual stages
+  are presentation only. The visual addendum preserves existing privacy, auth,
+  membership, owner/public growth and referral contracts. Preview-only release.
+
 ## 2026-09-09 Growth UX completion
 
 - Approved current-input school search, same-tab unconfirmed school selection,
