@@ -54,3 +54,51 @@ unchanged. Output standalone game asset."
 A separate two-storey reunion candidate failed the alpha gate after correction
 and was excluded. FIRST_REUNION deliberately reuses the seed artwork with larger
 scale, warmer glow and additional accents; it is not advertised as a third asset.
+
+## 2026-09-10 follow-up: Game Visual Polish V1 (PARTIAL)
+
+The paragraphs above describe PR112, not the follow-up candidate. The original
+two WebP files are unchanged. The user subsequently required the original cute
+boy/girl duo, **not three adult alumni**. No discarded adult character is shipped.
+
+| Added file | Dimensions | Bytes | Purpose |
+|---|---:|---:|---|
+| school-friends-v1.webp | 480 × 400 | 47440 | Fixed decorative boy/girl duo |
+| first-reunion-v1.webp | 1000 × 667 | 148452 | Small school, benches and gathering circle |
+| lively-school-v1.webp | 1000 × 667 | 167344 | Larger campus, formal garden and gazebo |
+| growing-campus-v2.avif | 1000 × 667 | 62666 | Same existing campus, lighter Home LCP source |
+
+All have actual alpha. White/pastel/navy composites and pixel-alpha statistics
+are retained in `.local/game-visual-polish/`. The first three were generated and
+background-extracted with the built-in image tool, then resized/encoded with
+installed Sharp. School WebP quality82/alphaQuality100/effort6; duo quality82.
+AVIF is a deterministic re-encoding of unchanged growing-campus.webp using Sharp
+quality50/effort6/chroma4:2:0. A typed picture source uses AVIF where supported;
+responsive Next WebP remains the fallback. No CDN setting or package changed.
+
+Generation/edit brief summaries (not verbatim transcript):
+
+- Duo: use the first mockup's cute boy and girl, compact proportions, happy
+  expressions, school-style clothing and backpacks; exactly two full-body
+  characters, no third adult; same soft miniature painterly/3D rendering and
+  warm upper-left lighting; no text/logo; actual transparent surround. Targeted
+  extraction: preserve both figures and remove every baked checkerboard pixel.
+- First reunion: preserve the small school's style/camera; add curved flower
+  paths, benches and a visible circular gathering area. Same floating island,
+  3:2 framing, no people/text/logo. Extract background only; real alpha required.
+- Lively school: preserve the larger school's style/camera; add a formal radial
+  garden and a gazebo. Same floating island and 3:2 framing, no people/text/logo.
+  Extract background only; real alpha required.
+- Bright memory: requested a substantial entry arch, balustrade and lantern
+  structures on the lively layout. Repeated outputs retained opaque checkerboard
+  pixels or changed the framing; **none is shipped**.
+
+Accepted local generation IDs: duo `exec-ba7193a8-a25b-41cb-b12b-df18352ebe7e`,
+reunion `exec-8d4c2d41-3bd9-483f-ba17-6ee2ca46e0eb`, lively
+`exec-a1f21d79-3ac6-43b3-a258-966ecc637510` (PNG sources retained locally).
+Sources were 1374×1145 for duo and 1536×1024 for schools.
+
+There are currently **four distinct campus forms across five stage IDs**.
+BRIGHT_MEMORY reuses lively-school-v1 pending an approved real-alpha arch asset.
+Neither glow nor scale is counted as a fifth form. This blocks Ready/canonical
+merge; the candidate is for feature Preview review only.

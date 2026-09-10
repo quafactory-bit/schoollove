@@ -38,20 +38,30 @@
 .sl-game .schoollove-dark-action { background:linear-gradient(135deg,#bd246a,#7534b9); box-shadow:0 5px 12px #b2347620; }
 .sl-hero-world { position:relative; margin:10px -20px 0; }
 .sl-hero-bubble { position:absolute; z-index:2; padding:12px 16px; background:#fffef5ed; box-shadow:var(--sl-game-shadow); font-size:14px; font-weight:700; border-radius:16px 16px 3px 16px; transform:rotate(-7deg); top:15%; right:8%; }
-.sl-world { position:relative; isolation:isolate; width:100%; aspect-ratio:3/2; overflow:clip; }
+.sl-world { position:relative; isolation:isolate; width:100%; aspect-ratio:3/2; }
+.sl-world-canvas { position:absolute; inset:0; overflow:clip; pointer-events:none; }
+.sl-world-friends { position:absolute; width:24%; height:auto; object-fit:contain; right:10%; bottom:35%; z-index:3; }
+.sl-world[data-motion=paused] .sl-world-image, .sl-world[data-motion=paused] .sl-world-orbit { animation-play-state:paused; }
+.sl-motion-toggle { position:absolute; z-index:4; bottom:0; left:50%; transform:translateX(-50%); min-height:44px; padding:7px 14px; border:1px solid #cdc1e6; border-radius:22px; background:#ffffffed; color:#513797; font-size:12px; font-weight:650; white-space:nowrap; }
+.sl-motion-toggle:disabled { cursor:default; color:#526078; background:#f3f2fa; }
 .sl-world-image { position:relative; z-index:1; width:100%; height:auto; display:block; filter:drop-shadow(0 16px 15px #66558714); animation:sl-island-float 8s ease-in-out infinite; }
+/* Only the final stage groups its unchanged campus and new gate into one motion plane. */
+.sl-world-structure { position:relative; z-index:1; width:100%; animation:sl-island-float 8s ease-in-out infinite; }
+.sl-world-structure .sl-world-image { animation:none; }
+.sl-memory-gate { position:absolute; inset:0; width:100%; height:auto; z-index:2; pointer-events:none; }
+.sl-world[data-motion=paused] .sl-world-structure { animation-play-state:paused; }
+.sl-world--compact .sl-world-structure { animation:none; }
 .sl-world-aura { position:absolute; inset:15% 6% 9%; border-radius:50%; background:radial-gradient(ellipse,#fff9e9cc,transparent 67%); filter:blur(16px); }
 .sl-world-orbit { position:absolute; z-index:2; color:#ad4ba7; font-size:24px; animation:sl-star-drift 9s ease-in-out infinite; }
 .sl-world-orbit--one { top:15%; left:16%; }.sl-world-orbit--two { top:34%; right:9%; animation-delay:-4s; }.sl-world-orbit--three { bottom:14%; left:13%; font-size:16px; animation-delay:-2s; }
 .sl-world--memory_seed .sl-world-orbit, .sl-world--first_reunion .sl-world-orbit--three { display:none; }
-.sl-world--memory_seed .sl-world-image { scale:.88; filter:drop-shadow(0 12px 14px #66558714) saturate(.8); }
+.sl-world--memory_seed .sl-world-image { filter:drop-shadow(0 12px 14px #66558714); }
 .sl-world--first_reunion .sl-world-aura { background:radial-gradient(ellipse,#fff1bfa6,transparent 67%); }
-.sl-world--first_reunion .sl-world-image { scale:.96; }
 .sl-world--lively_school .sl-world-aura { background:radial-gradient(ellipse,#fff3ada8,#e9b9ff55,transparent 68%); }
 .sl-world--bright_memory .sl-world-aura { inset:4%; background:radial-gradient(ellipse,#fff4a8a8,#e8afff88,transparent 68%); }
 .sl-world--bright_memory .sl-world-image { filter:drop-shadow(0 0 18px #ffe9ac99); }
 .sl-world--bright_memory .sl-world-orbit { color:#d39718; font-size:32px; }
-.sl-world--compact { width:76px; flex:none; }.sl-world--compact .sl-world-image { animation:none; }.sl-world--compact :not(img) { display:none; }
+.sl-world--compact { width:76px; flex:none; }.sl-world--compact .sl-world-image { animation:none; }.sl-world--compact .sl-world-aura, .sl-world--compact .sl-world-orbit { display:none; }
 .sl-world--share { max-width:350px; margin:auto; }.sl-world--dashboard { max-width:480px; margin:4px auto; }
 .sl-home-side { display:grid; gap:16px; min-width:0; }
 .sl-guest-card, .sl-owner-card { padding:24px; border:1px solid #fff; border-radius:26px; background:#ffffffd9; box-shadow:var(--sl-game-shadow); }
@@ -89,7 +99,7 @@
 .sl-tabbar a { min-height:52px; }
 .sl-share-preview .sl-world { max-width:245px; }
 .sl-share-preview .sl-share-headline { font-size:24px; }
-@media(min-width:1024px) { .sl-hub-board { grid-template-columns:1.15fr 1fr; padding:24px; gap:0 24px; }.sl-hub-world { grid-row:1/3; }.sl-hub-status { grid-column:2; }.sl-hub-join { grid-column:2; border-radius:0 0 26px 26px; }.sl-school-cards:has(> li:nth-child(2)) { grid-template-columns:repeat(2,minmax(0,1fr)); }.sl-hub-world .sl-world { transform:scale(1.08); } }
+@media(min-width:1024px) { .sl-hub-board { grid-template-columns:1.15fr 1fr; padding:24px; gap:0 24px; }.sl-hub-world { grid-row:1/3; }.sl-hub-status { grid-column:2; }.sl-hub-join { grid-column:2; border-radius:0 0 26px 26px; }.sl-school-cards:has(> li:nth-child(2)) { grid-template-columns:repeat(2,minmax(0,1fr)); }.sl-hub-world .sl-world { transform:scale(1.08); }.sl-hub-world > p { margin-top:24px; } }
 @media(max-width:1023px) { .sl-account .sl-game-links { display:none; } }
 @media(max-width:420px) { .sl-school-card { padding:16px; }.sl-owner-dashboard { margin-inline:-8px; padding:18px; }.sl-share-dialog { padding:16px; }.sl-share-dialog h2 { font-size:18px; }.sl-rank-list a { gap:10px; padding:14px 12px; }.sl-rank-list .sl-world--compact { width:46px; }.sl-rank-name { font-size:15px; } }
 @keyframes sl-island-float { 0%,100% { transform:translateY(0) rotate(-.35deg); } 50% { transform:translateY(-7px) rotate(.35deg); } }
