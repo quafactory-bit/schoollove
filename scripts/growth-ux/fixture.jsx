@@ -11,6 +11,7 @@ import Footer from '@/components/Footer'
 import TabBar from '@/components/TabBar'
 import DesktopNav from '@/components/DesktopNav'
 import '@/app/globals.css'
+import '@/app/game.css'
 import {fixture,school,launch} from './data'
 const root=createRoot(document.getElementById('root'))
 async function resolve(element){

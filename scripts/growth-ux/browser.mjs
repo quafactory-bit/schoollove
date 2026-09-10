@@ -11,7 +11,7 @@ export async function setup(page){
   let body={};const status=200
   if(url.pathname.startsWith('/mock/'))body=[school]
   else if(url.pathname==='/api/schools/selection')body={school:url.searchParams.get('slug')===school.slug?school:null}
-  else if(url.pathname==='/api/account/growth')body={contribution:{xp:0,contributed:false},growth:{schoolId:school.id,schoolName:school.school_name,slug:school.slug,level:1,progress:0,ownContributionXp:0}}
+  else if(url.pathname==='/api/account/growth'){const level=Number(new URL(page.url()).searchParams.get('level'))||1;body={contribution:{xp:0,contributed:false},growth:{schoolId:school.id,schoolName:school.school_name,slug:school.slug,level,progress:level>1?65:0,ownContributionXp:0}}}
   else if(url.pathname==='/api/growth/referral')body={token:'a'.repeat(64),expiresIn:604800}
   else if(url.pathname==='/api/onboarding')body={state:{stage:'school_required',adultReady:true,consentsReady:true,profileReady:true,schoolReady:false}}
   else if(url.pathname.includes('notifications'))body={items:[],unreadCount:0,notifications:[]}
