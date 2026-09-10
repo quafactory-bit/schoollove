@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 export default async function SearchPage() {
   return (
-    <main className="min-h-screen bg-gray-50">
+    <div className="sl-search-shell min-h-screen">
       <SchoolSearchResults />
-    </main>
+    </div>
   )
 }

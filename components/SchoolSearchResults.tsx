@@ -6,6 +6,9 @@ import { searchSchools, type SchoolSearchResult } from '@/lib/api/search'
 import SearchBar from './SearchBar'
 import { schoolTypeLabel } from '@/lib/utils'
 import { recallSchoolQuery } from '@/lib/policy/schoolJourney'
+import { School, ArrowUpRight } from 'lucide-react'
+import GameHeader from '@/components/game/GameHeader'
+import SchoolWorld from '@/components/game/SchoolWorld'
 import {
   AUTOCOMPLETE_MIN_QUERY_LENGTH,
   normalizeAutocompleteQuery,
@@ -59,16 +62,17 @@ export default function SchoolSearchResults() {
   }, [runSearch])
 
   return (
-    <main className="growth-journey mx-auto max-w-2xl px-5 py-8">
-      <Link href="/" className="schoollove-focus inline-flex min-h-11 items-center font-bold">스쿨러브아이 ↗</Link>
+    <main className="growth-journey sl-game sl-search-page mx-auto max-w-4xl px-5 pb-8">
+      <GameHeader />
       <h1 className="mb-5 mt-3 text-3xl font-bold">우리 학교 찾기</h1>
-      <SearchBar variant="search" initialQuery={query} onFullSearch={runSearch} />
+      <SearchBar variant="search" className="sl-search-form" initialQuery={query} onFullSearch={runSearch} />
       <p className="mt-3 rounded-lg bg-white px-4 py-3 text-xs leading-5 text-gray-500">
         학교 이름과 지역 등 공개 학교 정보만 찾아요. 사람 찾기는 별도 승인된 제한 베타에서만 이용할 수 있어요.
       </p>
 
       {status === 'idle' && (
         <div className="mt-16 text-center">
+          <SchoolWorld mode="share" />
           <p className="text-sm text-gray-500">학교 이름을 검색해보세요.</p>
           <p className="mt-1 text-xs text-gray-400">
             다른 탭에서 왔거나 임시 검색어가 사라졌다면 이곳에 다시 입력해 주세요.
@@ -112,18 +116,18 @@ export default function SchoolSearchResults() {
               <Link
                 key={school.id}
                 href={`/school/${school.slug}`}
-                className="flex items-center justify-between rounded-xl border border-schoollove-border bg-white px-4 py-3.5 hover:border-schoollove-electric-blue hover:shadow-sm"
+                className="schoollove-focus sl-search-result"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🏫</span>
-                  <div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="sl-result-icon" aria-hidden="true"><School size={27} /></span>
+                  <div className="min-w-0 break-words">
                     <div className="text-sm font-medium text-gray-800">{school.school_name}</div>
                     <div className="mt-0.5 text-xs text-gray-400">
                       {school.sido} {school.sigungu} · {schoolTypeLabel(school.school_type)}
                     </div>
                   </div>
                 </div>
-                <span className="shrink-0 text-xs text-gray-600">학교 보기 →</span>
+                <span className="sl-result-arrow"><span className="sr-only">학교 보기</span><ArrowUpRight size={18} aria-hidden="true" /></span>
               </Link>
             ))}
           </div>

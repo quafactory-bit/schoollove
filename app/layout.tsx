@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import './game.css'
 import { Providers } from './providers'
 import { ConnectionNotificationProvider } from '@/components/ConnectionNotificationProvider'
 import DesktopNav from '@/components/DesktopNav'

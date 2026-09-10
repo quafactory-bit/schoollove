@@ -1,7 +1,9 @@
 import type { SchoolGrowth } from '@/lib/schoolGrowthGame'
+import { getSchoolWorldStage } from '@/components/game/SchoolWorld'
 
 export default function GrowthMeter({ growth, projection = 'public' }: { growth: Pick<SchoolGrowth, 'schoolName' | 'level' | 'progress'>; projection?: 'public' | 'owner' }) {
-  return <div className="mt-5">
+  return <div className="sl-growth-meter mt-5">
+    <p className="sl-stage-label">{getSchoolWorldStage(growth.level).label}</p>
     <p className="mb-3 text-xs font-semibold text-[var(--schoollove-game-accent)]">{projection === 'owner' ? '내 학교 · 실시간 성장' : '학교 성장 · 공개 집계'}</p>
     <div className="flex items-end justify-between gap-4"><p className="text-4xl font-bold tracking-tight">Lv.{growth.level}</p><p className="text-sm">다음 목표 <strong>Lv.{growth.level + 1}</strong> · {growth.progress}%</p></div>
     <div role="progressbar" aria-label={`${growth.schoolName} ${projection === 'owner' ? '내 학교 실시간' : '공개'} 성장 진행률`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={growth.progress} className="mt-4 h-2 overflow-hidden rounded-full bg-schoollove-border"><div className="h-full rounded-full bg-[var(--schoollove-game-accent)] transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${growth.progress}%` }} /></div>
