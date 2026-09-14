@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-15 Account welcome guide
+
+- Add a dismissible, replayable four-step account guide: welcome, owner-backed signup progress, school records/growth and accepted connections.
+- Open once per browser tab for eligible incomplete public onboarding; preserve all feature/approval boundaries and store only a non-identifying session display flag.
+- Use a responsive native dialog with keyboard focus management. No new API, schema, dependency or remote changes.
+
+## 2026-09-15 Registration service copy
+
+- Remove user-facing beta wording from onboarding and account enrollment; retain explicit invitation and operator approval requirements.
+- Show the operating-service introduction only when public registration is enabled and emergency stop is off. Keep unavailable-state guidance factual.
+- No auth, API, database, feature activation or remote changes.
+
 ## 2026-09-09 Owner live growth coherence (implementation / release pending)
 
 - Separate owner live level/progress from the unchanged delayed public projection.

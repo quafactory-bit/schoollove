@@ -1,5 +1,33 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-15 Registration copy and welcome guide release authorization
+
+- User approved deployment of the reviewed registration copy and account welcome guide, including the necessary commit/push/PR merge and Production application release.
+- Read-only preflight: local base, fetched main and fetched preview have identical tree `6e18eee25ecc7c6e05f476afd744ae6464ba1f04`; main is `03390f3e3d7403c76fd59bfc5d77b95f7e23006a`. Current Production is READY at that main SHA (`dpl_8hhZip9SDfaFERLVVWonAX7hwdhp`). No open PRs were found.
+- Release scope is the two approved UI changes and their tests/documentation. Use a main-based feature PR with a verified feature Preview before Production merge. Existing database, environment, auth, launch state, invitations, memberships, people-search/messaging/Instagram permissions remain unchanged.
+- Local validation evidence is recorded below; deployed status and final SHA will be reported after the actual release. Previous entries describing pending approval are historical and superseded by this explicit deployment authorization.
+
+## 2026-09-15 Account welcome guide
+
+- User-authorized four-step account popup: welcome, actual owner signup checklist, registered school count and school-growth explanation, accepted-connection explanation. Added `components/account/AccountWelcomeGuide.tsx` and integrated it in AccountClient; recorded decision and frozen addendum. Prior uncommitted registration-copy edits preserved.
+- Automatic opening is restricted to incomplete public onboarding with registration enabled, emergency off and no deletion. Manual ‘이용 안내’ remains available. One versioned sessionStorage boolean controls tab-local automatic display; no identity, school details, analytics or new API calls are stored/sent. Storage failure skips automatic opening and preserves manual access.
+- Native dialog includes step navigation, focus on the new heading, explicit forward/backward Tab wrapping, Escape/close/final dismissal with trigger focus restoration, background scroll restoration, and internal scrolling at small viewports. Initial native-only Tab-loop check failed; explicit wrapping fixed it and the complete browser matrix was rerun.
+- Targeted `npm test -- app/account/page.test.ts components/account/MySchoolsPanel.test.ts lib/publicAccountLaunch.test.ts`: 3 files / 23 tests PASS. `npm run typecheck`: PASS. `npm test`: 206 files passed / 3 skipped, 1,710 tests passed / 4 existing skips.
+- `node scripts/welcome-guide/check.mjs`: actual React + synthetic network mocks at 320x568, 390x844, 1280x900, all 4 steps, forward/backward Tab focus containment, Escape and focus return, reload suppression and replay, actual 1/5 vs 5/5 progress and 0 vs 1 school, closed/emergency handling, blocked storage/manual help: PASS. External browser requests blocked, mutation requests 0, browser errors 0. Evidence: `.local/growth-ux/welcome-guide/`.
+- React review: stable hooks, effect cleanup, no additional owner queries or feature authority. No database/auth/config/package changes. `git diff --check`: PASS.
+- `npm run build`: PASS, 67/67 static pages; process-only dummy Supabase keys with loopback URL and local site origin. Existing lint/cache warnings remain; no environment file edited. Status: LOCAL_VERIFIED. Physical devices, real signup and remote release were not tested or performed; release requires separate approval.
+
+## 2026-09-15 Registration service copy
+
+- User-approved decision: `docs/decisions/2026-09-15-registration-service-copy.md`; frozen copy addendum: `docs/design-package-v1.0/2026-09-15-registration-copy-addendum.md`.
+- Removed visible beta wording in OnboardingClient and AccountClient, including invitation status/error text. Preserved invitation and operator approval requirements and all existing authorization logic/API identifiers.
+- Added the operating-service introduction under `launch.registrationEnabled && !launch.emergencyStopped`. Replaced launch-preparation assumptions in unavailable-state text with factual access guidance. Login/Home/connection/legal copy and backend files were not changed.
+- Targeted command `npm test -- app/account/page.test.ts lib/publicAccountLaunch.test.ts lib/policy/onboarding.test.ts`: 3 files / 18 tests PASS. `npm run typecheck`: PASS. `npm test`: 206 passed / 3 skipped files; 1,710 passed / 4 existing skipped tests.
+- `node .local/growth-ux/registration-copy-check.mjs`: real React components at 390px and 1280px; open introduction visible, closed/emergency introduction absent, visible beta wording absent, invitation/approval guidance preserved, no browser errors or horizontal overflow, external requests blocked, writes 0. Initial local capture encountered Vite dependency-reload timing; waiting for the fixture to finish loading resolved it and the full capture rerun passed.
+- React review: no new hooks, effects, data requests, dependencies or authorization changes; existing layouts and status accessibility retained. `git diff --check`: PASS.
+- `npm run build`: PASS, 67/67 static pages generated; process-only Supabase URL set to `http://127.0.0.1:9` with dummy keys and local site origin. Build reported lint warnings in unchanged files and webpack cache performance warnings, no build error. No environment file was edited.
+- Status: LOCAL_VERIFIED. No real signup/OAuth, Preview/Production end-to-end verification, commit, push, deployment, remote DB/config/environment mutation. Release requires separate user approval.
+
 ## 2026-09-10 Game Visual Experience V1
 
 - Implemented the approved AFTER SCHOOL / OUR SCHOOL WORLD presentation from

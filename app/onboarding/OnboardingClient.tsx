@@ -13,7 +13,7 @@ const steps = [
 ] as const
 
 const stageMessage:Record<OnboardingState['stage'],string> = {
-  access_paused:'현재 계정 설정을 변경할 수 없습니다. 공개 준비 상태 또는 탈퇴 처리 상태를 확인해 주세요.',
+  access_paused:'현재 계정 설정을 변경할 수 없습니다. 내 계정에서 이용 가능 여부와 탈퇴 처리 상태를 확인해 주세요.',
   adult_required:'먼저 만 19세 이상임을 자기진술로 확인해 주세요.',
   consent_required:'현재 정책의 필수 동의 4개를 완료해 주세요.',
   profile_required:'본인만 볼 수 있는 비공개 프로필을 만들어 주세요.',
@@ -41,7 +41,7 @@ export default function OnboardingClient() {
     <Link href="/" className="schoollove-focus mb-5 inline-flex min-h-11 items-center text-lg font-bold">스쿨러브아이 ↗</Link>
     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">내 학교를 만나기 전, 안전한 시작</p>
     <h1 className="mt-2 text-3xl font-black tracking-tight text-gray-950">비공개 계정 시작하기</h1>
-    <p className="mt-3 text-sm leading-6 text-gray-600">본인이 다닌 학교를 비공개로 기록해요. 사람 찾기는 별도 승인된 제한 베타 기능이며, 학교 등록만으로 활성화되지 않아요.</p>
+    <p className="mt-3 text-sm leading-6 text-gray-600">스쿨러브아이에서 비공개 프로필을 만들고 내가 다닌 학교를 기록해 보세요. 사람 찾기는 별도 초대와 운영자 승인 후 이용할 수 있어요.</p>
     <SchoolSelection />
 
     {!state ? <p className="mt-8 rounded-2xl bg-gray-50 p-5 text-sm" role="status">{busy?'안전한 시작 상태를 확인하고 있습니다.':'상태를 확인하지 못했습니다.'}</p> : <>
