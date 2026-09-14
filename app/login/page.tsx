@@ -15,7 +15,7 @@ export default function LoginPage() {
       <SchoolWorld mode="share" imageSizes="330px" priority />
       <p className="text-xs font-semibold tracking-[0.14em] text-[var(--schoollove-game-accent)]">내 학교의 다음 장, 함께 시작해요</p>
       <h1 id="login-title" className="mt-3 text-3xl font-bold tracking-tight text-schoollove-text">{loginAvailable ? 'Google로 로그인' : '로그인 준비 중'}</h1>
-      <p className="mt-3 text-sm leading-6 text-schoollove-secondary">{loginAvailable ? '개인 기능은 만 19세 이상 본인만 사용할 수 있습니다. Google 로그인 뒤 필요한 경우에만 복구 이메일 확인을 진행합니다.' : '현재 일반 사용자 로그인을 안전하게 준비하고 있습니다.'}</p>
+      <p className="mt-3 text-sm leading-6 text-schoollove-secondary">{loginAvailable ? '친구의 인스타그램주소가 궁금하다면, Google로 시작해 보세요. 개인 기능은 만 19세 이상 본인만 사용할 수 있습니다. Google 로그인 뒤 필요한 경우에만 복구 이메일 확인을 진행합니다.' : '현재 일반 사용자 로그인을 안전하게 준비하고 있습니다.'}</p>
       <SchoolSelection />
       {loginAvailable
         ? <a href="/auth/social/start/google" className="schoollove-dark-action schoollove-focus mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-schoollove-text px-4 py-3 font-semibold text-white">Google로 계속하기</a>

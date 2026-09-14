@@ -9,7 +9,7 @@ const growingCampusAvifSrc = typeof growingCampusAvif === 'string' ? growingCamp
 export const SCHOOL_WORLD_STAGES = [
   { id: 'MEMORY_SEED', label: '추억이 싹트는 학교', asset: 'memory-seed' },
   { id: 'FIRST_REUNION', label: '다시 모이는 학교', asset: 'first-reunion-v1' },
-  { id: 'GROWING_CAMPUS', label: '함께 자라는 교정', asset: 'growing-campus' },
+  { id: 'GROWING_CAMPUS', label: '함께 레벨을 올리는 학교', asset: 'growing-campus' },
   { id: 'LIVELY_SCHOOL', label: '활기로 물드는 학교', asset: 'lively-school-v1' },
   // Same accepted raster plus an independent structural layer; no failed image input.
   { id: 'BRIGHT_MEMORY', label: '빛나는 우리 학교', asset: 'lively-school-v1' },

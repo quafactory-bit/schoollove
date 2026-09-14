@@ -63,7 +63,7 @@ export default function OperationsClient() {
       <h2 className="text-lg font-bold">검수 대기 회원</h2>
       {state.members.map((member)=><div key={member.id} className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3 text-sm"><span>{member.id} · {member.status} · {new Date(member.enrolled_at).toLocaleString('ko-KR')}</span><div className="flex gap-2"><button className="border px-3 py-2" onClick={()=>mutate({action:'review_member',memberId:member.id,status:'active',reason:'ADMIN_APPROVED'}).catch((reason)=>setError(String(reason)))}>승인</button><button className="border px-3 py-2" onClick={()=>mutate({action:'review_member',memberId:member.id,status:'suspended',reason:'ADMIN_SUSPENDED'}).catch((reason)=>setError(String(reason)))}>중단</button></div></div>)}
     </section>
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-bold">기능 제어 경계</h2><p className="mt-2 text-sm">글로벌 flag는 이 화면에서 변경하지 않습니다. snapshot-backed 프로그램의 명시적 8개 flag는 제한 베타 시작 마법사에서만 설정합니다.</p></section>
+    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-bold">기능 제어 경계</h2><p className="mt-2 text-sm">글로벌 flag는 이 화면에서 변경하지 않습니다. snapshot-backed 프로그램의 명시적 8개 flag는 초대 프로그램 시작 마법사에서만 설정합니다.</p></section>
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold">제한 출시 온보딩 퍼널</h2>
       <p className="mt-2 text-sm text-gray-600">개인 원문 없이 현재 단계와 최근 14일 최초 단계 진입 집계만 표시합니다.</p>

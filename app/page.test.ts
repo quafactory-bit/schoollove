@@ -12,7 +12,7 @@ describe('PHASE 10A safe home', () => {
   it('초등·중등을 포함한 사람 등록 경쟁과 등록 CTA를 노출하지 않는다', () => {
     expect(SOURCE).not.toMatch(/현재 학교 순위|다음 성장 단계|내 이름 남기기|친구 등록|LEVEL UP/)
     expect(SOURCE).toContain('개인 명단은 공개하지 않아요.')
-    expect(SOURCE).toContain('사람 찾기와 안부는 현재 승인된 제한 베타에서만')
+    expect(SOURCE).toContain('사람 찾기는 별도 초대와 운영자 승인 후')
   })
 
   it('학교 검색과 삭제·비공개 문의 경로를 유지한다', () => {

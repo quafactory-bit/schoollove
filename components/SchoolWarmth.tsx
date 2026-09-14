@@ -190,7 +190,7 @@ export default function SchoolWarmth({
             {schoolName}에 이미 {formatNumber(profileCount)}명이 모였어요
           </span>
           <span className="mt-0.5 block text-xs text-gray-500">
-            그중 누군가 당신을 기억하고 있을지도 몰라요 · 내 인스타 연결하기
+            그중 누군가 당신을 기억하고 있을지도 몰라요 · 내 인스타그램주소 연결하기
           </span>
         </Link>
       ) : (
@@ -198,7 +198,7 @@ export default function SchoolWarmth({
           href={`/submit?school=${slug}&self=1`}
           className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-900 transition-colors"
         >
-          📷 내 인스타 등록하기
+          📷 내 인스타그램주소 등록하기
         </Link>
       )}
     </div>

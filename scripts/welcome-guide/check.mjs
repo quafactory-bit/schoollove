@@ -34,7 +34,7 @@ try {
       if(step<3) await dialog.getByRole('button',{name:'다음',exact:true}).click()
     }
     await dialog.getByRole('button',{name:'이전',exact:true}).click()
-    await expect(dialog.getByRole('heading',{name:'내 학교의 기록과 성장을 확인해요'})).toBeFocused()
+    await expect(dialog.getByRole('heading',{name:'내 학교를 등록하고 레벨을 올려요'})).toBeFocused()
     await page.keyboard.press('Escape')
     await expect(dialog).not.toBeVisible()
     await expect(page.getByRole('button',{name:'이용 안내',exact:true})).toBeFocused()

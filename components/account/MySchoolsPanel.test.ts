@@ -38,7 +38,7 @@ describe('MySchoolsPanel privacy-safe share action', () => {
     expect(owner).toContain('<GrowthShareButton')
     expect(owner).toContain('schoolName={data.growth.schoolName}')
     expect(owner).toContain('slug={data.growth.slug}')
-    expect(SOURCE).toContain('공개 학교 성장 보기')
+    expect(SOURCE).toContain('공개 학교 레벨 보기')
     expect(SOURCE).not.toContain('<ShareButton') // one share flow, not duplicate controls
   })
 

@@ -123,11 +123,11 @@ export default function ConversationClient({ connectionId }: { connectionId: str
     if (!response.ok) {
       const data = await response.json().catch(() => null) as { error?: string } | null
       setStatus(data?.error === 'INSTAGRAM_HANDLE_REQUIRED'
-        ? '내 계정에 Instagram 아이디를 먼저 등록해 주세요.'
-        : 'Instagram 공개 상태를 바꿀 수 없습니다.')
+        ? '내 계정에 인스타그램주소를 먼저 등록해 주세요.'
+        : '인스타그램주소 공개 상태를 바꿀 수 없습니다.')
       return
     }
-    setStatus(method === 'POST' ? '이 연결 상대에게 Instagram을 공개했습니다.' : 'Instagram 공개를 취소했습니다.')
+    setStatus(method === 'POST' ? '이 연결 상대에게 인스타그램주소를 공개했습니다.' : '인스타그램주소 공개를 취소했습니다.')
     await loadInstagram()
   }
 
@@ -144,24 +144,24 @@ export default function ConversationClient({ connectionId }: { connectionId: str
       <div>
         <h1 className="text-2xl font-bold">{detail.displayName}</h1>
         <p className="mt-1 text-sm text-gray-600">연결 상태 · {detail.status === 'active' ? '연결됨' : '종료됨'}</p>
-        {capabilities.instagramPermission && instagramState?.instagramHandle ? <p className="mt-1 text-sm text-gray-600">Instagram · @{instagramState.instagramHandle}</p> : null}
+        {capabilities.instagramPermission && instagramState?.instagramHandle ? <div className="mt-2 text-sm text-gray-600"><p className="break-all">인스타그램주소 · https://www.instagram.com/{instagramState.instagramHandle}/</p><p className="mt-2">인스타그램주소를 확인하고 DM으로 연락해 보세요.</p></div> : null}
       </div>
     </div>
 
     {capabilities.instagramPermission ? <section className="mt-5 rounded-xl border border-gray-200 px-4 py-4">
-      {instagramLoadState === 'loading' ? <p className="text-sm text-gray-600">Instagram 공개 상태를 확인하고 있습니다.</p> : null}
-      {instagramLoadState === 'error' ? <p className="text-sm text-gray-600">Instagram 공개 상태를 불러올 수 없습니다.</p> : null}
+      {instagramLoadState === 'loading' ? <p className="text-sm text-gray-600">인스타그램주소 공개 상태를 확인하고 있습니다.</p> : null}
+      {instagramLoadState === 'error' ? <p className="text-sm text-gray-600">인스타그램주소 공개 상태를 불러올 수 없습니다.</p> : null}
       {instagramLoadState === 'loaded' && instagramState ? <div className="space-y-3">
         {!instagramState.myInstagramConfigured ? <div>
-          <p className="text-sm text-gray-700">Instagram 아이디를 등록하면 연결된 사람에게 선택적으로 공개할 수 있습니다.</p>
-          <Link href="/account" className="mt-2 inline-block text-sm font-semibold text-gray-900 underline underline-offset-4">내 계정에서 Instagram 등록</Link>
+          <p className="text-sm text-gray-700">내 인스타그램주소를 등록하고, 원하는 연결 상대에게만 공개하세요.</p>
+          <Link href="/account" className="mt-2 inline-block text-sm font-semibold text-gray-900 underline underline-offset-4">내 계정에서 인스타그램주소 등록</Link>
         </div> : null}
         {instagramState.myInstagramVisible ? <>
-          <p className="text-sm text-gray-700">이 연결 상대에게 내 Instagram이 공개되어 있습니다.</p>
-          <button type="button" onClick={() => changeInstagram('DELETE')} className="rounded-lg border px-3 py-2 text-xs">Instagram 공개 취소</button>
+          <p className="text-sm text-gray-700">이 연결 상대에게 내 인스타그램주소가 공개되어 있습니다.</p>
+          <button type="button" onClick={() => changeInstagram('DELETE')} className="rounded-lg border px-3 py-2 text-xs">인스타그램주소 공개 취소</button>
         </> : instagramState.myInstagramConfigured ? <>
           <p className="text-sm text-gray-700">이 연결 상대에게만 공개됩니다.</p>
-          <button type="button" onClick={() => changeInstagram('POST')} className="rounded-lg border px-3 py-2 text-xs">내 Instagram 공개</button>
+          <button type="button" onClick={() => changeInstagram('POST')} className="rounded-lg border px-3 py-2 text-xs">이 친구에게 내 인스타그램주소 공개</button>
         </> : null}
       </div> : null}
     </section> : null}
@@ -171,7 +171,7 @@ export default function ConversationClient({ connectionId }: { connectionId: str
       {messagesState === 'error' ? <p className="mt-6">대화 내용을 불러올 수 없습니다.</p> : null}
       {messagesState === 'loaded' ? <section className="mt-6 space-y-3 rounded-2xl bg-gray-50 p-4">{messages.map((item) => <div key={item.id} className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${item.mine ? 'schoollove-dark-action ml-auto bg-gray-950 text-white' : 'bg-white text-gray-900'}`}><p className="whitespace-pre-wrap">{item.message}</p><p className={`mt-2 text-[11px] ${item.mine ? 'text-gray-300' : 'text-gray-500'}`}>{new Date(item.sentAt).toLocaleString('ko-KR')}{item.mine && item.read ? ' · 읽음' : ''}</p></div>)}</section> : null}
       {detail.status === 'active' && messagesState === 'loaded' ? <form onSubmit={send} className="mt-4"><textarea maxLength={500} required rows={4} value={message} onChange={(event) => setMessage(event.target.value)} className="w-full rounded-xl border border-gray-300 px-4 py-3" placeholder="텍스트 메시지 · 외부 연락처 공유 불가"/><div className="mt-2 flex items-center justify-between"><span className="text-xs text-gray-500">{message.length}/500</span><button className="schoollove-dark-action rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white">보내기</button></div></form> : null}
-    </> : <p className="mt-6 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700">메시지 기능은 현재 이 베타에서 제공되지 않습니다.</p>}
+    </> : null}
 
     <section className="mt-8 flex flex-wrap gap-2 border-t pt-5">
       <button onClick={() => act(`/api/connections/${connectionId}`, 'DELETE')} className="rounded-lg border px-3 py-2 text-sm">연결 해제</button>

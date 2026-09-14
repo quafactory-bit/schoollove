@@ -101,7 +101,7 @@ export default function PeopleSearchClient({ historyChoices = [], historyStatus 
     <main className="mx-auto max-w-2xl px-5 py-10">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Private exact match</p>
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">정확한 사람 찾기</h1>
-      <p className="mt-3 text-sm leading-6 text-gray-600">목록을 보여주지 않습니다. 기억하는 학교, 졸업연도와 정확한 이름이 하나의 비공개 등록과 일치할 때만 안부를 보낼 수 있습니다.</p>
+      <p className="mt-3 text-sm leading-6 text-gray-600">기억하는 학교, 졸업연도와 정확한 이름으로 친구를 찾아 안부를 보내세요. 연결 후 상대가 허용한 인스타그램주소를 확인할 수 있어요. 전체 명단은 공개하지 않아요.</p>
 
       <form onSubmit={search} className="mt-7 space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
         <fieldset className="min-w-0 space-y-2">

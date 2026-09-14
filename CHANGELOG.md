@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-15 Instagram address and school-level copy
+
+- Explain finding remembered friends and viewing their individually permitted 인스타그램주소 across Home, signup, the welcome guide, connection details, sharing and metadata.
+- Replace visible beta/growth wording with invitation-program, school-level and XP descriptions. Keep weekly ranking based on recent XP and distinguish XP awards from an actual level-up.
+- Remove the disabled-message paragraph; show the full address and DM guidance only when the existing capability and counterpart disclosure state permit it. No permission, database, authentication or feature activation changes.
+
 ## 2026-09-15 Account welcome guide
 
 - Add a dismissible, replayable four-step account guide: welcome, owner-backed signup progress, school records/growth and accepted connections.

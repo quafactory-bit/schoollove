@@ -86,7 +86,7 @@ describe('formatRelativeTime', () => {
 
 describe('formatTodayGrowthStripText', () => {
   it('오늘 성장 학교 문구를 만든다', () => {
-    expect(formatTodayGrowthStripText('두루고등학교', 3)).toBe('오늘 가장 빠르게 성장 중 · 두루고등학교 +3명')
+    expect(formatTodayGrowthStripText('두루고등학교', 3)).toBe('오늘 가장 많이 모인 학교 · 두루고등학교 +3명')
   })
 })
 
@@ -316,7 +316,7 @@ describe('buildHomeActivityFeed — 등록 활동 묶기(Phase 4A, 1~20)', () =>
 describe('buildWeeklyRankingViewRow — 사람 수 성장 helper 재사용(19,20,21)', () => {
   it('19. 6명 학교 → 다음 단계까지 5명, 진행률 50%', () => {
     const row = buildWeeklyRankingViewRow(rankingRow({ visibleProfileCount: 6 }))
-    expect(row.remainingLabel).toBe('다음 성장 단계까지 5명')
+    expect(row.remainingLabel).toBe('다음 참여 목표까지 5명')
     expect(row.progressPercent).toBe(50)
     expect(row.isNearGrowth).toBe(false)
     expect(row.isComplete).toBe(false)
@@ -324,7 +324,7 @@ describe('buildWeeklyRankingViewRow — 사람 수 성장 helper 재사용(19,20
 
   it('20. 9명 학교 → 성장 임박(다음 단계까지 2명)', () => {
     const row = buildWeeklyRankingViewRow(rankingRow({ visibleProfileCount: 9 }))
-    expect(row.remainingLabel).toBe('다음 성장 단계까지 2명')
+    expect(row.remainingLabel).toBe('다음 참여 목표까지 2명')
     expect(row.isNearGrowth).toBe(true)
   })
 

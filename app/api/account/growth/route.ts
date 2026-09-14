@@ -11,6 +11,6 @@ export async function GET(request: NextRequest) {
   const id = z.string().uuid().safeParse(request.nextUrl.searchParams.get('school'))
   if (!id.success) return NextResponse.json({ error: '학교를 확인해 주세요.' }, { status: 400, headers })
   const growth = await getOwnSchoolGrowth(auth.client, id.data)
-  if (!growth) return NextResponse.json({ error: '성장 정보를 확인할 수 없어요.' }, { status: 404, headers })
+  if (!growth) return NextResponse.json({ error: '학교 레벨 정보를 확인할 수 없어요.' }, { status: 404, headers })
   return NextResponse.json({ contribution: { contributed: growth.ownContributionXp > 0, xp: growth.ownContributionXp }, growth }, { headers })
 }

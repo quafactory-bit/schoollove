@@ -63,15 +63,15 @@ export default function EditDeleteModal({ profileId, nickname, instagramId, onCl
       <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
         <h3 className="font-bold text-lg mb-1">{nickname}</h3>
         <p className="text-xs text-gray-400 mb-5">
-          {instagramId ? `@${instagramId}` : '인스타그램 미등록'}
+          {instagramId ? `@${instagramId}` : '인스타그램주소 미등록'}
         </p>
 
         {mode === 'select' && (
           <div className="space-y-3">
             <button onClick={() => setMode('edit')}
               className="w-full border border-gray-200 rounded-xl p-3.5 text-left hover:bg-gray-50 transition">
-              <div className="font-medium text-sm">인스타그램 ID 수정</div>
-              <div className="text-xs text-gray-400 mt-0.5">잘못된 인스타 ID를 수정 요청합니다</div>
+              <div className="font-medium text-sm">인스타그램주소 수정</div>
+              <div className="text-xs text-gray-400 mt-0.5">잘못된 인스타그램주소를 수정 요청합니다</div>
             </button>
             <button onClick={() => setMode('delete')}
               className="w-full border border-red-100 rounded-xl p-3.5 text-left hover:bg-red-50 transition">
@@ -90,7 +90,7 @@ export default function EditDeleteModal({ profileId, nickname, instagramId, onCl
               현재: {instagramId ? `@${instagramId}` : '없음'}
             </p>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">새 인스타그램 ID</label>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">새 인스타그램주소</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
                 <input

@@ -61,7 +61,7 @@ describe('/account private management UI', () => {
     expect(client).toContain('instagramHandleClearWritable=Boolean(state.profile?.instagram_handle)&&!deletionBlocked')
     expect(client).toContain("submit('/api/account/instagram',{instagram_handle:instagram||null},'PATCH'")
     expect(client).toContain("submit('/api/account/instagram',{instagram_handle:null},'PATCH'")
-    expect(client).toContain('이 동작은 Instagram 아이디만 저장하거나 삭제하며 이름·소개·학교 이력은 변경하지 않습니다.')
+    expect(client).toContain('이 동작은 인스타그램주소만 저장하거나 삭제하며 이름·소개·학교 이력은 변경하지 않습니다.')
   })
 
   it('선택한 K12 학교에만 학년별 반 입력을 제공하고 학교 수와 분리한다',()=>{
