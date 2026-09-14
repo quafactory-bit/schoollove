@@ -13,6 +13,7 @@ import type { BetaOnboardingState } from '@/lib/betaOnboarding'
 import SchoolSelection from '@/components/growth/SchoolSelection'
 import { clearSchoolIntent } from '@/lib/policy/schoolJourney'
 import GameHeader from '@/components/game/GameHeader'
+import AccountWelcomeGuide from '@/components/account/AccountWelcomeGuide'
 
 type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;peopleSearchBetaAccess?:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number;selectionOwner?:string}
 
@@ -86,15 +87,15 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
       }
       const messages:Record<string,string>={
         ONBOARDING_CLAIMED:'초대 확인 완료. 성인 확인, 필수 동의, 비공개 프로필과 대상 학교 등록을 진행해 주세요.',
-        PENDING_REVIEW:'초대를 등록했습니다. 운영자 승인 후 베타 기능을 사용할 수 있습니다.',
-        ACTIVE:'초대를 등록했습니다. 베타 기능을 사용할 수 있습니다.',
-        ALREADY_REDEEMED:'이미 등록한 베타 초대입니다.',
+        PENDING_REVIEW:'초대를 등록했습니다. 운영자 승인 후 초대 기능을 사용할 수 있습니다.',
+        ACTIVE:'초대를 등록했습니다. 초대 기능을 사용할 수 있습니다.',
+        ALREADY_REDEEMED:'이미 등록한 초대입니다.',
         ADULT_CONSENT_REQUIRED:'성인 확인과 필수 동의를 먼저 완료해 주세요.',
         IDENTITY_MISMATCH:'이 계정에서 사용할 수 없는 초대입니다.',
-        PROGRAM_FULL:'현재 베타 참여 인원이 모두 찼습니다.',
-        PROGRAM_UNAVAILABLE:'현재 사용할 수 없는 베타 프로그램입니다.',
-        PROGRAM_CONTRACT_UNAVAILABLE:'현재 사용할 수 없는 베타 프로그램입니다.',
-        WAITLIST_DISABLED:'현재 베타 승인 대기를 사용할 수 없습니다.',
+        PROGRAM_FULL:'현재 초대 참여 인원이 모두 찼습니다.',
+        PROGRAM_UNAVAILABLE:'현재 사용할 수 없는 초대입니다.',
+        PROGRAM_CONTRACT_UNAVAILABLE:'현재 사용할 수 없는 초대입니다.',
+        WAITLIST_DISABLED:'현재 참여 신청을 접수할 수 없습니다.',
         UNAVAILABLE:'유효하지 않거나 만료되었거나 이미 사용된 초대입니다.',
         INVALID:'초대 토큰 형식을 확인해 주세요.',
         ACCESS_DENIED:'이 계정으로 초대를 등록할 수 없습니다.',
@@ -114,10 +115,10 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
       const response=await fetch('/api/beta/onboarding/finalize',{method:'POST'})
       const result=await response.json().catch(()=>({})) as {status?:string;error?:string}
       if(!response.ok){
-        setInviteStatus(result.error==='ONBOARDING_REQUIRED'?'성인 확인, 필수 동의, 비공개 프로필과 대상 학교 등록을 모두 완료해 주세요.':'베타 참여 신청을 완료할 수 없습니다.')
+        setInviteStatus(result.error==='ONBOARDING_REQUIRED'?'성인 확인, 필수 동의, 비공개 프로필과 대상 학교 등록을 모두 완료해 주세요.':'사람 찾기 참여 신청을 완료할 수 없습니다.')
         setInviteError(true);return
       }
-      setInviteStatus('베타 참여 신청 완료. 운영자 승인 후 사람 찾기와 연결 요청을 사용할 수 있습니다.')
+      setInviteStatus('사람 찾기 참여 신청 완료. 운영자 승인 후 사람 찾기와 연결 요청을 사용할 수 있습니다.')
       router.refresh()
     }catch{setInviteStatus('네트워크 연결을 확인한 뒤 다시 시도해 주세요.');setInviteError(true)}
     finally{setInviteBusy(false)}
@@ -125,12 +126,12 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
 
   const optionalBetaEnrollment = launch.registrationEnabled && betaOnboardingState === 'none'
   const betaInvitePanel = (
-    <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5" aria-label="제한 베타 초대 등록">
-      <h2 className="text-lg font-bold text-gray-950">사람 찾기 제한 베타 · 선택 참여</h2>
+    <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5" aria-label="사람 찾기 초대 등록">
+      <h2 className="text-lg font-bold text-gray-950">사람 찾기 · 선택 참여</h2>
       <p className="mt-2 text-sm leading-6 text-gray-600">비공개 계정 등록과 사람 찾기 참여는 별개입니다. 사람 찾기는 운영자 초대와 승인 후에만 사용할 수 있습니다.</p>
       {launch.registrationEnabled ? <p className="mt-2 text-sm text-gray-600">초대가 없어도 내 계정에서 성인 확인, 동의, 내 프로필과 학교 이력을 등록할 수 있습니다.</p> : null}
       <p className="mt-2 text-sm leading-6 text-gray-600">운영자에게 받은 초대 토큰을 직접 제출할 때만 등록합니다. 토큰은 주소나 브라우저 저장소에 보관하지 않습니다.</p>
-      {betaOnboardingState==='claimed'?<div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900"><p className="font-semibold">초대 확인 완료</p><p className="mt-1 leading-6">아래 온보딩 항목을 완료한 뒤 베타 참여를 신청해 주세요.</p>{onboardingComplete?<button type="button" disabled={inviteBusy} onClick={()=>void finalizeBetaOnboarding()} className="schoollove-dark-action schoollove-focus mt-3 min-h-12 rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-40">{inviteBusy?'신청 중…':'베타 참여 신청 완료'}</button>:null}</div>:betaOnboardingState==='pending_review'?<p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">베타 참여 신청 완료 · 운영자 승인 대기 중</p>:betaOnboardingState==='active'?<p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">People Discovery 베타 참여 승인 완료</p>:<form className="mt-4 space-y-3" onSubmit={redeemBetaInvite}>
+      {betaOnboardingState==='claimed'?<div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900"><p className="font-semibold">초대 확인 완료</p><p className="mt-1 leading-6">아래 가입 항목을 완료한 뒤 사람 찾기 참여를 신청해 주세요.</p>{onboardingComplete?<button type="button" disabled={inviteBusy} onClick={()=>void finalizeBetaOnboarding()} className="schoollove-dark-action schoollove-focus mt-3 min-h-12 rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-40">{inviteBusy?'신청 중…':'사람 찾기 참여 신청 완료'}</button>:null}</div>:betaOnboardingState==='pending_review'?<p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">사람 찾기 참여 신청 완료 · 운영자 승인 대기 중</p>:betaOnboardingState==='active'?<p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">사람 찾기 참여 승인 완료</p>:<form className="mt-4 space-y-3" onSubmit={redeemBetaInvite}>
         <label htmlFor="beta-invite-token" className="block text-sm font-medium text-gray-800">초대 토큰</label>
         <input id="beta-invite-token" type="password" required minLength={24} maxLength={256} autoComplete="off" spellCheck={false} value={inviteToken} onChange={(event)=>setInviteToken(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/>
         <button disabled={inviteBusy||inviteToken.trim().length<24} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{inviteBusy?'초대 확인 중…':'초대 확인'}</button>
@@ -141,10 +142,12 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
 
   return <main className="growth-journey sl-game sl-account mx-auto max-w-4xl px-5 pb-8">
     <GameHeader />
+    <div className="mb-3 flex justify-end"><AccountWelcomeGuide autoShow={launch.registrationEnabled && !launch.emergencyStopped && !deletionBlocked && !onboardingComplete} adultReady={state.adultEligible} consentsReady={state.consentsComplete} profileReady={Boolean(state.profile)} schoolCount={state.memberships.length} peopleSearchEnabled={peopleSearchBetaAccess && !launch.emergencyStopped && !deletionBlocked} accountAvailable={privateProfileWritable && schoolMembershipWritable}/></div>
     <div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0 flex-1">
       {!onboardingComplete && <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>}
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">내 계정</h1>
       <p className="mt-2 text-sm text-gray-600">Google 계정으로 로그인됨</p>
+      {launch.registrationEnabled && !launch.emergencyStopped ? <p className="mt-3 text-sm leading-6 text-gray-600">스쿨러브아이는 현재 운영 중입니다. 비공개 프로필과 내가 다닌 학교를 등록해 이용해 보세요.</p> : null}
       {!onboardingComplete && <p className="mt-1 text-xs text-gray-500">로그인 세션은 서버에서 검증하며 만료 시 다시 로그인해야 할 수 있습니다.</p>}
     </div><button type="button" disabled={busy} onClick={async()=>{clearSchoolIntent();await fetch('/api/auth/logout',{method:'POST'}).catch(()=>undefined);router.push('/login');router.refresh()}}
       className="schoollove-focus min-h-11 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700">로그아웃</button></div>
@@ -159,7 +162,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
       {!onboardingComplete && <MySchoolsPanel memberships={state.memberships} classHistoryWritable={classHistoryWritable} peopleSearchEnabled={peopleSearchBetaAccess && !launch.emergencyStopped && !deletionBlocked}/>}
     {!onboardingComplete && <p className="mt-5 text-sm font-semibold text-[var(--schoollove-game-accent)]">{!state.adultEligible?'다음 단계 · 성인 확인':!state.consentsComplete?'다음 단계 · 필수 동의':!state.profile?'다음 단계 · 내 비공개 프로필':'다음 단계 · 내가 다닌 학교 등록'}</p>}
     <SchoolSelection owner={selectionOwner} registeredSlugs={state.memberships.flatMap(m => m.school?.slug ? [m.school.slug] : [])} writable={schoolMembershipWritable && Boolean(state.profile) && state.memberships.length < membershipLimit} hasInput={Boolean(schoolQuery || schoolId || graduationYear || Object.values(gradeClassValues).some(Boolean))} onSelect={school => {setSchoolId(school.id);setSelectedSchoolType(school.school_type);setSchoolQuery(`${school.school_name} · ${SCHOOL_TYPE_LABELS[school.school_type]} · ${school.sido} ${school.sigungu}`)}} />
-    {!accountWritable&&!classHistoryWritable&&!deletionBlocked ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900" role="status">계정 소프트런치를 준비 중이어서 현재 정보 저장은 닫혀 있습니다. 저장된 본인 정보 조회와 삭제·탈퇴 요청은 계속할 수 있습니다.</p>:null}
+    {!accountWritable&&!classHistoryWritable&&!deletionBlocked ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900" role="status">현재 계정 정보를 저장하거나 변경할 수 없습니다. 저장된 본인 정보 조회와 삭제·탈퇴 요청은 계속할 수 있습니다.</p>:null}
     {deletionBlocked ? <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900" role="status">{state.deletionStatus==='pending'?'탈퇴 요청이 접수되어 추가 정보 변경을 차단했습니다.':state.deletionStatus==='done'?'탈퇴 처리가 완료되었습니다.':'개인 데이터 삭제 또는 Auth identity 삭제를 진행 중이며 개인 기능 접근을 차단했습니다.'}</p>:null}
 
     <details open={!onboardingComplete || Boolean(schoolId)} className="mt-6"><summary className="schoollove-focus min-h-12 cursor-pointer rounded-xl border border-schoollove-border px-4 py-3 font-semibold">계정 정보 관리 · 프로필·학교·탈퇴</summary>
@@ -214,7 +217,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     <section className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-5"><h2 className="text-lg font-bold text-red-950">계정 탈퇴 요청</h2><p className="mt-2 text-sm leading-6 text-red-900">요청 즉시 추가 개인 정보 변경을 차단합니다. 운영 확인 후 공개 계정 데이터를 먼저 삭제하고 Auth identity 실제 삭제를 요청하는 2단계 절차를 사용합니다. Auth 삭제가 실패하면 계정은 차단된 재시도 대기 상태로 남으며 완료로 표시하지 않습니다.</p><p className="mt-2 text-xs text-red-800">처리 상태나 오류 접수는 <Link href="/contact" className="underline">운영자 문의</Link>로 알려 주세요. 완료된 비식별 처리 기록은 재시도·장애 확인 목적의 제한 기간 후 정리됩니다.</p><button type="button" disabled={busy||deletionBlocked} onClick={async()=>{if(window.confirm('탈퇴 요청 후에는 정보 변경이 차단됩니다. 계속할까요?'))await submit('/api/account/deletion-request',{confirm:true},'POST','탈퇴 요청을 접수했습니다.')}} className="schoollove-dark-action schoollove-focus mt-4 min-h-12 rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{state.deletionStatus==='pending'?'탈퇴 요청 접수됨':state.deletionStatus==='public_data_deleted'?'개인 데이터 삭제 완료 · Auth 삭제 대기':state.deletionStatus==='failed_safe'?'Auth 삭제 재시도 대기':state.deletionStatus==='auth_deletion_pending'?'Auth 삭제 처리 중':state.deletionStatus==='done'?'탈퇴 처리 완료':'계정 탈퇴 요청'}</button></section>
 
     </details>
-    {(optionalBetaEnrollment || onboardingComplete) ? <details className="mt-5"><summary className="schoollove-focus min-h-12 cursor-pointer py-3 font-semibold">사람 찾기 제한 베타 · 참여 상태</summary>{betaInvitePanel}</details> : null}
+    {(optionalBetaEnrollment || onboardingComplete) ? <details className="mt-5"><summary className="schoollove-focus min-h-12 cursor-pointer py-3 font-semibold">사람 찾기 · 참여 상태</summary>{betaInvitePanel}</details> : null}
     <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600" aria-label="계정 도움말"><Link href="/privacy" className="underline">개인정보처리방침</Link><Link href="/terms" className="underline">이용약관</Link><Link href="/contact" className="underline">운영자 문의</Link></nav>
     {status?<p role={isError?'alert':'status'} aria-live="polite" className={`schoollove-dark-action sticky bottom-24 z-30 mt-5 rounded-xl px-4 py-3 text-sm text-white shadow-lg ${isError?'bg-red-800':'bg-gray-950'}`}>{status}</p>:null}
   </main>

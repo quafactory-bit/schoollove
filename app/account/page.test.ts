@@ -79,7 +79,7 @@ describe('/account private management UI', () => {
   })
 
   it('authenticated account에서만 token을 invite-onboarding API에 제출한다',()=>{
-    expect(client).toContain('제한 베타 초대 등록')
+    expect(client).toContain('사람 찾기 초대 등록')
     expect(client).toContain("fetch('/api/beta/onboarding/claim'")
     expect(client).toContain('JSON.stringify({token:inviteToken})')
     expect(client).toContain("if(inviteBusy)return")
@@ -98,7 +98,7 @@ describe('/account private management UI', () => {
   it('claim과 finalize UX를 분리하고 pending review 전에는 beta feature CTA를 만들지 않는다',()=>{
     expect(client).toContain('초대 확인 완료')
     expect(client).toContain("fetch('/api/beta/onboarding/finalize'")
-    expect(client).toContain('베타 참여 신청 완료')
+    expect(client).toContain('사람 찾기 참여 신청 완료')
     expect(client).not.toContain('href="/people/search"')
   })
 
