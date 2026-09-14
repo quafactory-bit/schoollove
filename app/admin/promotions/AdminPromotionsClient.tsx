@@ -28,7 +28,7 @@ export default function AdminPromotionsClient() {
   function verifyAccount(account: Item) {
     const verification = (account.promotion_account_verifications as Item[] | undefined)?.find((item) => !item.used_at && !item.verified_at)
     if (!verification) return
-    const code = window.prompt('Instagram 프로필에서 확인한 코드를 입력하세요.')
+    const code = window.prompt('등록된 인스타그램주소의 프로필에서 확인한 코드를 입력하세요.')
     if (code) void action({ action: 'verify_account', verification_id: verification.id, verification_code: code })
   }
 
@@ -54,7 +54,7 @@ export default function AdminPromotionsClient() {
           <div className="mt-3 grid gap-3">{state.accounts.map((account) => (
             <article key={String(account.id)} className="border p-4 text-sm">
               <p className="font-semibold">{String(account.display_name)} · {String(account.account_type)} · {String(account.status)}</p>
-              <a className="mt-1 block break-all underline" href={String(account.instagram_url)} target="_blank" rel="noopener noreferrer">Instagram 프로필 확인</a>
+              <a className="mt-1 block break-all underline" href={String(account.instagram_url)} target="_blank" rel="noopener noreferrer">인스타그램주소 열기</a>
               <p className="mt-2 text-xs text-gray-500">프로필의 임시 코드를 직접 대조합니다. 비밀번호·쿠키·토큰은 수집하지 않습니다.</p>
               {account.status === 'pending_verification' ? <button onClick={() => verifyAccount(account)} className="mt-3 min-h-10 bg-gray-950 px-3 text-white">소유 코드 확인</button> : null}
             </article>

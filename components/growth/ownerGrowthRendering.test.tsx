@@ -18,7 +18,7 @@ describe('owner/public projection rendering',()=>{
     expect(mocks.own).toHaveBeenCalledExactlyOnceWith(client,schoolId)
     expect(html).toContain('Lv.2')
     expect(html).toContain('aria-valuenow="7"')
-    expect(html).toContain('내 학교 실시간 성장 진행률')
+    expect(html).toContain('내 학교 실시간 다음 레벨까지의 진행률')
     expect(html).not.toContain('private-owner')
     expect(html).not.toContain('ownContributionXp')
   })
@@ -34,10 +34,10 @@ describe('owner/public projection rendering',()=>{
   it('public meter keeps delayed copy; owner meter explicitly describes immediate feedback',()=>{
     const publicHtml=renderToStaticMarkup(<GrowthMeter growth={{...growth,level:1,progress:0}} />)
     const ownerHtml=renderToStaticMarkup(<GrowthMeter growth={growth} projection="owner" />)
-    expect(publicHtml).toContain('공개 성장 진행률')
-    expect(publicHtml).toContain('성장은 모아서 반영합니다.')
-    expect(ownerHtml).toContain('내 학교의 성장을 바로 확인해요.')
-    expect(ownerHtml).toContain('공개 화면에는 성장을 모아서 반영합니다.')
+    expect(publicHtml).toContain('공개 다음 레벨까지의 진행률')
+    expect(publicHtml).toContain('XP 변화는 모아서 반영합니다.')
+    expect(ownerHtml).toContain('내 학교의 레벨과 XP를 바로 확인해요.')
+    expect(ownerHtml).toContain('공개 화면에는 XP 변화를 모아서 반영합니다.')
   })
   it('never exports owner live level via share text and discards stale account requests',()=>{
     const share=readFileSync('components/growth/GrowthShareButton.tsx','utf8')

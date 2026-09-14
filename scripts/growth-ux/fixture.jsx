@@ -6,6 +6,7 @@ import Login from '@/app/login/page'
 import Account from '@/app/account/AccountClient'
 import Onboarding from '@/app/onboarding/OnboardingClient'
 import Connections from '@/app/connections/ConnectionsClient'
+import Conversation from '@/app/connections/[id]/ConversationClient'
 import Results from '@/components/SchoolSearchResults'
 import Footer from '@/components/Footer'
 import TabBar from '@/components/TabBar'
@@ -24,7 +25,7 @@ async function resolve(element){
 async function render(){
  if(location.pathname==='/account'&&fixture.mode==='guest')history.replaceState(null,'','/login')
  const path=location.pathname
- const el=path==='/search'?<Results/>:path.startsWith('/school/')?await School({params:Promise.resolve({slug:school.slug})}):path==='/login'?<Login/>:path==='/onboarding'?<Onboarding/>:path==='/connections'?<Connections peopleSearchEnabled={false}/>:path==='/account'?<Account selectionOwner="33333333-3333-4333-8333-333333333333" state={fixture.state} launch={launch} controlledBetaAccess={false} peopleSearchBetaAccess={false} instagramBetaAccess={false} betaOnboardingState="none" currentYear={2026}/>:await Home()
+ const el=path.startsWith('/connections/')?<Conversation connectionId={path.split('/')[2]}/>:path==='/search'?<Results/>:path.startsWith('/school/')?await School({params:Promise.resolve({slug:school.slug})}):path==='/login'?<Login/>:path==='/onboarding'?<Onboarding/>:path==='/connections'?<Connections peopleSearchEnabled={false}/>:path==='/account'?<Account selectionOwner="33333333-3333-4333-8333-333333333333" state={fixture.state} launch={launch} controlledBetaAccess={false} peopleSearchBetaAccess={false} instagramBetaAccess={false} betaOnboardingState="none" currentYear={2026}/>:await Home()
  root.render(<><DesktopNav/><div key={path} style={{paddingBottom:64}}>{await resolve(el)}<Footer/></div><TabBar/></>)
 }
 window.addEventListener('ux-route',()=>void render()); await render()

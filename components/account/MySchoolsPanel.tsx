@@ -62,7 +62,7 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
             {peopleSearchEnabled && hasSavedK12Class(memberships[index]) && <Link href="/people/search" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">저장한 반에서 사람 찾기</Link>}
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
-                공개 학교 성장 보기
+                공개 학교 레벨 보기
               </Link>
             </div> : null}
           </li>

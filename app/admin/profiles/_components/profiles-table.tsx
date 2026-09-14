@@ -42,7 +42,7 @@ export function ProfilesTable({ profiles }: Props) {
         <table className='w-full text-sm'>
           <thead className='bg-gray-50 border-b border-gray-200'>
             <tr>
-              {['이름/별명','학교','정보','인스타','신고','등록일','상태','액션'].map((h,i) => (
+              {['이름/별명','학교','정보','인스타그램주소','신고','등록일','상태','액션'].map((h,i) => (
                 <th key={i} className={'px-4 py-3 font-medium text-gray-700 ' + (i===7 ? 'text-right' : 'text-left')}>{h}</th>
               ))}
             </tr>

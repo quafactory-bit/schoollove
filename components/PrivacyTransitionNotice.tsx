@@ -15,7 +15,7 @@ export default function PrivacyTransitionNotice({ schoolName, title = '개인 �
         {title}
       </h1>
       <p className="mt-4 break-keep text-sm leading-6 text-schoollove-secondary">
-        {schoolName ? `${schoolName}의 ` : ''}이름·졸업연도·반·Instagram을 결합한 공개 명단과 사람 검색을 중단했습니다.
+        {schoolName ? `${schoolName}의 ` : ''}이름·졸업연도·반·인스타그램주소를 결합한 공개 명단과 사람 검색을 중단했습니다.
         만 19세 이상 본인 인증과 상호 승인 기반 연결 기능을 준비하고 있습니다.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">

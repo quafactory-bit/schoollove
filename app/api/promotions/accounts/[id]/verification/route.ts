@@ -16,5 +16,5 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: '잘못된 계정입니다.' }, { status: 400 })
   const issued = await issuePromotionVerification(auth.user.id, id)
   if (!issued) return NextResponse.json({ error: '인증 코드를 발급할 수 없습니다.' }, { status: 409 })
-  return NextResponse.json({ code: issued.code, expires_at: issued.expiresAt, instruction: 'Instagram 프로필 소개에 이 코드를 임시로 표시한 뒤 운영자 검수를 요청해 주세요.' })
+  return NextResponse.json({ code: issued.code, expires_at: issued.expiresAt, instruction: '등록한 인스타그램주소의 프로필 소개에 이 코드를 임시로 표시한 뒤 운영자 검수를 요청해 주세요.' })
 }

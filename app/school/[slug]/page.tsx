@@ -32,8 +32,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     ...getSchoolPageMetadata(school),
     title: `${school.school_name} · 우리 학교 함께 키우기`,
-    description: `${school.school_name}의 성장을 확인하고 친구와 함께 학교를 키워요. 개인 정보는 비공개로 관리합니다.`,
-    openGraph: { title: `${school.school_name} · 우리 학교 함께 키우기`, description: '우리 학교 같이 키워보자. 개인 명단 없이 함께 만드는 학교 성장.' },
+    description: `${school.school_name}의 레벨을 확인하고 친구와 함께 다음 레벨에 도전해요. 개인 정보는 비공개로 관리합니다.`,
+    openGraph: { title: `${school.school_name} · 우리 학교 함께 키우기`, description: '우리 학교 같이 키워보자. 개인 명단 없이 함께 올리는 학교 레벨.' },
     twitter: { card: 'summary_large_image', title: `${school.school_name} · 우리 학교 함께 키우기`, description: '우리 학교 같이 키워보자.' },
     robots: getPublicRouteRobots('school'),
   }
@@ -78,20 +78,20 @@ export default async function SchoolPage({ params }: PageProps) {
           <MapPin size={14} aria-hidden="true" />
           <span>{school.sido}</span> {school.sigungu} · {SCHOOL_TYPE_LABELS[school.school_type]}
         </p>
-        {snapshot ? <GrowthMeter growth={snapshot} /> : <p role="status" className="mt-5 text-base">성장 정보를 잠시 불러오지 못했어요.</p>}
-        {snapshot?.rank && <p className="mt-4 text-base font-semibold">이번 주 성장 {snapshot.rank}위</p>}
+        {snapshot ? <GrowthMeter growth={snapshot} /> : <p role="status" className="mt-5 text-base">학교 레벨 정보를 잠시 불러오지 못했어요.</p>}
+        {snapshot?.rank && <p className="mt-4 text-base font-semibold">이번 주 XP {snapshot.rank}위</p>}
         {snapshot?.lastLevelUp && <p className="mt-2 text-sm">최근 공개 레벨업 · {new Date(snapshot.lastLevelUp).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })}</p>}
       </section>
 
       <section className="sl-hub-join" aria-labelledby="private-account-cta">
         <h2 id="private-account-cta" className="text-lg font-bold text-schoollove-text">{isMember ? '우리 학교, 함께 키워요' : '내 학교로 등록하고 키우기'}</h2>
         <p className="mt-2 text-sm leading-6 text-schoollove-secondary">
-          첫 학교 등록은 학교 성장에 기여해요. 개인 이름·졸업연도·학년·반은 공개 명단으로 표시하지 않아요.
+          첫 학교 등록으로 학교 XP를 모아요. 개인 이름·졸업연도·학년·반은 공개 명단으로 표시하지 않아요.
         </p>
         <div className="mt-5">{isMember && snapshot ? <GrowthShareButton schoolId={school.id} schoolName={school.school_name} slug={school.slug} /> : launch.state === 'open' ? <SchoolJoinButton slug={school.slug} /> : <p className="text-sm">신규 계정 시작은 현재 준비 중입니다.</p>}</div>
-        {isMember && <Link href="/account#my-schools-heading" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm underline">내 학교 실시간 성장 확인</Link>}
+        {isMember && <Link href="/account#my-schools-heading" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm underline">내 학교의 최신 레벨 확인</Link>}
         {peopleAccess && <Link href="/people/search" className="schoollove-focus mt-4 inline-flex min-h-11 items-center text-sm underline">기억나는 사람 찾아보기</Link>}
-        <p className="mt-4 text-sm leading-6">학교 레벨과 사람 찾기 이용 권한은 별개예요. 친구 링크는 베타 초대가 아닙니다.</p>
+        <p className="mt-4 text-sm leading-6">학교 레벨과 사람 찾기 이용 권한은 별개예요. 친구 링크를 받아도 사람 찾기 이용 승인은 별도로 필요해요.</p>
       </section>
       </div>
       <GrowthHowItWorks />

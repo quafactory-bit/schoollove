@@ -29,7 +29,7 @@ describe('CurrentSchoolRanking presentation contract', () => {
 
   it('retains progress, completion, and divider contracts', () => {
     expect(SOURCE).toContain('Math.round(row.progressPercent)')
-    expect(SOURCE).toContain('다음 성장 단계까지')
+    expect(SOURCE).toContain('다음 참여 목표까지')
     expect(SOURCE).not.toContain('bg-schoollove-neon-lime')
     expect(SOURCE).toContain('text-schoollove-text group-hover:underline')
   })

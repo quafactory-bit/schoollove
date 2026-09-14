@@ -22,7 +22,7 @@ export default function OwnerGrowthFeedback({ schoolId }: { schoolId: string }) 
     <p className="sl-owner-eyebrow">우리 학교의 다음 장</p>
     <GrowthMeter growth={data.growth} projection="owner" />
     <SchoolWorld level={data.growth.level} mode="dashboard" />
-    {data.contribution.contributed ? <p role="status" className="text-base font-semibold text-[var(--schoollove-game-accent)]">우리 학교가 성장했어요! 내 첫 참여 +{data.contribution.xp} XP</p> : <p className="text-sm">이미 등록한 학교예요. 친구와 함께 다음 성장을 만들어 보세요.</p>}
+    {data.contribution.contributed ? <p role="status" className="text-base font-semibold text-[var(--schoollove-game-accent)]">다음 레벨에 가까워졌어요! 내 첫 참여 +{data.contribution.xp} XP</p> : <p className="text-sm">이미 등록한 학교예요. 친구와 함께 다음 레벨에 도전해 보세요.</p>}
     <div className="mt-4"><GrowthShareButton schoolId={schoolId} schoolName={data.growth.schoolName} slug={data.growth.slug} /></div>
   </div>
 }

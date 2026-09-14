@@ -34,11 +34,11 @@ describe('connection detail client capability contract', () => {
     expect(instagramRoute.match(/requireConnectionContext\(request, 'instagram'\)/g)).toHaveLength(2)
   })
 
-  it('renders disabled messaging guidance without a form and hides Instagram controls', () => {
+  it('keeps messaging and Instagram controls gated without disabled-message copy', () => {
     expect(client).toContain("capabilities.messaging ?")
-    expect(client).toContain('메시지 기능은 현재 이 베타에서 제공되지 않습니다.')
+    expect(client).not.toContain('메시지 기능은 현재 이 베타에서 제공되지 않습니다.')
     expect(client).toContain("capabilities.instagramPermission ?")
-    expect(client).toContain('내 Instagram 공개')
+    expect(client).toContain('이 친구에게 내 인스타그램주소 공개')
     expect(client).toContain('공개 취소')
   })
 

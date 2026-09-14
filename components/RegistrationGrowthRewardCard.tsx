@@ -60,7 +60,7 @@ export default function RegistrationGrowthRewardCard({ copy, reward, totalAtScho
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={snapshot?.progressPercent ?? copy.progressBar?.percent ?? 0}
-            aria-label="학교 성장 진행률"
+            aria-label="학교 참여 진행률"
           >
             <div
               className="h-full bg-schoollove-electric-blue transition-[width]"

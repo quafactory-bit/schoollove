@@ -134,7 +134,7 @@ export default function AdminProfilesPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">이름/별명</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">학교</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">정보</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">인스타</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">인스타그램주소</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">신고</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">등록일</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">상태</th>

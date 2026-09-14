@@ -69,7 +69,7 @@ export default function ConnectionsClient({ peopleSearchEnabled = false }: { peo
   }
 
   return <main className="mx-auto max-w-3xl px-5 py-10">
-    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Private connections</p><h1 className="mt-2 text-3xl font-bold">내 연결과 안부</h1></div>{peopleSearchEnabled ? <Link href="/people/search" className="schoollove-dark-action rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white">정확한 사람 찾기</Link> : <p className="text-sm text-gray-600">사람 찾기는 별도 초대와 승인을 받은 제한 베타에서 제공합니다. <Link href="/account" className="underline">내 계정 관리</Link></p>}</div>
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Private connections</p><h1 className="mt-2 text-3xl font-bold">내 연결과 안부</h1></div>{peopleSearchEnabled ? <Link href="/people/search" className="schoollove-dark-action rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white">정확한 사람 찾기</Link> : <p className="text-sm text-gray-600">사람 찾기는 별도 초대와 승인을 받은 초대 프로그램에서 제공합니다. <Link href="/account" className="underline">내 계정 관리</Link></p>}</div>
     {loadState === 'loading' ? <p role="status" className="mt-8">연결과 안부를 불러오는 중입니다.</p> : null}
     {loadState === 'error' ? <div role="alert" className="mt-8 rounded-xl bg-amber-50 p-4"><p>연결 정보를 불러오지 못했습니다. 로그인 상태와 네트워크를 확인해 주세요.</p><button type="button" onClick={() => void load()} className="mt-3 min-h-11 rounded-lg border px-4">다시 불러오기</button></div> : null}
     {loadState === 'loaded' ? <>

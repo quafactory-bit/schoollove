@@ -111,7 +111,7 @@ export default function RegistrationSuccessFeedback({
           href={schoolHref}
           className="schoollove-dark-action inline-flex min-h-11 items-center justify-center rounded-2xl bg-neutral-900 px-5 py-3 text-sm text-white transition"
         >
-          학교 성장 보기
+          학교 참여 보기
         </Link>
         <Link
           href={yearHref}
@@ -131,7 +131,7 @@ export default function RegistrationSuccessFeedback({
           href="/#growth-feed"
           className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-schoollove-border px-5 py-3 text-sm text-schoollove-text"
         >
-          최신 성장 소식 보기
+          최신 참여 소식 보기
         </Link>
         <button
           type="button"

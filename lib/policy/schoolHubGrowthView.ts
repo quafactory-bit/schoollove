@@ -35,7 +35,7 @@ const STATE_CONTENT: Record<SchoolState, SchoolStateContent> = {
     // (감사 결과: State B 상한 10명으로는 Level curve상 "임박"이 구조적으로 성립하지 않음).
     // 실제 remainingPeople 기반 문구는 formatPeopleGrowthDescription()이 담당한다.
     description: null,
-    helperText: '이름을 남기면 다음 성장 단계에 가까워져요.',
+    helperText: '이름을 남기면 다음 참여 목표에 가까워져요.',
     primaryCta: { label: '학교 키우기', kind: 'register' },
     secondaryCta: null,
   },
@@ -148,10 +148,10 @@ export function formatPeopleGrowthRemainingLabel(
 ): string | null {
   if (schoolState === 'A') return '첫 기록까지 1명'
   if (schoolState === 'C') return null
-  return `다음 성장 단계까지 ${stage.remainingPeople}명`
+  return `다음 참여 목표까지 ${stage.remainingPeople}명`
 }
 
 // State B 성장 메시지. "Level"이라는 표현을 쓰지 않고 실제 remainingPeople만 사용한다.
 export function formatPeopleGrowthDescription(remainingPeople: number): string {
-  return `${remainingPeople}명만 더 모이면 다음 성장 단계로 이어져요.`
+  return `${remainingPeople}명만 더 모이면 다음 참여 목표로 이어져요.`
 }

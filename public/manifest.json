@@ -1,7 +1,7 @@
 {
   "name": "스쿨러브아이",
   "short_name": "스쿨러브아이",
-  "description": "학교 동창들의 인스타그램을 한눈에 찾아보세요",
+  "description": "학교와 이름으로 친구를 찾고, 연결 후 상대가 허용한 인스타그램주소를 확인하세요.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

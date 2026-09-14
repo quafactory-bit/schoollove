@@ -1,5 +1,16 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-15 Instagram address copy — authorized release
+
+- User approved the reviewed site-wide wording and Production deployment. Main-based branch `codex/instagram-address-copy` starts from `3211c6a28540fb7c6a69ed0cb37d981629af25a5`; the workspace was clean before this scope. Decision and frozen addendum record the authorization.
+- Updated Home, account/onboarding/login, welcome guide, people search, connection detail, school/XP/share views, metadata/manifest, legal notices and administrator labels. Source display-string audit finds zero 베타/성장 occurrences in app/components. Internal beta identifiers, contracts, feature gates, input formats, consent versions and database operations remain unchanged. Dormant people-count copy uses participation targets, not school levels.
+- Removed disabled-message copy. Full address and DM guidance use only the already-returned counterpart handle under the existing Instagram capability gate. Messaging loading/sending and disclosure/revocation logic are unchanged.
+- Targeted copy/capability/rendering tests: 7 files / 57 tests PASS. `npm run typecheck`: PASS. `npm test`: 206 files PASS / 3 existing skips; 1,710 tests PASS / 4 existing skips. Updated only exact copy expectations and the explicitly removed disabled paragraph; permission and privacy assertions remain.
+- `node scripts/welcome-guide/connection-copy-check.mjs`: PASS, real React with synthetic network responses, off/private/shared at 320/390/1280 widths. No address/DM before disclosure; no Instagram request with capability off; no messaging requests or writes; no overflow or browser errors.
+- `node scripts/welcome-guide/check.mjs`: PASS, all four steps at 320x568/390x844/1280x900, focus trap/return, replay, real owner progress, closed/emergency and storage failure. Writes and browser errors 0.
+- Additional Home/login/school/onboarding checks: 12 page/viewport combinations at 320/390/1280, no overflow or banned wording; screenshots visually inspected. The broad screenshot run timed out on a capture; the focused final-copy matrix completed successfully. Local evidence: `.local/growth-ux/address-copy/` and `.local/growth-ux/welcome-guide/`.
+- React review: no new hooks, effects, requests, client/server boundaries or state authority. Existing DOM conditional determines address visibility. `git diff --check`: PASS. `npm run build`: PASS, 67/67 static pages, with process-only loopback/dummy Supabase configuration; existing lint warnings remain. No dependency, environment file, SQL or auth changes. Status: LOCAL_VERIFIED. Real signup, mutual address grants, external DM and physical-device testing were not performed. The release PR records the final Preview/Production deployment evidence.
+
 ## 2026-09-15 Registration copy and welcome guide release authorization
 
 - User approved deployment of the reviewed registration copy and account welcome guide, including the necessary commit/push/PR merge and Production application release.

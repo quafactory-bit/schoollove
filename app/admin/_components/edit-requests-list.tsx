@@ -84,8 +84,8 @@ export function EditRequestsList({ requests }: Props) {
             <tr>
               <th className="text-left px-4 py-3 font-medium text-gray-700">대상</th>
               <th className="text-left px-4 py-3 font-medium text-gray-700">학교 정보</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-700">현재 인스타</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-700">요청 인스타</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-700">현재 인스타그램주소</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-700">요청 인스타그램주소</th>
               <th className="text-left px-4 py-3 font-medium text-gray-700">요청일</th>
               <th className="text-left px-4 py-3 font-medium text-gray-700">상태</th>
               <th className="text-right px-4 py-3 font-medium text-gray-700">액션</th>

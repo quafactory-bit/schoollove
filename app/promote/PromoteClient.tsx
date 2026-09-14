@@ -30,14 +30,14 @@ export default function PromoteClient({ initialState }: { initialState: State })
     }
     const response = await fetch('/api/promotions/accounts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
     const result = await response.json()
-    setMessage(response.ok ? 'Instagram 계정을 등록했습니다. 소유 확인 코드를 발급해 주세요.' : result.error)
+    setMessage(response.ok ? '인스타그램주소를 등록했습니다. 소유 확인 코드를 발급해 주세요.' : result.error)
     if (response.ok) await refresh()
   }
 
   async function issueCode(accountId: string) {
     const response = await fetch(`/api/promotions/accounts/${accountId}/verification`, { method: 'POST' })
     const result = await response.json()
-    setMessage(response.ok ? `30분 안에 Instagram 소개에 ${result.code} 를 표시해 주세요. 운영자 확인 후 삭제할 수 있습니다.` : result.error)
+    setMessage(response.ok ? `30분 안에 등록한 인스타그램주소의 프로필 소개에 ${result.code} 를 표시해 주세요. 운영자 확인 후 삭제할 수 있습니다.` : result.error)
   }
 
   async function submitRequest(event: FormEvent<HTMLFormElement>) {
@@ -68,13 +68,13 @@ export default function PromoteClient({ initialState }: { initialState: State })
   return (
     <main className="mx-auto max-w-3xl px-5 py-10">
       <p className="text-xs font-bold tracking-[0.14em] text-gray-500">TODAY INSTAGRAM · MVP</p>
-      <h1 className="mt-3 text-3xl font-bold text-gray-950">오늘의 Instagram 신청</h1>
+      <h1 className="mt-3 text-3xl font-bold text-gray-950">오늘의 인스타그램주소 신청</h1>
       <p className="mt-3 text-sm leading-6 text-gray-600">만 19세 이상 본인 소유 계정만 신청할 수 있습니다. 자동 승인은 없으며, 검수와 수동 결제 확인 뒤에만 스폰서드로 노출됩니다.</p>
       <a href="/promote/operations" className="mt-5 inline-flex min-h-11 items-center border px-4 text-sm font-semibold">견적·주문·성과 대시보드</a>
       {message ? <div role="status" className="mt-5 border border-gray-300 bg-gray-50 p-4 text-sm">{message}</div> : null}
 
       <section className="mt-9 border border-gray-200 p-5">
-        <h2 className="text-lg font-bold">1. Instagram 소유 확인</h2>
+        <h2 className="text-lg font-bold">1. 인스타그램주소 소유 확인</h2>
         <form onSubmit={createAccount} className="mt-5 grid gap-4">
           <select name="account_type" className="min-h-11 border px-3" defaultValue="personal"><option value="personal">개인</option><option value="business">사업자</option></select>
           <input name="instagram_url" required type="url" placeholder="https://www.instagram.com/account" className="min-h-11 border px-3" />
@@ -93,7 +93,7 @@ export default function PromoteClient({ initialState }: { initialState: State })
           <input name="title" required maxLength={80} placeholder="소개 제목" className="min-h-11 border px-3" onChange={(e) => setPreview((v) => ({ ...v, title: e.target.value }))} />
           <textarea name="body" required maxLength={300} placeholder="소개 문구" className="min-h-28 border p-3" onChange={(e) => setPreview((v) => ({ ...v, body: e.target.value }))} />
           <input name="image_url" required type="url" placeholder="검수용 HTTPS 이미지 URL" className="min-h-11 border px-3" onChange={(e) => setPreview((v) => ({ ...v, image: e.target.value }))} />
-          <input name="landing_url" required type="url" placeholder="Instagram 또는 안전한 HTTPS 랜딩 URL" className="min-h-11 border px-3" />
+          <input name="landing_url" required type="url" placeholder="인스타그램주소 또는 안전한 HTTPS 랜딩 URL" className="min-h-11 border px-3" />
           <select name="requested_placement" className="min-h-11 border px-3"><option value="homepage_today">홈</option><option value="content_feed">콘텐츠 피드</option></select>
           <input name="requested_date" required type="date" className="min-h-11 border px-3" />
           <label className="flex gap-2 text-sm"><input name="rights_confirmed" type="checkbox" required /> 이미지·문구 사용 권리를 보유합니다.</label>
