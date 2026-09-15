@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-09-15 Contextual scene suite
+
+- Approved per-screen artwork, adult-friend reunion video, five school stages and caption/logo-free siege ranking banner. New addendum supersedes the shared floating-school composition, preserving all data and permission contracts. Local review only.
+
 ## 2026-09-10 Game Visual Experience V1
 
 - User-approved floating SchoolWorld, pastel Home/Hub, owner growth dashboard,
@@ -60,3 +64,8 @@
 - API 확정
 - Open Issues 확정
 - Claude Code Master Prompt 추가
+
+
+## 2026-09-15 — Approved fantasy V3
+
+Apply approved V3 fantasy imagery, full-frame composition and user-facing copy to existing components. See `docs/decisions/2026-09-15-fantasy-v3-application.md`. Functional and privacy boundaries unchanged.

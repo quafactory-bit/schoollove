@@ -19,12 +19,13 @@ describe('/account private management UI', () => {
   })
 
   it('성인 확인, 필수 동의, 내 프로필, 학교 이력, 삭제·탈퇴를 제공한다', () => {
-    for (const text of ['만 19세 이상 확인', '필수 동의', '내 비공개 프로필', '내 학교 이력', '내 프로필 삭제', '계정 탈퇴 요청']) {
+    for (const text of ['만 19세 이상 확인', '필수 동의', '내 프로필', '내 학교 이력', '내 프로필 삭제', '계정 탈퇴 요청']) {
       expect(client).toContain(text)
     }
   })
 
   it('생년월일 비저장과 기본 비공개를 명시한다', () => {
+    expect(client).toContain('프로필은 기본 비공개입니다.')
     expect(client).toContain('원본 생년월일은 DB나 로그에 저장하지 않습니다')
     expect(client).toContain('사람 검색이나 공개 화면에 표시되지 않습니다')
   })

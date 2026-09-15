@@ -13,7 +13,10 @@ import TabBar from '@/components/TabBar'
 import DesktopNav from '@/components/DesktopNav'
 import '@/app/globals.css'
 import '@/app/game.css'
+import '@/app/scenes.css'
+import '@/app/fantasy.css'
 import {fixture,school,launch} from './data'
+import VisualGallery from './visual-gallery'
 const root=createRoot(document.getElementById('root'))
 async function resolve(element){
   if(!React.isValidElement(element))return element
@@ -25,6 +28,7 @@ async function resolve(element){
 async function render(){
  if(location.pathname==='/account'&&fixture.mode==='guest')history.replaceState(null,'','/login')
  const path=location.pathname
+ if(path==='/visual-review'){root.render(<VisualGallery/>);return}
  const el=path.startsWith('/connections/')?<Conversation connectionId={path.split('/')[2]}/>:path==='/search'?<Results/>:path.startsWith('/school/')?await School({params:Promise.resolve({slug:school.slug})}):path==='/login'?<Login/>:path==='/onboarding'?<Onboarding/>:path==='/connections'?<Connections peopleSearchEnabled={false}/>:path==='/account'?<Account selectionOwner="33333333-3333-4333-8333-333333333333" state={fixture.state} launch={launch} controlledBetaAccess={false} peopleSearchBetaAccess={false} instagramBetaAccess={false} betaOnboardingState="none" currentYear={2026}/>:await Home()
  root.render(<><DesktopNav/><div key={path} style={{paddingBottom:64}}>{await resolve(el)}<Footer/></div><TabBar/></>)
 }

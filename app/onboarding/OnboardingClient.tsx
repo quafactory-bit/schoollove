@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import SceneImage from '@/components/game/SceneImage'
 import { useCallback,useEffect,useState } from 'react'
 import type { OnboardingState } from '@/lib/onboarding'
 import SchoolSelection from '@/components/growth/SchoolSelection'
@@ -8,7 +9,7 @@ import SchoolSelection from '@/components/growth/SchoolSelection'
 const steps = [
   ['adultReady','만 19세 이상 자기진술'],
   ['consentsReady','필수 동의 4개'],
-  ['profileReady','본인용 비공개 프로필'],
+  ['profileReady','본인용 프로필'],
   ['schoolReady','본인의 과거 학교 이력'],
 ] as const
 
@@ -16,7 +17,7 @@ const stageMessage:Record<OnboardingState['stage'],string> = {
   access_paused:'현재 계정 설정을 변경할 수 없습니다. 내 계정에서 이용 가능 여부와 탈퇴 처리 상태를 확인해 주세요.',
   adult_required:'먼저 만 19세 이상임을 자기진술로 확인해 주세요.',
   consent_required:'현재 정책의 필수 동의 4개를 완료해 주세요.',
-  profile_required:'본인만 볼 수 있는 비공개 프로필을 만들어 주세요.',
+  profile_required:'본인만 볼 수 있는 프로필을 만들어 주세요.',
   school_required:'본인이 다닌 과거 학교 이력을 한 곳 이상 추가해 주세요.',
   ready:'비공개 계정 시작 준비를 모두 마쳤습니다.',
 }
@@ -37,12 +38,12 @@ export default function OnboardingClient() {
   },[])
   useEffect(()=>{void load()},[load])
 
-  return <main className="growth-journey mx-auto min-h-screen max-w-2xl px-5 py-8">
+  return <main className="growth-journey sl-game sl-onboarding mx-auto min-h-screen max-w-2xl px-5 py-8">
     <Link href="/" className="schoollove-focus mb-5 inline-flex min-h-11 items-center text-lg font-bold">스쿨러브아이 ↗</Link>
     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">내 학교를 만나기 전, 안전한 시작</p>
     <h1 className="mt-2 text-3xl font-black tracking-tight text-gray-950">비공개 계정 시작하기</h1>
-    <p className="mt-3 text-sm leading-6 text-gray-600">친구가 나를 찾을 수 있도록 이름과 학교를 등록하세요. 인스타그램주소는 내가 허용한 상대에게만 보여요. 사람 찾기는 별도 초대와 운영자 승인 후 이용할 수 있어요.</p>
-    <SchoolSelection />
+    <p className="mt-3 text-sm leading-6 text-gray-600">친구가 나를 찾을 수 있도록 이름과 학교를 등록하세요. 인스타그램주소는 내가 허용한 상대에게만 보여요. 사람 찾기 이용 여부는 내 계정의 초대 안내에서 확인해 주세요.</p>
+    <div className="sl-onboarding-layout"><SceneImage scene="signup" className="sl-scene--onboarding" sizes="(max-width: 767px) 100vw, 640px" /><div><SchoolSelection />
 
     {!state ? <p className="mt-8 rounded-2xl bg-gray-50 p-5 text-sm" role="status">{busy?'안전한 시작 상태를 확인하고 있습니다.':'상태를 확인하지 못했습니다.'}</p> : <>
       <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -59,6 +60,6 @@ export default function OnboardingClient() {
       {state.stage==='ready' ? <Link href="/account" className="schoollove-dark-action schoollove-focus mt-5 block min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-center text-sm font-semibold text-white">내 계정 요약 보기</Link> : null}
     </>}
     {notice ? <div className="mt-5 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700" role="alert"><p>{notice}</p><button type="button" onClick={()=>void load()} className="schoollove-focus mt-3 min-h-11 underline">다시 시도</button></div> : null}
-    <p className="mt-8 text-xs leading-5 text-gray-500">로그아웃 후 다시 로그인해도 완료 상태는 실제 비공개 DB 기록을 기준으로 복원됩니다.</p>
+    </div></div><p className="mt-8 text-xs leading-5 text-gray-500">로그아웃 후 다시 로그인해도 완료 상태는 실제 비공개 DB 기록을 기준으로 복원됩니다.</p>
   </main>
 }

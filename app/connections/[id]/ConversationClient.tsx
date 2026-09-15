@@ -132,13 +132,13 @@ export default function ConversationClient({ connectionId }: { connectionId: str
   }
 
   if (loadState === 'loading') {
-    return <main className="mx-auto max-w-2xl px-5 py-10"><p>연결 정보를 불러오는 중입니다.</p></main>
+    return <main className="sl-game sl-connection-detail mx-auto max-w-2xl px-5 py-10"><p>연결 정보를 불러오는 중입니다.</p></main>
   }
   if (loadState === 'error' || !detail || !capabilities) {
-    return <main className="mx-auto max-w-2xl px-5 py-10"><Link href="/connections" className="text-sm text-gray-600">← 내 연결</Link><p className="mt-5">연결 정보를 불러올 수 없습니다.</p></main>
+    return <main className="sl-game sl-connection-detail mx-auto max-w-2xl px-5 py-10"><Link href="/connections" className="text-sm text-gray-600">← 내 연결</Link><p className="mt-5">연결 정보를 불러올 수 없습니다.</p></main>
   }
 
-  return <main className="mx-auto max-w-2xl px-5 py-10">
+  return <main className="sl-game sl-connection-detail mx-auto max-w-2xl px-5 py-10">
     <Link href="/connections" className="text-sm text-gray-600">← 내 연결</Link>
     <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
       <div>
