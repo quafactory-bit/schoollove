@@ -2400,3 +2400,37 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 
 - Replaced floating star decoration with artwork-aligned warm lamp glow, flowing water highlights, gold flag sweeps and small glints. Preserved the image, copy, navigation and data/permission behavior.
 - `LOCAL_VERIFIED`: 43 targeted tests, typecheck, 1,708 full-suite tests/4 existing skips, production build (67 static pages), PC/mobile alignment, motion change, pause/resume, offscreen/reduced-motion controls and overflow checks passed. Details: `docs/verification/2026-09-15-home-light-shimmer.md`.
+
+## 2026-09-15 — Privacy collection and transfer notice draft
+
+- Implemented the user's approved collection/retention/refusal disclosures before consent and optional profile entry, plus login/recovery notices and an expanded privacy policy draft. Officer: 박완, existing contact email, final requested telephone 070-8713-0423.
+- `LOCAL_VERIFIED` for code/UI: targeted 4 files/45 tests, typecheck, full 206 files/1,708 tests (3 files/4 tests existing skips), build with 67 static pages and diff whitespace checks passed. Local synthetic browser checks verified desktop/mobile policy, telephone link, notice before four unchecked consents, optional disclosure and no observed browser errors.
+- Read-only provider metadata confirmed the production primary DB in Singapore and production functions in US iad1. Actual Upstash region, complete provider log/backup retention, residual deletion records and reconsent requirements remain unresolved. This is not a completed legal remediation or a deploy-ready policy.
+- Preserved existing SNS/Home documentation, consent authority and all DB/API permission/package/environment boundaries. No commit, push, deployment, remote mutation, real signup or OTP. Full results and remaining requirements: `docs/verification/2026-09-15-privacy-notice-remediation.md`.
+
+## 2026-09-16 — Privacy notice release authorized; provider facts pending
+
+- Recorded the user's deployment approval, including the ordinary Git release steps for this notice. No repeat approval is needed for the same release once factual gaps are resolved.
+- Read-only Supabase metadata confirms production organization Free plan. Rechecked official backup/log and Vercel Analytics retention documentation; reporting visibility is not a maximum deletion guarantee. Upstash/Resend/Supabase dashboard setting access requires a user login session; actual Upstash region and Resend plan remain pending.
+- Documentation only in this follow-up; prior application draft and unrelated dirty files preserved. `git diff --check` passed. Prior local test/build results were not rerun or relabeled. No remote mutations, deployment, Git publication, real login or OTP. See the existing privacy verification report for the unresolved release requirements.
+
+## 2026-09-16 — Mobile evidence for Upstash and Resend
+
+- User screenshots confirm Upstash AWS Free Tier/Tokyo `ap-northeast-1` and Resend Transactional Free. Updated the privacy draft with these facts and Resend's official email/log 30-day and backup 7-day retention. Global is a product label, not proof of additional read regions. No source photos, billing contact or credentials copied into public files.
+- Targeted privacy/auth 45 tests and typecheck passed. The first full run exposed an existing flaky assertion at durable-code.test.ts:45: replacing a random ciphertext's final byte with zero sometimes made no change. Replaced this with a deterministic one-bit XOR mutation; retained the rejection assertion and all runtime authentication code.
+- Final targeted2files/8PASS, typecheckPASS, full206files/1708PASS (3files/4tests existingSKIP), build67static pages and diff whitespace checks passed. Existing unrelated lint warnings remain. Browser and real signup/OTP tests were not rerun for this text/test-only follow-up.
+- Existing dirty SNS/Home records, DB, packages and environment files preserved. No commit/push/merge/deployment or remote mutation. Release approval remains valid; additional replication, provider log/backup scope, residual deletion retention and reconsent questions remain unresolved. Full evidence: `docs/verification/2026-09-15-privacy-notice-remediation.md`.
+
+## 2026-09-16 — Retention evidence review and concrete deletion proposal
+
+- Completed `docs/proposals/2026-09-16-privacy-retention-and-deletion.md`: sourced provider facts, current deletion gaps, proposed deadlines, implementation checks and three unsent provider inquiry drafts. This is a proposal, not an adopted policy or an implemented deletion guarantee.
+- Read-only production function/schema checks confirm residual HMAC/login identifiers/completed cleanup-job UUID paths. The audit purge exists, but local scheduled maintenance does not call it; pg_cron is absent and no other public/private function references that purge. External/manual execution remains unverified. No personal rows or secret values read.
+- Rechecked current Vercel DPA scope (Pro/Enterprise), provider reporting versus retention and Free backup/archive limitations. Recommended prompt personal-data deletion, bounded authentication cleanup and only unlinkable operational aggregates for up to 90 days; proposed re-registration is an unadopted product decision.
+- Documentation only: proposal plus Decision/verification/log updates. Diff whitespace and referenced repository paths checked; npm tests/typecheck/build were not rerun. Preserved all existing application/test/SNS/Home changes. No remote mutation, deletion, message, paid change, Git publication or deployment. Existing notice release approval remains valid.
+
+## 2026-09-16 — Approved privacy retention implementation and release
+
+- Adopted the user's explicit implementation-to-deployment instruction in the new privacy-retention Decision. Implemented scoped DB cleanup and five-minute scheduling, retained 24-hour email abuse budgets independently of challenge deletion, preserved safety holds/unfinished Auth work and added response-loss retries to administrator deletion.
+- Local schema-only disposable matrix and two-session lock/retry PASS. Targeted 21 tests, typecheck, full 208 files/1,719 tests (3 files/4 tests skipped), build 67 pages and diff checks PASS. Local privacy page HTTP200/browser content and console-error checks PASS. No production signup/OTP/Auth deletion tests.
+- Two Production migrations returned success. Subsequent metadata checks temporarily blocked by scheduled Supabase maintenance until 06:45 KST; release/remote verification results are tracked in `docs/verification/2026-09-16-privacy-retention-release.md`.
+- Preserved unrelated SNS/Home work and historical consent versions; no package/environment changes or provider messages. External provider contractual/retention gaps remain explicitly disclosed.
