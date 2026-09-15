@@ -14,6 +14,7 @@ import SchoolSelection from '@/components/growth/SchoolSelection'
 import { clearSchoolIntent } from '@/lib/policy/schoolJourney'
 import GameHeader from '@/components/game/GameHeader'
 import AccountWelcomeGuide from '@/components/account/AccountWelcomeGuide'
+import CollectionNotice from '@/components/privacy/CollectionNotice'
 
 type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;peopleSearchBetaAccess?:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number;selectionOwner?:string}
 
@@ -176,10 +177,11 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     </section>
 
     <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">2. 필수 동의</h2>
+      <div className="mt-4" id="account-collection-notice"><CollectionNotice /></div>
       {state.consentsComplete?<p className="mt-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">현재 정책 버전의 필수 동의 완료</p>:<form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();await submit('/api/account/consents',consents)}}>
         {([
           ['terms',<> <Link href="/terms" className="underline">이용약관</Link>에 동의합니다.</>],
-          ['privacy_collection',<> <Link href="/privacy" className="underline">개인정보 수집·이용</Link>에 동의합니다.</>],
+          ['privacy_collection',<> 위 수집 항목·이용 목적·보유기간·동의 거부 안내를 확인하고 <Link href="/privacy#collection" className="underline">필수 개인정보 수집·이용</Link>에 동의합니다.</>],
           ['adult_confirmation',<>만 19세 이상이며 본인 정보만 등록합니다.</>],
           ['private_by_default',<>개인 정보는 기본 비공개이며 공개 명단에 표시되지 않습니다. 별도 승인된 사람 찾기에서는 정확히 일치하는 조건으로만 연결을 요청할 수 있음을 확인했습니다.</>],
         ] as const).map(([key,label])=><label key={key} className="flex min-h-11 items-start gap-3 text-sm text-gray-700"><input type="checkbox" required checked={consents[key]} onChange={(event)=>setConsents((current)=>({...current,[key]:event.target.checked}))} className="mt-0.5 h-5 w-5"/><span>{label}</span></label>)}
@@ -188,6 +190,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     </section>
 
     <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">3. 내 프로필</h2>
+      <details className="mt-3 rounded-xl border border-gray-200 p-4"><summary className="schoollove-focus cursor-pointer font-semibold">선택 정보 수집·이용 안내 · 입력하지 않아도 가입할 수 있어요</summary><div className="mt-3"><CollectionNotice optional /></div></details>
       <p className="mt-2 text-sm leading-6 text-gray-600">프로필은 기본 비공개입니다. 승인된 사람 찾기에서는 정확한 조건만 확인하며, 안부 수락 전 이름은 가립니다. 연결 후 표시명이 보이며 인스타그램주소는 별도 기능 권한과 상대별 공개 승인 없이는 보이지 않습니다. 인스타그램주소는 사람 검색이나 공개 화면에 표시되지 않습니다. 프로필 사진은 받지 않습니다.</p>
       <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();await submit('/api/account/profile',{display_name:displayName,instagram_handle:instagram||null,introduction:introduction||null})}}>
         <label htmlFor="display-name" className="block text-sm font-medium text-gray-800">내 이름</label><input id="display-name" required maxLength={50} disabled={!privateProfileWritable} value={displayName} onChange={(event)=>setDisplayName(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>

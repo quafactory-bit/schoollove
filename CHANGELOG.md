@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-16 Privacy retention and disclosure release
+
+- Adopt collection items, purposes, retention, refusal disclosures and the confirmed privacy officer contact before consent and authentication.
+- Add bounded five-minute database expiry, detach 24-hour email abuse counters from expiring challenges, and remove ordinary completed-deletion identifiers after a 15-minute replay-protection window. Retain only daily aggregate totals for up to 90 days; preserve safety holds and incomplete Auth deletion.
+- Make administrator deletion retryable after an interrupted Auth response and revoke refresh sessions during preparation. Keep provider retention gaps explicit and preserve historical consent versions.
+
 ## 2026-09-15 Contextual images and video
 
 - Add twelve original screen-specific illustrations, a six-second adult-friend reunion video and a caption/logo-free 7.5-second siege banner for school rankings.
@@ -373,3 +379,10 @@ Apply approved V3 fantasy imagery, full-frame composition and user-facing copy t
 ## 2026-09-15 — Home lights, water and flag shimmer
 
 Make the V3 home's lighting more visible with artwork-aligned warm glows, moving water highlights and gold flag shimmer. Retain pause, reduced motion and visibility controls.
+## 2026-09-15 Privacy collection and transfer notice (local draft)
+
+- Show required collection items, purposes, retention and refusal effects before account consent; share the notice with the privacy page.
+- Separate optional profile information and add authentication/recovery disclosures before their inputs.
+- Add the user-confirmed privacy officer and contact details, and a provider-by-provider transfer draft including Resend.
+- Keep unverified infrastructure/retention facts explicitly pending. Publication date and release remain pending; historical consent records are unchanged.
+- Follow-up operator screenshots confirm Upstash AWS Free/Tokyo (`ap-northeast-1`) and Resend Free. Reflect these facts and Resend's standard retention while preserving the remaining factual gaps.
