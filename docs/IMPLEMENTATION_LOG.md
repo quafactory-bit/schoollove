@@ -2395,3 +2395,8 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Applied the user-approved V3 artwork, full-frame home and scene composition, violet/gold styling and simplified profile/invitation copy to real components. Clean siege video reused; home has decorative sparkle motion. Actual owner, ranking and connection authorities preserved.
 - `LOCAL_VERIFIED`: typecheck, final production build (67 static pages), 1,708 passing unit tests/4 existing skips, 34 desktop/mobile captures, motion lifecycle and fallback, welcome guide and Instagram disclosure state checks. No real-user writes.
 - API, DB, feature gates, XP calculations, environment and package files unchanged. Details: `docs/verification/2026-09-15-fantasy-v3.md`.
+- Release: PR #117 merged as `61681c60cf70fbc7f6ebc2c266ca49b44e823115`; deployment `dpl_FbiN6a4nmp7RKKEjrFG6pWf3Dd65` is production READY at https://www.schoollove.kr. Public home/search/school/login and guest redirect verified at 390/1280/1440 widths, no browser errors. Private write flows remain locally verified only. `PRODUCTION_VERIFIED` for the visual release.
+# 2026-09-15 — Home light, water and flag shimmer
+
+- Replaced floating star decoration with artwork-aligned warm lamp glow, flowing water highlights, gold flag sweeps and small glints. Preserved the image, copy, navigation and data/permission behavior.
+- `LOCAL_VERIFIED`: 43 targeted tests, typecheck, 1,708 full-suite tests/4 existing skips, production build (67 static pages), PC/mobile alignment, motion change, pause/resume, offscreen/reduced-motion controls and overflow checks passed. Details: `docs/verification/2026-09-15-home-light-shimmer.md`.
