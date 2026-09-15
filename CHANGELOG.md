@@ -370,3 +370,6 @@
 ## 2026-09-15 — Approved fantasy V3
 
 Apply approved V3 fantasy imagery, full-frame composition and user-facing copy to existing components. See `docs/decisions/2026-09-15-fantasy-v3-application.md`. Functional and privacy boundaries unchanged.
+## 2026-09-15 — Home lights, water and flag shimmer
+
+Make the V3 home's lighting more visible with artwork-aligned warm glows, moving water highlights and gold flag shimmer. Retain pause, reduced motion and visibility controls.

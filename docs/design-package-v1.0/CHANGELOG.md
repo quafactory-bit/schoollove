@@ -69,3 +69,6 @@
 ## 2026-09-15 — Approved fantasy V3
 
 Apply approved V3 fantasy imagery, full-frame composition and user-facing copy to existing components. See `docs/decisions/2026-09-15-fantasy-v3-application.md`. Functional and privacy boundaries unchanged.
+## 2026-09-15 — Home illumination refinement
+
+Approved coordinate-aligned light, water and flag shimmer for the V3 hero; see the V3 addendum and home-light-shimmer decision.
