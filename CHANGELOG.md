@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-15 Contextual images and video
+
+- Add twelve original screen-specific illustrations, a six-second adult-friend reunion video and a caption/logo-free 7.5-second siege banner for school rankings.
+- Replace shared decorative school art in search, login, onboarding, account, sharing and welcome/connection states; preserve five existing school-level thresholds with new independent campus scenes.
+- Add static video fallbacks, motion controls, reduced-motion and visibility-aware playback. Preserve all permissions, ranking data and privacy boundaries. Local PC/mobile review gallery only; no release in this scope.
+
 ## 2026-09-15 Instagram address and school-level copy
 
 - Explain finding remembered friends and viewing their individually permitted 인스타그램주소 across Home, signup, the welcome guide, connection details, sharing and metadata.
@@ -359,3 +365,8 @@
 - The original O handle-only claim contract remains compatible. No public social/OIDC route, provider call, login UI, Production migration, database mutation, environment change, or launch change is included.
 - Route-surface acceptance uses reproducible exact frozen-baseline parity: baseline `99efcd22c3d048a2eb545f3811069fba62291821` and S each expose 95 canonical public routes, with zero additions or removals. The historical absolute `58 pages/routes` record is retained, but is not reproducible on that frozen baseline and is not an executable S assertion.
 - Hardened the durable continuation selector with a partial unique live-authority index and coarse collision handling; the existing authority remains resumable under duplicate creation attempts. No public activation or Production change is included.
+
+
+## 2026-09-15 — Approved fantasy V3
+
+Apply approved V3 fantasy imagery, full-frame composition and user-facing copy to existing components. See `docs/decisions/2026-09-15-fantasy-v3-application.md`. Functional and privacy boundaries unchanged.

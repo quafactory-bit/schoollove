@@ -30,8 +30,9 @@ describe('growth Home states', () => {
     const html = renderToStaticMarkup(await Home())
     expect(html).toContain('아직 공개할 학교 순위가 없어요.')
     expect(html).toContain('내 학교의 최신 레벨과 XP는 내 계정에서 확인해요.')
-    expect(html).toContain('학교 이름 찾기')
-    expect(html).toContain('내 학교 키우기')
+    expect(html).toContain('href="/search"')
+    expect(html).toContain('내 학교 찾기')
+    expect(html).toContain('내 학교로 들어가기')
     expect(html).toContain('/privacy')
     expect(html).not.toContain('Lv.2 달성')
   })
@@ -54,7 +55,8 @@ describe('growth Home states', () => {
     mocks.growth.mockResolvedValue({ status: 'unavailable', schools: [] })
     const html = renderToStaticMarkup(await Home())
     expect(html).toContain('학교 찾기는 계속 이용할 수 있어요.')
-    expect(html).toContain('학교 이름 찾기')
+    expect(html).toContain('href="/search"')
+    expect(html).toContain('내 학교 찾기')
   })
   it('shows today growth only from a real published level-up today', async () => {
     mocks.growth.mockResolvedValue({ status: 'ok', schools: [{ ...school, level: 7, lastLevelUp: new Date().toISOString() }] })
@@ -64,7 +66,7 @@ describe('growth Home states', () => {
   })
   it.each(['closed', 'emergency_stopped'])('does not offer signup when %s', async state => {
     mocks.launch.mockResolvedValue({ state })
-    expect(renderToStaticMarkup(await Home())).not.toContain('>내 학교 키우기<')
+    expect(renderToStaticMarkup(await Home())).not.toContain('내 학교로 들어가기')
   })
 })
 describe('School Hub capability and display states', () => {

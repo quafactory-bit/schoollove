@@ -18,33 +18,19 @@ describe('school world presentation stages', () => {
     expect(html).not.toMatch(/Lv\.|XP|progressbar|user|member/)
   })
   it('all stage assets resolve to actual optimized project files', () => {
-    for (const stage of SCHOOL_WORLD_STAGES) expect(existsSync(`public/images/game/${stage.asset}.webp`)).toBe(true)
+    for (const stage of SCHOOL_WORLD_STAGES) expect(existsSync(`public/images/fantasy-v3/${stage.asset}.webp`)).toBe(true)
   })
-  it.each(['hero', 'dashboard', 'compact', 'share'] as const)('adds original geometry only at the final stage in %s mode', mode => {
+  it.each(['hero', 'dashboard', 'compact', 'share'] as const)('uses a distinct final school in %s mode', mode => {
     const final = renderToStaticMarkup(<SchoolWorld level={10} mode={mode} />)
-    expect(final).toContain('data-campus-structure="memory-gate"')
-    expect(final).toContain('class="sl-world-structure"')
-    expect(final).toContain('lively-school-v1.webp')
-    expect(final).toContain('viewBox="0 0 1000 667"')
-    expect(final).toContain('focusable="false"')
-    expect(final).not.toMatch(/<filter|<image|<foreignObject|<animate|<script|<text|href=/)
-    for (const level of [undefined, 1, 2, 4, 7, 9]) {
-      const other = renderToStaticMarkup(<SchoolWorld level={level} mode={mode} />)
-      expect(other).not.toContain('data-campus-structure')
-      expect(other).not.toContain('sl-world-structure')
-    }
-  })
-  it('keeps gradient references unique when two final schools render together', () => {
-    const html = renderToStaticMarkup(<><SchoolWorld level={10} /><SchoolWorld level={10} /></>)
-    const ids = [...html.matchAll(/ id="([^"]+)"/g)].map(match => match[1])
-    expect(ids).toHaveLength(6)
-    expect(new Set(ids).size).toBe(6)
-    for (const id of ids) expect(html).toContain(`url(#${id})`)
+    expect(final).toContain('school5.webp')
+    expect(new Set(SCHOOL_WORLD_STAGES.map(stage => stage.asset)).size).toBe(5)
+    expect(final).not.toMatch(/<svg|<foreignObject|<script/)
+    for (const level of [undefined, 1, 2, 4, 7, 9]) expect(renderToStaticMarkup(<SchoolWorld level={level} mode={mode} />)).not.toContain('school5.webp')
   })
   it('server output is paused and exposes a control outside the hidden decoration', () => {
     const html = renderToStaticMarkup(<SchoolWorld />)
     expect(html).toContain('data-motion="paused"')
-    expect(html).toContain('class="sl-world-canvas" aria-hidden="true"')
+    expect(html).toContain('class="sl-world-canvas sl-world-canvas--scene" aria-hidden="true"')
     expect(html).toContain('</div><button type="button"')
     expect(html).toContain('움직임 멈추기')
   })
@@ -53,11 +39,12 @@ describe('school world presentation stages', () => {
     expect(html).not.toContain('<button')
     expect(html).not.toContain('school-friends-v1')
   })
-  it('all non-compact stages reuse one fixed decorative duo, independent of level', () => {
+  it('keeps every school illustration free of personal or uniform character overlays', () => {
     for (const level of [undefined,1,2,4,7,10]) {
       const html = renderToStaticMarkup(<SchoolWorld level={level} />)
-      expect(html).toContain('school-friends-v1.webp')
-      expect((html.match(/class="sl-world-friends"/g) ?? []).length).toBe(1)
+      expect(html).not.toContain('school-friends-v1')
+      expect(html).not.toMatch(/Lv\.|XP|progressbar|user|member/)
+      expect(html).toContain('aria-hidden="true"')
     }
   })
   it('sizes are mode-specific and support a known 245px share preview', () => {
@@ -66,24 +53,11 @@ describe('school world presentation stages', () => {
     expect(html).toContain('sizes="245px"')
     expect(html).toContain('width="1000" height="667"')
   })
-  it('preloads only the typed AVIF hero and retains responsive WebP fallback', () => {
+  it('requests only the selected school image with responsive sizing', () => {
     const html = renderToStaticMarkup(<SchoolWorld priority />)
-    expect(html).toContain('type="image/avif"')
-    const source = html.match(/<picture><source srcSet="([^"]+)" type="image\/avif"/)?.[1]
-    expect(source).toContain('growing-campus-v2')
-    expect(html).toContain('growing-campus.webp')
-    const hints = html.match(/<link[^>]+rel="preload"[^>]*>/g) ?? []
-    expect(hints).toHaveLength(1)
-    expect(hints[0]).toContain('growing-campus-v2.avif')
-    expect(hints[0]).toContain(`href="${source}"`)
-  })
-  it('does not request other stages or a second hero format via preload', () => {
-    const html = renderToStaticMarkup(<SchoolWorld priority />)
-    expect(html).not.toContain('first-reunion-v1.webp')
-    expect(html).not.toContain('lively-school-v1.webp')
-    const hints = html.match(/<link[^>]+rel="preload"[^>]*>/g) ?? []
-    expect(hints).toHaveLength(1)
-    expect(hints[0]).not.toContain('_next/image')
-    expect(renderToStaticMarkup(<SchoolWorld mode="share" priority />)).not.toContain('image/avif')
+    expect(html).toContain('school3.webp')
+    for (const other of [1,2,4,5]) expect(html).not.toContain('school'+other+'.webp')
+    expect(html).not.toContain('image/avif')
+    expect(html).toContain('sizes=')
   })
 })

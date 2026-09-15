@@ -29,7 +29,7 @@ try {
       expect(await dialog.evaluate(el=>el.scrollWidth>el.clientWidth)).toBe(false)
       if(step===1) await expect(dialog.getByText('1/5단계')).toBeVisible()
       if(step===2) await expect(dialog.getByText('아직 등록한 학교가 없어요')).toBeVisible()
-      if(step===3) await expect(dialog.getByText('사람 찾기와 새 연결 요청은 별도 초대와 운영자 승인 후 이용할 수 있어요.')).toBeVisible()
+      if(step===3) await expect(dialog.getByText('사람 찾기 이용 여부는 내 계정의 초대 안내에서 확인해 주세요.')).toBeVisible()
       await page.screenshot({path:`${out}/${width}-step-${step+1}.png`})
       if(step<3) await dialog.getByRole('button',{name:'다음',exact:true}).click()
     }
