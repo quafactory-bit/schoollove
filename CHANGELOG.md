@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-16 Home hero clarity
+
+- Reduce the purple overlay and request hero image sizes matching the enlarged cover plane, with quality 90.
+- Keep mobile characters clear of copy/actions and move a shortened, single-line connection hint above the buttons.
+- Preserve the original artwork, logo, motion controls and all data/permission boundaries.
+
 ## 2026-09-16 Privacy retention and disclosure release
 
 - Adopt collection items, purposes, retention, refusal disclosures and the confirmed privacy officer contact before consent and authentication.

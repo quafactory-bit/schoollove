@@ -9,7 +9,7 @@ export default function FantasyHero() {
   return <GameMotionControl className="sl-fantasy-hero" stage="decorative">
     <div className="sl-fantasy-art" aria-hidden="true">
       <div className="sl-fantasy-plane">
-      <Image src="/images/fantasy-v3/hero.webp" alt="" fill sizes="100vw" priority />
+      <Image src="/images/fantasy-v3/hero.webp" alt="" fill sizes="(max-width: 767px) 1350px, (max-width: 1049px) 1050px, 100vw" quality={90} priority />
       <svg className="sl-home-lighting" viewBox="0 0 1536 1024" focusable="false">
         <defs>
           <radialGradient id="sl-home-lamp"><stop stopColor="#fffde1" stopOpacity=".95"/><stop offset=".28" stopColor="#ffe7a0" stopOpacity=".75"/><stop offset="1" stopColor="#ffbe50" stopOpacity="0"/></radialGradient>

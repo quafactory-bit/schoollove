@@ -37,9 +37,9 @@ export default async function HomePage() {
             <p className="sl-eyebrow">AFTER SCHOOL · OUR SCHOOL WORLD</p>
             <h1 id="growth-title">그때 그 친구의<br /><span>인스타그램주소,</span><br />궁금하지 않나요?</h1>
             <p>학교와 이름으로 친구를 찾아보세요.<br />연결 후 상대가 허용한 인스타그램주소를 확인해요.</p>
+            <p className="sl-hero-guidance">안부를 보내고, 서로 수락하면 연결돼요.</p>
             <div className="sl-hero-actions"><Link href="/search" className="schoollove-dark-action schoollove-focus"><Search size={18} aria-hidden="true" />내 학교 찾기</Link></div>
             {launch.state === 'open' ? <Link href="/account" className="schoollove-focus sl-text-link">내 학교로 들어가기 <ArrowUpRight size={16} aria-hidden="true" /></Link> : <p className="mt-4 text-sm leading-6">계정 시작은 현재 준비 중입니다. 학교 정보는 계속 둘러볼 수 있어요.</p>}
-            <p className="sl-hero-guidance">찾은 친구에게 안부를 보내세요. 서로 수락하면 연결돼요.</p>
           </div>
           <FantasyHero />
         </section>
