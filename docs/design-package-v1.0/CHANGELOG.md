@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-09-21 Total school ranking
+
+- Approved a standalone Home ranking frame with the siege video, published cumulative XP and real top-five schools.
+- First through third use crowned podium cards; fourth and fifth use smaller challenger rows. Empty and unavailable states remain factual.
+- See `2026-09-21-total-school-ranking-addendum.md`.
+
 ## 2026-09-15 Contextual scene suite
 
 - Approved per-screen artwork, adult-friend reunion video, five school stages and caption/logo-free siege ranking banner. New addendum supersedes the shared floating-school composition, preserving all data and permission contracts. Local review only.

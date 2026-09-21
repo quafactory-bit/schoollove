@@ -38,7 +38,7 @@ export default function SceneVideo({ scene }: { scene: 'hero' | 'siege' }) {
   }, [visible, reduced, paused, failed, enabled])
 
   return <div ref={frame} className={`sl-scene-video sl-scene-video--${scene}`}>
-    <Image src={poster} alt="" fill sizes={siege ? '(max-width: 600px) 42vw, 250px' : '(max-width: 767px) 100vw, 650px'} priority={!siege} className="sl-scene-poster" />
+    <Image src={poster} alt="" fill sizes={siege ? '(max-width: 767px) 100vw, 280px' : '(max-width: 767px) 100vw, 650px'} priority={!siege} className="sl-scene-poster" />
     {enabled && !failed ? <video ref={video} className={ready ? 'is-ready' : ''} src={`/videos/scenes/${siege ? 'siege-loop' : 'hero-loop'}-v1.mp4`} poster={poster} muted loop playsInline preload="none" aria-hidden="true" onPlaying={() => { setReady(true); setPlaying(true) }} onPause={() => setPlaying(false)} onError={() => { setFailed(true); setPlaying(false) }} /> : null}
     {!failed && !reduced ? <button type="button" className="schoollove-focus sl-scene-toggle" aria-label={`${siege ? '학교 순위' : '친구 재회'} 영상 ${playing ? '멈추기' : '재생하기'}`} onClick={() => { if (playing) setPaused(true); else { setPaused(false); setEnabled(true); void video.current?.play().catch(() => setPlaying(false)) } }}>{playing ? 'Ⅱ 움직임 멈추기' : '▷ 영상 재생'}</button> : null}
   </div>

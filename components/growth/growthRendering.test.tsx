@@ -16,7 +16,7 @@ import Home from '@/app/page'
 import Hub from '@/app/school/[slug]/page'
 import GrowthMeter from './GrowthMeter'
 
-const school: SchoolGrowth = { schoolId: 'ee000001-0000-4000-8000-000000000001', schoolName: '매우 긴 이름을 가진 안전한 테스트 고등학교', slug: 'fixture', level: 1, progress: 0, weeklyXp: 0, rank: null, lastLevelUp: null }
+const school: SchoolGrowth = { schoolId: 'ee000001-0000-4000-8000-000000000001', schoolName: '매우 긴 이름을 가진 안전한 테스트 고등학교', slug: 'fixture', level: 1, progress: 0, totalXp: 0, rank: null, lastLevelUp: null }
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.growth.mockResolvedValue({ status: 'ok', schools: [] })
@@ -38,14 +38,16 @@ describe('growth Home states', () => {
   })
   it.each([1, 5])('renders exactly %i real ranking rows, no people fields', async count => {
     // Unique privacy sentinel: 1000 is also the legitimate image intrinsic width.
-    mocks.growth.mockResolvedValue({ status: 'ok', schools: Array.from({ length: count }, (_, i) => ({ ...school, schoolId: `${i}`, rank: i + 1, weeklyXp: 987654, level: 7 })) })
+    mocks.growth.mockResolvedValue({ status: 'ok', schools: Array.from({ length: count }, (_, i) => ({ ...school, schoolId: `${i}`, rank: i + 1, totalXp: 987654, level: 7 })) })
     const html = renderToStaticMarkup(await Home())
-    const ranking = html.split('aria-labelledby="weekly-growth"')[1].split('</section>')[0]
-    expect((ranking.match(/<li>/g) || []).length).toBe(count)
+    const ranking = html.split('aria-labelledby="total-ranking"')[1].split('aria-labelledby="growth-how"')[0]
+    expect((ranking.match(/<li\b/g) || []).length).toBe(count)
     expect(html).toContain('<ol')
     expect(html).toContain(school.schoolName)
     expect(html).not.toContain('weeklyXp')
-    expect(html).not.toContain('987654')
+    expect(html).toContain('987,654 XP')
+    expect(html).toContain('총 학교 순위')
+    expect(html).toContain('누적 경험치')
   })
   it('only shows a milestone when an actual published event exists', async () => {
     mocks.growth.mockResolvedValue({ status: 'ok', schools: [{ ...school, level: 7, lastLevelUp: '2026-09-09T00:00:00Z' }] })
