@@ -51,6 +51,9 @@ export default async function HomePage() {
   return <main className="growth-journey sl-game sl-home">
     <div className="sl-home-stage">
       <GameHeader />
+      <div className="sl-home-content sl-home-content--ranking-first">
+        <TotalRanking status={growth.status} schools={growth.schools} />
+      </div>
       <div className="sl-home-layout">
         <section className="sl-hero-main" aria-labelledby="growth-title">
           <div className="sl-hero-copy">
@@ -70,7 +73,6 @@ export default async function HomePage() {
       </div>
     </div>
     <div className="sl-home-content">
-      <TotalRanking status={growth.status} schools={growth.schools} />
       <GrowthHowItWorks />
       {todaySchools.length > 0 && <section className="sl-section" aria-labelledby="today-growth"><h2 id="today-growth">오늘 레벨이 오른 학교</h2><p className="mt-2 text-sm">공개 집계에서 오늘 레벨이 오른 학교예요.</p><ul className="mt-4 flex flex-wrap gap-3">{todaySchools.map(school => <li key={school.schoolId}><Link className="schoollove-focus inline-flex min-h-12 items-center gap-3 rounded-2xl border border-schoollove-border px-4 py-3" href={`/school/${encodeURIComponent(school.slug)}`}><span className="break-words">{school.schoolName}</span><strong className="sl-level-pill">Lv.{school.level}</strong></Link></li>)}</ul></section>}
       {growth.status === 'ok' && growth.schools.some(school => school.lastLevelUp) ? <section className="sl-section" aria-labelledby="growth-moments"><h2 id="growth-moments">학교의 다음 장이 열렸어요</h2><ul className="mt-5 space-y-3">{growth.schools.filter(school => school.lastLevelUp).map(school => <li key={school.schoolId}><Link href={`/school/${encodeURIComponent(school.slug)}`} className="schoollove-focus block rounded-2xl border border-schoollove-border p-5 text-base"><strong>{school.schoolName}</strong> · Lv.{school.level} 달성<span className="mt-2 block text-sm">{new Date(school.lastLevelUp!).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })} 공개 집계</span></Link></li>)}</ul></section> : null}

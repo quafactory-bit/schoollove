@@ -44,6 +44,7 @@ body .sl-game .schoollove-dark-action, body .sl-game .schoollove-dark-action:is(
 .sl-home { max-width:none; }
 .sl-home .sl-home-stage { background:none; border-radius:0; }
 .sl-home .sl-game-header { max-width:none; padding:16px max(24px,calc((100vw - 1280px)/2)); background:#242142b0; }
+.sl-home .sl-home-content--ranking-first { padding-top:0; padding-bottom:0; }
 .sl-home .sl-home-layout { display:block; max-width:none; padding:0; }
 .sl-home .sl-hero-main { display:flex; align-items:center; isolation:isolate; min-height:700px; overflow:hidden; }
 .sl-home .sl-hero-copy { width:100%; max-width:1340px; margin:auto; padding:65px 32px 100px; pointer-events:none; }
