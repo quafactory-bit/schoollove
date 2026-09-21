@@ -35,6 +35,7 @@ describe('growth Home states', () => {
     expect(html).toContain('내 학교로 들어가기')
     expect(html).toContain('/privacy')
     expect(html).not.toContain('Lv.2 달성')
+    expect(html.indexOf('aria-labelledby="total-ranking"')).toBeLessThan(html.indexOf('aria-labelledby="growth-title"'))
   })
   it.each([1, 5])('renders exactly %i real ranking rows, no people fields', async count => {
     // Unique privacy sentinel: 1000 is also the legitimate image intrinsic width.
