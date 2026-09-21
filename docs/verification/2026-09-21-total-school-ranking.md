@@ -2,7 +2,7 @@
 
 Date: 2026-09-21 KST
 
-Status: LOCAL_VERIFIED / PRODUCTION RELEASE AUTHORIZED
+Status: PRODUCTION_VERIFIED
 
 ## Scope
 
@@ -30,4 +30,10 @@ Status: LOCAL_VERIFIED / PRODUCTION RELEASE AUTHORIZED
 
 ## Production release
 
-- Pending migration, Git release and post-deploy checks.
+- Applied `cumulative_school_ranking` to Preview and verified stable `SECURITY DEFINER`, empty `search_path`, explicit anon/authenticated execution, revoked `PUBLIC` execution and an empty result with no published batches.
+- Preview deployment `dpl_CV1ZnqkDTpJyVJPx4e1cCnhAy1A6` was READY. The real Preview Home showed `총 학교 순위` and the honest empty state, with no unavailable state, horizontal overflow, framework overlay or console errors.
+- Applied Production migration version `20260921081259_cumulative_school_ranking`. The function returned an empty result because Production still had 0 published batches; its security and role boundaries matched Preview.
+- PR #122 was squash-merged as `073c049317b7cc04dd5fe5d5b76b25d0c252680c`. Vercel Production deployment `dpl_BD1WF1cVcuQXekexXJDe28rrNAXW` reached READY and received the `www.schoollove.kr`, `schoollove.kr` and production Vercel aliases.
+- The real Production Home showed the total-ranking frame and exact empty state rather than the unavailable state. The siege poster loaded, the video reached ready state 4 and played, and the page had no horizontal overflow, framework overlay or browser console errors.
+- Production deployment error/fatal runtime log query for the release window returned no rows.
+- Supabase security advisors report the new public `SECURITY DEFINER` RPC as callable by anon/authenticated. This is intentional for the bounded public ranking projection; direct `PUBLIC` execution remains revoked and the function exposes no contributor fields. Other advisor findings predate or are unrelated to this function.
