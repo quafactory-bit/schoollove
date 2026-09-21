@@ -48,6 +48,7 @@ describe('growth Home states', () => {
     expect(html).toContain('987,654 XP')
     expect(html).toContain('총 학교 순위')
     expect(html).toContain('누적 경험치')
+    expect(html.indexOf('총 학교 순위')).toBeLessThan(html.indexOf('ALL-TIME SCHOOL RANKING'))
   })
   it('only shows a milestone when an actual published event exists', async () => {
     mocks.growth.mockResolvedValue({ status: 'ok', schools: [{ ...school, level: 7, lastLevelUp: '2026-09-09T00:00:00Z' }] })

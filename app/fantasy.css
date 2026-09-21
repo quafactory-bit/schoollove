@@ -83,7 +83,8 @@ body .sl-game .schoollove-dark-action, body .sl-game .schoollove-dark-action:is(
 .sl-total-ranking-video .sl-scene-video--siege { width:100%; height:100%; min-height:620px; max-height:none; aspect-ratio:auto; border-radius:0; box-shadow:none; }
 .sl-total-ranking-video :is(video,.sl-scene-poster) { object-fit:cover; }
 .sl-total-ranking-content { min-width:0; padding:30px; }
-.sl-total-ranking-content > h2 { margin-top:7px; font-size:34px; font-weight:800; letter-spacing:-1px; }
+.sl-total-ranking-content > h2 { margin-top:0; font-size:34px; font-weight:800; letter-spacing:-1px; }
+.sl-total-ranking-content > .sl-siege-eyebrow { margin-top:7px; }
 .sl-total-ranking-intro { margin-top:8px; color:#e7daee; font-size:14px; }
 .sl-total-ranking-meta { display:flex; justify-content:space-between; gap:12px; margin-top:24px; color:#d9c8e5; font-size:11px; }
 .sl-total-ranking-meta span:last-child { padding:5px 9px; border-radius:9px; background:#2f2647aa; color:#ffe2a1; font-weight:750; }

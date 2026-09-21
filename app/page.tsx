@@ -28,8 +28,8 @@ function TotalRanking({ status, schools }: { status: 'ok' | 'unavailable'; schoo
     <div className="sl-total-ranking-frame">
       <div className="sl-total-ranking-video"><SceneVideo scene="siege" /></div>
       <div className="sl-total-ranking-content">
-        <p className="sl-siege-eyebrow">ALL-TIME SCHOOL RANKING</p>
         <h2 id="total-ranking">총 학교 순위</h2>
+        <p className="sl-siege-eyebrow">ALL-TIME SCHOOL RANKING</p>
         <p className="sl-total-ranking-intro">함께 쌓은 경험치로, 우리 학교를 더 높이.</p>
         <div className="sl-total-ranking-meta"><span>처음부터 지금까지 · 공개된 누적 XP</span><span>TOP 5</span></div>
         {status === 'unavailable' ? <p role="status" className="sl-ranking-empty">학교 순위를 잠시 불러오지 못했어요. 학교 찾기는 계속 이용할 수 있어요.</p> : schools.length === 0 ? <div className="sl-ranking-empty"><Trophy size={32} aria-hidden="true" /><h3>아직 공개할 학교 순위가 없어요.</h3><p>내 학교의 최신 레벨과 XP는 내 계정에서 확인해요.</p><Link className="schoollove-focus sl-text-link" href="/search">우리 학교 찾기 <ArrowUpRight size={16} aria-hidden="true" /></Link></div> : <>
