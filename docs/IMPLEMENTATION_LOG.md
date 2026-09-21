@@ -7,7 +7,7 @@
 - Added `get_total_school_ranking(uuid)` alongside the existing weekly function so migration and application release do not interrupt the current site. It reads only published privacy batches, returns five schools in cumulative-XP order and exposes no contributor or membership fields.
 - Targeted tests: 4 files / 30 tests PASS. TypeScript PASS. Full suite: 209 files PASS / 3 skipped; 1,722 tests PASS / 4 skipped. Production build PASS, 67/67 static pages; existing lint warnings remain.
 - Local actual-page review with synthetic top-five data at 828px: 3 podiums, 2 challenger rows, 3 crowns, no horizontal overflow, no framework overlay and no browser console errors. Production read-only preflight found 0 published batches and 0 ranked schools, so the honest empty state will remain until a batch is published.
-- Production migration, application deployment and post-deploy verification are recorded in `docs/verification/2026-09-21-total-school-ranking.md`.
+- `PRODUCTION_VERIFIED`: Preview and Production migrations applied; PR #122 merged as `073c049317b7cc04dd5fe5d5b76b25d0c252680c`; Vercel deployment `dpl_BD1WF1cVcuQXekexXJDe28rrNAXW` READY on `www.schoollove.kr`. Real Production showed the exact total-ranking empty state and playing siege video with no overflow, overlay, console errors or release-window error/fatal logs. No personal data or synthetic ranking rows were created. Full evidence: `docs/verification/2026-09-21-total-school-ranking.md`.
 
 ## 2026-09-15 Contextual scene suite — local review
 
