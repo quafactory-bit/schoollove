@@ -51,9 +51,6 @@ export default async function HomePage() {
   return <main className="growth-journey sl-game sl-home">
     <div className="sl-home-stage">
       <GameHeader />
-      <div className="sl-home-content sl-home-content--ranking-first">
-        <TotalRanking status={growth.status} schools={growth.schools} />
-      </div>
       <div className="sl-home-layout">
         <section className="sl-hero-main" aria-labelledby="growth-title">
           <div className="sl-hero-copy">
@@ -66,6 +63,9 @@ export default async function HomePage() {
           </div>
           <FantasyHero />
         </section>
+        <div className="sl-home-content sl-home-content--ranking-middle">
+          <TotalRanking status={growth.status} schools={growth.schools} />
+        </div>
         <aside className="sl-home-side">
           <Suspense fallback={<GuestSchoolPanel />}><MyGrowthSchools compact fallback={<GuestSchoolPanel />} /></Suspense>
           <section className="sl-share-teaser"><SceneImage scene="share" className="sl-scene--teaser" sizes="(max-width: 767px) 100vw, 640px" /><h2>친구와 함께<br />더 높이 올라가요.</h2><p>같은 추억을 가진 친구에게<br />우리 학교를 전해 보세요.</p><Link href="/account" className="schoollove-focus sl-text-link">내 학교에서 공유하기 <ArrowUpRight size={16} aria-hidden="true" /></Link></section>
