@@ -1,12 +1,11 @@
 import Link from 'next/link'
-import { ArrowUpRight, Search, ShieldCheck, Trophy } from 'lucide-react'
+import { ArrowUpRight, Crown, Search, ShieldCheck, Sparkles, Trophy } from 'lucide-react'
 import FantasyHero from '@/components/game/FantasyHero'
 import { getPublicAccountLaunchState, recordPublicAccountActivity } from '@/lib/publicAccountLaunch'
-import { getSchoolGrowth } from '@/lib/schoolGrowthGame'
+import { getSchoolGrowth, type SchoolGrowth } from '@/lib/schoolGrowthGame'
 import MyGrowthSchools from '@/components/growth/MyGrowthSchools'
 import { Suspense } from 'react'
 import GrowthHowItWorks from '@/components/growth/GrowthHowItWorks'
-import SchoolWorld from '@/components/game/SchoolWorld'
 import GameHeader from '@/components/game/GameHeader'
 import SceneImage from '@/components/game/SceneImage'
 import SceneVideo from '@/components/game/SceneVideo'
@@ -18,7 +17,28 @@ function GuestSchoolPanel() {
     <h2 id="guest-school-title">우리 학교 레벨</h2>
     <div className="sl-guest-intro"><SceneImage scene="badge" className="sl-scene--tiny" sizes="(max-width: 767px) 100vw, 640px" /><p>학교를 찾으면<br />우리 학교의 레벨을 확인할 수 있어요.</p></div>
     <p>기억 속 학교를 찾아보고,<br />우리 학교의 다음 장을 시작해요.</p>
-    <div className="sl-quick-actions"><Link className="schoollove-focus" href="/search"><Search size={18} aria-hidden="true" />학교 찾기</Link><Link className="schoollove-focus" href="#weekly-growth"><Trophy size={18} aria-hidden="true" />이번 주 XP 순위</Link></div>
+    <div className="sl-quick-actions"><Link className="schoollove-focus" href="/search"><Search size={18} aria-hidden="true" />학교 찾기</Link><Link className="schoollove-focus" href="#total-ranking"><Trophy size={18} aria-hidden="true" />총 학교 순위</Link></div>
+  </section>
+}
+
+function TotalRanking({ status, schools }: { status: 'ok' | 'unavailable'; schools: SchoolGrowth[] }) {
+  const podium = schools.slice(0, 3)
+  const challengers = schools.slice(3, 5)
+  return <section className="sl-total-ranking" aria-labelledby="total-ranking">
+    <div className="sl-total-ranking-frame">
+      <div className="sl-total-ranking-video"><SceneVideo scene="siege" /></div>
+      <div className="sl-total-ranking-content">
+        <p className="sl-siege-eyebrow">ALL-TIME SCHOOL RANKING</p>
+        <h2 id="total-ranking">총 학교 순위</h2>
+        <p className="sl-total-ranking-intro">함께 쌓은 경험치로, 우리 학교를 더 높이.</p>
+        <div className="sl-total-ranking-meta"><span>처음부터 지금까지 · 공개된 누적 XP</span><span>TOP 5</span></div>
+        {status === 'unavailable' ? <p role="status" className="sl-ranking-empty">학교 순위를 잠시 불러오지 못했어요. 학교 찾기는 계속 이용할 수 있어요.</p> : schools.length === 0 ? <div className="sl-ranking-empty"><Trophy size={32} aria-hidden="true" /><h3>아직 공개할 학교 순위가 없어요.</h3><p>내 학교의 최신 레벨과 XP는 내 계정에서 확인해요.</p><Link className="schoollove-focus sl-text-link" href="/search">우리 학교 찾기 <ArrowUpRight size={16} aria-hidden="true" /></Link></div> : <>
+          <ol className="sl-total-podium">{podium.map(school => <li key={school.schoolId} className={`sl-total-place sl-total-place--${school.rank}`}><Link className="schoollove-focus" href={`/school/${encodeURIComponent(school.slug)}`} aria-label={`${school.rank}위 ${school.schoolName}, 누적 ${school.totalXp.toLocaleString('ko-KR')} XP`}><span className="sl-total-crown" aria-hidden="true"><Sparkles className="sl-total-sparkle sl-total-sparkle--left" /><Crown /><Sparkles className="sl-total-sparkle sl-total-sparkle--right" /></span><span className="sl-total-place-label">{school.rank === 1 ? '최고의 학교' : school.rank === 2 ? '빛나는 도전' : '당당한 도약'}</span><strong className="sl-total-place-number">{school.rank}</strong><span className="sl-total-school-name">{school.schoolName}</span><strong className="sl-total-xp">{school.totalXp.toLocaleString('ko-KR')} XP</strong><span className="sl-total-xp-label">누적 경험치</span></Link></li>)}</ol>
+          {challengers.length > 0 && <ol className="sl-total-challengers" start={4}>{challengers.map(school => <li key={school.schoolId}><Link className="schoollove-focus" href={`/school/${encodeURIComponent(school.slug)}`} aria-label={`${school.rank}위 ${school.schoolName}, 누적 ${school.totalXp.toLocaleString('ko-KR')} XP`}><strong className="sl-total-challenger-number">{school.rank}</strong><span><strong>{school.schoolName}</strong><small>{school.rank === 4 ? '왕관까지 한 걸음 더!' : '다음 주인공은 우리 학교!'}</small></span><strong className="sl-total-challenger-xp">{school.totalXp.toLocaleString('ko-KR')} XP</strong></Link></li>)}</ol>}
+          <p className="sl-total-ranking-note"><Sparkles size={15} aria-hidden="true" /> 공개된 누적 XP가 총 학교 순위에 반영돼요.</p>
+        </>}
+      </div>
+    </div>
   </section>
 }
 
@@ -50,10 +70,7 @@ export default async function HomePage() {
       </div>
     </div>
     <div className="sl-home-content">
-      <section className="sl-section" aria-labelledby="weekly-growth">
-        <div className="sl-siege-banner"><div className="sl-siege-copy"><p className="sl-siege-eyebrow">우리 학교의 다음 도전</p><h2>함께 모은 XP,<br />더 높은 순위를 향해.</h2><p>친구와 함께 학교 레벨을 올리고,<br />이번 주 우리 학교의 순위를 확인해요.</p><span className="sl-siege-note">학교 경쟁을 표현한 판타지 영상</span></div><SceneVideo scene="siege" /></div><div className="sl-section-heading"><h2 id="weekly-growth">이번 주, XP를 많이 모은 학교</h2><span>최근 7일 · 학교별 XP 집계</span></div>
-        {growth.status === 'unavailable' ? <p role="status" className="sl-ranking-empty">학교 레벨 정보를 잠시 불러오지 못했어요. 학교 찾기는 계속 이용할 수 있어요.</p> : growth.schools.length === 0 ? <div className="sl-ranking-empty"><Trophy size={32} aria-hidden="true" /><h3>아직 공개할 학교 순위가 없어요.</h3><p>내 학교의 최신 레벨과 XP는 내 계정에서 확인해요.</p><Link className="schoollove-focus sl-text-link" href="/search">우리 학교 찾기 <ArrowUpRight size={16} aria-hidden="true" /></Link></div> : <ol className="sl-rank-list">{growth.schools.map(school => <li key={school.schoolId}><Link className="schoollove-focus" href={`/school/${encodeURIComponent(school.slug)}`}><span className="sl-rank-number">{school.rank}</span><SchoolWorld level={school.level} mode="compact" /><span className="sl-rank-name">{school.schoolName}</span><span className="sl-level-pill">Lv.{school.level}</span><ArrowUpRight size={18} aria-hidden="true" /></Link></li>)}</ol>}
-      </section>
+      <TotalRanking status={growth.status} schools={growth.schools} />
       <GrowthHowItWorks />
       {todaySchools.length > 0 && <section className="sl-section" aria-labelledby="today-growth"><h2 id="today-growth">오늘 레벨이 오른 학교</h2><p className="mt-2 text-sm">공개 집계에서 오늘 레벨이 오른 학교예요.</p><ul className="mt-4 flex flex-wrap gap-3">{todaySchools.map(school => <li key={school.schoolId}><Link className="schoollove-focus inline-flex min-h-12 items-center gap-3 rounded-2xl border border-schoollove-border px-4 py-3" href={`/school/${encodeURIComponent(school.slug)}`}><span className="break-words">{school.schoolName}</span><strong className="sl-level-pill">Lv.{school.level}</strong></Link></li>)}</ul></section>}
       {growth.status === 'ok' && growth.schools.some(school => school.lastLevelUp) ? <section className="sl-section" aria-labelledby="growth-moments"><h2 id="growth-moments">학교의 다음 장이 열렸어요</h2><ul className="mt-5 space-y-3">{growth.schools.filter(school => school.lastLevelUp).map(school => <li key={school.schoolId}><Link href={`/school/${encodeURIComponent(school.slug)}`} className="schoollove-focus block rounded-2xl border border-schoollove-border p-5 text-base"><strong>{school.schoolName}</strong> · Lv.{school.level} 달성<span className="mt-2 block text-sm">{new Date(school.lastLevelUp!).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })} 공개 집계</span></Link></li>)}</ul></section> : null}

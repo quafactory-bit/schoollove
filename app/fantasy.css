@@ -77,6 +77,44 @@ body .sl-game .schoollove-dark-action, body .sl-game .schoollove-dark-action:is(
 .sl-fantasy-art::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,#241b50df, #2b20506b 34%,transparent 62%),linear-gradient(0deg,#353567,transparent 12%); }
 .sl-fantasy-hero .sl-motion-toggle { left:auto; right:24px; bottom:24px; transform:none; z-index:5; }
 .sl-home .sl-home-side { display:grid; grid-template-columns:1fr 1fr; gap:24px; max-width:1280px; margin:24px auto 0; padding:0 24px; }
+.sl-total-ranking { padding:28px 0; }
+.sl-total-ranking-frame { display:grid; grid-template-columns:280px minmax(0,1fr); overflow:hidden; border:1px solid #d3b08399; border-radius:28px; background:linear-gradient(135deg,#604e80,#40365f); box-shadow:0 18px 46px #170d2d38; }
+.sl-total-ranking-video { min-width:0; background:#28223e; }
+.sl-total-ranking-video .sl-scene-video--siege { width:100%; height:100%; min-height:620px; max-height:none; aspect-ratio:auto; border-radius:0; box-shadow:none; }
+.sl-total-ranking-video :is(video,.sl-scene-poster) { object-fit:cover; }
+.sl-total-ranking-content { min-width:0; padding:30px; }
+.sl-total-ranking-content > h2 { margin-top:7px; font-size:34px; font-weight:800; letter-spacing:-1px; }
+.sl-total-ranking-intro { margin-top:8px; color:#e7daee; font-size:14px; }
+.sl-total-ranking-meta { display:flex; justify-content:space-between; gap:12px; margin-top:24px; color:#d9c8e5; font-size:11px; }
+.sl-total-ranking-meta span:last-child { padding:5px 9px; border-radius:9px; background:#2f2647aa; color:#ffe2a1; font-weight:750; }
+.sl-total-podium { display:grid; grid-template-columns:1fr 1.12fr 1fr; grid-template-areas:'second first third'; align-items:end; gap:12px; margin-top:38px; list-style:none; }
+.sl-total-place { min-width:0; }
+.sl-total-place--1 { grid-area:first; --medal:#ffe49a; --medal-line:#f4ce62; --medal-dark:#9b6e24; min-height:306px; }
+.sl-total-place--2 { grid-area:second; --medal:#dcecff; --medal-line:#b8cde4; --medal-dark:#6e8da8; min-height:270px; }
+.sl-total-place--3 { grid-area:third; --medal:#ffd0b1; --medal-line:#d49b72; --medal-dark:#9c6040; min-height:250px; }
+.sl-total-place > a { position:relative; display:flex; height:100%; min-height:inherit; flex-direction:column; align-items:center; justify-content:flex-end; padding:25px 10px 20px; overflow:visible; border:1px solid var(--medal-line); border-radius:23px 23px 15px 15px; background:radial-gradient(ellipse at 50% 5%,color-mix(in srgb,var(--medal) 34%,transparent),transparent 62%),linear-gradient(155deg,#574970,#302942); box-shadow:0 14px 25px #1a102d42,inset 0 1px #fff8; color:var(--medal); text-align:center; }
+.sl-total-crown { position:absolute; top:-35px; left:50%; width:96px; height:72px; transform:translateX(-50%); color:var(--medal); filter:drop-shadow(0 4px 0 var(--medal-dark)) drop-shadow(0 0 13px color-mix(in srgb,var(--medal) 55%,transparent)); }
+.sl-total-place--1 .sl-total-crown { top:-43px; width:120px; height:90px; }
+.sl-total-crown > svg:not(.sl-total-sparkle) { width:100%; height:100%; fill:color-mix(in srgb,var(--medal) 65%,transparent); stroke-width:1.5; }
+.sl-total-sparkle { position:absolute; width:18px; height:18px; color:#fff8d9; animation:sl-detail-sparkle 3.4s ease-in-out infinite; }
+.sl-total-sparkle--left { top:4px; left:-7px; }
+.sl-total-sparkle--right { top:14px; right:-9px; animation-delay:-1.4s; }
+.sl-total-place-label { margin-top:30px; font-size:10px; font-weight:750; letter-spacing:.08em; }
+.sl-total-place-number { font-size:72px; line-height:1; letter-spacing:-4px; text-shadow:0 3px var(--medal-dark),0 0 24px color-mix(in srgb,var(--medal) 45%,transparent); }
+.sl-total-place--1 .sl-total-place-number { font-size:94px; }
+.sl-total-school-name { max-width:100%; margin-top:10px; overflow-wrap:anywhere; color:#fff7e8; font-size:17px; font-weight:750; }
+.sl-total-xp { margin-top:7px; font-size:21px; white-space:nowrap; }
+.sl-total-place--1 .sl-total-xp { font-size:26px; }
+.sl-total-xp-label { margin-top:7px; font-size:10px; opacity:.82; }
+.sl-total-challengers { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; list-style:none; }
+.sl-total-challengers a { display:flex; align-items:center; gap:12px; min-height:76px; padding:13px 14px; border:1px solid #bfa1d24a; border-radius:13px; background:#30284570; color:#fff6e7; }
+.sl-total-challenger-number { width:27px; color:#baa7ce; font-size:25px; }
+.sl-total-challengers a > span { flex:1; min-width:0; }
+.sl-total-challengers a > span > strong { display:block; overflow-wrap:anywhere; font-size:13px; }
+.sl-total-challengers small { display:block; margin-top:4px; color:#d7c4e5; font-size:9px; }
+.sl-total-challenger-xp { color:#ecd5b8; font-size:12px; white-space:nowrap; }
+.sl-total-ranking-note { display:flex; align-items:center; gap:7px; margin-top:15px; padding:12px; border-radius:11px; background:#30264596; color:#ffe3a2; font-size:12px; }
+.sl-total-ranking .sl-ranking-empty { margin-top:24px; }
 .sl-home-side :is(.sl-guest-card,.sl-share-teaser) { padding:24px; overflow:hidden; }
 .sl-home-side .sl-guest-intro { display:block; padding:0; margin:20px 0; background:none; }
 .sl-home-side .sl-guest-intro .sl-scene { width:calc(100% + 48px); max-width:none; margin:0 -24px 20px; aspect-ratio:2/1; border-radius:0; }
@@ -141,6 +179,33 @@ body:has(main.sl-game) nav[aria-label="비공개 계정 탐색"] [aria-current=p
  .sl-fantasy-plane { left:84%; top:100%; transform:translate(-84%,-100%); }
  .sl-fantasy-art::after { background:linear-gradient(180deg,#231a50c9, #2b20509c 32%,#2b205061 49%,transparent 65%),linear-gradient(0deg,#353567,transparent 10%); }
  .sl-home .sl-home-side { grid-template-columns:1fr; padding:0 20px; }
+ .sl-total-ranking { padding:20px 0; }
+ .sl-total-ranking-frame { grid-template-columns:1fr; border-radius:22px; }
+ .sl-total-ranking-video .sl-scene-video--siege { height:300px; min-height:0; }
+ .sl-total-ranking-video :is(video,.sl-scene-poster) { object-fit:contain; }
+ .sl-total-ranking-content { padding:22px 16px; }
+ .sl-total-ranking-content > h2 { font-size:28px; }
+ .sl-total-ranking-intro { font-size:12px; }
+ .sl-total-ranking-meta { margin-top:20px; font-size:9px; }
+ .sl-total-podium { gap:7px; margin-top:32px; }
+ .sl-total-place--1 { min-height:238px; }
+ .sl-total-place--2 { min-height:207px; }
+ .sl-total-place--3 { min-height:194px; }
+ .sl-total-place > a { padding:14px 4px; border-radius:16px 16px 10px 10px; }
+ .sl-total-crown { top:-22px; width:62px; height:47px; }
+ .sl-total-place--1 .sl-total-crown { top:-28px; width:76px; height:57px; }
+ .sl-total-sparkle { width:13px; height:13px; }
+ .sl-total-place-label { margin-top:22px; font-size:8px; letter-spacing:0; }
+ .sl-total-place-number { font-size:50px; letter-spacing:-2px; }
+ .sl-total-place--1 .sl-total-place-number { font-size:67px; }
+ .sl-total-school-name { margin-top:8px; font-size:11px; line-height:1.35; }
+ .sl-total-xp,.sl-total-place--1 .sl-total-xp { font-size:13px; letter-spacing:-.4px; }
+ .sl-total-xp-label { font-size:8px; }
+ .sl-total-challengers { grid-template-columns:1fr; gap:10px; }
+ .sl-total-challengers a { min-height:64px; padding:10px 12px; }
+ .sl-total-challenger-number { font-size:22px; }
+ .sl-total-challenger-xp { font-size:12px; }
+ .sl-total-ranking-note { font-size:11px; line-height:1.5; }
  .sl-game .sl-login-card,.sl-onboarding-layout { grid-template-columns:1fr; }
  .sl-game .sl-scene--login,.sl-game .sl-scene--onboarding { min-height:0; aspect-ratio:4/3; }
  .sl-login-content { padding:24px; }

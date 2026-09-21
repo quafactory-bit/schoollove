@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-21 Total school ranking
+
+- Replace the Home's recent-seven-day ranking presentation with a standalone cumulative `총 학교 순위` box using the existing caption-free siege video.
+- Show the published cumulative XP top five: large crowned podiums for first through third and compact challenger rows for fourth and fifth.
+- Add a separate privacy-batched cumulative ranking RPC so the database and application can be released independently; preserve the existing level curve, awards, batching and privacy boundaries.
+
 ## 2026-09-16 Home hero clarity
 
 - Reduce the purple overlay and request hero image sizes matching the enlarged cover plane, with quality 90.

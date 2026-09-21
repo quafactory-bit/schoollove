@@ -79,7 +79,7 @@ export default async function SchoolPage({ params }: PageProps) {
           <span>{school.sido}</span> {school.sigungu} · {SCHOOL_TYPE_LABELS[school.school_type]}
         </p>
         {snapshot ? <GrowthMeter growth={snapshot} /> : <p role="status" className="mt-5 text-base">학교 레벨 정보를 잠시 불러오지 못했어요.</p>}
-        {snapshot?.rank && <p className="mt-4 text-base font-semibold">이번 주 XP {snapshot.rank}위</p>}
+        {snapshot?.rank && <p className="mt-4 text-base font-semibold">총 학교 순위 {snapshot.rank}위 · {snapshot.totalXp.toLocaleString('ko-KR')} XP</p>}
         {snapshot?.lastLevelUp && <p className="mt-2 text-sm">최근 공개 레벨업 · {new Date(snapshot.lastLevelUp).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })}</p>}
       </section>
 

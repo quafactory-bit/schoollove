@@ -1,5 +1,14 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-21 Total school ranking — authorized release
+
+- User requested that only the total school ranking from the reviewed concept be applied to the site; anonymous school notes remain excluded.
+- Added the Home's standalone siege-video ranking frame, crowned first/second/third podiums, compact fourth/fifth rows and exact published cumulative XP. Home navigation, school pages and social images use cumulative-rank wording.
+- Added `get_total_school_ranking(uuid)` alongside the existing weekly function so migration and application release do not interrupt the current site. It reads only published privacy batches, returns five schools in cumulative-XP order and exposes no contributor or membership fields.
+- Targeted tests: 4 files / 30 tests PASS. TypeScript PASS. Full suite: 209 files PASS / 3 skipped; 1,722 tests PASS / 4 skipped. Production build PASS, 67/67 static pages; existing lint warnings remain.
+- Local actual-page review with synthetic top-five data at 828px: 3 podiums, 2 challenger rows, 3 crowns, no horizontal overflow, no framework overlay and no browser console errors. Production read-only preflight found 0 published batches and 0 ranked schools, so the honest empty state will remain until a batch is published.
+- Production migration, application deployment and post-deploy verification are recorded in `docs/verification/2026-09-21-total-school-ranking.md`.
+
 ## 2026-09-15 Contextual scene suite — local review
 
 - User requested all proposed images/screens and removal of captions/logos from the existing siege footage, with the complete result shown together. Clean start on `codex/instagram-address-copy`; no commit/push/deployment in this scope. Decision and frozen addendum record the approved presentation changes.
