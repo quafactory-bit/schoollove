@@ -6,9 +6,10 @@ const SOURCE = readFileSync(join(process.cwd(), 'app', 'submit', 'page.tsx'), 'u
 
 describe('submit maintenance boundary', () => {
   it('등록 폼 대신 성인 본인 인증 전환 안내를 표시한다', () => {
-    expect(SOURCE).toContain('본인 정보만 비공개로 관리합니다')
+    expect(SOURCE).toContain('내 학교와 기억나는 사람을 찾아보세요')
     expect(SOURCE).toContain('만 19세 이상')
-    expect(SOURCE).toContain('본인 정보만 관리')
+    expect(SOURCE).toContain('본인의 전체 이름과 과거 학교 이력을 등록')
+    expect(SOURCE).toContain('학교 명단 표시는 기본으로 선택되며 등록 전에 해제')
   })
 
   it('등록 실행 코드와 개인 입력 필드를 렌더하지 않는다', () => {

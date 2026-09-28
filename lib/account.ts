@@ -23,6 +23,7 @@ export type SchoolMembership = {
     grade_number: number
     class_number: number
   }>
+  roster_visible: boolean
   school: {
     id: string
     school_name: string
@@ -89,8 +90,21 @@ export async function getAccountState(
       .eq('profile_id', profile.id)
       .order('graduation_year', { ascending: false })
     if (membershipResult.error) throw new Error('ACCOUNT_STATE_UNAVAILABLE')
-    memberships = ((membershipResult.data ?? []) as unknown as SchoolMembership[]).map((membership) => ({
+    const rawMemberships = (membershipResult.data ?? []) as unknown as Array<Omit<SchoolMembership, 'roster_visible'>>
+    const membershipIds = rawMemberships.map((membership) => membership.id)
+    const rosterResult = membershipIds.length > 0
+      ? await client.from('school_roster_consents')
+        .select('membership_id,withdrawn_at')
+        .eq('owner_user_id', userId)
+        .in('membership_id', membershipIds)
+      : { data: [], error: null }
+    if (rosterResult.error) throw new Error('ACCOUNT_STATE_UNAVAILABLE')
+    const visibleMemberships = new Set((rosterResult.data ?? [])
+      .filter((row: { membership_id?: unknown; withdrawn_at?: unknown }) => typeof row.membership_id === 'string' && row.withdrawn_at === null)
+      .map((row: { membership_id: string }) => row.membership_id))
+    memberships = rawMemberships.map((membership) => ({
       ...membership,
+      roster_visible: visibleMemberships.has(membership.id),
       class_history: [...(membership.class_history ?? [])]
         .sort((left, right) => left.grade_number - right.grade_number),
     }))

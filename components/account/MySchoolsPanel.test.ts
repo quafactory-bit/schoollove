@@ -12,6 +12,7 @@ function membership(overrides: Partial<SchoolMembership> = {}): SchoolMembership
     school_id: 'private-school-id',
     graduation_year: 2020,
     class_number: 3,
+    roster_visible: true,
     class_history: [
       { grade_number: 1, class_number: 2 },
       { grade_number: 2, class_number: 5 },
@@ -38,7 +39,7 @@ describe('MySchoolsPanel privacy-safe share action', () => {
     expect(owner).toContain('<GrowthShareButton')
     expect(owner).toContain('schoolName={data.growth.schoolName}')
     expect(owner).toContain('slug={data.growth.slug}')
-    expect(SOURCE).toContain('공개 학교 레벨 보기')
+    expect(SOURCE).toContain('학교 명단과 레벨 보기')
     expect(SOURCE).not.toContain('<ShareButton') // one share flow, not duplicate controls
   })
 
@@ -66,5 +67,11 @@ describe('MySchoolsPanel privacy-safe share action', () => {
   it('legacy 단일 반을 표시하지 않고 학년별 반 이력을 정확히 표시한다', () => {
     expect(SOURCE).toContain('formatGradeClassHistory(school.classHistory)')
     expect(SOURCE).not.toContain('school.classNumber')
+  })
+
+  it('학교별 명단 표시 상태와 같은 학교 열람 범위를 설명한다', () => {
+    expect(SOURCE).toContain("memberships[index].roster_visible")
+    expect(SOURCE).toContain('학교 명단 표시 중')
+    expect(SOURCE).toContain('같은 학교의 명단 참여자에게 표시됩니다')
   })
 })

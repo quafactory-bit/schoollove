@@ -34,7 +34,7 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>
       <h2 id="my-schools-heading" className="mt-2 text-xl font-bold text-schoollove-text">내 학교</h2>
       <details className="sl-school-privacy"><summary className="schoollove-focus min-h-11 cursor-pointer py-3 text-sm">내 학교 정보의 공개 범위</summary><p className="mt-2 text-sm leading-6 text-schoollove-secondary">
-        학교·졸업연도·학년·반 정보는 공개 명단에 표시되지 않습니다. 사람 찾기에서는 내가 입력한 조건과 정확히 일치하는 경우에만 비공개 매칭 조건으로 사용됩니다.
+        명단 표시를 켠 학교에서는 입력한 전체 이름·졸업연도·학년별 반이 같은 학교의 명단 참여자에게 표시됩니다. 공개 인터넷과 검색엔진에는 표시되지 않으며 내 계정에서 언제든 숨길 수 있습니다.
       </p>
       <p className="mt-1 text-sm leading-6 text-schoollove-secondary">
         다시 로그인하면 등록한 학교 이력을 내 계정에서 계속 확인할 수 있습니다.
@@ -58,11 +58,14 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
                 {formatGradeClassHistory(school.classHistory)}
               </p>
             ) : null}
+            <p className={`mt-2 text-sm font-semibold ${memberships[index].roster_visible ? 'text-emerald-700' : 'text-schoollove-secondary'}`}>
+              {memberships[index].roster_visible ? '학교 명단 표시 중' : '학교 명단 비공개'}
+            </p>
             <ClassHistoryEditor membership={memberships[index]} writable={classHistoryWritable} />
             {peopleSearchEnabled && hasSavedK12Class(memberships[index]) && <Link href="/people/search" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">저장한 반에서 사람 찾기</Link>}
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
-                공개 학교 레벨 보기
+                학교 명단과 레벨 보기
               </Link>
             </div> : null}
           </li>

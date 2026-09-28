@@ -15,6 +15,7 @@ const MembershipSchema = z.object({
   school_id: z.string().uuid(),
   graduation_year: z.number().int().min(1900).max(2200),
   grade_classes: z.array(GradeClassSchema).max(6),
+  show_in_school_roster: z.boolean(),
 }).strict().superRefine((value, context) => {
   const grades = value.grade_classes.map((row) => row.grade_number)
   if (new Set(grades).size !== grades.length) {
@@ -22,6 +23,10 @@ const MembershipSchema = z.object({
   }
 })
 const DeleteSchema = z.object({ membership_id: z.string().uuid() })
+const VisibilitySchema = z.object({
+  membership_id: z.string().uuid(),
+  visible: z.boolean(),
+}).strict()
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedRequestContext(request)
   if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
@@ -55,10 +60,11 @@ export async function POST(request: NextRequest) {
     // Optional attribution failure never blocks the existing membership workflow.
     try { await auth.client.rpc('bind_school_growth_visit', { requested_proof: growthProof }) } catch { /* optional */ }
   }
-  const { data, error } = await auth.client.rpc('add_own_school_membership_with_class_history', {
+  const { data, error } = await auth.client.rpc('add_own_school_membership_with_roster', {
     requested_school_id: parsed.data.school_id,
     requested_graduation_year: parsed.data.graduation_year,
     requested_grade_classes: parsed.data.grade_classes,
+    requested_roster_consent: parsed.data.show_in_school_roster,
   })
   if (error) {
     const safeMessage=getSafeMembershipError(error)
@@ -67,6 +73,24 @@ export async function POST(request: NextRequest) {
   }
   await syncOnboardingProgressSafely(auth.client,auth.user.id,'direct')
   return NextResponse.json({ membership: data }, { status: 201 })
+}
+
+export async function PATCH(request: NextRequest) {
+  const auth = await getAuthenticatedRequestContext(request)
+  if (!auth) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  let body: unknown
+  try { body = await request.json() } catch {
+    return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 })
+  }
+  const parsed = VisibilitySchema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: '학교 명단 공개 설정을 확인해 주세요.' }, { status: 400 })
+
+  const { error } = await auth.client.rpc('set_own_school_roster_visibility', {
+    target_membership_id: parsed.data.membership_id,
+    requested_visible: parsed.data.visible,
+  })
+  if (error) return NextResponse.json({ error: '학교 명단 공개 설정을 변경할 수 없습니다.' }, { status: 409 })
+  return NextResponse.json({ visible: parsed.data.visible })
 }
 
 export async function DELETE(request: NextRequest) {

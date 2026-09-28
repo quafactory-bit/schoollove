@@ -21,7 +21,7 @@ function Fixture() {
   }))
   if (!account) return <PeopleSearchClient key={version} historyChoices={choices} historyStatus={status} />
   const membership: SchoolMembership = {
-    id: '00000000-0000-4000-8000-000000000002', school_id: schoolId, graduation_year: 2016, class_number: null,
+    id: '00000000-0000-4000-8000-000000000002', school_id: schoolId, graduation_year: 2016, class_number: null, roster_visible: true,
     class_history: account.rows ? [{ grade_number: 3, class_number: 1 }] : [],
     school: { id: schoolId, school_name: schoolName, school_type: account.kind, sido: '합성시', sigungu: '합성구', slug: 'synthetic-school' },
   }

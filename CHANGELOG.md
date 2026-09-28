@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-28 School roster and direct discovery (authorized release)
+
+- Add a reciprocal same-school adult roster showing the entered full name, graduation year and saved grade/class history when `학교에서 나를 표시하기` is enabled.
+- Select that option by default while allowing registration with it cleared, and provide immediate hide/show control on each saved school card.
+- Remove invitation, participation-application and operator-approval steps from public-account exact people discovery. Preserve emergency stop, exact-match, rate-limit, opaque-token, block/report and per-connection Instagram boundaries.
+- Keep existing memberships hidden until their owners make the new roster choice. Preview and Production database migrations are applied with zero legacy consent rows; the application releases through PR #127 after Preview verification.
+
 ## 2026-09-21 Total school ranking
 
 - Replace the Home's recent-seven-day ranking presentation with a standalone cumulative `총 학교 순위` box using the existing caption-free siege video.
