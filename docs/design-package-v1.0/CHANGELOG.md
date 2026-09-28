@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-09-28 School roster and direct discovery
+
+- Approved a private, reciprocal same-school adult roster for entered full name, graduation year and saved grade/class history.
+- The roster option starts selected but may be cleared without blocking school registration; members can hide or reshare later from their account.
+- Completed public accounts may use exact people discovery and connection requests without invitation, participation application or operator approval. Existing safety, emergency-stop and per-connection disclosure boundaries remain.
+- See `2026-09-28-school-roster-direct-discovery-addendum.md`.
+
 ## 2026-09-21 Total school ranking
 
 - Approved a standalone Home ranking frame with the siege video, published cumulative XP and real top-five schools.

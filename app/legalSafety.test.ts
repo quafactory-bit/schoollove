@@ -9,12 +9,13 @@ const home = readFileSync(join(process.cwd(), 'app/page.tsx'), 'utf8')
 
 describe('PHASE 10A public notices', () => {
   it('states the actual public-list and registration suspension', () => {
-    expect(privacy).toContain('공개 명단과 공개 사람 검색을 제공하지 않습니다')
-    expect(privacy).toContain('별도 초대·운영자 승인이 필요한 사람 찾기')
-    expect(privacy).toContain('개인 명단·검색 결과 수·상대 계정 ID는 반환하지 않습니다')
+    expect(privacy).toContain('인터넷에 공개되는 개인 명단과 공개 사람 검색을 제공하지 않습니다')
+    expect(privacy).toContain('별도 초대·참여 신청·운영자 승인 없이 사람 찾기를 이용할 수 있습니다')
+    expect(privacy).toContain('검색 결과 수·상대 계정 ID는 반환하지 않습니다')
     expect(privacy).toContain('성인 비공개 계정은 launch 상태가 별도로 승인된 때에만 시작')
-    expect(terms).toContain('공개 개인 명단과 사람 이름 검색은 제공하지 않습니다')
-    expect(terms).toContain('별도로 공개 계정 launch가 승인된 경우')
+    expect(terms).toContain('인터넷에 공개되는 개인 명단과 공개 이름 검색은 제공하지 않습니다')
+    expect(terms).toContain('공개 계정 launch가 승인된 경우')
+    expect(terms).toContain('체크를 풀어도 학교 등록은 가능합니다')
   })
 
   it('documents the 19+ self-only future boundary and deletion contact', () => {

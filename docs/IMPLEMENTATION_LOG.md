@@ -1,5 +1,14 @@
 # SchoolLoveI Implementation Log
 
+## 2026-09-28 School roster and direct discovery — local implementation
+
+- Applied the user's decision that `학교에서 나를 표시하기` starts checked, can be cleared before submission without blocking school registration, and can be changed later on each saved school card.
+- Added a reciprocal same-school adult roster with only the entered full name, graduation year and saved grade/class history. Existing memberships remain hidden until their owner makes the new choice. Anonymous users, search crawlers and nonparticipating members receive no roster data.
+- Removed invitation, participation-application and operator-approval steps from the public-account exact-search path. Hidden members are excluded from both graduation-year and class-history exact searches. Emergency stop, adult account, exact match, daily limits, opaque tokens, block/report and Instagram per-connection disclosure remain in force.
+- Added a new unapplied migration, narrow roster reader, account registration/toggle APIs, school-page roster UI, legal/service copy and regression tests. No package or environment change.
+- `LOCAL_VERIFIED`: final targeted roster/account tests 20/20, TypeScript PASS, full suite 211 files PASS / 3 skipped and 1,730 tests PASS / 4 skipped, production build PASS with 67/67 static pages and existing lint warnings only, diff whitespace check PASS.
+- Not performed: disposable PostgreSQL execution of the new migration, browser interaction matrix, Preview/Production migration, deployment, real signup or personal-data disclosure. No commit, push or remote mutation.
+
 ## 2026-09-21 Total school ranking — authorized release
 
 - User requested that only the total school ranking from the reviewed concept be applied to the site; anonymous school notes remain excluded.

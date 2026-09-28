@@ -9,11 +9,10 @@ describe('PHASE 10A safe home', () => {
     expect(SOURCE).not.toMatch(/getRecentRegisterActivity|getRecentTraceActivity|getCurrentSchoolRanking|HomeActivityFeed|CurrentSchoolRanking/)
   })
 
-  it('초등·중등을 포함한 사람 등록 경쟁과 등록 CTA를 노출하지 않는다', () => {
+  it('초등·중등을 포함한 사람 등록 경쟁을 만들지 않고 제한된 명단 범위를 설명한다', () => {
     expect(SOURCE).not.toMatch(/현재 학교 순위|다음 성장 단계|내 이름 남기기|친구 등록|LEVEL UP/)
-    expect(SOURCE).toContain('개인 명단은 공개하지 않아요.')
-    expect(SOURCE).toContain('사람 찾기 이용 여부는 내 계정의 초대 안내에서 확인해 주세요.')
-    expect(SOURCE).toContain('학교 레벨이 이용 권한을 열지는 않아요.')
+    expect(SOURCE).toContain('학교 명단은 같은 학교에 등록하고 명단 표시를 켠 성인 회원끼리만 확인해요.')
+    expect(SOURCE).toContain('별도 참여 신청이나 승인 없이 정확한 사람 찾기를 바로 이용할 수 있어요.')
   })
 
   it('학교 검색과 삭제·비공개 문의 경로를 유지한다', () => {

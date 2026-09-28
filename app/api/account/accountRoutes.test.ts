@@ -38,8 +38,9 @@ describe('PHASE 10B account API boundaries', () => {
     expect(profile).not.toMatch(/owner_user_id\s*:/)
     expect(instagram).toContain("rpc('update_own_connected_instagram_handle'")
     expect(instagram).not.toMatch(/(owner_user_id|profile_id|user_id)\s*:/)
-    expect(memberships).toContain("rpc('add_own_school_membership_with_class_history'")
+    expect(memberships).toContain("rpc('add_own_school_membership_with_roster'")
     expect(memberships).toContain('requested_grade_classes: parsed.data.grade_classes')
+    expect(memberships).toContain('requested_roster_consent: parsed.data.show_in_school_roster')
     expect(memberships).not.toMatch(/owner_user_id\s*:/)
     expect(memberships).not.toMatch(/profile_id\s*:/)
     expect(memberships).not.toMatch(/school_type\s*:/)
@@ -66,6 +67,14 @@ describe('PHASE 10B account API boundaries', () => {
     expect(memberships).toContain('}).strict()')
     expect(memberships).not.toContain('requested_class_number')
     expect(memberships).not.toContain('class_number: z.number().int().min(1).max(100).nullable()')
+    expect(memberships).toContain('show_in_school_roster: z.boolean()')
+  })
+
+  it('학교 명단 표시는 owner RPC로 즉시 켜고 끈다', () => {
+    expect(memberships).toContain('export async function PATCH')
+    expect(memberships).toContain("rpc('set_own_school_roster_visibility'")
+    expect(memberships).toContain('target_membership_id: parsed.data.membership_id')
+    expect(memberships).toContain('requested_visible: parsed.data.visible')
   })
 
   it('public soft launch와 controlled beta를 분리된 server access 경로로 평가한다',()=>{

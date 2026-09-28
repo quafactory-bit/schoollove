@@ -17,7 +17,7 @@ function Fixture() {
   globals.refreshFixture = () => setRows(globals.savedRows)
   const membership: SchoolMembership = {
     id: '00000000-0000-4000-8000-000000000001', school_id: '00000000-0000-4000-8000-000000000002',
-    graduation_year: 2010, class_number: null, class_history: rows,
+    graduation_year: 2010, class_number: null, class_history: rows, roster_visible: true,
     school: { id: '00000000-0000-4000-8000-000000000002', school_name: 'Synthetic School', school_type: kind, sido: 'Test', sigungu: 'Test', slug: 'synthetic-school' },
   }
   if (account) return <AccountClient key={version}
