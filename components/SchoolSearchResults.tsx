@@ -67,7 +67,7 @@ export default function SchoolSearchResults() {
       <h1 className="mb-5 mt-3 text-3xl font-bold">우리 학교 찾기</h1>
       <SearchBar variant="search" className="sl-search-form" initialQuery={query} onFullSearch={runSearch} />
       <p className="mt-3 rounded-lg bg-white px-4 py-3 text-xs leading-5 text-gray-500">
-        학교 이름과 지역 등 공개 학교 정보만 찾아요. 사람 찾기 이용 여부는 내 계정의 초대 안내에서 확인해 주세요.
+        학교 이름과 지역 등 공개 학교 정보를 찾아요. 가입 후 학교를 등록하고 명단 표시를 켜면 정확한 사람 찾기를 바로 이용할 수 있어요.
       </p>
 
       {status === 'idle' && (

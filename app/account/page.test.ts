@@ -24,10 +24,11 @@ describe('/account private management UI', () => {
     }
   })
 
-  it('생년월일 비저장과 기본 비공개를 명시한다', () => {
-    expect(client).toContain('프로필은 기본 비공개입니다.')
+  it('생년월일 비저장과 학교 명단 공개 범위를 명시한다', () => {
+    expect(client).toContain('학교에서 나를 표시하기')
+    expect(client).toContain('같은 학교에 등록하고 명단 공개에 동의한 만 19세 이상 회원')
     expect(client).toContain('원본 생년월일은 DB나 로그에 저장하지 않습니다')
-    expect(client).toContain('사람 검색이나 공개 화면에 표시되지 않습니다')
+    expect(client).toContain('공개 인터넷·검색엔진·인스타그램에는 표시되지 않습니다')
   })
 
   it('제한 베타·연결·메시지 CTA를 공개 계정 화면에서 제거한다',()=>{
@@ -40,7 +41,7 @@ describe('/account private management UI', () => {
     expect(client).toContain('onboardingComplete=state.adultEligible&&state.consentsComplete&&Boolean(state.profile)&&state.memberships.length>0')
     expect(client).toContain('온보딩 진행 상태 보기')
     expect(client).toContain('{onboardingCompleted*20}%')
-    expect(client).toContain('비공개 계정 준비 완료')
+    expect(client).toContain('계정 준비 완료')
   })
 
   it('기존 account state membership을 별도 조회 없이 내 학교 첫 가치로 전달한다',()=>{
@@ -79,28 +80,18 @@ describe('/account private management UI', () => {
     expect(client).toContain('className={`schoollove-dark-action sticky bottom-24')
   })
 
-  it('authenticated account에서만 token을 invite-onboarding API에 제출한다',()=>{
-    expect(client).toContain('사람 찾기 초대 등록')
-    expect(client).toContain("fetch('/api/beta/onboarding/claim'")
-    expect(client).toContain('JSON.stringify({token:inviteToken})')
-    expect(client).toContain("if(inviteBusy)return")
-    expect(client).toContain('inviteBusy||inviteToken.trim().length<24')
-    expect(client).toContain("type=\"password\"")
-    expect(client).toContain("autoComplete=\"off\"")
-    expect(client).not.toMatch(/localStorage|searchParams.*invite|console\.(log|error).*invite/i)
+  it('사람 찾기 초대·참여 신청·운영자 승인 UI를 제거한다',()=>{
+    expect(client).not.toContain('사람 찾기 초대 등록')
+    expect(client).not.toContain("fetch('/api/beta/onboarding/claim'")
+    expect(client).not.toContain("fetch('/api/beta/onboarding/finalize'")
+    expect(client).not.toContain('이용 승인 대기 중')
   })
 
-  it('beta invite success와 coarse failure 상태를 토큰 반사 없이 표시한다',()=>{
-    for(const state of ['ONBOARDING_CLAIMED','PENDING_REVIEW','ACTIVE','ALREADY_REDEEMED','UNAVAILABLE','INVALID','PROGRAM_FULL'])expect(client).toContain(state)
-    expect(client).toContain("if(success){setInviteToken('');router.refresh()}")
-    expect(client).not.toContain('setInviteStatus(inviteToken')
-  })
-
-  it('claim과 finalize UX를 분리하고 pending review 전에는 beta feature CTA를 만들지 않는다',()=>{
-    expect(client).toContain('초대 확인 완료')
-    expect(client).toContain("fetch('/api/beta/onboarding/finalize'")
-    expect(client).toContain('사람 찾기 참여 신청 완료')
-    expect(client).not.toContain('href="/people/search"')
+  it('학교 명단 표시는 기본 체크지만 해제한 채 학교를 등록할 수 있다',()=>{
+    expect(client).toContain('useState(true)')
+    expect(client).toContain('checked={schoolRosterConsent}')
+    expect(client).toContain('show_in_school_roster:schoolRosterConsent')
+    expect(client).toContain('체크를 풀어도 학교는 등록할 수 있습니다.')
   })
 
 })

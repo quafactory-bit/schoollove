@@ -37,11 +37,8 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
   const [selectedSchoolType,setSelectedSchoolType]=useState<SchoolType|null>(null)
   const [graduationYear,setGraduationYear]=useState('')
   const [gradeClassValues,setGradeClassValues]=useState<Record<number,string>>({})
+  const [schoolRosterConsent,setSchoolRosterConsent]=useState(true)
   const [activeSchool,setActiveSchool]=useState(-1)
-  const [inviteToken,setInviteToken]=useState('')
-  const [inviteBusy,setInviteBusy]=useState(false)
-  const [inviteStatus,setInviteStatus]=useState('')
-  const [inviteError,setInviteError]=useState(false)
   const schools=useSchoolAutocomplete(schoolQuery)
   const deletionBlocked=state.deletionStatus!==null
   const inviteOnboardingAccess=betaOnboardingState==='claimed'
@@ -75,72 +72,6 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     setSchoolId(school.id);setSelectedSchoolType(school.school_type);setGradeClassValues({});setSchoolQuery(`${school.school_name} · ${school.school_type} · ${school.sido} ${school.sigungu}`);setActiveSchool(-1)
   }
 
-  async function redeemBetaInvite(event:React.FormEvent<HTMLFormElement>){
-    event.preventDefault()
-    if(inviteBusy)return
-    setInviteBusy(true);setInviteStatus('');setInviteError(false)
-    try{
-      const response=await fetch('/api/beta/onboarding/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:inviteToken})})
-      const result=await response.json().catch(()=>({})) as {status?:string;error?:string}
-      if(!response.ok){
-        setInviteStatus(result.error==='INVALID_INVITE'?'초대 토큰 형식을 확인해 주세요.':result.error==='AUTH_REQUIRED'?'로그인 세션을 다시 확인해 주세요.':'초대를 확인할 수 없습니다.')
-        setInviteError(true);return
-      }
-      const messages:Record<string,string>={
-        ONBOARDING_CLAIMED:'초대 확인 완료. 성인 확인, 필수 동의, 프로필과 대상 학교 등록을 진행해 주세요.',
-        PENDING_REVIEW:'초대를 등록했습니다. 이용 승인이 완료되면 초대 기능을 사용할 수 있습니다.',
-        ACTIVE:'초대를 등록했습니다. 초대 기능을 사용할 수 있습니다.',
-        ALREADY_REDEEMED:'이미 등록한 초대입니다.',
-        ADULT_CONSENT_REQUIRED:'성인 확인과 필수 동의를 먼저 완료해 주세요.',
-        IDENTITY_MISMATCH:'이 계정에서 사용할 수 없는 초대입니다.',
-        PROGRAM_FULL:'현재 초대 참여 인원이 모두 찼습니다.',
-        PROGRAM_UNAVAILABLE:'현재 사용할 수 없는 초대입니다.',
-        PROGRAM_CONTRACT_UNAVAILABLE:'현재 사용할 수 없는 초대입니다.',
-        WAITLIST_DISABLED:'현재 참여 신청을 접수할 수 없습니다.',
-        UNAVAILABLE:'유효하지 않거나 만료되었거나 이미 사용된 초대입니다.',
-        INVALID:'초대 토큰 형식을 확인해 주세요.',
-        ACCESS_DENIED:'이 계정으로 초대를 등록할 수 없습니다.',
-      }
-      const success=['ONBOARDING_CLAIMED','PENDING_REVIEW','ACTIVE','ALREADY_REDEEMED'].includes(result.status??'')
-      setInviteStatus(messages[result.status??'']??'초대를 등록할 수 없습니다.')
-      setInviteError(!success)
-      if(success){setInviteToken('');router.refresh()}
-    }catch{setInviteStatus('네트워크 연결을 확인한 뒤 다시 시도해 주세요.');setInviteError(true)}
-    finally{setInviteBusy(false)}
-  }
-
-  async function finalizeBetaOnboarding(){
-    if(inviteBusy)return
-    setInviteBusy(true);setInviteStatus('');setInviteError(false)
-    try{
-      const response=await fetch('/api/beta/onboarding/finalize',{method:'POST'})
-      const result=await response.json().catch(()=>({})) as {status?:string;error?:string}
-      if(!response.ok){
-        setInviteStatus(result.error==='ONBOARDING_REQUIRED'?'성인 확인, 필수 동의, 프로필과 대상 학교 등록을 모두 완료해 주세요.':'사람 찾기 참여 신청을 완료할 수 없습니다.')
-        setInviteError(true);return
-      }
-      setInviteStatus('사람 찾기 참여 신청 완료. 이용 승인이 완료되면 사람 찾기와 연결 요청을 사용할 수 있습니다.')
-      router.refresh()
-    }catch{setInviteStatus('네트워크 연결을 확인한 뒤 다시 시도해 주세요.');setInviteError(true)}
-    finally{setInviteBusy(false)}
-  }
-
-  const optionalBetaEnrollment = launch.registrationEnabled && betaOnboardingState === 'none'
-  const betaInvitePanel = (
-    <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5" aria-label="사람 찾기 초대 등록">
-      <h2 className="text-lg font-bold text-gray-950">사람 찾기 · 선택 참여</h2>
-      <p className="mt-2 text-sm leading-6 text-gray-600">프로필과 학교 등록 후, 초대 안내에서 사람 찾기 이용 상태를 확인해 주세요.</p>
-      {launch.registrationEnabled ? <p className="mt-2 text-sm text-gray-600">초대가 없어도 내 계정에서 성인 확인, 동의, 내 프로필과 학교 이력을 등록할 수 있습니다.</p> : null}
-      <p className="mt-2 text-sm leading-6 text-gray-600">받은 초대 코드를 입력해 주세요. 코드는 주소나 브라우저에 저장하지 않아요.</p>
-      {betaOnboardingState==='claimed'?<div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900"><p className="font-semibold">초대 확인 완료</p><p className="mt-1 leading-6">아래 가입 항목을 완료한 뒤 사람 찾기 참여를 신청해 주세요.</p>{onboardingComplete?<button type="button" disabled={inviteBusy} onClick={()=>void finalizeBetaOnboarding()} className="schoollove-dark-action schoollove-focus mt-3 min-h-12 rounded-xl bg-gray-950 px-4 py-3 font-semibold text-white disabled:opacity-40">{inviteBusy?'신청 중…':'사람 찾기 참여 신청 완료'}</button>:null}</div>:betaOnboardingState==='pending_review'?<p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">사람 찾기 참여 신청 완료 · 이용 승인 대기 중</p>:betaOnboardingState==='active'?<p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">사람 찾기 참여 승인 완료</p>:<form className="mt-4 space-y-3" onSubmit={redeemBetaInvite}>
-        <label htmlFor="beta-invite-token" className="block text-sm font-medium text-gray-800">초대 토큰</label>
-        <input id="beta-invite-token" type="password" required minLength={24} maxLength={256} autoComplete="off" spellCheck={false} value={inviteToken} onChange={(event)=>setInviteToken(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/>
-        <button disabled={inviteBusy||inviteToken.trim().length<24} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{inviteBusy?'초대 확인 중…':'초대 확인'}</button>
-      </form>}
-      {inviteStatus?<p role={inviteError?'alert':'status'} aria-live="polite" className={`mt-3 rounded-xl px-4 py-3 text-sm ${inviteError?'bg-red-50 text-red-900':'bg-emerald-50 text-emerald-900'}`}>{inviteStatus}</p>:null}
-    </section>
-  )
-
   return <main className="growth-journey sl-game sl-account mx-auto max-w-4xl px-5 pb-8">
     <GameHeader />
     <div className="mb-3 flex justify-end"><AccountWelcomeGuide autoShow={launch.registrationEnabled && !launch.emergencyStopped && !deletionBlocked && !onboardingComplete} adultReady={state.adultEligible} consentsReady={state.consentsComplete} profileReady={Boolean(state.profile)} schoolCount={state.memberships.length} peopleSearchEnabled={peopleSearchBetaAccess && !launch.emergencyStopped && !deletionBlocked} accountAvailable={privateProfileWritable && schoolMembershipWritable}/></div>
@@ -148,7 +79,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
       {!onboardingComplete && <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>}
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">내 계정</h1>
       <p className="mt-2 text-sm text-gray-600">Google 계정으로 로그인됨</p>
-      {launch.registrationEnabled && !launch.emergencyStopped ? <p className="mt-3 text-sm leading-6 text-gray-600">스쿨러브아이는 현재 운영 중입니다. 친구가 나를 찾을 수 있도록 이름과 학교를 등록하세요. 인스타그램주소는 내가 허용한 상대에게만 보여요.</p> : null}
+      {launch.registrationEnabled && !launch.emergencyStopped ? <p className="mt-3 text-sm leading-6 text-gray-600">스쿨러브아이는 현재 운영 중입니다. 친구가 나를 찾을 수 있도록 전체 이름과 학교를 등록하세요. 학교 명단 표시는 등록 전에 해제할 수 있고, 인스타그램주소는 내가 허용한 연결 상대에게만 보여요.</p> : null}
       {!onboardingComplete && <p className="mt-1 text-xs text-gray-500">로그인 세션은 서버에서 검증하며 만료 시 다시 로그인해야 할 수 있습니다.</p>}
     </div><button type="button" disabled={busy} onClick={async()=>{clearSchoolIntent();await fetch('/api/auth/logout',{method:'POST'}).catch(()=>undefined);router.push('/login');router.refresh()}}
       className="schoollove-focus min-h-11 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700">로그아웃</button></div>
@@ -157,9 +88,8 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     <details open={!onboardingComplete} className="mt-5"><summary className="schoollove-focus min-h-12 cursor-pointer rounded-xl border border-gray-200 px-4 py-3 font-semibold">내 계정 준비 상태</summary><section className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3" aria-label="온보딩 진행 상태">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span className="font-semibold text-gray-900">온보딩 진행</span><span>{onboardingCompleted}/5 · {onboardingCompleted*20}%</span></div>
       <Link href="/onboarding" className="schoollove-focus mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-gray-900 underline">온보딩 진행 상태 보기</Link>
-      {onboardingComplete?<div className="mt-3 rounded-xl bg-emerald-50 px-4 py-3"><p className="font-semibold text-emerald-900">비공개 계정 준비 완료</p><p className="mt-1 text-xs leading-5 text-emerald-800">성인 확인, 필수 동의, 프로필과 학교 이력을 모두 저장했습니다.</p></div>:null}
+      {onboardingComplete?<div className="mt-3 rounded-xl bg-emerald-50 px-4 py-3"><p className="font-semibold text-emerald-900">계정 준비 완료</p><p className="mt-1 text-xs leading-5 text-emerald-800">성인 확인, 필수 동의, 프로필과 학교 이력을 모두 저장했습니다. 같은 학교 명단과 정확한 사람 찾기를 바로 이용할 수 있습니다.</p></div>:null}
     </section></details>
-    {!optionalBetaEnrollment && !onboardingComplete ? betaInvitePanel : null}
       {!onboardingComplete && <MySchoolsPanel memberships={state.memberships} classHistoryWritable={classHistoryWritable} peopleSearchEnabled={peopleSearchBetaAccess && !launch.emergencyStopped && !deletionBlocked}/>}
     {!onboardingComplete && <p className="mt-5 text-sm font-semibold text-[var(--schoollove-game-accent)]">{!state.adultEligible?'다음 단계 · 성인 확인':!state.consentsComplete?'다음 단계 · 필수 동의':!state.profile?'다음 단계 · 내 프로필':'다음 단계 · 내가 다닌 학교 등록'}</p>}
     <SchoolSelection owner={selectionOwner} registeredSlugs={state.memberships.flatMap(m => m.school?.slug ? [m.school.slug] : [])} writable={schoolMembershipWritable && Boolean(state.profile) && state.memberships.length < membershipLimit} hasInput={Boolean(schoolQuery || schoolId || graduationYear || Object.values(gradeClassValues).some(Boolean))} onSelect={school => {setSchoolId(school.id);setSelectedSchoolType(school.school_type);setSchoolQuery(`${school.school_name} · ${SCHOOL_TYPE_LABELS[school.school_type]} · ${school.sido} ${school.sigungu}`)}} />
@@ -183,7 +113,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
           ['terms',<> <Link href="/terms" className="underline">이용약관</Link>에 동의합니다.</>],
           ['privacy_collection',<> 위 수집 항목·이용 목적·보유기간·동의 거부 안내를 확인하고 <Link href="/privacy#collection" className="underline">필수 개인정보 수집·이용</Link>에 동의합니다.</>],
           ['adult_confirmation',<>만 19세 이상이며 본인 정보만 등록합니다.</>],
-          ['private_by_default',<>개인 정보는 기본 비공개이며 공개 명단에 표시되지 않습니다. 별도 승인된 사람 찾기에서는 정확히 일치하는 조건으로만 연결을 요청할 수 있음을 확인했습니다.</>],
+          ['private_by_default',<>소개·인스타그램주소 등 프로필 정보는 기본 비공개이며, 학교 등록 단계에서 명단 표시 여부를 선택하고 정확히 일치하는 조건으로만 연결을 요청할 수 있음을 확인했습니다.</>],
         ] as const).map(([key,label])=><label key={key} className="flex min-h-11 items-start gap-3 text-sm text-gray-700"><input type="checkbox" required checked={consents[key]} onChange={(event)=>setConsents((current)=>({...current,[key]:event.target.checked}))} className="mt-0.5 h-5 w-5"/><span>{label}</span></label>)}
         <button disabled={busy||!privateProfileWritable||!state.adultEligible} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">필수 동의 4개 기록</button>
       </form>}
@@ -191,9 +121,9 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
 
     <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">3. 내 프로필</h2>
       <details className="mt-3 rounded-xl border border-gray-200 p-4"><summary className="schoollove-focus cursor-pointer font-semibold">선택 정보 수집·이용 안내 · 입력하지 않아도 가입할 수 있어요</summary><div className="mt-3"><CollectionNotice optional /></div></details>
-      <p className="mt-2 text-sm leading-6 text-gray-600">프로필은 기본 비공개입니다. 승인된 사람 찾기에서는 정확한 조건만 확인하며, 안부 수락 전 이름은 가립니다. 연결 후 표시명이 보이며 인스타그램주소는 별도 기능 권한과 상대별 공개 승인 없이는 보이지 않습니다. 인스타그램주소는 사람 검색이나 공개 화면에 표시되지 않습니다. 프로필 사진은 받지 않습니다.</p>
+      <p className="mt-2 text-sm leading-6 text-gray-600">프로필의 소개와 인스타그램주소는 비공개입니다. 학교 등록 단계에서 명단 표시에 직접 동의하면 입력한 전체 이름·졸업연도·학년별 반이 같은 학교 명단 참여자에게 표시됩니다. 이 이름은 신분증으로 확인한 실명이 아니라 본인이 입력한 이름입니다. 인스타그램주소는 연결 후 상대별 공개 승인 없이는 보이지 않습니다. 프로필 사진은 받지 않습니다.</p>
       <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();await submit('/api/account/profile',{display_name:displayName,instagram_handle:instagram||null,introduction:introduction||null})}}>
-        <label htmlFor="display-name" className="block text-sm font-medium text-gray-800">내 이름</label><input id="display-name" required maxLength={50} disabled={!privateProfileWritable} value={displayName} onChange={(event)=>setDisplayName(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
+        <label htmlFor="display-name" className="block text-sm font-medium text-gray-800">전체 이름</label><input id="display-name" required minLength={2} maxLength={50} disabled={!privateProfileWritable} value={displayName} onChange={(event)=>setDisplayName(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
         <label htmlFor="instagram" className="block text-sm font-medium text-gray-800">인스타그램주소 (아이디만 입력·선택·비공개)</label><input id="instagram" maxLength={30} pattern="[A-Za-z0-9._]{1,30}" disabled={!privateProfileWritable&&!instagramHandleSetWritable} value={instagram} onChange={(event)=>setInstagram(event.target.value.replace(/^@/,''))} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
         <label htmlFor="introduction" className="block text-sm font-medium text-gray-800">소개 (선택·비공개)</label><textarea id="introduction" maxLength={300} disabled={!privateProfileWritable} value={introduction} onChange={(event)=>setIntroduction(event.target.value)} className="schoollove-focus min-h-24 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
         <button disabled={busy||!privateProfileWritable||!state.adultEligible||!state.consentsComplete} className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{state.profile?'내 프로필 수정 저장':'내 프로필 저장'}</button>
@@ -203,8 +133,8 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     </section>
 
     <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">4. 내 학교 이력 <span className="text-sm font-normal text-gray-500">({state.memberships.length}/{membershipLimit})</span></h2>
-      {state.memberships.length===0?<p className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">아직 저장한 학교 이력이 없습니다.</p>:<ul className="mt-3 space-y-2">{state.memberships.map((membership)=><li key={membership.id} className="flex items-start justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm"><div className="min-w-0 break-words"><p>{membership.school?.school_name??'학교'} · {membership.school?.school_type?SCHOOL_TYPE_LABELS[membership.school.school_type as SchoolType]??membership.school.school_type:'학교 유형 미상'} · {membership.school?.sido} {membership.school?.sigungu}</p><p className="mt-1">{membership.graduation_year}년 졸업</p>{membership.class_history.length>0?<p className="mt-1 text-gray-600">{formatGradeClassHistory(membership.class_history)}</p>:null}</div><button type="button" disabled={busy} onClick={()=>void submit('/api/account/memberships',{membership_id:membership.id},'DELETE','학교 이력을 삭제했습니다.')} className="schoollove-focus min-h-11 shrink-0 text-red-700">삭제</button></li>)}</ul>}
-      <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();if(!schoolId){setStatus('검색 결과에서 학교를 선택해 주세요.');setIsError(true);return}if(await submit('/api/account/memberships',{school_id:schoolId,graduation_year:Number(graduationYear),grade_classes:buildGradeClassPayload(gradeClassValues)},'POST','학교 이력을 저장했습니다.')){setSchoolQuery('');setSchoolId('');setSelectedSchoolType(null);setGraduationYear('');setGradeClassValues({})}}}>
+      {state.memberships.length===0?<p className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">아직 저장한 학교 이력이 없습니다.</p>:<ul className="mt-3 space-y-2">{state.memberships.map((membership)=><li key={membership.id} className="flex items-start justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm"><div className="min-w-0 break-words"><p>{membership.school?.school_name??'학교'} · {membership.school?.school_type?SCHOOL_TYPE_LABELS[membership.school.school_type as SchoolType]??membership.school.school_type:'학교 유형 미상'} · {membership.school?.sido} {membership.school?.sigungu}</p><p className="mt-1">{membership.graduation_year}년 졸업</p>{membership.class_history.length>0?<p className="mt-1 text-gray-600">{formatGradeClassHistory(membership.class_history)}</p>:null}<p className={`mt-2 font-semibold ${membership.roster_visible?'text-emerald-700':'text-gray-600'}`}>{membership.roster_visible?'학교 명단에 표시 중':'학교 명단에서 숨김'}</p><button type="button" disabled={busy} onClick={()=>void submit('/api/account/memberships',{membership_id:membership.id,visible:!membership.roster_visible},'PATCH',membership.roster_visible?'학교 명단에서 숨겼습니다.':'학교 명단 표시를 시작했습니다.')} className="schoollove-focus mt-1 min-h-11 text-sm font-semibold underline">{membership.roster_visible?'명단에서 숨기기':'명단에 다시 표시하기'}</button></div><button type="button" disabled={busy} onClick={()=>void submit('/api/account/memberships',{membership_id:membership.id},'DELETE','학교 이력을 삭제했습니다.')} className="schoollove-focus min-h-11 shrink-0 text-red-700">삭제</button></li>)}</ul>}
+      <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();if(!schoolId){setStatus('검색 결과에서 학교를 선택해 주세요.');setIsError(true);return}if(await submit('/api/account/memberships',{school_id:schoolId,graduation_year:Number(graduationYear),grade_classes:buildGradeClassPayload(gradeClassValues),show_in_school_roster:schoolRosterConsent},'POST',schoolRosterConsent?'학교 이력을 저장하고 학교 명단 표시를 시작했습니다.':'학교 이력을 비공개로 저장했습니다.')){setSchoolQuery('');setSchoolId('');setSelectedSchoolType(null);setGraduationYear('');setGradeClassValues({});setSchoolRosterConsent(true)}}}>
         <label htmlFor="school-query" className="block text-sm font-medium text-gray-800">학교 검색</label>
         <input id="school-query" role="combobox" aria-expanded={schoolQuery.trim().length>=2&&schools.results.length>0} aria-controls="school-options" aria-activedescendant={activeSchool>=0?`school-option-${activeSchool}`:undefined} autoComplete="off" value={schoolQuery}
           onChange={(event)=>{setSchoolQuery(event.target.value);setSchoolId('');setSelectedSchoolType(null);setGradeClassValues({});setActiveSchool(-1)}}
@@ -213,6 +143,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
         {schoolQuery.trim().length>=2&&schools.status==='ok'&&schools.results.length>0?<div id="school-options" role="listbox" className="max-h-64 overflow-auto rounded-xl border border-gray-200 bg-white p-1">{schools.results.map((school,index)=><button id={`school-option-${index}`} role="option" aria-selected={activeSchool===index} type="button" key={school.id} onMouseDown={(event)=>event.preventDefault()} onClick={()=>chooseSchool(index)} className={`block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm ${activeSchool===index?'bg-gray-100':'hover:bg-gray-50'}`}>{school.school_name} · {school.school_type} · {school.sido} {school.sigungu}</button>)}</div>:null}
         <label className="block text-sm text-gray-700">졸업연도<input type="number" min={1900} max={currentYear} required value={graduationYear} onChange={(event)=>setGraduationYear(event.target.value)} className="schoollove-focus mt-1 min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/></label>
         {selectedGradeNumbers.length>0?<fieldset className="space-y-3 rounded-xl border border-gray-200 p-4"><legend className="px-1 text-sm font-semibold text-gray-900">학년별 반 이력 (선택)</legend><p className="text-xs leading-5 text-gray-600">기억나는 학년의 반만 입력해도 됩니다.</p><div className="grid gap-3 sm:grid-cols-2">{selectedGradeNumbers.map((grade)=><label key={grade} className="text-sm text-gray-700">{grade}학년 반<input type="number" min={1} max={100} value={gradeClassValues[grade]??''} onChange={(event)=>setGradeClassValues((current)=>({...current,[grade]:event.target.value}))} className="schoollove-focus mt-1 min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3"/></label>)}</div></fieldset>:null}
+        <div className="rounded-xl border border-pink-200 bg-pink-50 p-4"><p className="text-sm font-semibold text-gray-950">학교에서 나를 표시하기</p><p className="mt-2 text-xs leading-5 text-gray-700">체크를 유지하면 입력한 전체 이름, 졸업연도, 저장한 학년별 반이 같은 학교에 등록하고 명단 공개에 동의한 만 19세 이상 회원에게 자동 표시됩니다. 공개 인터넷·검색엔진·인스타그램에는 표시되지 않습니다. 학교 이력을 삭제하거나 위의 ‘명단에서 숨기기’를 누를 때까지 표시됩니다.</p><label className="mt-3 flex min-h-11 items-start gap-3 text-sm text-gray-800"><input type="checkbox" checked={schoolRosterConsent} onChange={(event)=>setSchoolRosterConsent(event.target.checked)} className="mt-0.5 h-5 w-5"/><span>학교 명단에 전체 이름·졸업연도·저장한 반을 표시합니다.</span></label><p className="mt-2 text-xs leading-5 text-gray-600">체크를 풀어도 학교는 등록할 수 있습니다. 이 경우 명단에 표시되지 않으며 학교 명단 열람과 사람 찾기는 이용할 수 없습니다.</p></div>
         <button disabled={busy||!schoolMembershipWritable||!state.profile||state.memberships.length>=membershipLimit||!schoolId} className="schoollove-focus min-h-12 rounded-xl border border-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 disabled:opacity-40">학교 이력 추가</button>
       </form>
     </section>
@@ -220,7 +151,6 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     <section className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-5"><h2 className="text-lg font-bold text-red-950">계정 탈퇴 요청</h2><p className="mt-2 text-sm leading-6 text-red-900">요청 즉시 추가 개인 정보 변경을 차단합니다. 운영 확인 후 공개 계정 데이터를 먼저 삭제하고 Auth identity 실제 삭제를 요청하는 2단계 절차를 사용합니다. Auth 삭제가 실패하면 계정은 차단된 재시도 대기 상태로 남으며 완료로 표시하지 않습니다.</p><p className="mt-2 text-xs text-red-800">처리 상태나 오류 접수는 <Link href="/contact" className="underline">운영자 문의</Link>로 알려 주세요. 완료된 비식별 처리 기록은 재시도·장애 확인 목적의 제한 기간 후 정리됩니다.</p><button type="button" disabled={busy||deletionBlocked} onClick={async()=>{if(window.confirm('탈퇴 요청 후에는 정보 변경이 차단됩니다. 계속할까요?'))await submit('/api/account/deletion-request',{confirm:true},'POST','탈퇴 요청을 접수했습니다.')}} className="schoollove-dark-action schoollove-focus mt-4 min-h-12 rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{state.deletionStatus==='pending'?'탈퇴 요청 접수됨':state.deletionStatus==='public_data_deleted'?'개인 데이터 삭제 완료 · Auth 삭제 대기':state.deletionStatus==='failed_safe'?'Auth 삭제 재시도 대기':state.deletionStatus==='auth_deletion_pending'?'Auth 삭제 처리 중':state.deletionStatus==='done'?'탈퇴 처리 완료':'계정 탈퇴 요청'}</button></section>
 
     </details>
-    {(optionalBetaEnrollment || onboardingComplete) ? <details className="mt-5"><summary className="schoollove-focus min-h-12 cursor-pointer py-3 font-semibold">사람 찾기 · 참여 상태</summary>{betaInvitePanel}</details> : null}
     <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600" aria-label="계정 도움말"><Link href="/privacy" className="underline">개인정보처리방침</Link><Link href="/terms" className="underline">이용약관</Link><Link href="/contact" className="underline">운영자 문의</Link></nav>
     {status?<p role={isError?'alert':'status'} aria-live="polite" className={`schoollove-dark-action sticky bottom-24 z-30 mt-5 rounded-xl px-4 py-3 text-sm text-white shadow-lg ${isError?'bg-red-800':'bg-gray-950'}`}>{status}</p>:null}
   </main>

@@ -12,6 +12,7 @@ function membership(overrides: Partial<SchoolMembership> = {}): SchoolMembership
     school_id: 'school-1',
     graduation_year: 2020,
     class_number: 3,
+    roster_visible: true,
     class_history: [
       { grade_number: 3, class_number: 2 },
       { grade_number: 1, class_number: 2 },
@@ -94,10 +95,10 @@ describe('private account first-value my schools', () => {
     expect(cards.map((card) => card.schoolName)).toEqual(['첫 학교', '둘째 학교'])
   })
 
-  it('0건 안내와 비공개 가치 문구를 제공하며 사람·활동·Instagram 가치를 만들지 않는다', () => {
+  it('0건 안내와 제한된 학교 명단 범위를 제공하며 가짜 활동 가치를 만들지 않는다', () => {
     expect(COMPONENT_SOURCE).toContain('학교 이력을 한 곳 등록하면')
-    expect(COMPONENT_SOURCE).toContain('학교·졸업연도·학년·반 정보는 공개 명단에 표시되지 않습니다')
-    expect(COMPONENT_SOURCE).toContain('정확히 일치하는 경우에만 비공개 매칭 조건으로 사용됩니다')
-    expect(COMPONENT_SOURCE).not.toMatch(/Instagram|인스타|[0-9]+명|활동량|동문 찾기|사람 발견/)
+    expect(COMPONENT_SOURCE).toContain('전체 이름·졸업연도·학년별 반이 같은 학교의 명단 참여자에게 표시됩니다')
+    expect(COMPONENT_SOURCE).toContain('공개 인터넷과 검색엔진에는 표시되지 않으며')
+    expect(COMPONENT_SOURCE).not.toMatch(/[0-9]+명|활동량|동문 찾기|사람 발견/)
   })
 })

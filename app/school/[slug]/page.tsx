@@ -19,6 +19,10 @@ import { SchoolJoinButton } from '@/components/growth/SchoolSelection'
 import GrowthHowItWorks from '@/components/growth/GrowthHowItWorks'
 import SchoolWorld from '@/components/game/SchoolWorld'
 import GameHeader from '@/components/game/GameHeader'
+import { getSchoolRoster, type SchoolRosterEntry } from '@/lib/schoolRoster'
+import { formatGradeClassHistory } from '@/lib/accountGradeClass'
+
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -47,12 +51,19 @@ export default async function SchoolPage({ params }: PageProps) {
   const [growth, launch] = await Promise.all([getSchoolGrowth(school.id), getPublicAccountLaunchState()])
   let isMember = false
   let peopleAccess = false
+  let rosterStatus: 'ok' | 'unavailable' | 'signed_out' = 'signed_out'
+  let roster: SchoolRosterEntry[] = []
   try {
     const auth = await getAuthenticatedServerContext()
     if (auth) {
       const { data } = await auth.client.from('profile_school_memberships').select('id').eq('owner_user_id', auth.user.id).eq('school_id', school.id).limit(1)
       isMember = Boolean(data?.length)
       peopleAccess = !launch.emergencyStopped && await hasBetaFeatureAccess(auth.client, auth.user.id, 'people_search')
+      if (isMember) {
+        const result = await getSchoolRoster(auth.client, school.id)
+        rosterStatus = result.status
+        roster = result.entries
+      }
     }
   } catch { /* Public school information stays available without a session. */ }
   const snapshot = growth.schools[0]
@@ -86,14 +97,27 @@ export default async function SchoolPage({ params }: PageProps) {
       <section className="sl-hub-join" aria-labelledby="private-account-cta">
         <h2 id="private-account-cta" className="text-lg font-bold text-schoollove-text">{isMember ? '우리 학교, 함께 키워요' : '내 학교로 등록하고 키우기'}</h2>
         <p className="mt-2 text-sm leading-6 text-schoollove-secondary">
-          첫 학교 등록으로 학교 XP를 모아요. 개인 이름·졸업연도·학년·반은 공개 명단으로 표시하지 않아요.
+          첫 학교 등록으로 학교 XP를 모아요. 명단 표시를 선택하면 전체 이름·졸업연도·학년별 반을 같은 학교의 명단 참여자끼리 확인할 수 있어요.
         </p>
         <div className="mt-5">{isMember && snapshot ? <GrowthShareButton schoolId={school.id} schoolName={school.school_name} slug={school.slug} /> : launch.state === 'open' ? <SchoolJoinButton slug={school.slug} /> : <p className="text-sm">신규 계정 시작은 현재 준비 중입니다.</p>}</div>
         {isMember && <Link href="/account#my-schools-heading" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm underline">내 학교의 최신 레벨 확인</Link>}
         {peopleAccess && <Link href="/people/search" className="schoollove-focus mt-4 inline-flex min-h-11 items-center text-sm underline">기억나는 사람 찾아보기</Link>}
-        <p className="mt-4 text-sm leading-6">학교 레벨과 사람 찾기 이용 권한은 별개예요. 친구 링크를 받아도 사람 찾기 이용 승인은 별도로 필요해요.</p>
+        <p className="mt-4 text-sm leading-6">가입과 학교 등록을 마치고 명단 표시를 켜면 별도 참여 신청이나 운영자 승인 없이 정확한 사람 찾기를 이용할 수 있어요.</p>
       </section>
       </div>
+      {isMember ? <section className="rounded-2xl border border-schoollove-border bg-schoollove-surface p-5" aria-labelledby="school-roster-heading">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--schoollove-game-accent)]">SCHOOL MEMBERS</p>
+        <h2 id="school-roster-heading" className="mt-2 text-xl font-bold text-schoollove-text">현재 가입한 사람</h2>
+        {rosterStatus === 'ok' ? roster.length > 0 ? <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          {roster.map((entry, index) => <li key={`${entry.display_name}-${entry.graduation_year}-${index}`} className="rounded-xl border border-schoollove-border bg-white px-4 py-3">
+            <p className="font-bold text-schoollove-text">{entry.display_name}</p>
+            <p className="mt-1 text-sm text-schoollove-secondary">{entry.graduation_year}년 졸업</p>
+            <p className="mt-1 text-sm text-schoollove-secondary">{entry.class_history.length > 0 ? formatGradeClassHistory(entry.class_history) : '등록한 반 없음'}</p>
+          </li>)}
+        </ul> : <p className="mt-3 text-sm text-schoollove-secondary">아직 명단 표시를 켠 가입자가 없습니다.</p>
+        : <p className="mt-3 text-sm leading-6 text-schoollove-secondary">내 계정에서 이 학교의 ‘학교에서 나를 표시하기’를 켜면 같은 학교 명단을 확인할 수 있습니다.</p>}
+        <p className="mt-4 text-xs leading-5 text-schoollove-secondary">이 명단은 같은 학교에 등록하고 명단 표시를 켠 만 19세 이상 회원에게만 보입니다. 인스타그램주소·연락처·사진은 표시하지 않습니다.</p>
+      </section> : null}
       <GrowthHowItWorks />
       {promotion ? <TodayInstagramCard promotion={promotion} /> : null}
     </main>

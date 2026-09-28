@@ -8,7 +8,7 @@ const safeText = z.string().transform((value)=>value.normalize('NFKC').trim())
   .refine((value)=>!/[\p{Cc}\p{Cf}]/u.test(value),'control characters are not allowed')
 
 const ProfileSchema = z.object({
-  display_name: safeText.pipe(z.string().min(1).max(50)),
+  display_name: safeText.pipe(z.string().min(2).max(50)),
   instagram_handle: z.string().trim().regex(/^[A-Za-z0-9._]{1,30}$/).nullable().optional(),
   introduction: safeText.pipe(z.string().max(300)).nullable().optional(),
 }).strict()
