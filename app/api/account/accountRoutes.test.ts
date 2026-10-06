@@ -77,6 +77,14 @@ describe('PHASE 10B account API boundaries', () => {
     expect(memberships).toContain('requested_visible: parsed.data.visible')
   })
 
+  it('학교 등록 성공 응답 뒤 개인정보 없는 동창 알림을 예약한다', () => {
+    expect(memberships).toContain("import { after, NextRequest, NextResponse } from 'next/server'")
+    expect(memberships).toContain('after(async () => {')
+    expect(memberships).toContain('sendSchoolmateRegistrationPush({')
+    expect(memberships.indexOf("rpc('add_own_school_membership_with_roster'")).toBeLessThan(memberships.indexOf('after(async () => {'))
+    expect(memberships.indexOf('after(async () => {')).toBeLessThan(memberships.indexOf('return NextResponse.json({ membership: data }'))
+  })
+
   it('public soft launch와 controlled beta를 분리된 server access 경로로 평가한다',()=>{
     for(const source of [eligibility,consents,profile,memberships]){
       expect(source).toContain('hasAccountOnboardingWriteAccess')

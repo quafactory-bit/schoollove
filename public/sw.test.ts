@@ -12,4 +12,15 @@ describe('PWA service worker boundary', () => {
     expect(source).not.toContain('Content-Security-Policy')
     expect(source).not.toMatch(/cache\.put|caches\.match\(request/)
   })
+
+  it('개인정보 없는 푸시를 표시하고 같은 origin 창만 재사용한다', () => {
+    expect(source).toContain("CACHE_VERSION = `${CACHE_PREFIX}v2`")
+    expect(source).toContain("self.addEventListener('push'")
+    expect(source).toContain("icon: '/icons/icon-192.png'")
+    expect(source).toContain("self.addEventListener('notificationclick'")
+    expect(source).toContain("candidate.origin === self.location.origin")
+    expect(source).toContain("clients.matchAll({ type: 'window', includeUncontrolled: true })")
+    expect(source).toContain('await existing.navigate(targetUrl)')
+    expect(source).toContain('await clients.openWindow(targetUrl)')
+  })
 })

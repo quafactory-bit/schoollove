@@ -90,3 +90,9 @@ Approved coordinate-aligned light, water and flag shimmer for the V3 hero; see t
 
 - Approved a dependency-free installable web app shell with a typed manifest, monochrome app icons, offline-only navigation fallback and platform-specific install guidance.
 - Preserved SSR, route metadata, school URLs, API/auth/DB behavior and `/admin`; web push remains Phase 2. See `../decisions/2026-10-06-pwa-phase1-installable-shell.md`.
+
+## 2026-10-06 — PWA Phase 2 동창 등록 웹 푸시 승인
+
+- 사용자 동작 뒤에만 알림 권한을 요청하고, 같은 학교·졸업연도의 신규 동창 등록을 개인정보 없이 알리는 계약을 추가했다.
+- `push_subscriptions` 테이블 1개, server-only service-role API, 구독별 24시간 제한, 이벤트당 최대 500건과 만료 구독 삭제를 승인했다.
+- Supabase 원격 적용, VAPID 환경변수, Production 배포는 로컬 검증 뒤 별도 적용한다.

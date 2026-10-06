@@ -1,5 +1,5 @@
 /** Public explanatory copy only. This revision does not re-label historical consent records. */
-export const PRIVACY_NOTICE_REVISION = '2026-09-28'
+export const PRIVACY_NOTICE_REVISION = '2026-10-06'
 
 export const PRIVATE_PROFILE_COLLECTION = [
   {
@@ -41,8 +41,14 @@ export const OPTIONAL_PROFILE_COLLECTION = [
     purpose: '본인 계정 관리 및 기능 권한과 연결 상대별 별도 승인에 따른 주소 공유',
     retention: '주소 삭제, 프로필 삭제 또는 계정 탈퇴에 따른 개인 데이터 삭제 시까지. 상대별 공개 승인을 취소하면 그 상대에게 더 이상 표시하지 않습니다.',
   },
+  {
+    title: '동창 알림 · 선택',
+    items: '푸시 알림 구독 정보(브라우저 푸시 주소와 암호화 키), 브라우저 정보',
+    purpose: '같은 학교·졸업연도 동창 등록 알림 발송',
+    retention: '알림 해지 또는 회원 탈퇴 시 즉시 삭제',
+  },
 ] as const
 
 export const COLLECTION_REFUSAL = '개인정보 수집·이용 동의를 거부할 수 있습니다. 필수 정보 수집·이용에 동의하지 않으면 비공개 프로필과 학교 이력을 등록할 수 없습니다. 공개 학교 기본 정보는 동의 없이 조회할 수 있습니다.'
-export const OPTIONAL_COLLECTION_REFUSAL = '소개·학년·반·인스타그램주소는 입력하지 않아도 계정과 기본 프로필을 이용할 수 있습니다. 선택 정보는 입력·저장한 항목만 처리하며, 내 계정에서 지울 수 있습니다.'
+export const OPTIONAL_COLLECTION_REFUSAL = '소개·학년·반·인스타그램주소·동창 알림은 이용하지 않아도 계정과 기본 프로필을 이용할 수 있습니다. 선택 정보는 입력·저장하거나 직접 켠 항목만 처리하며, 내 계정에서 지우거나 끌 수 있습니다.'
 export const COLLECTION_SCOPE_NOTICE = '학교 등록 화면의 “학교에서 나를 표시하기”를 유지하면 전체 이름·졸업연도·저장한 반이 같은 학교의 명단 참여자에게 표시됩니다. 체크를 풀어도 학교는 등록할 수 있습니다. 인스타그램주소는 연결 상대별로 별도 승인해야 표시됩니다.'

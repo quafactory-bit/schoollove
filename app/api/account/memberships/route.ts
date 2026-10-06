@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { isFutureGraduationYear } from '@/lib/policy/operations'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
 import { getSafeMembershipError, hasAccountOnboardingWriteAccess } from '@/lib/publicAccountLaunch'
 import { GROWTH_VISIT_COOKIE, GROWTH_TOKEN_PATTERN } from '@/lib/growthReferral'
+import { sendSchoolmateRegistrationPush } from '@/lib/push/send'
 
 const GradeClassSchema = z.object({
   grade_number: z.number().int().min(1).max(6),
@@ -72,6 +73,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '학교 이력을 저장할 수 없습니다.' }, { status: 500 })
   }
   await syncOnboardingProgressSafely(auth.client,auth.user.id,'direct')
+  after(async () => {
+    await sendSchoolmateRegistrationPush({
+      actorUserId: auth.user.id,
+      schoolId: parsed.data.school_id,
+      graduationYear: parsed.data.graduation_year,
+    })
+  })
   return NextResponse.json({ membership: data }, { status: 201 })
 }
 

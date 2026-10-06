@@ -94,4 +94,10 @@ describe('/account private management UI', () => {
     expect(client).toContain('체크를 풀어도 학교는 등록할 수 있습니다.')
   })
 
+  it('학교 등록 성공 뒤 소프트 알림 안내와 계정 알림 설정을 제공한다',()=>{
+    expect(client).toContain('setShowPushPrompt(true)')
+    expect(client).toContain('<SchoolmatePushPrompt onDismiss={() => setShowPushPrompt(false)} />')
+    expect(client).toContain('<PushNotificationSettings />')
+  })
+
 })

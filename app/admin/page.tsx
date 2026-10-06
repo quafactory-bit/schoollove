@@ -10,6 +10,7 @@ import { ReportsList } from './_components/reports-list';
 import { DeleteRequestsList } from './_components/delete-requests-list';
 import { EditRequestsList } from './_components/edit-requests-list';
 import { getDashboardStats, getRecentRequests } from '@/lib/api/admin';
+import { PushTestButton } from './_components/push-test-button';
 
 export const metadata = {
   title: 'Admin - SchoolLovei',
@@ -72,6 +73,11 @@ export default async function AdminDashboardPage() {
               iconColorClass="text-red-600"
             />
           </div>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-black mb-4">웹 푸시</h2>
+          <PushTestButton />
         </section>
 
         <section>

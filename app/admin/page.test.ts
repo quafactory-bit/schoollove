@@ -24,4 +24,9 @@ describe('app/admin/page.tsx — PHASE 7A COMPLETION PATCH: 수정 요청 노출
     expect(PAGE_SOURCE).toMatch(/<ReportsList reports=\{reports\}/)
     expect(PAGE_SOURCE).toMatch(/<DeleteRequestsList requests=\{deleteRequests\} \/>/)
   })
+
+  it('4. 기존 관리자 경계 안에서 테스트 푸시 버튼을 렌더한다', () => {
+    expect(PAGE_SOURCE).toContain("import { PushTestButton } from './_components/push-test-button'")
+    expect(PAGE_SOURCE).toContain('<PushTestButton />')
+  })
 })

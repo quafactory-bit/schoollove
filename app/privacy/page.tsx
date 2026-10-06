@@ -55,6 +55,7 @@ export default function PrivacyPage() {
           <h3 className="mt-6 mb-3 font-bold text-gray-950">선택 정보</h3>
           <CollectionNotice optional />
           <p className="mt-3">선택 정보를 입력하지 않아도 기본 계정을 이용할 수 있습니다. 각 선택 항목은 내 계정에서 삭제할 수 있으며, 삭제 요청을 위한 새로운 개인정보 제공을 일률적으로 요구하지 않습니다.</p>
+          <p className="mt-3">동창 알림을 직접 켜면 푸시 알림 구독 정보인 브라우저 푸시 주소와 암호화 키, 브라우저 정보를 처리합니다. 같은 학교·졸업연도 동창 등록 알림 발송에만 이용하며, 알림 해지 또는 회원 탈퇴 시 즉시 삭제합니다. 알림에는 이름·인스타그램주소·반·계정 식별정보를 넣지 않습니다.</p>
         </section>
 
         <section id="authentication" className="scroll-mt-8">
@@ -99,7 +100,7 @@ export default function PrivacyPage() {
             <div className="rounded-xl border border-gray-200 p-4">
               <dt className="font-bold text-gray-950">Upstash, Inc. · 요청 제한</dt>
               <dd className="mt-2">연락처: <a className="underline" href="mailto:support@upstash.com">support@upstash.com</a></dd>
-              <dd>항목·목적: IP 주소 또는 IP·계정 식별정보의 해시와 요청 카운터를 이용한 부정 이용 방지</dd>
+              <dd>항목·목적: IP 주소 또는 IP·계정 식별정보의 해시와 요청 카운터를 이용한 부정 이용 방지, 푸시 주소 해시를 이용한 구독별 24시간 알림 빈도 제한</dd>
               <dd>시기·방법: 요청 제한을 적용하는 기능의 요청 시 서버에서 암호화 통신으로 전송</dd>
               <dd>국가: 운영 데이터베이스에서 확인된 저장 지역은 일본 도쿄(AWS ap-northeast-1)입니다. 추가 읽기 복제 지역의 유무는 확인 중입니다.</dd>
               <dd>보유기간: 요청 카운터는 만료시간에 따라 제거합니다. 무료 티어를 사용하며, 별도 로그·백업 보유기간은 확인 중입니다.</dd>
