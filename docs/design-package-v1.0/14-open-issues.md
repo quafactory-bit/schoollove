@@ -91,10 +91,10 @@ P1은 학교 Search + 실제 학교 클릭 로그까지다.
 ## 7. Sharing / Platform Open
 
 - Kakao share
-- PWA
+- PWA Phase 2 web push
 - 앱 전환
 
-v1.0 P1 범위 아님.
+설치 가능한 PWA shell은 2026-10-06 승인된 Phase 1 결정으로 추가했다. 웹 푸시와 앱 전환은 계속 후속 범위다.
 
 ---
 
