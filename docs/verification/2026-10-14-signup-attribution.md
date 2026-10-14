@@ -1,6 +1,6 @@
 # 가입 유입 채널 측정 결과
 
-상태: `LOCAL_VERIFIED` / Preview DB `PREVIEW_VERIFIED`. 기준: main `4fe0099`, 별도 작업 폴더 `signup-attribution`의 `codex/signup-attribution` 브랜치. 원래 작업 폴더의 SNS/PWA 변경은 보존했다.
+상태: `LOCAL_VERIFIED` / Preview DB·홈·방침 `PREVIEW_VERIFIED`. 기준: main `4fe0099`, 별도 작업 폴더 `signup-attribution`의 `codex/signup-attribution` 브랜치. 원래 작업 폴더의 SNS/PWA 변경은 보존했다.
 
 ## 구현과 변경 파일
 
@@ -52,11 +52,21 @@ UTM에는 개인 이름·아이디가 아닌 게시물용 코드만 사용해야
 - 후속 사용자 지시로 방침 반영, commit/push/Draft PR, Preview migration·배포가 승인됐다. 기존 인증·학교·PWA·패키지·lockfile·환경 파일과 Production은 변경하지 않았다.
 - Supabase `schoollove-preview` (`hukokfyphyrpfouazxhq`)에 20261014081007을 transaction과 migration 이력으로 적용했다. 열 7개, RLS 활성, policy 0개, anon/authenticated table·RPC 권한 없음, service-role INSERT·RPC 허용, 기존 owner RPC 보존, milestone row lock과 통계 0행 확인.
 - 최초 DB 조회는 MCP와 관리 API 모두 28P01로 실패했다. 재시작 요청은 휴면 응답으로 실행되지 않았으며 기존 Preview 앱 GET 후 DB 조회가 성공했다. 비밀번호·키·보호 설정 변경 없이 복구했다.
-- 방침 반영 뒤 targeted 34 tests, TypeScript, 전체 1,761 tests/4 기존 skip, 68페이지 build를 다시 통과했다. Git 발행과 Vercel Preview 상태는 다음 release checkpoint에 기록한다.
+- 방침 반영 뒤 targeted 34 tests, TypeScript, 전체 1,761 tests/4 기존 skip, 68페이지 build를 다시 통과했다.
 - 신규 키/외부 추적 도구/요금제 변경 불필요. B의 통계는 SQL로 조회한다.
 - 승인된 Git 발행과 Preview 앱 배포 후 실제 가입/재로그인 검증 순서. 기존 세 인자 RPC는 보존해 DB 선적용과 이전 앱의 호환성을 유지했다.
 - Preview 결과 확인 후 Production migration/배포와 merge는 별도 승인 대상이다.
 
 공식 RLS/grants 참고: https://supabase.com/docs/guides/database/postgres/row-level-security
 
-SNS 일지용 한 줄: 가입 유입 측정·방침 반영·Preview DB 적용 완료 | 실제 가입 전체 확인이 남음 | 최초 유입을 7일간 기억하고 첫 프로필 생성만 집계하기로 결정
+## Preview release checkpoint
+
+- Feature commit `e8c9d505143d78b37e8c40ea16de29f03088f6da` push, Draft PR https://github.com/quafactory-bit/schoollove/pull/131 생성.
+- Vercel `schoollove-kr`, team `quafactory-s-projects`의 `dpl_FWAGYR1u6c9HupGkfUhEoLDieisU`가 해당 commit에서 READY. `target=null`인 Git Preview이며 Production이 아니다.
+- 검증 URL: https://schoollove-20qnob7e9-quafactory-s-projects.vercel.app . 홈·방침 HTTP200, 개정일 2026-10-14·유입 코드·7일 유효/다음 방문 갱신 문구 확인.
+- `/api/account/profile` GET의 보호 접근 도구가 `deployment_authentication_required` 401을 반환해 앱 자체의 401까지 확인하지 못했다. 보호 설정은 변경하지 않았다. 실제 로그인 가입 E2E는 계속 미실행이다.
+- Vercel 환경변수는 decrypt=false로 이름·scope만 확인했다. 이번 작업에서 환경변수·키·요금제 설정을 추가/변경하지 않았다.
+- Supabase security advisor는 프로젝트 단위 INFO1/WARN4를 반환했다. 확장 schema, 기존 security-definer 권한, Auth password 보호 항목은 이번 변경으로 자동 수정하지 않았다. 신규 통계 테이블·함수의 anon/authenticated 무권한은 별도 SQL로 확인했다. 참고: https://supabase.com/docs/guides/database/database-linter 및 https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+- 통계 테이블 0행. Preview에서 실제 Auth 계정·프로필·가입 통계 행을 만들지 않았다. Production DB/배포·merge는 수행하지 않았다.
+
+SNS 일지용 한 줄: 가입 유입 측정·방침 반영·Draft PR·Preview 적용 완료 | 실제 가입 전체 확인이 남음 | 최초 유입을 7일간 기억하고 첫 프로필 생성만 집계하기로 결정
