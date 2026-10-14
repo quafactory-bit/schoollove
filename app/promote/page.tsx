@@ -7,7 +7,7 @@ import { getPromotionOwnerState } from '@/lib/promotions'
 import PromoteClient from './PromoteClient'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: '오늘의 Instagram 신청', robots: { index: false, follow: false, nocache: true, noarchive: true } }
+export const metadata: Metadata = { title: '오늘의 인스타그램주소 신청', robots: { index: false, follow: false, nocache: true, noarchive: true } }
 
 export default async function PromotePage() {
   const auth = await getAuthenticatedServerContext()

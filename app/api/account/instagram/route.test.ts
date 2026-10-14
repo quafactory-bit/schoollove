@@ -60,11 +60,11 @@ describe('owner Connected Instagram handle route', () => {
     mocks.rpc.mockResolvedValue({ data: null, error: { message: 'CONNECTED_INSTAGRAM_ACCESS_REQUIRED: private detail' } })
     const forbidden = await PATCH(request({ instagram_handle: 'owner.test' }) as never)
     expect(forbidden.status).toBe(403)
-    expect(await forbidden.json()).toEqual({ error: '현재 Instagram 설정 권한이 없습니다.' })
+    expect(await forbidden.json()).toEqual({ error: '현재 인스타그램주소 설정 권한이 없습니다.' })
 
     mocks.rpc.mockResolvedValue({ data: null, error: { message: 'sensitive unexpected detail' } })
     const unexpected = await PATCH(request({ instagram_handle: 'owner.test' }) as never)
     expect(unexpected.status).toBe(500)
-    expect(await unexpected.json()).toEqual({ error: 'Instagram 아이디를 저장할 수 없습니다.' })
+    expect(await unexpected.json()).toEqual({ error: '인스타그램주소를 저장할 수 없습니다.' })
   })
 })

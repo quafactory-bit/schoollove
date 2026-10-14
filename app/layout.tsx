@@ -1,12 +1,16 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import './game.css'
+import './scenes.css'
+import './fantasy.css'
 import { Providers } from './providers'
 import { ConnectionNotificationProvider } from '@/components/ConnectionNotificationProvider'
 import DesktopNav from '@/components/DesktopNav'
 import Footer from '@/components/Footer'
 import TabBar from '@/components/TabBar'
 import PrivacySafeAnalytics from '@/components/PrivacySafeAnalytics'
+import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister'
+import InstallPrompt from '@/components/pwa/InstallPrompt'
 
 export const viewport: Viewport = {
   themeColor: '#FFFFFF',
@@ -17,11 +21,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.schoollove.kr'),
   title: {
-    default: '스쿨러브아이 - 우리 학교, 함께 키우기',
+    default: '스쿨러브아이 - 기억 속 친구의 인스타그램주소 찾기',
     template: '%s | 스쿨러브아이',
   },
-  description: '우리 학교는 지금 몇 레벨일까? 학교를 찾고, 비공개로 내 학교를 기록하고, 친구와 함께 학교를 키워요.',
-  manifest: '/manifest.json',
+  description: '학교와 이름으로 친구를 찾고, 연결 후 상대가 허용한 인스타그램주소를 확인하세요.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -38,7 +41,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png',
+    apple: '/icons/apple-touch-icon.png',
   },
 }
 
@@ -57,6 +60,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <TabBar />
           </ConnectionNotificationProvider>
         </Providers>
+        <ServiceWorkerRegister />
+        <InstallPrompt />
         <PrivacySafeAnalytics />
       </body>
     </html>

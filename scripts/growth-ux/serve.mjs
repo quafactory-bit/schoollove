@@ -1,6 +1,7 @@
 // Local-only real-component harness. No production route or external service.
 import { createServer } from 'vite'
 import path from 'node:path'
+import {localApi} from './local-api.mjs'
 const root = process.cwd()
 const mocks = ['lib/user-auth','lib/publicAccountLaunch','lib/schoolGrowthGame','lib/api/schools','lib/api/search','lib/beta','lib/promotions','lib/auth/social-broker/preview-config','lib/ownerSchoolGrowth','lib/seo']
 const server = await createServer({
@@ -13,7 +14,7 @@ const server = await createServer({
     { find: 'next/image', replacement: path.join(root,'scripts/game-visual/image.jsx') },
     { find: '@', replacement: root },
   ] },
-  plugins: [{ name:'local-ui', configureServer(s) { s.middlewares.use((req,res,next) => {
+  plugins: [{ name:'local-ui', configureServer(s) { s.middlewares.use(localApi); s.middlewares.use((req,res,next) => {
     if (req.headers.accept?.includes('text/html') && !req.url.startsWith('/@')) {
       res.setHeader('Content-Type','text/html'); res.end('<!doctype html><html lang="ko"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local React UX fixture</title><div id="root"></div><script type="module" src="/scripts/growth-ux/fixture.jsx"></script></html>')
     } else next()

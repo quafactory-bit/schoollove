@@ -16,7 +16,7 @@ import Home from '@/app/page'
 import Hub from '@/app/school/[slug]/page'
 import GrowthMeter from './GrowthMeter'
 
-const school: SchoolGrowth = { schoolId: 'ee000001-0000-4000-8000-000000000001', schoolName: '매우 긴 이름을 가진 안전한 테스트 고등학교', slug: 'fixture', level: 1, progress: 0, weeklyXp: 0, rank: null, lastLevelUp: null }
+const school: SchoolGrowth = { schoolId: 'ee000001-0000-4000-8000-000000000001', schoolName: '매우 긴 이름을 가진 안전한 테스트 고등학교', slug: 'fixture', level: 1, progress: 0, totalXp: 0, rank: null, lastLevelUp: null }
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.growth.mockResolvedValue({ status: 'ok', schools: [] })
@@ -28,23 +28,29 @@ beforeEach(() => {
 describe('growth Home states', () => {
   it('renders honest empty state and preserves search/login/privacy', async () => {
     const html = renderToStaticMarkup(await Home())
-    expect(html).toContain('공개 성장 소식이 모이고 있어요.')
-    expect(html).toContain('내 학교의 성장은 계정에서 먼저 확인할 수 있어요.')
-    expect(html).toContain('학교 이름 찾기')
-    expect(html).toContain('내 학교 키우기')
+    expect(html).toContain('아직 공개할 학교 순위가 없어요.')
+    expect(html).toContain('내 학교의 최신 레벨과 XP는 내 계정에서 확인해요.')
+    expect(html).toContain('href="/search"')
+    expect(html).toContain('내 학교 찾기')
+    expect(html).toContain('내 학교로 들어가기')
     expect(html).toContain('/privacy')
     expect(html).not.toContain('Lv.2 달성')
+    expect(html.indexOf('aria-labelledby="growth-title"')).toBeLessThan(html.indexOf('aria-labelledby="total-ranking"'))
+    expect(html.indexOf('aria-labelledby="total-ranking"')).toBeLessThan(html.indexOf('친구와 함께'))
   })
   it.each([1, 5])('renders exactly %i real ranking rows, no people fields', async count => {
     // Unique privacy sentinel: 1000 is also the legitimate image intrinsic width.
-    mocks.growth.mockResolvedValue({ status: 'ok', schools: Array.from({ length: count }, (_, i) => ({ ...school, schoolId: `${i}`, rank: i + 1, weeklyXp: 987654, level: 7 })) })
+    mocks.growth.mockResolvedValue({ status: 'ok', schools: Array.from({ length: count }, (_, i) => ({ ...school, schoolId: `${i}`, rank: i + 1, totalXp: 987654, level: 7 })) })
     const html = renderToStaticMarkup(await Home())
-    const ranking = html.split('aria-labelledby="weekly-growth"')[1].split('</section>')[0]
-    expect((ranking.match(/<li>/g) || []).length).toBe(count)
+    const ranking = html.split('aria-labelledby="total-ranking"')[1].split('aria-labelledby="growth-how"')[0]
+    expect((ranking.match(/<li\b/g) || []).length).toBe(count)
     expect(html).toContain('<ol')
     expect(html).toContain(school.schoolName)
     expect(html).not.toContain('weeklyXp')
-    expect(html).not.toContain('987654')
+    expect(html).toContain('987,654 XP')
+    expect(html).toContain('총 학교 순위')
+    expect(html).toContain('누적 경험치')
+    expect(html.indexOf('총 학교 순위')).toBeLessThan(html.indexOf('ALL-TIME SCHOOL RANKING'))
   })
   it('only shows a milestone when an actual published event exists', async () => {
     mocks.growth.mockResolvedValue({ status: 'ok', schools: [{ ...school, level: 7, lastLevelUp: '2026-09-09T00:00:00Z' }] })
@@ -54,17 +60,18 @@ describe('growth Home states', () => {
     mocks.growth.mockResolvedValue({ status: 'unavailable', schools: [] })
     const html = renderToStaticMarkup(await Home())
     expect(html).toContain('학교 찾기는 계속 이용할 수 있어요.')
-    expect(html).toContain('학교 이름 찾기')
+    expect(html).toContain('href="/search"')
+    expect(html).toContain('내 학교 찾기')
   })
   it('shows today growth only from a real published level-up today', async () => {
     mocks.growth.mockResolvedValue({ status: 'ok', schools: [{ ...school, level: 7, lastLevelUp: new Date().toISOString() }] })
-    expect(renderToStaticMarkup(await Home())).toContain('오늘, 한 단계 자란 학교')
+    expect(renderToStaticMarkup(await Home())).toContain('오늘 레벨이 오른 학교')
     mocks.growth.mockResolvedValue({ status: 'ok', schools: [school] })
-    expect(renderToStaticMarkup(await Home())).not.toContain('오늘, 한 단계 자란 학교')
+    expect(renderToStaticMarkup(await Home())).not.toContain('오늘 레벨이 오른 학교')
   })
   it.each(['closed', 'emergency_stopped'])('does not offer signup when %s', async state => {
     mocks.launch.mockResolvedValue({ state })
-    expect(renderToStaticMarkup(await Home())).not.toContain('>내 학교 키우기<')
+    expect(renderToStaticMarkup(await Home())).not.toContain('내 학교로 들어가기')
   })
 })
 describe('School Hub capability and display states', () => {

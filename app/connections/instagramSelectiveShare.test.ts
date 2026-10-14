@@ -19,18 +19,18 @@ describe('connected Instagram selective-share product contract', () => {
   })
 
   it('provides the no-handle setup CTA without a POST path', () => {
-    expect(client).toContain('Instagram 아이디를 등록하면 연결된 사람에게 선택적으로 공개할 수 있습니다.')
+    expect(client).toContain('내 인스타그램주소를 등록하고, 원하는 연결 상대에게만 공개하세요.')
     expect(client).toContain('href="/account"')
-    expect(client).toContain('내 계정에서 Instagram 등록')
+    expect(client).toContain('내 계정에서 인스타그램주소 등록')
     expect(client).toContain("if (method === 'POST' && !instagramState.myInstagramConfigured) return")
     expect(route).toContain("{ error: 'INSTAGRAM_HANDLE_REQUIRED' }")
   })
 
   it('renders one publish or revoke action from the directed actor state', () => {
     expect(client).toContain('이 연결 상대에게만 공개됩니다.')
-    expect(client).toContain('내 Instagram 공개')
-    expect(client).toContain('이 연결 상대에게 내 Instagram이 공개되어 있습니다.')
-    expect(client).toContain('Instagram 공개 취소')
+    expect(client).toContain('이 친구에게 내 인스타그램주소 공개')
+    expect(client).toContain('이 연결 상대에게 내 인스타그램주소가 공개되어 있습니다.')
+    expect(client).toContain('인스타그램주소 공개 취소')
     expect(client).toMatch(/myInstagramVisible \? <>[\s\S]*changeInstagram\('DELETE'\)[\s\S]*: instagramState\.myInstagramConfigured \? <>[\s\S]*changeInstagram\('POST'\)/)
   })
 
@@ -86,7 +86,7 @@ describe('connected Instagram selective-share product contract', () => {
   })
 
   it('does not change the messaging-off contract', () => {
-    expect(client).toContain('메시지 기능은 현재 이 베타에서 제공되지 않습니다.')
+    expect(client).not.toContain('메시지 기능은 현재 이 베타에서 제공되지 않습니다.')
     expect(client).toContain('if (data.capabilities.messaging) await loadMessages()')
   })
 })

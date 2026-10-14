@@ -23,17 +23,17 @@ export default function ProfileCard({ profile }: { profile: PublicProfileCard })
             </div>
             {profile.instagram_id ? (
               <a href={`https://instagram.com/${profile.instagram_id}`} target="_blank" rel="noopener noreferrer"
-                aria-label={`인스타그램에서 ${profile.nickname} 보기`}
+                aria-label={`인스타그램주소에서 ${profile.nickname} 보기`}
                 className="inline-flex min-h-11 items-center text-sm font-medium text-gray-900 hover:underline">
                 @{profile.instagram_id}
               </a>
             ) : (
               <button
                 onClick={() => setShowModal(true)}
-                aria-label={`${profile.nickname} 인스타그램 추가 요청`}
+                aria-label={`${profile.nickname} 인스타그램주소 추가 요청`}
                 className="inline-flex min-h-11 items-center text-xs text-gray-400 hover:text-gray-900"
               >
-                + 인스타 추가
+                + 인스타그램주소 추가
               </button>
             )}
             {/* 등록할 때 남긴 "이 친구에게 한마디" - 본인이 보면 연결 동기가 생김 */}

@@ -18,12 +18,12 @@ function safeRpcError(message: string | undefined) {
     return privateJson({ error: '기존 비공개 프로필이 필요합니다.' }, 409)
   }
   if (message?.includes('CONNECTED_INSTAGRAM_ACCESS_REQUIRED')) {
-    return privateJson({ error: '현재 Instagram 설정 권한이 없습니다.' }, 403)
+    return privateJson({ error: '현재 인스타그램주소 설정 권한이 없습니다.' }, 403)
   }
   if (message?.includes('INVALID_INSTAGRAM_HANDLE')) {
-    return privateJson({ error: 'Instagram 아이디 형식을 확인해 주세요.' }, 400)
+    return privateJson({ error: '인스타그램주소 형식을 확인해 주세요.' }, 400)
   }
-  return privateJson({ error: 'Instagram 아이디를 저장할 수 없습니다.' }, 500)
+  return privateJson({ error: '인스타그램주소를 저장할 수 없습니다.' }, 500)
 }
 
 export async function PATCH(request: NextRequest) {
@@ -44,14 +44,14 @@ export async function PATCH(request: NextRequest) {
 
   const parsed = InstagramSchema.safeParse(body)
   if (!parsed.success) {
-    return privateJson({ error: 'Instagram 아이디 형식을 확인해 주세요.' }, 400)
+    return privateJson({ error: '인스타그램주소 형식을 확인해 주세요.' }, 400)
   }
 
   const { data, error } = await auth.client.rpc('update_own_connected_instagram_handle', {
     requested_instagram_handle: parsed.data.instagram_handle,
   })
   if (error) return safeRpcError(error.message)
-  if (data !== true) return privateJson({ error: 'Instagram 아이디를 저장할 수 없습니다.' }, 500)
+  if (data !== true) return privateJson({ error: '인스타그램주소를 저장할 수 없습니다.' }, 500)
 
   return privateJson({ updated: true })
 }

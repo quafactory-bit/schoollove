@@ -177,9 +177,9 @@ const safeMembershipErrors: Record<string,string> = {
   PRIVATE_PROFILE_REQUIRED:'비공개 프로필을 먼저 저장해 주세요.',
   ADULT_CONSENT_REQUIRED:'성인 확인과 필수 동의가 필요합니다.',
   ACCOUNT_DELETION_REQUESTED:'탈퇴 처리 중에는 정보를 변경할 수 없습니다.',
-  SCHOOL_OUTSIDE_BETA_SCOPE:'제한 베타에서 승인된 학교만 저장할 수 있습니다.',
-  SECOND_SCHOOL_NOT_ALLOWED:'제한 베타 계정은 승인된 학교 한 곳만 저장할 수 있습니다.',
-  ACTIVE_CONTROLLED_BETA_MEMBERSHIP_REQUIRED:'제한 베타 학교 계약을 확인할 수 없습니다.',
+  SCHOOL_OUTSIDE_BETA_SCOPE:'현재 참여 중인 프로그램에서 승인된 학교만 등록할 수 있어요.',
+  SECOND_SCHOOL_NOT_ALLOWED:'현재 참여 중인 프로그램에서는 승인된 학교 한 곳만 등록할 수 있어요.',
+  ACTIVE_CONTROLLED_BETA_MEMBERSHIP_REQUIRED:'현재 계정의 학교 등록 권한을 확인할 수 없어요.',
 }
 
 export function getSafeMembershipError(error: { message?: string } | null): string | null {

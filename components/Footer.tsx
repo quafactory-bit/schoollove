@@ -8,7 +8,7 @@ export default function Footer() {
           <div className="text-sm text-schoollove-text">
             <span className="font-bold text-schoollove-text">스쿨러브아이</span>
             <span className="mx-2">·</span>
-            <span>우리 학교, 함께 키우기</span>
+            <span>기억 속 친구의 인스타그램주소로 다시 연결돼요</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-schoollove-secondary">
             <Link href="/contact" className="inline-flex min-h-11 items-center">문의 및 삭제 요청</Link>

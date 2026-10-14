@@ -16,14 +16,19 @@ describe('school growth authority', () => {
   it('distinguishes actual empty ranking from unavailable data', async () => {
     rpc.mockResolvedValueOnce({ data: [], error: null })
     expect(await getSchoolGrowth()).toEqual({ status: 'ok', schools: [] })
+    expect(rpc).toHaveBeenLastCalledWith('get_total_school_ranking', { requested_school_id: null })
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'internal' } })
     expect(await getSchoolGrowth()).toEqual({ status: 'unavailable', schools: [] })
   })
   it('strips unexpected private fields at the server output boundary', async () => {
-    rpc.mockResolvedValueOnce({ error: null, data: [{ schoolId:'ee000001-0000-4000-8000-000000000001',schoolName:'Fixture',slug:'fixture',level:1,progress:0,weeklyXp:0,rank:null,lastLevelUp:null,email:'PRIVATE',user_id:'PRIVATE' }] })
+    rpc.mockResolvedValueOnce({ error: null, data: [{ schoolId:'ee000001-0000-4000-8000-000000000001',schoolName:'Fixture',slug:'fixture',level:1,progress:0,totalXp:0,rank:null,lastLevelUp:null,email:'PRIVATE',user_id:'PRIVATE' }] })
     const result = await getSchoolGrowth()
     expect(result.status).toBe('ok')
     expect(JSON.stringify(result)).not.toContain('PRIVATE')
+  })
+  it('rejects the superseded weekly XP shape', async () => {
+    rpc.mockResolvedValueOnce({ error: null, data: [{ schoolId:'ee000001-0000-4000-8000-000000000001',schoolName:'Fixture',slug:'fixture',level:1,progress:0,weeklyXp:100,rank:1,lastLevelUp:null }] })
+    expect(await getSchoolGrowth()).toEqual({ status: 'unavailable', schools: [] })
   })
   it('does not emit referral tokens in the HTTP path or query', () => {
     const token = 'a'.repeat(64)

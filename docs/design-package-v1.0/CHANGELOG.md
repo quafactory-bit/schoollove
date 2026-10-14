@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 2026-10-14 Anonymous signup attribution
+
+- Approved validated four-UTM analytics, seven-day first-touch browser storage and service-only anonymous signup statistics. The follow-up replaces per-signup rows with date/code totals and removes serial IDs and landing paths.
+- See `2026-10-14-signup-attribution-addendum.md`; approved policy wording is implemented.
+
+## 2026-09-28 School roster and direct discovery
+
+- Approved a private, reciprocal same-school adult roster for entered full name, graduation year and saved grade/class history.
+- The roster option starts selected but may be cleared without blocking school registration; members can hide or reshare later from their account.
+- Completed public accounts may use exact people discovery and connection requests without invitation, participation application or operator approval. Existing safety, emergency-stop and per-connection disclosure boundaries remain.
+- See `2026-09-28-school-roster-direct-discovery-addendum.md`.
+
+## 2026-09-21 Total school ranking
+
+- Approved a standalone Home ranking frame with the siege video, published cumulative XP and real top-five schools.
+- First through third use crowned podium cards; fourth and fifth use smaller challenger rows. Empty and unavailable states remain factual.
+- See `2026-09-21-total-school-ranking-addendum.md`.
+
+## 2026-09-15 Contextual scene suite
+
+- Approved per-screen artwork, adult-friend reunion video, five school stages and caption/logo-free siege ranking banner. New addendum supersedes the shared floating-school composition, preserving all data and permission contracts. Local review only.
+
 ## 2026-09-10 Game Visual Experience V1
 
 - User-approved floating SchoolWorld, pastel Home/Hub, owner growth dashboard,
@@ -60,3 +82,16 @@
 - API 확정
 - Open Issues 확정
 - Claude Code Master Prompt 추가
+
+
+## 2026-09-15 — Approved fantasy V3
+
+Apply approved V3 fantasy imagery, full-frame composition and user-facing copy to existing components. See `docs/decisions/2026-09-15-fantasy-v3-application.md`. Functional and privacy boundaries unchanged.
+## 2026-09-15 — Home illumination refinement
+
+Approved coordinate-aligned light, water and flag shimmer for the V3 hero; see the V3 addendum and home-light-shimmer decision.
+
+## 2026-10-06 — PWA Phase 1 installable shell
+
+- Approved a dependency-free installable web app shell with a typed manifest, monochrome app icons, offline-only navigation fallback and platform-specific install guidance.
+- Preserved SSR, route metadata, school URLs, API/auth/DB behavior and `/admin`; web push remains Phase 2. See `../decisions/2026-10-06-pwa-phase1-installable-shell.md`.

@@ -15,7 +15,7 @@ export default function TodayInstagramCard({ promotion }: { promotion: PublicPro
           <h2 className="mt-3 text-xl font-bold text-gray-950">{promotion.title}</h2>
           <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-600">{promotion.body}</p>
           <a href={promotion.clickHref} target="_blank" rel={promotion.kind === 'sponsored' ? 'noopener noreferrer sponsored' : 'noopener noreferrer'} className="schoollove-focus mt-5 inline-flex min-h-11 items-center gap-2 bg-gray-950 px-4 text-sm font-semibold text-white">
-            Instagram 보기 <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            인스타그램주소 보기 <ExternalLink className="h-4 w-4" aria-hidden="true" />
           </a>
           {promotion.kind === 'sponsored' ? <p className="mt-3 text-[11px] text-gray-500">유료 프로모션 · 서비스의 추천이나 학교의 공식 인증이 아닙니다.</p> : null}
         </div>

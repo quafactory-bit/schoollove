@@ -59,7 +59,7 @@ export default function CurrentSchoolRanking({ status, rows }: Props) {
                         {level && <span className="rounded-sm bg-schoollove-level/10 px-1.5 py-0.5 text-schoollove-text">{level}</span>}
                         {row.remainingLabel && (
                           <span className="text-schoollove-text">
-                            다음 성장 단계까지{' '}
+                            다음 참여 목표까지{' '}
                             <strong>{row.remainingLabel.match(/\d+/)?.[0]}명</strong>
                           </span>
                         )}

@@ -126,8 +126,8 @@ describe('getGrowthRewardCopy', () => {
     )
     const copy = getGrowthRewardCopy(r, SCHOOL_NAME)
 
-    expect(copy?.description).toBe('다음 성장 단계까지 4명')
-    expect(copy?.progressBar?.remainingLabel).toBe('다음 성장 단계까지 4명')
+    expect(copy?.description).toBe('다음 참여 목표까지 4명')
+    expect(copy?.progressBar?.remainingLabel).toBe('다음 참여 목표까지 4명')
   })
 
   it('8. 일반 progress percent 값 검증(clamp 포함)', () => {

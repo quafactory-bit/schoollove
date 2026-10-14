@@ -45,7 +45,7 @@ describe('getSchoolStateContent — 1/2/3. State A/B/C 제목·설명·CTA', () 
     expect(content.description).toBeNull()
     expect(content.primaryCta).toEqual({ label: '학교 키우기', kind: 'register' })
     expect(content.secondaryCta).toBeNull()
-    expect(content.helperText).toBe('이름을 남기면 다음 성장 단계에 가까워져요.')
+    expect(content.helperText).toBe('이름을 남기면 다음 참여 목표에 가까워져요.')
     expect(content.helperText).not.toContain('Level')
   })
 
@@ -202,7 +202,7 @@ describe('formatPeopleGrowthDescription — 9/10. State B 문구', () => {
   it('9. 실제 남은 인원(remainingPeople)을 문구에 포함한다', () => {
     const stage = calculatePeopleGrowthStage('B', 6)
     expect(formatPeopleGrowthDescription(stage.remainingPeople)).toBe(
-      '5명만 더 모이면 다음 성장 단계로 이어져요.'
+      '5명만 더 모이면 다음 참여 목표로 이어져요.'
     )
   })
 
@@ -220,9 +220,9 @@ describe('formatPeopleGrowthRemainingLabel — State A/B/C 남은 인원 라벨'
     expect(formatPeopleGrowthRemainingLabel('A', stage)).toBe('첫 기록까지 1명')
   })
 
-  it('State B는 "다음 성장 단계까지 N명"을 실제 remainingPeople로 표시한다', () => {
+  it('State B는 "다음 참여 목표까지 N명"을 실제 remainingPeople로 표시한다', () => {
     const stage = calculatePeopleGrowthStage('B', 6)
-    expect(formatPeopleGrowthRemainingLabel('B', stage)).toBe('다음 성장 단계까지 5명')
+    expect(formatPeopleGrowthRemainingLabel('B', stage)).toBe('다음 참여 목표까지 5명')
   })
 
   it('State C는 임의의 다음 목표를 만들지 않고 null을 반환한다', () => {

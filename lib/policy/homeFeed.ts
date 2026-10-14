@@ -38,7 +38,7 @@ export function formatTraceActivityText(schoolName: string, message: string): st
 }
 
 export function formatTodayGrowthStripText(schoolName: string, newVisibleProfiles: number): string {
-  return `오늘 가장 빠르게 성장 중 · ${schoolName} +${newVisibleProfiles}명`
+  return `오늘 가장 많이 모인 학교 · ${schoolName} +${newVisibleProfiles}명`
 }
 
 // ─── 상대 시간 ────────────────────────────────────────────────

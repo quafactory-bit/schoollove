@@ -42,7 +42,10 @@ describe('durable broker authorization-code preparation', () => {
       expect(() => decryptBrokerDownstreamNonce({ encrypted, key, codeId: prepared.database.codeId, clientId, redirectUri, ...changed })).toThrow('BROKER_CODE_NONCE_DECRYPTION_REJECTED')
     }
     expect(() => decryptBrokerDownstreamNonce({ encrypted, key: { version: 8, material: key.material }, codeId: prepared.database.codeId, clientId, redirectUri })).toThrow('BROKER_CODE_NONCE_DECRYPTION_REJECTED')
-    expect(() => decryptBrokerDownstreamNonce({ encrypted: { ...encrypted, ciphertext: Buffer.concat([Buffer.from(encrypted.ciphertext).subarray(0, -1), Buffer.from([0])]) }, key, codeId: prepared.database.codeId, clientId, redirectUri })).toThrow('BROKER_CODE_NONCE_DECRYPTION_REJECTED')
+    const tamperedCiphertext = Buffer.from(encrypted.ciphertext)
+    // Always flip a bit: replacing the final byte with zero can leave it unchanged.
+    tamperedCiphertext[tamperedCiphertext.length - 1] ^= 1
+    expect(() => decryptBrokerDownstreamNonce({ encrypted: { ...encrypted, ciphertext: tamperedCiphertext }, key, codeId: prepared.database.codeId, clientId, redirectUri })).toThrow('BROKER_CODE_NONCE_DECRYPTION_REJECTED')
   })
 
   it('requires an S256 challenge and a nonce key iff a downstream nonce is supplied', () => {

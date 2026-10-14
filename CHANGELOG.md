@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-09-28 School roster and direct discovery (authorized release)
+
+- Add a reciprocal same-school adult roster showing the entered full name, graduation year and saved grade/class history when `학교에서 나를 표시하기` is enabled.
+- Select that option by default while allowing registration with it cleared, and provide immediate hide/show control on each saved school card.
+- Remove invitation, participation-application and operator-approval steps from public-account exact people discovery. Preserve emergency stop, exact-match, rate-limit, opaque-token, block/report and per-connection Instagram boundaries.
+- Keep existing memberships hidden until their owners make the new roster choice. Preview and Production database migrations are applied with zero legacy consent rows; the application releases through PR #127 after Preview verification.
+
+## 2026-09-21 Total school ranking
+
+- Replace the Home's recent-seven-day ranking presentation with a standalone cumulative `총 학교 순위` box using the existing caption-free siege video.
+- Show the published cumulative XP top five: large crowned podiums for first through third and compact challenger rows for fourth and fifth.
+- Add a separate privacy-batched cumulative ranking RPC so the database and application can be released independently; preserve the existing level curve, awards, batching and privacy boundaries.
+
+## 2026-09-16 Home hero clarity
+
+- Reduce the purple overlay and request hero image sizes matching the enlarged cover plane, with quality 90.
+- Keep mobile characters clear of copy/actions and move a shortened, single-line connection hint above the buttons.
+- Preserve the original artwork, logo, motion controls and all data/permission boundaries.
+
+## 2026-09-16 Privacy retention and disclosure release
+
+- Adopt collection items, purposes, retention, refusal disclosures and the confirmed privacy officer contact before consent and authentication.
+- Add bounded five-minute database expiry, detach 24-hour email abuse counters from expiring challenges, and remove ordinary completed-deletion identifiers after a 15-minute replay-protection window. Retain only daily aggregate totals for up to 90 days; preserve safety holds and incomplete Auth deletion.
+- Make administrator deletion retryable after an interrupted Auth response and revoke refresh sessions during preparation. Keep provider retention gaps explicit and preserve historical consent versions.
+
+## 2026-09-15 Contextual images and video
+
+- Add twelve original screen-specific illustrations, a six-second adult-friend reunion video and a caption/logo-free 7.5-second siege banner for school rankings.
+- Replace shared decorative school art in search, login, onboarding, account, sharing and welcome/connection states; preserve five existing school-level thresholds with new independent campus scenes.
+- Add static video fallbacks, motion controls, reduced-motion and visibility-aware playback. Preserve all permissions, ranking data and privacy boundaries. Local PC/mobile review gallery only; no release in this scope.
+
+## 2026-09-15 Instagram address and school-level copy
+
+- Explain finding remembered friends and viewing their individually permitted 인스타그램주소 across Home, signup, the welcome guide, connection details, sharing and metadata.
+- Replace visible beta/growth wording with invitation-program, school-level and XP descriptions. Keep weekly ranking based on recent XP and distinguish XP awards from an actual level-up.
+- Remove the disabled-message paragraph; show the full address and DM guidance only when the existing capability and counterpart disclosure state permit it. No permission, database, authentication or feature activation changes.
+
+## 2026-09-15 Account welcome guide
+
+- Add a dismissible, replayable four-step account guide: welcome, owner-backed signup progress, school records/growth and accepted connections.
+- Open once per browser tab for eligible incomplete public onboarding; preserve all feature/approval boundaries and store only a non-identifying session display flag.
+- Use a responsive native dialog with keyboard focus management. No new API, schema, dependency or remote changes.
+
+## 2026-09-15 Registration service copy
+
+- Remove user-facing beta wording from onboarding and account enrollment; retain explicit invitation and operator approval requirements.
+- Show the operating-service introduction only when public registration is enabled and emergency stop is off. Keep unavailable-state guidance factual.
+- No auth, API, database, feature activation or remote changes.
+
 ## 2026-09-09 Owner live growth coherence (implementation / release pending)
 
 - Separate owner live level/progress from the unchanged delayed public projection.
@@ -341,3 +390,18 @@
 - The original O handle-only claim contract remains compatible. No public social/OIDC route, provider call, login UI, Production migration, database mutation, environment change, or launch change is included.
 - Route-surface acceptance uses reproducible exact frozen-baseline parity: baseline `99efcd22c3d048a2eb545f3811069fba62291821` and S each expose 95 canonical public routes, with zero additions or removals. The historical absolute `58 pages/routes` record is retained, but is not reproducible on that frozen baseline and is not an executable S assertion.
 - Hardened the durable continuation selector with a partial unique live-authority index and coarse collision handling; the existing authority remains resumable under duplicate creation attempts. No public activation or Production change is included.
+
+
+## 2026-09-15 — Approved fantasy V3
+
+Apply approved V3 fantasy imagery, full-frame composition and user-facing copy to existing components. See `docs/decisions/2026-09-15-fantasy-v3-application.md`. Functional and privacy boundaries unchanged.
+## 2026-09-15 — Home lights, water and flag shimmer
+
+Make the V3 home's lighting more visible with artwork-aligned warm glows, moving water highlights and gold flag shimmer. Retain pause, reduced motion and visibility controls.
+## 2026-09-15 Privacy collection and transfer notice (local draft)
+
+- Show required collection items, purposes, retention and refusal effects before account consent; share the notice with the privacy page.
+- Separate optional profile information and add authentication/recovery disclosures before their inputs.
+- Add the user-confirmed privacy officer and contact details, and a provider-by-provider transfer draft including Resend.
+- Keep unverified infrastructure/retention facts explicitly pending. Publication date and release remain pending; historical consent records are unchanged.
+- Follow-up operator screenshots confirm Upstash AWS Free/Tokyo (`ap-northeast-1`) and Resend Free. Reflect these facts and Resend's standard retention while preserving the remaining factual gaps.

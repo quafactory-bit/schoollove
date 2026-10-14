@@ -141,7 +141,7 @@ export default function AdminClient({ stats, profiles, reports }: { stats: Stats
           <div className="space-y-4">
             <input
               type="text"
-              placeholder="이름, 학교명, 인스타 검색..."
+              placeholder="이름, 학교명, 인스타그램주소 검색..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400"

@@ -55,7 +55,7 @@ export default function SchoolSelection({ owner, registeredSlugs = [], onSelect,
       <p className="text-xs font-semibold text-[var(--schoollove-game-accent)]">{registered ? '이미 등록한 내 학교' : '아직 등록하지 않은 학교 후보'}</p>
       <p className="mt-2 font-bold">{school.school_name}</p>
       <p className="mt-1 text-sm text-schoollove-secondary">{school.sido} {school.sigungu} · {schoolTypeLabel(school.school_type)}</p>
-      {registered ? <Link href="/account#my-schools-heading" className="schoollove-focus mt-2 inline-flex min-h-11 items-center underline">내 학교 성장 보기</Link> : <>
+      {registered ? <Link href="/account#my-schools-heading" className="schoollove-focus mt-2 inline-flex min-h-11 items-center underline">내 학교 레벨 보기</Link> : <>
         <p className="mt-2 text-sm leading-6">지금 이 학교를 등록하려고 해요. 성인 확인과 동의를 마친 뒤 본인이 다닌 학교인지 확인하고 직접 저장해 주세요. 선택만으로 등록되지는 않아요.</p>
         {onSelect ? <button type="button" disabled={!writable || hasInput || selected} className="schoollove-focus mt-3 min-h-12 rounded-xl border border-indigo-700 px-4 py-2 text-sm font-semibold disabled:opacity-50" onClick={() => {
           if (!writable || hasInput || selected || Date.now() >= expiresAt) return

@@ -89,10 +89,10 @@ export default function SchoolGrowthPanel({
             Lv.N→Lv.N+1, XP progressPercent, XP remainingToNext는 여기서 표시하지 않는다. */}
         <div className="space-y-2 rounded-xl bg-gray-50 p-3.5">
           <div className="flex items-center justify-between gap-2 text-sm">
-            <span className="font-semibold text-schoollove-text">학교 성장</span>
+            <span className="font-semibold text-schoollove-text">학교 참여 현황</span>
             {peopleGrowth.isNearGrowth && (
               <span className="font-retro shrink-0 rounded-sm bg-schoollove-neon-mint px-2 py-0.5 text-[11px] font-normal text-schoollove-text">
-                성장 임박
+                다음 참여 목표 임박
               </span>
             )}
           </div>
@@ -103,7 +103,7 @@ export default function SchoolGrowthPanel({
             aria-valuenow={peopleGrowth.progressPercent}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`학교 성장 진행률 ${peopleGrowth.progressPercent}%`}
+            aria-label={`학교 참여 진행률 ${peopleGrowth.progressPercent}%`}
           >
             <div
               className="h-full rounded-full bg-schoollove-electric-blue transition-[width]"

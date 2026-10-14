@@ -25,10 +25,13 @@ export async function PATCH(request:NextRequest){
   if(parsed.data.action==='complete_deletion'){
     const prepared=await admin.rpc('admin_prepare_public_account_deletion',{target_request_id:parsed.data.requestId,requested_reason:parsed.data.reason,admin_actor:'admin_console'})
     if(prepared.error||(prepared.data as {public_data_deleted?:unknown}|null)?.public_data_deleted!==true)return NextResponse.json({error:'PUBLIC_ACCOUNT_DELETION_PREPARE_REJECTED'},{status:409})
+    if((prepared.data as {already_done?:unknown}).already_done===true)return NextResponse.json({ok:true})
     const authPending=await admin.rpc('admin_begin_public_account_auth_deletion',{target_request_id:parsed.data.requestId,admin_actor:'admin_console'})
     const userId=(authPending.data as {user_id?:unknown}|null)?.user_id
-    if(authPending.error||typeof userId!=='string')return NextResponse.json({error:'PUBLIC_ACCOUNT_AUTH_DELETION_BEGIN_REJECTED'},{status:409})
-    const deleted=await admin.auth.admin.deleteUser(userId,false)
+    if(authPending.error||(userId!==null&&typeof userId!=='string'))return NextResponse.json({error:'PUBLIC_ACCOUNT_AUTH_DELETION_BEGIN_REJECTED'},{status:409})
+    // A prior Auth deletion can succeed before its response/finalization is lost.
+    // Null is accepted only from the authenticated DB step, then rechecked by finalization.
+    const deleted=typeof userId==='string'?await admin.auth.admin.deleteUser(userId,false):{error:null}
     if(deleted.error){
       await admin.rpc('admin_mark_public_account_auth_deletion_failed',{target_request_id:parsed.data.requestId,requested_reason:'AUTH_PROVIDER_DELETE_FAILED',admin_actor:'admin_console'})
       return NextResponse.json({error:'AUTH_IDENTITY_DELETE_FAILED_RETRY_REQUIRED'},{status:503})
