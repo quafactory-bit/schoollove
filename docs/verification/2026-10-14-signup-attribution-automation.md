@@ -37,9 +37,9 @@ UTM 진입 → 세션 cookie 설치 → 실제 owner API로 합성 성인 확인
 
 finally에서 자기 합성 표지를 확인한 계정만 삭제하고, 그 계정의 성인/동의/프로필 milestone이 만든 기존 funnel 합계 증가분만1씩 빼고, 격리된 테스트 signup bucket을 삭제한다. 나머지 행을 초기화하지 않는다. Auth·프로필·성인/동의 행 없음과 signup baseline 복원을 확인한다. 비상 정리용 합성 식별자 manifest는 ignored 로컬 폴더에만 잠시 두고 정상 정리 후 삭제한다. automation bypass도 실패 여부와 무관하게 revoke한다.
 
-## 대조 계획 (Production 승인 후에만)
+## 대조 방식 — 수동 주간 점검만
 
-통계를 best effort로 바꿔 장애 때 누락이 가능하므로, 승인된 Production 적용 이후 매일 KST 일자 단위로 기존 `public_account_daily_funnel`의 milestone/private_profile_created 합계와 signup_attribution SUM(count)를 대조할 수 있다. 삭제/재생성으로 달라지는 현재 private_profiles 행 수는 기준으로 쓰지 않는다. 최초 배포일은 적용 직전 두 합계 baseline 이후 증가분을 비교하고 다음 날부터 전체 일별 합계를 비교한다. 차이가 있으면 집계 누락/구버전 RPC 우회 여부를 조사하며 개별 회원 ID로 추적하지 않는다. 이 모니터링/Production 작업은 아직 실행하지 않았다.
+최신 사용자 지시로 매일 대조 계획은 철회했다. 자동 일정/작업은 만들지 않는다. 읽기 전용 `scripts/signup-attribution/weekly-check.sql` 하나로 지난 온전한 KST 월요일~일요일을 점검한다. 최초 프로필 생성 수는 삭제/재생성으로 흔들리지 않는 기존 milestone 합계이며, 집계 테이블의 줄 수와 SUM(count)를 함께 표시한다. 대조에 사용하는 값은 줄 수가 아닌 SUM(count)다. 적용 전/부분 적용 주간과 의도적인 테스트 합계 삭제는 차이를 만들 수 있으므로 해석에서 구분한다. Production에서는 별도 적용 승인 전까지 실행하지 않는다.
 
 ## 원격 배포/E2E/검색 차단 checkpoint
 
@@ -56,29 +56,28 @@ finally에서 자기 합성 표지를 확인한 계정만 삭제하고, 그 계�
 - 예외 override 없음, 비인증 GET /은302/vercel.com 보호 화면 redirect 유지. 보호 예외/global SSO 해제/Production 변경/이번 turn merge/결제 모두0. 로컬 서버 종료 완료. 새 키를 추가로 받아 쓰려면 운영자의 별도 안전한 키 제공/생성 절차가 필요하나 이번에는 사용자2번 지시에 따라 대조 계획만 제안한다.
 - Supabase security advisor의 기존 WARN 네 종류(확장 위치, 공개/인증 RPC 권한, password 보호)는 이전과 같다. 새 wrapper의 anon/authenticated 실행은 계속 차단돼 있다. 참고: https://supabase.com/docs/guides/database/database-linter 와 https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection .
 
-### Production 승인 후 일별 대조 절차 — 아직 실행하지 않음
+### 최신 지시 — 수동 Preview 테스트 준비 / DB 분리 확인
 
-1. 별도 승인된 Production migration/deploy 시점에 두 누적 합계 baseline만 기록한다. 배포 당일은 baseline 이후 증가분끼리 비교한다.
-2. 다음 온전한 KST 일자부터 매일09:00에 전날 최초 프로필 생성 milestone 수와 유입 합계를 비교한다. 매일 새 프로필 수를 단순 현재 프로필 created_at 행 수로 계산하면 삭제/재생성을 잘못 세므로 기존 비식별 milestone 집계를 기준으로 한다.
-3. 차이가0이면 일치, 차이가 있으면 집계 장애·구버전/직접3인자 RPC 경로·배포 시차를 조사한다. best-effort 집계는 누락 가능하므로 불일치를 감추거나 가입을 실패시키지 않는다.
-4. 저장/보고할 항목은 일자·두 합계·차이뿐이며 회원 식별자·이메일·학교는 조회/연결하지 않는다. 자동 일정 생성과 Production 조회/변경은 이번 작업에서 하지 않았다.
+- 보호 예외와 자동 E2E는 실행하지 않는다. 현재 Preview Google 브로커 discovery/JWKS/token 경로도 Vercel 보호로302이므로, 브라우저에서 Vercel 로그인만 해도 전체 Google 가입이 된다고 보장할 수 없다. 예외 없이 수동 테스트가 완료되었다고 주장하지 않는다.
+- Supabase 관리 API 확인: Preview `schoollove-preview` / `hukokfyphyrpfouazxhq` / `db.hukokfyphyrpfouazxhq.supabase.co` / ap-northeast-1; Production `schoollovei` / `ucnybhzpbatzcipwqtox` / `db.ucnybhzpbatzcipwqtox.supabase.co` / ap-southeast-1. 서로 별도 프로젝트와 DB다. Production 읽기 전용 조회에서 signup_attribution 부재, 세 버전081007/090650/101616 이력0건을 확인했다. 이번 적용 영향은 Preview뿐이다.
+- Preview 기존 Auth 계정의 email 도메인과 KST 생성 날짜만 SELECT했다. 두 email 모두NULL이라 도메인은 미상이며 날짜는2026-08-29와2026-08-30이다. 전체 이메일/이름/식별자를 출력하거나 기존 계정을 삭제하지 않았다.
+- 수동 테스트 예약 코드: source=test, medium=manual, campaign=preview_signup_test, content=manual_20261014. 시크릿 창에서 기존 Preview 프로필이 없는 Google 계정으로 최초 저장→재로그인→수정 후 아래 합계가1이어야 한다. 보호가 막으면 테스트를 멈춘다. 신규 테스트 계정 삭제는 해당 계정의 탈퇴 흐름이나 승인된 Auth Admin 절차를 사용한다. 익명 통계로부터 계정을 역추적하지 않는다.
 
 ```sql
--- 승인된 Production 적용 후, 첫 온전한 일자가 지난 다음부터 실행할 읽기 전용 대조
-with day as (
-  select (now() at time zone 'Asia/Seoul')::date - 1 as kst_day
-), profiles as (
-  select coalesce(sum(event_count), 0) as new_profiles
-  from public.public_account_daily_funnel, day
-  where metric_date = day.kst_day
-    and event_key = 'private_profile_created' and event_kind = 'milestone'
-), attribution as (
-  select coalesce(sum(count), 0) as attributed_signups
-  from public.signup_attribution, day where created_on = day.kst_day
-)
-select kst_day, new_profiles, attributed_signups,
-  new_profiles - attributed_signups as difference
-from day, profiles, attribution;
+-- 가입/재로그인/수정 뒤 같은 결과가 rows=1, signups=1인지 확인
+SELECT count(*) AS rows, coalesce(sum(count),0) AS signups
+FROM public.signup_attribution
+WHERE source='test' AND medium='manual'
+  AND campaign='preview_signup_test' AND content='manual_20261014';
+
+-- 테스트 종료 뒤 Preview SQL Editor의 DB owner로 해당 익명 합계만 삭제
+-- service_role에는 DELETE 권한이 없다. 원래 계정2개와 다른 통계는 보존한다.
+DELETE FROM public.signup_attribution
+WHERE source='test' AND medium='manual'
+  AND campaign='preview_signup_test' AND content='manual_20261014';
 ```
 
-SNS 일지용 한 줄: 가입을 막지 않는 통계 처리·Preview 검색 차단 완료 | 자동화 우회 키 권한403으로 전체 E2E 미실행 | 보호를 유지하고 Production 승인 후 일별 합계 대조 계획 제안
+- 위 DELETE는 제공만 하고 실행하지 않는다. 최초 프로필 milestone은 탈퇴 뒤에도 익명 합계로 남으므로 테스트 bucket을 지운 주에는 주간 difference에 테스트 수만큼 차이가 날 수 있다. 이를 맞추려고 기존 milestone을 임의로 지우지 않는다.
+- 최신 변경은 점검 SQL과 문서뿐이다. 런타임/기존 migration/Production/보호 설정은 수정하지 않는다. Preview에서 주간 SQL 실행 PASS: 2026-10-05~2026-10-11 신규 프로필0 / 집계 줄0 / 가입합계0 / 차이0. 예약 테스트 코드의 사전 합계0 확인. `git diff --check` PASS. 문서/읽기 전용 SQL 변경만 있어 전체 앱 테스트와 빌드는 재실행하지 않았다. 이번 원격 작업은 SELECT/프로젝트 정보 조회뿐이며 DELETE·migration·배포·commit·push는 실행하지 않았다.
+
+SNS 일지용 한 줄: Preview 테스트 절차와 주간 점검 SQL 준비 | 보호된 Google 인증 경로로 실제 가입 확인은 대기 | 보호 유지·자동화 보류·Production 별도 승인

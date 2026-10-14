@@ -2510,3 +2510,18 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 
 - Final Preview commit84ca454 (tree equals feature6fac59f) deployed as dpl_AG6vgCMonTX1pRRAY2BsvCh8kS1C READY. Cherry-picked follow-up commits; no merge. Local and live fixed Preview noindex headers/robots deny-all verified, production/local behavior tests preserved. Server stopped.
 - Vercel automation-bypass creation returned API403 permission denial. No installed/cached CLI fallback; no bypass created, public exception or global SSO change. The requested full automatic browser E2E is BLOCKED, not relabeled as PASS. Admin/session-only probe PASS; final SQL confirms existing Auth2/profiles2/memberships2, synthetic users0, signup0/test buckets0. Prepared operator-requested post-approval daily comparison against durable first-profile milestones; no Production job or schedule executed. Production/main/PR131 merge untouched. See automation verification report.
+
+
+## 2026-10-14 — Manual Preview test checklist and weekly SQL
+
+- Operator canceled automatic E2E/daily reconciliation and retained protection. Added one read-only weekly-check.sql: prior complete KST week, durable first-profile milestones, attribution bucket rows, SUM(count) and difference. No scheduler created.
+- Supabase project metadata proves separate Preview/Production DB hosts and regions. Production read-only checks show no signup_attribution table or any of the three attribution migration versions. Preview Auth domain-only query returned NULL for both accounts, with KST creation dates 2026-08-29 and 2026-08-30; existing accounts preserved.
+- Reserved manual test UTM source=test with isolated codes; SELECT baseline0. Supplied narrowly scoped aggregate cleanup SQL without executing it; test account cleanup uses its own withdrawal flow. Deleting its aggregate can cause an expected weekly difference because durable milestones remain.
+- Weekly query executed on Preview: 2026-10-05 to 2026-10-11, new profiles0 / buckets0 / signup sum0 / difference0. Diff whitespace checks PASS. No runtime changes, so full application tests/build not repeated. Protected Google broker paths still prevent claiming manual signup readiness. No protection exception, remote mutation, deployment, Git publication, merge or Production apply.
+
+
+## 2026-10-14 — Approved signup attribution Production release
+
+- Operator explicitly approved PR131 merge, the three Production migrations and deployment after blocked manual Preview signup. Added decision, Production test SQL with reserved source=test codes and rollback-to-existing-deployment instructions. Preserved no-protection-exception/no-automation constraints.
+- Applied exact081007/090650/101616 and version ledger in one guarded transaction to Production ucnybhzpbatzcipwqtox. Verified final six columns, NULL-equal daily unique key, code/count checks, RLS/no client access/service writes. Original owner function and existing accounts are preserved; post-deployment checkpoint follows.
+- Target35 and TypeScript rerun PASS; unchanged runtime's full1767/68route/fresh+upgrade DB checks remain valid. Original dirty SNS/PWA checkout, packages, environment and protection settings remain untouched. Actual Production signup is operator-owned and not yet run.

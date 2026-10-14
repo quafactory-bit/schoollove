@@ -32,3 +32,10 @@
 Preview의 관리자 생성 합성 계정·실제 발급 세션과 Vercel 자동화 전용 bypass로 보호된 자동 E2E를 시도한다. 공용 로그인 provider를 바꾸지 않고 실제 Google OAuth/이메일 발송을 실행하지 않는다. 테스트 계정·격리된 코드의 합계·임시 bypass는 종료 후 정리한다. 기존 두 계정은 건드리지 않는다. 실행 불가 시 이유와 Production 승인 후 일별 대조 계획을 보고한다. Production 적용과 merge는 승인되지 않았다.
 
 Preview만 robots Disallow:/와 전체 noindex/nofollow/noarchive header를 적용한다. production과 기본 로컬 환경의 기존 SEO 계약은 보존한다. 보호 예외는 계속 만들지 않으며 수동 테스트/1시간 개방 타이머는 취소 상태다.
+
+
+## 후속 승인 — Production 적용과 PR #131 merge
+
+사용자는 Preview 수동 테스트가 Vercel/Google 인증에서 막혔음을 확인하고 PR #131 merge, 이번 migration 세 개의 Production 적용과 배포를 명시적으로 승인했다. 이전 Production 금지 상태는 이 범위에 한해 해제한다. 보호 예외와 자동 일정은 계속 만들지 않는다. Production 신규 가입 테스트는 운영자가 utm_source=test 링크로 직접1회 수행하며 계정 생성/메일/실제 가입을 에이전트가 대신하지 않는다. 익명 테스트 합계의 확인·선택 삭제 SQL과 이전 정상 앱 배포로의 rollback 방법을 제공한다.
+
+Production의 기존3인자 owner RPC/launch state/계정은 변경하지 않는다. 세 migration을081007→090650→101616 순으로 하나의 transaction에 실행하고 동일 버전으로 이력을 기록한다. 실패 시 전체가 rollback되어 중간 행 단위 구조/통계 실패 시 가입 rollback 구조를 노출하지 않는다. 성공 뒤 최종6열/고유키/RLS/서비스 전용 함수/예외 분리와 기존 owner 함수 hash를 확인한 뒤 main 배포를 진행한다.
