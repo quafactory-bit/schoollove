@@ -1,5 +1,5 @@
 /** Public explanatory copy only. This revision does not re-label historical consent records. */
-export const PRIVACY_NOTICE_REVISION = '2026-09-28'
+export const PRIVACY_NOTICE_REVISION = '2026-10-14'
 
 export const PRIVATE_PROFILE_COLLECTION = [
   {

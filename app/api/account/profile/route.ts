@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
 import { hasAccountOnboardingWriteAccess } from '@/lib/publicAccountLaunch'
+import { getSupabaseAdmin } from '@/lib/supabase'
+import { serverAttribution } from '@/lib/signupAttribution'
 
 const safeText = z.string().transform((value)=>value.normalize('NFKC').trim())
   .refine((value)=>!/[\p{Cc}\p{Cf}]/u.test(value),'control characters are not allowed')
@@ -11,6 +13,7 @@ const ProfileSchema = z.object({
   display_name: safeText.pipe(z.string().min(2).max(50)),
   instagram_handle: z.string().trim().regex(/^[A-Za-z0-9._]{1,30}$/).nullable().optional(),
   introduction: safeText.pipe(z.string().max(300)).nullable().optional(),
+  sl_first_touch: z.unknown().optional(),
 }).strict()
 
 export async function GET(request: NextRequest) {
@@ -51,14 +54,18 @@ export async function POST(request: NextRequest) {
   }
 
   // Ownership and protected columns are derived and forced inside the database RPC.
-  const { data, error } = await auth.client.rpc('upsert_own_private_profile', {
+  const { data, error } = await getSupabaseAdmin().rpc('upsert_own_private_profile', {
     requested_display_name: parsed.data.display_name,
     requested_instagram_handle: parsed.data.instagram_handle || null,
     requested_introduction: parsed.data.introduction || null,
+    verified_actor: auth.user.id,
+    requested_attribution: serverAttribution(parsed.data.sl_first_touch),
   })
   if (error) return NextResponse.json({ error: '내 프로필을 저장할 수 없습니다.' }, { status: 500 })
   await syncOnboardingProgressSafely(auth.client,auth.user.id,'direct')
-  return NextResponse.json({ profile: data })
+  return NextResponse.json({ profile: data.profile, attribution_recorded: data.attribution_recorded }, {
+    headers: { 'Cache-Control': 'private, no-store, max-age=0' },
+  })
 }
 
 export const PATCH = POST

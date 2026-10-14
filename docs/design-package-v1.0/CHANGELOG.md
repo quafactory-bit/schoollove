@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-10-14 Anonymous signup attribution
+
+- Approved validated four-UTM analytics, seven-day first-touch browser storage and service-only anonymous signup statistics.
+- See `2026-10-14-signup-attribution-addendum.md`; privacy-policy changes remain proposed only.
+
 ## 2026-09-28 School roster and direct discovery
 
 - Approved a private, reciprocal same-school adult roster for entered full name, graduation year and saved grade/class history.
