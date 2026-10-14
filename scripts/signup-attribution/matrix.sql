@@ -1,6 +1,6 @@
 BEGIN;
 SELECT public.admin_set_public_account_launch_state('internal_test','LOCAL_TEST','local-test');
-INSERT INTO auth.users(id) VALUES ('a1000000-0000-4000-8000-000000000001'),('a1000000-0000-4000-8000-000000000002');
+INSERT INTO auth.users(id) VALUES ('a1000000-0000-4000-8000-000000000001'),('a1000000-0000-4000-8000-000000000002'),('a1000000-0000-4000-8000-000000000007');
 SELECT public.admin_complete_own_adult_eligibility(id,'phase10b-2026-07-28') FROM auth.users;
 SELECT set_config('request.jwt.claim.sub','a1000000-0000-4000-8000-000000000001',true);
 SELECT public.record_own_required_consents('phase10b-2026-07-28');
@@ -39,20 +39,41 @@ DO $$ DECLARE result jsonb; role_name text; privilege_name text; BEGIN
     AND created_on=(now() AT TIME ZONE 'Asia/Seoul')::date)
   THEN RAISE EXCEPTION 'safe fields/date mismatch'; END IF;
 END $$;
-SELECT set_config('request.jwt.claim.sub','a1000000-0000-4000-8000-000000000002',true);
+SELECT set_config('request.jwt.claim.sub','a1000000-0000-4000-8000-000000000007',true);
 SELECT public.record_own_required_consents('phase10b-2026-07-28');
 CREATE FUNCTION public.attribution_test_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'TEST_FAILURE'; END $$;
-CREATE TRIGGER attribution_test_failure BEFORE INSERT OR UPDATE ON public.signup_attribution FOR EACH ROW EXECUTE FUNCTION public.attribution_test_failure();
-DO $$ BEGIN
-  BEGIN
-    PERFORM public.upsert_own_private_profile('Local Failure',NULL,NULL,
-      'a1000000-0000-4000-8000-000000000002',NULL);
-    RAISE EXCEPTION 'failure not raised';
-  EXCEPTION WHEN raise_exception THEN IF SQLERRM <> 'TEST_FAILURE' THEN RAISE; END IF; END;
-  IF EXISTS(SELECT 1 FROM public.private_profiles WHERE owner_user_id='a1000000-0000-4000-8000-000000000002')
-  THEN RAISE EXCEPTION 'profile not rolled back'; END IF;
+CREATE TRIGGER attribution_test_failure AFTER INSERT OR UPDATE ON public.signup_attribution FOR EACH ROW EXECUTE FUNCTION public.attribution_test_failure();
+DO $$ DECLARE result jsonb; BEGIN
+  result := public.upsert_own_private_profile('Local Failure',NULL,NULL,
+    'a1000000-0000-4000-8000-000000000007','{"source":"failure_test"}');
+  IF result->>'attribution_recorded' <> 'false'
+    OR NOT EXISTS(SELECT 1 FROM public.private_profiles WHERE owner_user_id='a1000000-0000-4000-8000-000000000007')
+    OR NOT EXISTS(SELECT 1 FROM public.adult_eligibility_records WHERE user_id='a1000000-0000-4000-8000-000000000007' AND private_profile_first_created_at IS NOT NULL)
+    OR (SELECT sum(count) FROM public.signup_attribution) <> 1
+  THEN RAISE EXCEPTION 'statistics failure blocked owner save or leaked count'; END IF;
 END $$;
 DROP TRIGGER attribution_test_failure ON public.signup_attribution;
+DO $$ DECLARE result jsonb; BEGIN
+  result := public.upsert_own_private_profile('After Failure',NULL,NULL,
+    'a1000000-0000-4000-8000-000000000007','{"source":"failure_test"}');
+  IF result->>'attribution_recorded' <> 'false' OR (SELECT sum(count) FROM public.signup_attribution) <> 1
+  THEN RAISE EXCEPTION 'late retry counted existing profile'; END IF;
+END $$;
+SELECT set_config('request.jwt.claim.sub','a1000000-0000-4000-8000-000000000002',true);
+SELECT public.record_own_required_consents('phase10b-2026-07-28');
+-- A genuine owner/profile validation failure must still fail without a statistic.
+DO $$ BEGIN
+  BEGIN
+    PERFORM public.upsert_own_private_profile('',NULL,NULL,
+      'a1000000-0000-4000-8000-000000000002','{"source":"owner_failure"}');
+    RAISE EXCEPTION 'invalid profile unexpectedly saved';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'INVALID_PRIVATE_PROFILE' THEN RAISE; END IF;
+  END;
+  IF EXISTS(SELECT 1 FROM public.private_profiles WHERE owner_user_id='a1000000-0000-4000-8000-000000000002')
+    OR (SELECT sum(count) FROM public.signup_attribution) <> 1
+  THEN RAISE EXCEPTION 'owner failure crossed optional-statistics boundary'; END IF;
+END $$;
 SET LOCAL ROLE service_role;
 SELECT public.upsert_own_private_profile('Local Unknown',NULL,NULL,
   'a1000000-0000-4000-8000-000000000002','{"source":"bad value"}');
