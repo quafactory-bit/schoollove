@@ -36,6 +36,14 @@ describe('signup attribution profile API',()=>{
     expect((await POST(request({display_name:'Test'}))).status).toBe(401)
     expect(mocks.adminRpc).not.toHaveBeenCalled()
   })
+  it('returns saved profile successfully when optional statistics fail',async()=>{
+    mocks.adminRpc.mockResolvedValue({data:{profile:{display_name:'Saved'},attribution_recorded:false},error:null})
+    const response=await POST(request({display_name:'Saved',sl_first_touch:{source:'threads',medium:null,campaign:null,content:null,ts:Date.now()}}))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({profile:{display_name:'Saved'},attribution_recorded:false})
+    expect(mocks.adminRpc).toHaveBeenCalledOnce()
+    expect(mocks.sync).toHaveBeenCalledOnce()
+  })
   it('does not claim an attribution insert on update or transaction failure',async()=>{
     mocks.adminRpc.mockResolvedValue({data:{profile:{},attribution_recorded:false},error:null})
     expect((await (await POST(request({display_name:'Test'}))).json()).attribution_recorded).toBe(false)

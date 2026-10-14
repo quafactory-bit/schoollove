@@ -4,6 +4,7 @@ $fresh = 'pwa_phase2_fresh'
 $upgrade = 'pwa_phase2_upgrade'
 $image = 'public.ecr.aws/supabase/postgres:17.6.1.143'
 $migration = (Resolve-Path 'supabase/migrations/20261014090650_signup_attribution_daily_aggregates.sql').Path
+$bestEffortMigration = (Resolve-Path 'supabase/migrations/20261014101616_signup_attribution_best_effort.sql').Path
 $created = $false
 $temp = Join-Path ([IO.Path]::GetTempPath()) ('schoollove-pwa-phase2-' + [guid]::NewGuid().ToString('N'))
 
@@ -75,7 +76,7 @@ function Apply-AfterBase([string]$database, [bool]$includePush) {
         '20260915211712_privacy_retention_cleanup.sql',
         '20260915211726_privacy_retention_schedule.sql'
       ) -and
-      ($includePush -or $_.FullName -ne $migration)
+      ($includePush -or ($_.FullName -ne $migration -and $_.FullName -ne $bestEffortMigration))
     } |
     ForEach-Object { Invoke-SqlFile $database $_.FullName }
 }
@@ -98,7 +99,7 @@ try {
     throw 'Fresh aggregate table is not empty'
   }
   Invoke-SqlFile $fresh (Resolve-Path 'scripts/signup-attribution/matrix.sql').Path
-  Write-Output 'SIGNUP_ATTRIBUTION_FRESH_CHAIN_PASS 081007_then_090650 empty_daily_table full_matrix'
+  Write-Output 'SIGNUP_ATTRIBUTION_FRESH_CHAIN_PASS 081007_then_090650_then_101616 empty_daily_table full_matrix'
   Initialize-Base $upgrade
   Apply-AfterBase $upgrade $false
   Invoke-SqlText $upgrade @'
@@ -116,8 +117,9 @@ DO $$ BEGIN
 END $$;
 TRUNCATE public.signup_attribution;
 '@
+  Invoke-SqlFile $upgrade $bestEffortMigration
   Invoke-SqlFile $upgrade (Resolve-Path 'scripts/signup-attribution/matrix.sql').Path
-  Write-Output 'SIGNUP_ATTRIBUTION_DB_PASS upgrade_totals schema permissions first_signup update recreation daily_upsert null_buckets dimensions unknown rollback'
+  Write-Output 'SIGNUP_ATTRIBUTION_DB_PASS upgrade_totals schema permissions first_signup update recreation daily_upsert null_buckets dimensions unknown statistics_failure_preserves_profile owner_failure_rolls_back'
 } finally {
   if ($created) { docker rm -f $container | Out-Null }
   $resolvedTemp = [IO.Path]::GetFullPath($temp)

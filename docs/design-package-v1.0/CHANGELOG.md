@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-14 Signup availability and Preview verification
+
+- Approved isolating optional statistics errors from profile creation, failure verification, synthetic Preview E2E under automation bypass, and Preview-only search blocking. Production application and merge remain unapproved.
+
 ## 2026-10-14 Anonymous signup attribution
 
 - Approved validated four-UTM analytics, seven-day first-touch browser storage and service-only anonymous signup statistics. The follow-up replaces per-signup rows with date/code totals and removes serial IDs and landing paths.

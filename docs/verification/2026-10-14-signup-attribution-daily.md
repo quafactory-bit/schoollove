@@ -139,3 +139,21 @@ select coalesce(sum(count), 0) as total_signups from public.signup_attribution;
 ```
 
 SNS 일지용 한 줄: 빈 DB 검증·Preview 통합 배포 완료 | 인증 서버 경로가 Vercel 보호에 막힘 | 해당 테스트 도메인만 잠시 예외로 두고 원복하는 승인 요청
+
+## 임시 보호 예외 승인 후 조건부 사전 점검 — 개방하지 않음
+
+사용자는 2026-10-14 추가 지시로 preview.schoollove.kr 하나의 임시 예외만 승인했다. 단, 실제 회원 데이터가 없고 noindex/robots 차단이 확인돼야 하며, 문제 시 개방하지 않고 보고하도록 지정했다. 유료 추가 기능이면 결제하지 않는다. 개방이 이뤄질 경우에만 완료 통보 또는 1시간 제한에 따라 즉시 보호 복원→새 시크릿 context의 Vercel 보호 확인→SQL 합계 확인 순서로 종료한다.
+
+### 읽기 전용 확인 결과
+
+- Preview hukokfyphyrpfouazxhq: auth.users2, auth.identities2, private_profiles2, adult_eligibility_records2, profile_school_memberships2, legacy profiles0. 개인 행/이름/이메일/학교 값은 조회하지 않고 건수만 확인했다. 기존2개 계정이 모두 합성/운영자 테스트용이라는 증거는 없으므로 실제 회원 데이터 없음 조건을 충족했다고 판단하지 않는다. 임의 삭제/초기화하지 않았다.
+- 공개 홈의 인증된 HTTP200 응답에서 X-Robots-Tag 없음, robots/googlebot meta 없음. robots.txt는 User-Agent:* / Allow:/ / Disallow:/admin 및 /admin/이며 사이트 전체 차단이 아니다. app/robots.ts·app/layout.tsx도 이 결과와 일치한다. 현재 Vercel 보호 밖으로 열 경우 검색엔진 차단을 보장할 수 없다.
+- Vercel 공식 문서의 Deployment Protection Exceptions는 all plans에서 제공되는 것으로 안내된다. 결제/추가 구독/요금제 변경을 실행하지 않았다. 출처: https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/deployment-protection-exceptions .
+- preview.schoollove.kr alias에는 alias-protection-override 예외 없음. 비인증 GET /은 HTTP302로 vercel.com에 redirect됨을 재확인했다. 기존 shareable-link 접근과 공개 보호 예외는 구분한다. 이번 작업에서 protection exception 생성0, Production mutation0, 환경변수 변경0, 원격 DB write0이다.
+- 가입 집계 합계는0이다. 실제 신규 가입/재로그인/프로필 수정은 미실행이다. 개방하지 않았으므로 1시간 복원 타이머도 시작하지 않았다. 개방하지 않은 상태에 불필요한 복원 자동화를 만들지 않는다.
+
+### 필요한 다음 조치
+
+기존2개 계정의 테스트용 여부를 운영자가 확인하거나 별도 빈 Preview DB로 분리하는 방안이 먼저 필요하다. 데이터 삭제는 별도 범위다. Preview 전용 전체 noindex header/robots Disallow:/를 보완한 뒤 실제 배포 응답에서 재검증해야 한다. 사용자의 문제 시 개방 금지 지시에 따라 이번에는 코드를 임의로 고치거나 예외를 생성하지 않고 보고한다. 코드/기존 적용 migration은 변경하지 않았고, 이 사전 점검 기록만 로컬에 추가했다. 읽기 전용 점검이므로 전체 테스트/typecheck/build는 반복하지 않았다.
+
+SNS 일지용 한 줄: Preview 개방 전 데이터·검색 차단 점검 | 기존 계정2개와 전체 검색 차단 미적용 확인 | 보호를 유지하고 조건 보완 후 재검사
