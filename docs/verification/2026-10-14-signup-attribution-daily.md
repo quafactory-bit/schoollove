@@ -84,3 +84,13 @@ Vercel 공식 설명: [브랜치에 도메인 연결](https://vercel.com/docs/do
 - localhost `/privacy` HTTP200과 날짜·유입 코드별 합계 문구 확인.
 - 변경 코드 `npx eslint ...`와 `git diff --check` 최종 결과를 검토했다.
 - 고정 Preview 도메인 전환은 별도 승인 대기다. 일반 feature Preview release 결과는 후속 checkpoint에 기록한다.
+
+### 일반 브랜치 Preview 적용 확인
+
+- Runtime commit `1ec8d7957c70078297c6060cb195bdbf33f5b0a3` push 완료. Draft PR #131의 설명을 최종 합계 구조로 갱신했다. GitHub connector는 integration 403을 반환했으나 기존 로그인된 gh CLI로 정상 갱신했다.
+- Vercel `dpl_CcwfdJZvm9hF8kEww1xJZrZDAQWC`가 해당 commit에서 READY, `target=null`인 Preview다. URL: https://schoollove-9mviz3ivg-quafactory-s-projects.vercel.app . 인증된 Preview fetch의 `/privacy` 응답 HTTP200과 날짜·유입 코드별 합계/경로 미저장 문구를 확인했다.
+- 변경 코드 ESLint 오류/경고0, `git diff --check` 통과. 실제 Google 가입은 이 URL에서 시도하지 않았다.
+- 재조회한 preview.schoollove.kr의 gitBranch는 여전히 preview이고 도메인 updatedAt도 그대로다. 이번 작업에서 도메인·환경설정 mutation은 0이다. 실제 로그인은 위 별도 승인 후 고정 도메인에서 확인한다.
+- 로컬 검증 서버를 종료했다. 원래 작업 폴더의 SNS/PWA 변경은 보존했다. Production DB/migration/deployment와 merge는 수행하지 않았다.
+
+SNS 일지용 한 줄: 가입 통계를 일별 합계로 전환하고 Preview 적용 | 실제 로그인 확인은 도메인 전환 승인 대기 | 회원과 연결하지 않는 날짜·유입 코드별 합계만 저장
