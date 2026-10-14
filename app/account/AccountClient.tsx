@@ -15,11 +15,12 @@ import { clearSchoolIntent } from '@/lib/policy/schoolJourney'
 import GameHeader from '@/components/game/GameHeader'
 import AccountWelcomeGuide from '@/components/account/AccountWelcomeGuide'
 import CollectionNotice from '@/components/privacy/CollectionNotice'
+import { clearFirstTouch, readFirstTouch } from '@/lib/signupAttribution'
 
 type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;peopleSearchBetaAccess?:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number;selectionOwner?:string}
 
-async function readResult(response:Response):Promise<{error?:string}>{
-  try{return await response.json() as {error?:string}}catch{return {}}
+async function readResult(response:Response):Promise<{error?:string;attribution_recorded?:boolean}>{
+  try{return await response.json() as {error?:string;attribution_recorded?:boolean}}catch{return {}}
 }
 
 export default function AccountClient({state,launch,controlledBetaAccess,peopleSearchBetaAccess=false,instagramBetaAccess,betaOnboardingState,currentYear,selectionOwner}:Props){
@@ -60,6 +61,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
       const response=await fetch(endpoint,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       const result=await readResult(response)
       if(!response.ok){setStatus(result.error??'요청을 완료할 수 없습니다.');setIsError(true);return false}
+      if(endpoint==='/api/account/profile' && result.attribution_recorded===true) clearFirstTouch()
       if(endpoint==='/api/account/memberships' && method==='POST') clearSchoolIntent()
       setStatus(success);router.refresh();return true
     }catch{setStatus('네트워크 연결을 확인한 뒤 다시 시도해 주세요.');setIsError(true);return false}
@@ -122,7 +124,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5"><h2 className="text-lg font-bold text-gray-950">3. 내 프로필</h2>
       <details className="mt-3 rounded-xl border border-gray-200 p-4"><summary className="schoollove-focus cursor-pointer font-semibold">선택 정보 수집·이용 안내 · 입력하지 않아도 가입할 수 있어요</summary><div className="mt-3"><CollectionNotice optional /></div></details>
       <p className="mt-2 text-sm leading-6 text-gray-600">프로필의 소개와 인스타그램주소는 비공개입니다. 학교 등록 단계에서 명단 표시에 직접 동의하면 입력한 전체 이름·졸업연도·학년별 반이 같은 학교 명단 참여자에게 표시됩니다. 이 이름은 신분증으로 확인한 실명이 아니라 본인이 입력한 이름입니다. 인스타그램주소는 연결 후 상대별 공개 승인 없이는 보이지 않습니다. 프로필 사진은 받지 않습니다.</p>
-      <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();await submit('/api/account/profile',{display_name:displayName,instagram_handle:instagram||null,introduction:introduction||null})}}>
+      <form className="mt-4 space-y-3" onSubmit={async(event)=>{event.preventDefault();await submit('/api/account/profile',{display_name:displayName,instagram_handle:instagram||null,introduction:introduction||null,sl_first_touch:readFirstTouch()})}}>
         <label htmlFor="display-name" className="block text-sm font-medium text-gray-800">전체 이름</label><input id="display-name" required minLength={2} maxLength={50} disabled={!privateProfileWritable} value={displayName} onChange={(event)=>setDisplayName(event.target.value)} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
         <label htmlFor="instagram" className="block text-sm font-medium text-gray-800">인스타그램주소 (아이디만 입력·선택·비공개)</label><input id="instagram" maxLength={30} pattern="[A-Za-z0-9._]{1,30}" disabled={!privateProfileWritable&&!instagramHandleSetWritable} value={instagram} onChange={(event)=>setInstagram(event.target.value.replace(/^@/,''))} className="schoollove-focus min-h-12 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>
         <label htmlFor="introduction" className="block text-sm font-medium text-gray-800">소개 (선택·비공개)</label><textarea id="introduction" maxLength={300} disabled={!privateProfileWritable} value={introduction} onChange={(event)=>setIntroduction(event.target.value)} className="schoollove-focus min-h-24 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"/>

@@ -8,7 +8,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [],
   },
   async headers() {
+    const previewHeaders = process.env.VERCEL_ENV === 'preview' ? [{
+      source: '/:path*',
+      headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }],
+    }] : []
     return [
+      ...previewHeaders,
       {
         source: '/sw.js',
         headers: [
