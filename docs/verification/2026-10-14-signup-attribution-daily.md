@@ -116,3 +116,26 @@ RPC의 증가는 하나의 `INSERT ... ON CONFLICT ... DO UPDATE SET count = dai
 `powershell -ExecutionPolicy Bypass -File scripts/signup-attribution/run-isolated-db.ps1`에서 `SIGNUP_ATTRIBUTION_FRESH_CHAIN_PASS 081007_then_090650 empty_daily_table full_matrix`와 기존 `SIGNUP_ATTRIBUTION_DB_PASS upgrade_totals ...`를 모두 확인했다. 새 DB의 첫 migration 직후 통계는 빈 행 단위 테이블이며, 다음 migration에서 빈 일별 합계로 전환한 후 전체 권한/최초 가입/수정/재생성/NULL/차원/롤백 matrix를 통과했다. 별도 upgrade DB의 기존 3행 합산 보존도 통과했다. 모든 합성 DB는 컨테이너와 함께 제거했다.
 
 Preview 통합본 대상4 files/49 tests와 typecheck PASS. 앱 파일은 기능 브랜치와 같으며 전체 테스트/build 후 발행한다. 이 기록만 추가한 feature 후속 commit에는 새 런타임 변경이 없다.
+
+### A 통합 배포 완료 및 실제 로그인 선행 조건
+
+- 통합 commit ef853d2f39463f70504f9236dc1b14802664b206을 preview에만 push했다. main은 기존 4fe00992c0878241d0aa300905735b079d65470d 유지, PR #131은 OPEN/Draft 유지다.
+- 통합본은 대상49 tests/typecheck, 전체215 files/1762 PASS+기존4skip, 68 routes build, diff 확인을 통과했다. 통합 tree는 기능 브랜치 6667591과 정확히 일치한다. 이전 적용 migration은 수정하지 않았다.
+- 새 Preview dpl_D8phSw5uP5ZKyJW5brJvesbugTaf, URL schoollove-rao7k0p5s-quafactory-s-projects.vercel.app, commit ef853d2, target=null, READY. preview.schoollove.kr alias가 이 deployment ID를 가리키는 것까지 확인했다. 도메인 gitBranch=preview와 기존 설정 15개는 유지한다.
+- 일반 비인증 접속은 Vercel 로그인으로 redirect돼 화면 확인용 임시 shareable link를 생성했다(23시간). 토큰/전체 링크는 Git 문서에 남기지 않았다. 새 Chrome context에서 임시 cookie 설정, 홈페이지 HTTP200, Google 버튼 표시, threads/post_body/preview_signup_test/1014-manual 최초 유입 유지, 저장 키5개와 경로 없음 PASS. Auth 시작을 차단해 실제 Google 로그인·계정 생성은 수행하지 않았다.
+- 임시 브라우저 링크와 별도로, 비인증 서버 GET의 /.well-known/openid-configuration, /.well-known/jwks.json, /oauth/token이 모두 HTTP302/vercel.com 보호 화면으로 이동함을 확인했다. token 경로는 읽기용 GET만 확인했으며 실제 교환 POST는 수행하지 않았다. Supabase의 OIDC 서버 요청은 브라우저 share cookie를 전달하지 않으므로 실제 가입 완료 준비 상태라고 주장하지 않는다.
+- 제안: preview.schoollove.kr만 Deployment Protection Exception으로 테스트 동안 지정하고, 완료 후 바로 제거해 다시 보호한다. 프로젝트 전체 SSO, Production/다른 Preview 도메인, 로그인 키/적용 브랜치, Supabase 설정은 변경하지 않는다. 앱 자체의 Google 인증·owner API·관리자 인증은 그대로 유지된다. 예외가 유지되는 동안 이 Preview 도메인의 공개 화면과 공개 인증 경로는 누구나 접근 가능해진다.
+- 이는 추가 접근제어 변경이므로 별도 승인을 요청한다. 적용/원복 API는 alias protection-bypass의 override scope alias-protection-override, action create/revoke로 한 도메인에 한정할 수 있다. 실제 exception mutation은 아직0이다. 공식 동작과 가용성: https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/deployment-protection-exceptions . 설정 원복 후 해당 공개 서버 경로가 다시 보호되는지 재검증한다.
+- 적용한 접근 skill C:/Users/박완 태블릿/.codex/plugins/cache/openai-curated-remote/vercel/0.54.1/skills/access-protected-vercel-deployment/SKILL.md는 접근제어 변경에 대해 “explain the exact rule required and obtain authorization before changing it”라고 명시한다. 도메인 merge/deploy 승인을 보호 예외 승인으로 확대하지 않았다.
+- SQL 재확인 날짜2026-10-14: 전체 가입 합계0, 테스트 코드 합계0, 묶음0. 실제 수동 가입·재로그인은 미실행이며 사용자 완료 통보 후 아래 SQL로 합계를 확인한다.
+
+```sql
+select created_on, source, medium, campaign, content, count
+from public.signup_attribution
+where source = 'threads' and medium = 'post_body'
+  and campaign = 'preview_signup_test' and content = '1014-manual'
+order by created_on desc;
+select coalesce(sum(count), 0) as total_signups from public.signup_attribution;
+```
+
+SNS 일지용 한 줄: 빈 DB 검증·Preview 통합 배포 완료 | 인증 서버 경로가 Vercel 보호에 막힘 | 해당 테스트 도메인만 잠시 예외로 두고 원복하는 승인 요청
