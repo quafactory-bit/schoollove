@@ -16,12 +16,12 @@ describe('signup attribution profile API',()=>{
     mocks.adminRpc.mockResolvedValue({data:{profile:{display_name:'Test'},attribution_recorded:true},error:null})
   })
   it('uses verified identity and sanitized anonymous fields in a single RPC',async()=>{
-    const response=await POST(request({display_name:'Test',sl_first_touch:{source:'threads',medium:'post_body',campaign:'devlog',content:'1020-08',landing_path:'/',ts:Date.now()}}))
+    const response=await POST(request({display_name:'Test',sl_first_touch:{source:'threads',medium:'post_body',campaign:'devlog',content:'1020-08',ts:Date.now()}}))
     expect(response.status).toBe(200)
     expect(mocks.adminRpc).toHaveBeenCalledOnce()
     const payload=mocks.adminRpc.mock.calls[0][1]
     expect(payload.verified_actor).toBe('verified-session-user')
-    expect(payload.requested_attribution).toEqual({source:'threads',medium:'post_body',campaign:'devlog',content:'1020-08',landing_path:'/'})
+    expect(payload.requested_attribution).toEqual({source:'threads',medium:'post_body',campaign:'devlog',content:'1020-08'})
     expect(await response.json()).toEqual({profile:{display_name:'Test'},attribution_recorded:true})
   })
   it('records unknown for bad or absent attribution without blocking valid profile data',async()=>{

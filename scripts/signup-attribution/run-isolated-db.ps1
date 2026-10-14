@@ -3,7 +3,7 @@ $container = ('schoollove-attribution-' + [guid]::NewGuid().ToString('N'))
 $fresh = 'pwa_phase2_fresh'
 $upgrade = 'pwa_phase2_upgrade'
 $image = 'public.ecr.aws/supabase/postgres:17.6.1.143'
-$migration = (Resolve-Path 'supabase/migrations/20261014081007_signup_attribution.sql').Path
+$migration = (Resolve-Path 'supabase/migrations/20261014090650_signup_attribution_daily_aggregates.sql').Path
 $created = $false
 $temp = Join-Path ([IO.Path]::GetTempPath()) ('schoollove-pwa-phase2-' + [guid]::NewGuid().ToString('N'))
 
@@ -11,7 +11,11 @@ function Invoke-SqlFile([string]$database, [string]$file) {
   $containerPath = '/tmp/pwa-phase2-' + [guid]::NewGuid().ToString('N') + '.sql'
   docker cp $file "${container}:$containerPath" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "SQL copy failed: $file" }
-  docker exec $container psql -U postgres -d $database -v ON_ERROR_STOP=1 -q -f $containerPath
+  if ($file -eq $migration) {
+    docker exec $container psql -U postgres -d $database -v ON_ERROR_STOP=1 -q -1 -f $containerPath
+  } else {
+    docker exec $container psql -U postgres -d $database -v ON_ERROR_STOP=1 -q -f $containerPath
+  }
   if ($LASTEXITCODE -ne 0) { throw "SQL failed: $file" }
   docker exec $container rm -f $containerPath | Out-Null
 }
@@ -89,9 +93,23 @@ try {
   }
   Initialize-Base $upgrade
   Apply-AfterBase $upgrade $false
+  Invoke-SqlText $upgrade @'
+INSERT INTO public.signup_attribution(source,medium,campaign,content,landing_path) VALUES
+('threads',NULL,NULL,NULL,'/'),('threads',NULL,NULL,NULL,'/login'),
+('threads','post_body','devlog','1020-08','/');
+'@
   Invoke-SqlFile $upgrade $migration
+  Invoke-SqlText $upgrade @'
+DO $$ BEGIN
+  IF (SELECT count(*) FROM public.signup_attribution) <> 2
+    OR (SELECT sum(count) FROM public.signup_attribution) <> 3
+    OR (SELECT count FROM public.signup_attribution WHERE medium IS NULL) <> 2
+  THEN RAISE EXCEPTION 'upgrade totals lost or NULL buckets duplicated'; END IF;
+END $$;
+TRUNCATE public.signup_attribution;
+'@
   Invoke-SqlFile $upgrade (Resolve-Path 'scripts/signup-attribution/matrix.sql').Path
-  Write-Output 'SIGNUP_ATTRIBUTION_DB_PASS schema permissions first_signup update recreation unknown rollback'
+  Write-Output 'SIGNUP_ATTRIBUTION_DB_PASS upgrade_totals schema permissions first_signup update recreation daily_upsert null_buckets dimensions unknown rollback'
 } finally {
   if ($created) { docker rm -f $container | Out-Null }
   $resolvedTemp = [IO.Path]::GetFullPath($temp)

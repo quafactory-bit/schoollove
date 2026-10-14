@@ -1,5 +1,7 @@
 # 가입 유입 채널 측정 결과
 
+> 이 문서는 최초 행 단위 구현의 검증 기록이다. 현재 계약과 후속 검증은 `2026-10-14-signup-attribution-daily.md`를 따른다.
+
 상태: `LOCAL_VERIFIED` / Preview DB·홈·방침 `PREVIEW_VERIFIED`. 기준: main `4fe0099`, 별도 작업 폴더 `signup-attribution`의 `codex/signup-attribution` 브랜치. 원래 작업 폴더의 SNS/PWA 변경은 보존했다.
 
 ## 구현과 변경 파일
