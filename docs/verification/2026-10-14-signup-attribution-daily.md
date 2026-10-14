@@ -94,3 +94,25 @@ Vercel 공식 설명: [브랜치에 도메인 연결](https://vercel.com/docs/do
 - 로컬 검증 서버를 종료했다. 원래 작업 폴더의 SNS/PWA 변경은 보존했다. Production DB/migration/deployment와 merge는 수행하지 않았다.
 
 SNS 일지용 한 줄: 가입 통계를 일별 합계로 전환하고 Preview 적용 | 실제 로그인 확인은 도메인 전환 승인 대기 | 회원과 연결하지 않는 날짜·유입 코드별 합계만 저장
+
+## 실제 가입용 고정 Preview — 후속 승인과 A 선택
+
+사용자는 A/B 비교 후 preview에 미배포 작업이 없으면 A로 진행하도록 승인했다. 원격 fetch 뒤 preview HEAD는 1d355e29635b89069472a2d9d44191d289e28a24이고 현재 도메인 배포 dpl_FRqurf1KFYsmQGztZtawAJWT3DFB의 commit과 같다. 이후 미배포 commit은 0, preview를 사용하는 별도 local worktree도 없었다.
+
+- A는 기존 preview 브랜치의 로그인 설정과 도메인 연결을 유지하며 기능 브랜치를 merge해 배포한다.
+- B는 미배포 preview 작업을 그대로 둬야 할 때 로그인 설정 15개의 적용 브랜치를 임시 이동하고 도메인을 옮기는 방식이다. 이번에는 A 조건을 충족하므로 B는 실행하지 않는다. 비밀값 백업/읽기나 환경변수 범위 변경도 필요 없다.
+- 두 브랜치는 과거 squash 이력 때문에 많은 중복 충돌이 있다. 별도 signup-preview-test 작업 폴더에서 최신 기능 브랜치 쪽 변경을 우선해 merge했고, 유일하게 남은 앱 차이는 옛 미사용 초대 상태 4줄이었다. 이를 제거한 결과 앱/테스트/마이그레이션 파일은 검증된 기능 브랜치와 일치한다. 원래 preview commit과 배포는 복구 참조로 보존한다.
+
+### 0번 사전 확인
+
+RPC의 증가는 하나의 `INSERT ... ON CONFLICT ... DO UPDATE SET count = daily.count + EXCLUDED.count` SQL이다. INSERT는 count를 인자로 받지 않아 기존 DEFAULT 1이 적용된다. 따라서 EXCLUDED.count는 항상 1이며 read→별도 update가 아니다. 날짜와 네 코드의 NULL 동등 unique constraint가 충돌을 처리한다.
+
+새로 만든 disposable DB에서 선행 schema/migration을 구성하고 20261014081007→20261014090650을 순서대로 적용하는 fresh 경로를 runner에 추가했다. 기존 3행을 합산하는 upgrade 경로도 별도로 유지한다. 검증 완료 결과와 배포 ID는 다음 checkpoint에 기록한다.
+
+테스트 전 SQL 기준값은 전체 합계0, 지정 코드 threads/post_body/preview_signup_test/1014-manual의 합계0이다. 실제 가입·재로그인은 사용자가 직접 수행한다. 완료 통보 뒤 날짜·네 코드·count 및 전체 SUM(count)만 조회하며 개인 정보나 계정 연결 키는 조회하지 않는다. Production/main/PR merge는 금지한다. 이번에 승인된 merge 대상은 preview 브랜치뿐이다.
+
+### Fresh migration 확인 결과
+
+`powershell -ExecutionPolicy Bypass -File scripts/signup-attribution/run-isolated-db.ps1`에서 `SIGNUP_ATTRIBUTION_FRESH_CHAIN_PASS 081007_then_090650 empty_daily_table full_matrix`와 기존 `SIGNUP_ATTRIBUTION_DB_PASS upgrade_totals ...`를 모두 확인했다. 새 DB의 첫 migration 직후 통계는 빈 행 단위 테이블이며, 다음 migration에서 빈 일별 합계로 전환한 후 전체 권한/최초 가입/수정/재생성/NULL/차원/롤백 matrix를 통과했다. 별도 upgrade DB의 기존 3행 합산 보존도 통과했다. 모든 합성 DB는 컨테이너와 함께 제거했다.
+
+Preview 통합본 대상4 files/49 tests와 typecheck PASS. 앱 파일은 기능 브랜치와 같으며 전체 테스트/build 후 발행한다. 이 기록만 추가한 feature 후속 commit에는 새 런타임 변경이 없다.
