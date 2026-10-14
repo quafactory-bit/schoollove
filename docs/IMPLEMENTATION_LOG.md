@@ -2525,3 +2525,16 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Operator explicitly approved PR131 merge, the three Production migrations and deployment after blocked manual Preview signup. Added decision, Production test SQL with reserved source=test codes and rollback-to-existing-deployment instructions. Preserved no-protection-exception/no-automation constraints.
 - Applied exact081007/090650/101616 and version ledger in one guarded transaction to Production ucnybhzpbatzcipwqtox. Verified final six columns, NULL-equal daily unique key, code/count checks, RLS/no client access/service writes. Original owner function and existing accounts are preserved; post-deployment checkpoint follows.
 - Target35 and TypeScript rerun PASS; unchanged runtime's full1767/68route/fresh+upgrade DB checks remain valid. Original dirty SNS/PWA checkout, packages, environment and protection settings remain untouched. Actual Production signup is operator-owned and not yet run.
+
+
+- Production completion: PR131 squash merge cc63d02, Vercel dpl_FigncnSANVwLdBtpLZ5hmhXLbkny READY and custom aliases verified. Chrome Home200/codes-only first touch/policy/Google button, production robots allow+sitemap/no global noindex, anonymous profile401 and OIDC discovery200 PASS; page errors0. Direct operator signup was subsequently canceled; first real-signup week reconciliation remains pending; remote Analytics payload0 observed, not claimed verified. New-deployment error/fatal log groups0 over a short15minute query window. Reserved test sum0. No automated signup/DELETE/protection/environment/scheduler change. Final evidence is in the local Production report and merged PR description; no second main commit/PR created.
+
+
+## 2026-10-15 — Signup attribution verification policy and approved cleanup
+
+- Operator chose to skip manual signup/new Google accounts and use weekly-check.sql after the first real-signup week. This documentation-only follow-up publishes Production verification evidence and that revised policy; no application, migration, DB or SQL change.
+- Operator approved immediate temporary-share revocation and cleanup after token/history scanning. preview.schoollove.kr shareable links0 and protection overrides0 after revoke; fixed Preview deployment unchanged, unauthenticated homepage302/vercel.com. Preview accounts2 remain protected and untouched.
+- Confirmed weekly-check.sql is already in main (blob faeda242dbbd5bfb0cbca8d1bcd1d7a185448e3f). Preserve repository scripts and shared management helper; cleanup applies only to the three signup worktrees and this task's ignored local material. Audit and cleanup results follow in PR description.
+
+
+- 2026-10-15 cleanup audit: scanned3,165 local text files including this task's logs/temporary material and2,831 reachable Git text blobs. No real credential/session-token patterns found in task logs/temp or history. Named-token matches were reviewed synthetic/local placeholder fixtures in existing tests only. Matched values were not retained in the audit report. Scope excludes local .env values, dependency/build caches, binaries and unavailable/deleted files. Existing repository test fixtures are preserved.
