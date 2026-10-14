@@ -8,6 +8,12 @@
 
 승인한 방침 문구를 반영한다. localStorage에 자동 만료 기능이 없으므로 7일 경과 값은 다음 접근 시 삭제·갱신한다는 동작을 함께 설명한다. Production 적용·merge는 금지한다. preview.schoollove.kr 도메인·환경 설정 변경은 방법과 영향 보고 후 별도 승인 전까지 실행하지 않는다.
 
+## 후속 승인 — 실제 가입 테스트용 Preview 통합
+
+사용자는 원자적 UPSERT와 빈 DB의 081007→090650 적용 검증을 먼저 요구했다. preview 브랜치 HEAD가 현재 도메인의 배포 commit과 같고 미배포 커밋이 없으면 기능 브랜치를 preview에 merge하는 A를 승인했다. 미배포 작업이 있으면 B의 설정 임시 이동·테스트 후 복구를 사용한다. 실제 가입과 재로그인은 사용자가 직접 진행하며 완료 후 SQL로 합계를 확인한다. Production 적용·Production/main merge·PR #131 merge는 계속 금지한다.
+
+확인한 preview HEAD와 배포 commit은 모두 1d355e29635b89069472a2d9d44191d289e28a24다. A를 선택하므로 15개 설정·도메인 gitBranch는 이동하지 않는다. 분기 이력의 충돌은 별도 통합 작업 폴더에서 해소하고 실제 통합 결과를 테스트한 뒤 preview 브랜치에만 발행한다.
+
 ## 이전 행 단위 구현 기록 (위 결정으로 대체)
 
 사용자의 2026-10-14 작업지시서에 따라 구현한다. 후속 지시로 방침 문구 반영, commit·push·Draft PR, Preview migration·배포를 승인받았다. Production 적용과 merge는 승인 범위에 포함하지 않는다.

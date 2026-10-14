@@ -91,6 +91,14 @@ try {
     if ((docker inspect --format '{{.State.Health.Status}}' $container) -eq 'healthy') { break }
     Start-Sleep -Seconds 1
   }
+  # Start from a separate empty database: prerequisites, 081007, then 090650.
+  Initialize-Base $fresh
+  Apply-AfterBase $fresh $true
+  if ((Scalar $fresh 'SELECT count(*) FROM public.signup_attribution') -ne '0') {
+    throw 'Fresh aggregate table is not empty'
+  }
+  Invoke-SqlFile $fresh (Resolve-Path 'scripts/signup-attribution/matrix.sql').Path
+  Write-Output 'SIGNUP_ATTRIBUTION_FRESH_CHAIN_PASS 081007_then_090650 empty_daily_table full_matrix'
   Initialize-Base $upgrade
   Apply-AfterBase $upgrade $false
   Invoke-SqlText $upgrade @'
