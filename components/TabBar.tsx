@@ -6,6 +6,7 @@ import { Bell, House, Search, User } from 'lucide-react'
 import { useConnectionNotificationUnreadCount } from '@/components/ConnectionNotificationProvider'
 
 // v2: 인스타·스레드 문법의 아이콘 4탭. 선택 탭 검정, 비선택 회색, 알림 미확인이면 초록 점.
+// 클래스명 sl-tabbar-v2: v1 game.css·fantasy.css의 .sl-tabbar 덮어쓰기(분홍 선택색·둥근 모서리)를 받지 않는다.
 const TABS = [
   { href: '/', label: '홈', icon: House, match: ['/'] },
   { href: '/search', label: '학교 찾기', icon: Search, match: ['/search', '/school'] },
@@ -25,7 +26,7 @@ export default function TabBar() {
   return (
     <nav
       aria-label="주요 메뉴"
-      className="sl-tabbar fixed inset-x-0 bottom-0 z-40 border-t border-sl-line bg-white/95 backdrop-blur"
+      className="sl-tabbar-v2 fixed inset-x-0 bottom-0 z-40 border-t border-sl-line bg-white/95 backdrop-blur"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="mx-auto flex w-full max-w-content px-2">

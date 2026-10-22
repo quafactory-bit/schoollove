@@ -1,3 +1,4 @@
+// v2-04: v1 성장 게임 홈·학교 화면 테스트. 기능과 함께 v1/로 이동했고 vitest 실행 대상에서 제외된다(마스터 규칙 8).
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -14,7 +15,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }), notFou
 vi.mock('@/components/growth/MyGrowthSchools', () => ({ default: () => null }))
 import Home from '@/app/page'
 import Hub from '@/app/school/[slug]/page'
-import GrowthMeter from './GrowthMeter'
+import GrowthMeter from '@/components/growth/GrowthMeter'
 
 const school: SchoolGrowth = { schoolId: 'ee000001-0000-4000-8000-000000000001', schoolName: '매우 긴 이름을 가진 안전한 테스트 고등학교', slug: 'fixture', level: 1, progress: 0, totalXp: 0, rank: null, lastLevelUp: null }
 beforeEach(() => {
