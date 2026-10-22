@@ -33,6 +33,13 @@ export default async function AdminDashboardPage() {
           <h1 className="text-xl font-bold text-black">관리자 대시보드</h1>
           <LogoutButton />
         </div>
+        {/* v2-07: 관리자 메뉴는 4개만 노출. 광고주·결제·프로모션·레벨 동기화 화면은 라우트만 남기고 링크를 두지 않는다. */}
+        <nav aria-label="관리자 메뉴" className="max-w-7xl mx-auto flex flex-wrap gap-2 px-4 pb-3 text-sm font-semibold">
+          <a href="/admin/profiles" className="rounded-full border border-gray-300 px-3 py-1.5 text-black">프로필</a>
+          <a href="/admin/safety" className="rounded-full border border-gray-300 px-3 py-1.5 text-black">안전(신고·차단)</a>
+          <a href="#delete-requests" className="rounded-full border border-gray-300 px-3 py-1.5 text-black">삭제 요청</a>
+          <a href="/admin/operations" className="rounded-full border border-gray-300 px-3 py-1.5 text-black">운영</a>
+        </nav>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
@@ -84,7 +91,7 @@ export default async function AdminDashboardPage() {
           <EditRequestsList requests={editRequests} />
         </section>
 
-        <section>
+        <section id="delete-requests">
           <h2 className="text-lg font-semibold text-black mb-4">삭제 요청 목록</h2>
           <DeleteRequestsList requests={deleteRequests} />
         </section>

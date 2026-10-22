@@ -12,10 +12,10 @@ vi.mock('@/lib/api/schools', () => ({ getSchoolBySlug: mocks.school }))
 vi.mock('@/lib/promotions', () => ({ getPublicPromotion: vi.fn().mockResolvedValue(null) }))
 vi.mock('@/components/SearchBar', () => ({ default: () => <input aria-label="학교 이름 찾기" /> }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }), notFound: vi.fn() }))
-vi.mock('@/components/growth/MyGrowthSchools', () => ({ default: () => null }))
+vi.mock('@/components/v1/growth/MyGrowthSchools', () => ({ default: () => null }))
 import Home from '@/app/page'
 import Hub from '@/app/school/[slug]/page'
-import GrowthMeter from '@/components/growth/GrowthMeter'
+import GrowthMeter from '@/components/v1/growth/GrowthMeter'
 
 const school: SchoolGrowth = { schoolId: 'ee000001-0000-4000-8000-000000000001', schoolName: '매우 긴 이름을 가진 안전한 테스트 고등학교', slug: 'fixture', level: 1, progress: 0, totalXp: 0, rank: null, lastLevelUp: null }
 beforeEach(() => {

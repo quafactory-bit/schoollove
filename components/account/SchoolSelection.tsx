@@ -10,7 +10,7 @@ import { schoolTypeLabel } from '@/lib/utils'
 export function SchoolJoinButton({ slug }: { slug: string }) {
   const router = useRouter()
   const [unavailable, setUnavailable] = useState(false)
-  return <div><button type="button" className="schoollove-dark-action schoollove-focus min-h-12 rounded-xl bg-[var(--schoollove-game-accent)] px-5 py-3 font-semibold text-white" onClick={() => {
+  return <div><button type="button" className="schoollove-dark-action schoollove-focus btn-primary" onClick={() => {
     if (saveSchoolIntent(slug)) router.push('/account')
     else setUnavailable(true)
   }}>이 학교 함께 키우기</button>{unavailable && <p role="status" className="mt-3 text-sm leading-6">이 탭에 학교 선택을 보관할 수 없어요. <Link href="/account" className="underline">내 계정에서 학교를 직접 검색해 주세요.</Link></p>}</div>
@@ -50,9 +50,9 @@ export default function SchoolSelection({ owner, registeredSlugs = [], onSelect,
   const registered = Boolean(school && registeredSlugs.includes(school.slug))
   useEffect(() => { if (registered) clearSchoolIntent() }, [registered])
   if (!school && !notice) return null
-  return <aside className="mt-5 rounded-xl border border-indigo-200 bg-[var(--schoollove-game-surface)] p-4" aria-label="선택한 학교">
+  return <aside className="mt-5 rounded-xl bg-sl-brand-soft p-4" aria-label="선택한 학교">
     {school ? <>
-      <p className="text-xs font-semibold text-[var(--schoollove-game-accent)]">{registered ? '이미 등록한 내 학교' : '아직 등록하지 않은 학교 후보'}</p>
+      <p className="text-xs font-semibold text-sl-brand-text">{registered ? '이미 등록한 내 학교' : '아직 등록하지 않은 학교 후보'}</p>
       <p className="mt-2 font-bold">{school.school_name}</p>
       <p className="mt-1 text-sm text-schoollove-secondary">{school.sido} {school.sigungu} · {schoolTypeLabel(school.school_type)}</p>
       {registered ? <Link href="/account#my-schools-heading" className="schoollove-focus mt-2 inline-flex min-h-11 items-center underline">내 학교 레벨 보기</Link> : <>

@@ -3,7 +3,7 @@ import type { SchoolMembership } from '@/lib/account'
 import { buildMySchoolCards } from '@/lib/accountFirstValue'
 import { formatGradeClassHistory, gradeNumbersForSchoolType } from '@/lib/accountGradeClass'
 import ClassHistoryEditor from './ClassHistoryEditor'
-import OwnerGrowthFeedback from '@/components/growth/OwnerGrowthFeedback'
+import ShareButton from '@/components/ShareButton'
 
 type Props = {
   memberships: SchoolMembership[]
@@ -49,7 +49,6 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
                 {school.schoolType}{school.region ? ` · ${school.region}` : ''}
               </p>
             ) : null}
-            <OwnerGrowthFeedback schoolId={memberships[index].school_id} />
             <p className="mt-5 text-sm font-medium text-schoollove-text">
               {school.graduationYear}년 졸업
             </p>
@@ -65,8 +64,10 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
             {peopleSearchEnabled && hasSavedK12Class(memberships[index]) && <Link href="/people/search" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">저장한 반에서 사람 찾기</Link>}
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
-                학교 명단과 레벨 보기
+                학교 페이지 보기
               </Link>
+              {/* v2-07: v1 성장 카드 안에 있던 공유를 PHASE 10T 공개 학교 링크 공유로 대신한다. */}
+              <ShareButton schoolName={school.schoolName} url={school.href} label="학교 공유하기" className="schoollove-focus btn-pill btn-pill-muted" />
             </div> : null}
           </li>
         ))}

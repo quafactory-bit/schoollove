@@ -60,7 +60,7 @@
 - Replaced safety-notice-led Home with school discovery, owner school growth, real ranking and privacy-batched milestones; retained launch and beta boundaries.
 - Added an independent first-membership/referral XP ledger, zero-XP baseline seeding and a delayed public projection. Legacy profiles counts and stored school levels are not reused.
 - Added opaque fragment-based seven-day school referral links, owner-only contribution feedback and school-specific OG images. No beta entitlement, messaging or Instagram expansion.
-- Local tests and disposable upgrade evidence are tracked in `docs/SCHOOL_GROWTH_GAME_V1.md`; no remote release is claimed by this entry.
+- Local tests and disposable upgrade evidence are tracked in `docs/v1/SCHOOL_GROWTH_GAME_V1.md`; no remote release is claimed by this entry.
 
 ## 2026-09-08 Public account launch safety (local verification)
 

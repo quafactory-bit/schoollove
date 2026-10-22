@@ -1,6 +1,6 @@
 import { ExternalLink } from 'lucide-react'
 import type { PublicPromotion } from '@/lib/promotions'
-import PromotionImpression from './PromotionImpression'
+import PromotionImpression from '@/components/PromotionImpression'
 
 export default function TodayInstagramCard({ promotion }: { promotion: PublicPromotion }) {
   return (

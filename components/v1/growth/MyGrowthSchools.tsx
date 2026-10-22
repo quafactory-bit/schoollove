@@ -3,7 +3,7 @@ import { getAuthenticatedServerContext } from '@/lib/user-auth'
 import { getOwnSchoolGrowth } from '@/lib/ownerSchoolGrowth'
 import GrowthMeter from './GrowthMeter'
 import GrowthShareButton from './GrowthShareButton'
-import SchoolWorld from '@/components/game/SchoolWorld'
+import SchoolWorld from '@/components/v1/game/SchoolWorld'
 import type { ReactNode } from 'react'
 
 export default async function MyGrowthSchools({ compact = false, fallback = null }: { compact?: boolean; fallback?: ReactNode } = {}) {

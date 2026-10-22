@@ -1,10 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import SceneImage from '@/components/game/SceneImage'
 import { useCallback,useEffect,useState } from 'react'
 import type { OnboardingState } from '@/lib/onboarding'
-import SchoolSelection from '@/components/growth/SchoolSelection'
+import SchoolSelection from '@/components/account/SchoolSelection'
 
 const steps = [
   ['adultReady','만 19세 이상 자기진술'],
@@ -38,12 +37,12 @@ export default function OnboardingClient() {
   },[])
   useEffect(()=>{void load()},[load])
 
-  return <main className="growth-journey sl-game sl-onboarding mx-auto min-h-screen max-w-2xl px-5 py-8">
+  return <main className="sl-onboarding mx-auto min-h-screen max-w-content bg-white px-4 py-6">
     <Link href="/" className="schoollove-focus mb-5 inline-flex min-h-11 items-center text-lg font-bold">스쿨러브아이 ↗</Link>
     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">내 학교를 만나기 전, 안전한 시작</p>
     <h1 className="mt-2 text-3xl font-black tracking-tight text-gray-950">비공개 계정 시작하기</h1>
     <p className="mt-3 text-sm leading-6 text-gray-600">친구가 나를 찾을 수 있도록 전체 이름과 학교를 등록하세요. 학교 명단 표시는 기본으로 선택되며 등록 전에 해제할 수 있어요. 표시를 유지하면 같은 학교 명단과 정확한 사람 찾기를 바로 이용할 수 있습니다. 인스타그램주소는 내가 허용한 연결 상대에게만 보여요.</p>
-    <div className="sl-onboarding-layout"><SceneImage scene="signup" className="sl-scene--onboarding" sizes="(max-width: 767px) 100vw, 640px" /><div><SchoolSelection />
+    <div className="sl-onboarding-layout"><div><SchoolSelection />
 
     {!state ? <p className="mt-8 rounded-2xl bg-gray-50 p-5 text-sm" role="status">{busy?'안전한 시작 상태를 확인하고 있습니다.':'상태를 확인하지 못했습니다.'}</p> : <>
       <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">

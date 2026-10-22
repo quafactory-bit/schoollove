@@ -10,8 +10,6 @@ export default function Footer() {
           <Link href="/terms" className="inline-flex min-h-11 items-center">이용약관</Link>
           <span aria-hidden="true">·</span>
           <Link href="/contact" className="inline-flex min-h-11 items-center">문의 및 삭제 요청</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/advertising-policy" className="inline-flex min-h-11 items-center">프로모션 정책</Link>
         </div>
         <div className="mt-4 text-center text-xs text-schoollove-text">© 2026 스쿨러브아이. All rights reserved.</div>
       </div>

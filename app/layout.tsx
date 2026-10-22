@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import './game.css'
-import './scenes.css'
-import './fantasy.css'
+// v2-07: v1 게임 스타일(game.css·scenes.css·fantasy.css)은 파일만 남기고 불러오지 않는다.
 import { Providers } from './providers'
 import { ConnectionNotificationProvider } from '@/components/ConnectionNotificationProvider'
 import Footer from '@/components/Footer'

@@ -10,7 +10,6 @@ const HOME = readFileSync(join(ROOT, 'app', 'page.tsx'), 'utf-8')
 const NOT_FOUND = readFileSync(join(ROOT, 'app', 'not-found.tsx'), 'utf-8')
 const SUBMIT = readFileSync(join(ROOT, 'app', 'submit', 'page.tsx'), 'utf-8')
 const FOOTER = readFileSync(join(ROOT, 'components', 'Footer.tsx'), 'utf-8')
-const SCHOOL_WARMTH = readFileSync(join(ROOT, 'components', 'SchoolWarmth.tsx'), 'utf-8')
 const PROFILE_CARD = readFileSync(join(ROOT, 'components', 'ProfileCard.tsx'), 'utf-8')
 const ADMIN_PAGES = [
   readFileSync(join(ROOT, 'app', 'admin', 'page.tsx'), 'utf-8'),
@@ -138,9 +137,8 @@ describe('public social typography and text color system', () => {
     expect(GLOBALS).toContain('opacity: 1 !important')
   })
 
-  it('keeps school trace suggestions and profile avatar initials black', () => {
-    expect(SCHOOL_WARMTH).toContain('text-sm text-schoollove-text bg-gray-50')
-    expect(SCHOOL_WARMTH).not.toContain('text-sm text-gray-700 bg-gray-50')
+  // v2-07: SchoolWarmth 검사는 컴포넌트와 함께 components/v1/SchoolWarmth.test.ts로 이동했다.
+  it('keeps profile avatar initials black', () => {
     expect(PROFILE_CARD).toContain('justify-center text-schoollove-text font-bold text-sm')
     expect(PROFILE_CARD).not.toContain('justify-center text-gray-700 font-bold text-sm')
   })

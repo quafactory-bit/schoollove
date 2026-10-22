@@ -11,9 +11,9 @@ import { buildGradeClassPayload, formatGradeClassHistory, gradeNumbersForSchoolT
 import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
 import { graduationYearRange, graduationYearRangeNotice } from '@/lib/policy/adultEligibility'
 import type { BetaOnboardingState } from '@/lib/betaOnboarding'
-import SchoolSelection from '@/components/growth/SchoolSelection'
+import SchoolSelection from '@/components/account/SchoolSelection'
 import { clearSchoolIntent } from '@/lib/policy/schoolJourney'
-import GameHeader from '@/components/game/GameHeader'
+import BrandMark from '@/components/BrandMark'
 import AccountWelcomeGuide from '@/components/account/AccountWelcomeGuide'
 import CollectionNotice from '@/components/privacy/CollectionNotice'
 import { clearFirstTouch, readFirstTouch } from '@/lib/signupAttribution'
@@ -78,8 +78,8 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     setSchoolId(school.id);setSelectedSchoolType(school.school_type);setGradeClassValues({});setSchoolQuery(`${school.school_name} · ${school.school_type} · ${school.sido} ${school.sigungu}`);setActiveSchool(-1)
   }
 
-  return <main className="growth-journey sl-game sl-account mx-auto max-w-4xl px-5 pb-8">
-    <GameHeader />
+  return <main className="sl-account mx-auto max-w-content bg-white px-4 pb-8">
+    <div className="flex h-12 items-center"><BrandMark /></div>
     <div className="mb-3 flex justify-end"><AccountWelcomeGuide autoShow={launch.registrationEnabled && !launch.emergencyStopped && !deletionBlocked && !onboardingComplete} adultReady={state.adultEligible} consentsReady={state.consentsComplete} profileReady={Boolean(state.profile)} schoolCount={state.memberships.length} peopleSearchEnabled={peopleSearchBetaAccess && !launch.emergencyStopped && !deletionBlocked} accountAvailable={privateProfileWritable && schoolMembershipWritable}/></div>
     <div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0 flex-1">
       {!onboardingComplete && <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>}
