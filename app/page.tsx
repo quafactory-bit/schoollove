@@ -9,8 +9,10 @@ import GrowthHowItWorks from '@/components/growth/GrowthHowItWorks'
 import GameHeader from '@/components/game/GameHeader'
 import SceneImage from '@/components/game/SceneImage'
 import SceneVideo from '@/components/game/SceneVideo'
+import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { alternates: { canonical: '/' } }
 
 function GuestSchoolPanel() {
   return <section className="sl-guest-card" aria-labelledby="guest-school-title">

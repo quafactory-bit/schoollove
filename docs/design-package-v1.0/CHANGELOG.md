@@ -85,3 +85,8 @@ Apply approved V3 fantasy imagery, full-frame composition and user-facing copy t
 ## 2026-09-15 — Home illumination refinement
 
 Approved coordinate-aligned light, water and flag shimmer for the V3 hero; see the V3 addendum and home-light-shimmer decision.
+
+## 2026-10-06 — PWA Phase 1 installable shell
+
+- Approved a dependency-free installable web app shell with a typed manifest, monochrome app icons, offline-only navigation fallback and platform-specific install guidance.
+- Preserved SSR, route metadata, school URLs, API/auth/DB behavior and `/admin`; web push remains Phase 2. See `../decisions/2026-10-06-pwa-phase1-installable-shell.md`.

@@ -2418,6 +2418,14 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 
 - Replaced floating star decoration with artwork-aligned warm lamp glow, flowing water highlights, gold flag sweeps and small glints. Preserved the image, copy, navigation and data/permission behavior.
 - `LOCAL_VERIFIED`: 43 targeted tests, typecheck, 1,708 full-suite tests/4 existing skips, production build (67 static pages), PC/mobile alignment, motion change, pause/resume, offscreen/reduced-motion controls and overflow checks passed. Details: `docs/verification/2026-09-15-home-light-shimmer.md`.
+- `PRODUCTION_VERIFIED`: PR #118 merged as `0b6a1c426e68536e3c6018a4435d8181053549aa`; deployment `dpl_FNiZFCJnV1az6DjStmkct38XBgvS` READY on www.schoollove.kr. Real homepage checks at 390/1280 passed for alignment, animation, pause/resume, offscreen/reduced-motion and overflow; no page errors. Screenshot inspected and deployment error/fatal count query returned no rows. No direct DB, feature-gate or environment changes; physical devices and real account writes not tested.
+
+## 2026-09-15 — SNS logo unification and ordered publication
+
+- Under explicit user approval, edited the three cards' logos to the homepage pink-heart + SchoolLove combination and recorded the future artwork rule. Existing card text and artwork were preserved visually.
+- Published once each on Instagram and Threads as schoollove_kr in verified 1/2/3 order, with per-card alt text and AI labels. Confirmed two relevant comments on each channel. No follows, DMs or paid ads.
+- Image inspection and diff whitespace checks passed. No application code changed; npm tests/typecheck/build were not run for this SNS task. Existing unrelated changes were preserved. No commit/push or application/DB/configuration mutation occurred.
+- Links, exact activity counts, baseline video metrics and limitations: `docs/verification/2026-09-15-sns-operation.md`.
 
 ## 2026-09-15 — Privacy collection and transfer notice draft
 
@@ -2466,3 +2474,70 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - `LOCAL_VERIFIED`: real-component browser checks at320/360/390/412/768/1280 passed for one-line hint, no horizontal overflow and no character overlap. Mobile/desktop screenshots inspected; pause/resume preserved and browser errors0. Targeted26 tests, typecheck, full208files/1719tests (existing3files/4skips), final67page build and diff checks passed.
 - Default fork execution was slow; full tests passed using thread workers. A temporary Next thread-worker build hit DataCloneError; final build passed with standard page workers and local in-process compilation. Original next.config.ts restored exactly. No test exclusions or application config change retained.
 - Preserved source artwork/logo, headline, routes, motion/privacy/feature contracts, existing SNS/Home work and completed privacy release. Local implementation made no remote mutation, package change or environment-file edit. The user subsequently explicitly approved commit/push/merge/production deployment with “응 응”; production optimizer verification follows release. Physical phone checks remain unavailable. Evidence: docs/verification/2026-09-16-home-hero-clarity.md.
+
+## 2026-09-16 — SNS school-memory preparation (not published)
+
+- Prepared one participation card about school break-time memories, with the approved pink-heart + SchoolLove brand combination, four numbered locations and a comment prompt. Saved Instagram/Threads captions, alt text and full built-in imagegen prompt in artifacts/sns/2026-09-16.
+- Visually checked text/logo and read image dimensions (1122x1402). No application code changes; tests/typecheck/build not run. Existing unrelated work preserved.
+- No SNS publication, scheduling, comments, profile changes, Git publication or application/DB mutation. See docs/verification/2026-09-16-sns-preparation.md for outputs and limitations.
+## 2026-09-16 — Anonymous school note home preview (LOCAL_VERIFIED)
+
+- Created an independent desktop/mobile home mockup with editable presets, free text, school selection, publication-pending feedback and proposed school XP/ranking states. All examples are synthetic; no runtime application changes or real submissions.
+- 1440/390 browser checks passed after correcting option markup. Original assets, logo, existing working changes and production scoring preserved. No remote changes. See docs/verification/2026-09-16-school-note-preview.md for evidence, commands, limitations and proposed scoring rules.
+- Review revision: moved weekly ranking with existing siege video into the first standalone box below the hero and compacted the note composer. PC/mobile video playback, pause/resume, reduced motion, layout order, form interactions and overflow checks passed. Local preview only; production unchanged.
+- Further user-directed preview revision: total cumulative ranking with explicit example XP, crowned large top-three podiums and compact places four/five. Replaced school-filtered notes with a shared multi-school feed, retained older messages/load-more, added in-memory cumulative/idempotent award demonstration. 1440/390/360 checks passed; video controls rechecked. No runtime application or remote changes. Current report: docs/verification/2026-09-16-school-note-preview.md.
+
+## 2026-09-16 — School-memory SNS publication
+
+- On the user's publication request, posted today's single school-memory card once each to Instagram and Threads as schoollove_kr. Added alt text and AI labels; used original crop on Instagram and verified the entire card remained visible.
+- Instagram directs readers to the profile link. Threads includes the schoollove.kr HTTPS link and the school-memory topic tag. Disabled only this Instagram post's automatic Threads cross-share to avoid duplication.
+- Verified both public post URLs, images and captions. Updated final captions and docs/verification/2026-09-16-sns-publication.md. No app code changes, npm tests, paid ads, comments, follows, DMs, Git publication or DB changes. Existing unrelated work preserved.
+## 2026-09-16 — Broader SNS engagement completed
+
+- Followed the user's request to broaden topics and focus on ten comments. Posted ten distinct contextual comments as schoollove_kr: Instagram two, Threads eight, spanning school events, moving, housekeeping, seasons, home records, coffee and space preparation.
+- Verified each comment's author/text and unique public link in the browser, and three new following states: Instagram akaraka_yonsei; Threads bubblyhome_ and onebyone.dailynote. Evidence and exact texts: docs/verification/2026-09-16-sns-engagement.md.
+- No code edits, application/DB changes, Git publication, DMs, paid ads or extra feed posts. Existing local changes preserved. SNS state verified; reach/click lift not measured. npm tests/typecheck/build not applicable; Git status and whitespace checks used for the documentation follow-up.
+## 2026-09-17 — Contextual SNS design direction
+
+- Recorded the user's instruction to vary colors, concepts and layouts by content while always including an opening hook and a concrete site-visit call to action. Existing website pink-heart + SchoolLove logo remains the brand standard.
+- Proposed today's three-card school-search story and Threads adaptation, followed by ten contextual comments across broader everyday topics. This is a plan only; no media generation or SNS mutation performed today.
+- Preserved all existing local work. Reviewed prior publication/engagement and logo records; documentation whitespace check used. No app code, DB or remote changes. Decision: docs/decisions/2026-09-17-sns-contextual-design.md.
+
+## 2026-09-20 — Episode 1 Instagram reel published; Threads account switch pending
+
+- Extracted the user's unchanged 1080p episode video; browser metadata confirms 1080×1920 and 60 seconds. Used the exact user-supplied caption with presentation markup removed. Published once as schoollove_kr with original crop/sound and AI label; verified share success and new profile reel: https://www.instagram.com/schoollove_kr/reel/DdgO-wIBZdZ/ .
+- Threads remains signed in as salimpick_pro. Automatic approval review blocked logout as an unapproved account-state change; requested explicit approval or user account switching. No Threads post made at this checkpoint.
+- Preserved all unrelated changes and application code. No app tests/build, Git publication, deployment, DB changes, paid ads, comments or follows. Full video playback/platform output resolution not verified. Evidence and remaining approval: docs/verification/2026-09-20-sns-episode01-publication.md.
+
+## 2026-09-20 — Episode 1 Threads publication completed
+
+- The user explicitly approved Threads logout/account switching. Switched from salimpick_pro to existing schoollove_kr and verified the identity before uploading the unchanged 1080p video with the exact user caption and AI-content label.
+- PRODUCTION_VERIFIED: https://www.threads.com/@schoollove_kr/post/DdgQN4OjeWt . Profile and detail page show the video, author, caption and AI label. Both requested channels are now published; no duplicate Instagram post or remaining approval.
+- Updated the publication report and this log only; existing application/source files preserved. Git status and whitespace checks used; no application tests needed or run. No Git publication, DB/deployment changes, ads, comments or follows. Platform recompression/full playback remain unverified.
+
+## 2026-09-21 — Haru/Luna three-card review draft
+
+- Created three ordered comic carousel cards with built-in image_gen: school-memory hook, character dialogue and school-finding CTA. Used episode frames for character clothing/hair and website screenshot for the pink-heart + SchoolLove logo; retained original media unchanged.
+- Saved three 1092×1440 PNGs, a ZIP and full prompts under artifacts/sns/2026-09-21. Visually checked Korean main text, character names, logo, numbering and CTA; read dimensions and checked documentation whitespace. No app tests/build because no application code changed.
+- Review only: no SNS publication/account switching, comments, follows, ads, deployment, DB changes or Git publication. Existing unrelated work preserved. Evidence: docs/verification/2026-09-21-sns-duo-cards.md.
+
+## 2026-09-21 — Haru/Luna carousel published and contextual engagement completed
+
+- Published the repaired 4:5 Haru/Luna three-card carousel once as schoollove_kr. Instagram confirms the carousel at https://www.instagram.com/schoollove_kr/p/DdisFFAD8Ps/ and automatic Threads cross-post at https://www.threads.com/@schoollove_kr/post/DdisF1Bj0Nt. The final order is card 1 → 2 → 3; homepage pink-heart + SchoolLove mark is used throughout.
+- After the user approved discarding the temporary cropped upload, derived 1080×1350 assets retained the complete headline and all original visual material. Both published surfaces show AI-content labels.
+- Posted ten unique contextual Threads comments across parenting, rest, home records, cleaning, workspace, kitchen and family topics; followed haelok.zip, jjo2_ful2 and yoonseul_ys. Each publication/comment/follow state was verified in the browser. Full evidence: docs/verification/2026-09-21-sns-publication-and-engagement.md.
+- No application source, DB, deployment, Git publication, paid-ad or DM changes. Existing local work preserved; application tests/typecheck/build were not applicable to this SNS-only operation.
+
+## 2026-09-22 — Lunch carousel, profile refresh and broad engagement completed
+
+- Changed the `schoollove_kr` Instagram and Threads profile images to the approved Haru/Luna duo artwork and verified both public profiles.
+- Published the ordered 1080×1350 lunch carousel once on Instagram at https://www.instagram.com/schoollove_kr/p/Ddk6ea9Dw9G/ and through the enabled Threads cross-share at https://www.threads.com/@schoollove_kr/post/Ddk6fP2Dz0p. The final order is card 1 → 2 → 3, with AI-content labels shown and Facebook sharing off.
+- Posted ten distinct contextual Threads comments across cleaning, family space, cafe, plants, local outings, pets, books, drawing, exercise and cooking. Followed `arveo.studio`, `wattle_and_b` and `linesbysunmi`; every exact comment and all three `팔로잉` states were verified in the browser. Full evidence: `docs/verification/2026-09-22-sns-publication-and-engagement.md`.
+- No application source, DB, deployment, Git publication, paid-ad or DM changes. Existing local work preserved; application tests/typecheck/build were not applicable to this SNS-only operation.
+
+## 2026-10-06 — Installable PWA Phase 1 (LOCAL_VERIFIED)
+
+- Added the approved dependency-free PWA shell: typed manifest, monochrome heart + `SchoolLove` icons, production-only service-worker registration, navigation-only offline fallback and Android/iOS install guidance. The banner appears after two page views, respects the fourteen-day dismissal window, sits above the mobile tab bar and is excluded from `/admin`.
+- Preserved SSR, school URL hierarchy, APIs, Auth, DB, administrator authentication and package versions. The service worker stores only `/offline.html`; it does not intercept or cache APIs, images or third-party requests. Home `?source=pwa` resolves to the query-free canonical.
+- `LOCAL_VERIFIED`: targeted 2 files/2 tests, TypeScript, full 213 files/1,732 tests (3 files/4 tests skipped), 68-page production build, HTTP manifest/header/canonical checks and installed-Chrome Android/iOS/offline browser checks passed. Existing unrelated lint warnings remain warnings only.
+- No commit, push, merge, deployment, environment change, package change, DB change or web-push Phase 2 work. Physical-device and PWABuilder checks remain for the user after a separately approved deployment. Evidence: `docs/verification/2026-10-06-pwa-phase1.md`.
