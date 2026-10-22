@@ -174,6 +174,7 @@ const safeMembershipErrors: Record<string,string> = {
   PUBLIC_ACCOUNT_SCHOOL_LIMIT_REACHED:'학교 이력은 최대 3개까지 저장할 수 있습니다.',
   PUBLIC_ACCOUNT_SCHOOL_DUPLICATE:'이미 저장한 학교와 졸업연도입니다.',
   FUTURE_GRADUATION_YEAR_NOT_ALLOWED:'미래 졸업연도는 저장할 수 없습니다.',
+  CURRENT_STUDENT_GRADUATION_YEAR_NOT_ALLOWED:'재학 중인 학교는 등록할 수 없어요.',
   PRIVATE_PROFILE_REQUIRED:'비공개 프로필을 먼저 저장해 주세요.',
   ADULT_CONSENT_REQUIRED:'성인 확인과 필수 동의가 필요합니다.',
   ACCOUNT_DELETION_REQUESTED:'탈퇴 처리 중에는 정보를 변경할 수 없습니다.',
