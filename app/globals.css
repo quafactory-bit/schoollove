@@ -2,20 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 :root {
+  /* v2 (2026-10-22): schoollove-v3 목업 토큰. 기존 --schoollove-* 이름은 유지하고 이 값으로 재매핑한다.
+     --schoollove-level·growth 등 게임용 변수는 그대로 두되 v2 화면에서 쓰지 않는다. */
+  --sl-bg: #ffffff;
+  --sl-bg2: #f2f3f5;
+  --sl-line: #e5e7eb;
+  --sl-line2: #d1d5db;
+  --sl-ink: #0a0a0a;
+  --sl-ink2: #6b7280;
+  --sl-ink3: #9ca3af;
+  --sl-brand: #0f7b5f;
+  --sl-brand-dark: #0b5f49;
+  --sl-brand-soft: #e6f4ef;
+  --sl-brand-text: #0b6a51;
+  --sl-warn-soft: #fff7e6;
+  --sl-warn-text: #8a5a00;
   --schoollove-game-accent: #3448c5;
   --schoollove-game-surface: #f5f7ff;
   --schoollove-bg: #ffffff;
   --schoollove-surface: #ffffff;
-  --schoollove-surface-subtle: #f7f7f7;
-  --schoollove-surface-pressed: #f1f5f9;
-  --color-schoollove-text: #000000;
-  --color-schoollove-date: #4b5563;
+  --schoollove-surface-subtle: var(--sl-bg2);
+  --schoollove-surface-pressed: var(--sl-line);
+  --color-schoollove-text: var(--sl-ink);
+  --color-schoollove-date: var(--sl-ink2);
   --color-schoollove-hud-red: #c62828;
   --schoollove-text: var(--color-schoollove-text);
-  --schoollove-text-secondary: #475569;
+  --schoollove-text-secondary: var(--sl-ink2);
   --schoollove-text-muted: var(--color-schoollove-date);
-  --schoollove-border: #e8e8e8;
-  --schoollove-progress-track: #e8e8e8;
+  --schoollove-border: var(--sl-line);
+  --schoollove-progress-track: var(--sl-line);
   --schoollove-school: var(--color-schoollove-text);
   --schoollove-number: var(--color-schoollove-text);
   --schoollove-level: #4f7cff;
@@ -23,7 +38,7 @@
   --schoollove-system: #ff9f43;
   --schoollove-warning: #b7f84a;
   --schoollove-system-soft: #fff4e6;
-  --schoollove-neutral-soft: #f7f7f7;
+  --schoollove-neutral-soft: var(--sl-bg2);
   --schoollove-neon-mint: #32e6b7;
   --schoollove-neon-lime: #b7f84a;
   --schoollove-electric-blue: #4f7cff;
@@ -143,11 +158,21 @@
   .card {
     @apply bg-white border border-gray-200 rounded-2xl shadow-card;
   }
+  /* v2 버튼: 초록 52px radius 14 / 회색 보조 / 알약 3상태 */
   .btn-primary {
-    @apply bg-brand-blue text-white font-medium py-3 px-6 rounded-2xl hover:bg-brand-blue-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[14px] bg-sl-brand px-6 text-base font-extrabold text-white transition-colors hover:bg-sl-brand-dark disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-secondary {
-    @apply bg-white text-schoollove-text font-medium py-3 px-6 rounded-2xl border border-gray-200 hover:bg-gray-50 transition-colors;
+    @apply inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[14px] bg-sl-bg2 px-6 text-base font-extrabold text-sl-ink transition-colors hover:bg-sl-line;
+  }
+  .btn-pill {
+    @apply inline-flex min-h-9 items-center justify-center rounded-full bg-sl-brand px-3.5 text-[13.5px] font-extrabold text-white;
+  }
+  .btn-pill-dark {
+    @apply bg-sl-ink text-white;
+  }
+  .btn-pill-muted {
+    @apply bg-sl-bg2 text-sl-ink2;
   }
   .input-base {
     @apply w-full border border-schoollove-border rounded-2xl px-3.5 py-2.5 text-sm text-schoollove-text placeholder-schoollove-text outline-none focus:border-schoollove-level focus:ring-1 focus:ring-schoollove-level/20 transition-all;
@@ -238,6 +263,7 @@ body textarea:not(:disabled)::placeholder {
 }
 
 body .btn-primary,
+body .btn-pill:not(.btn-pill-muted),
 body .chip-active,
 body .schoollove-dark-action,
 body .schoollove-dark-action:visited,

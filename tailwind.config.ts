@@ -34,11 +34,26 @@ const config: Config = {
           'electric-blue': 'var(--schoollove-electric-blue)',
           'neon-orange': 'var(--schoollove-neon-orange)',
         },
-        // 브랜드 컬러를 흑백 모노톤으로 통일 (클래스명 유지 -> 코드 수정 없이 전 페이지 적용)
+        // v2: 브랜드 컬러를 진초록 하나로 재매핑 (클래스명 유지 -> 코드 수정 없이 전 페이지 적용)
         brand: {
-          blue: '#0a0a0a',
-          'blue-hover': '#262626',
-          'blue-light': '#f5f5f5',
+          blue: 'var(--sl-brand)',
+          'blue-hover': 'var(--sl-brand-dark)',
+          'blue-light': 'var(--sl-brand-soft)',
+        },
+        sl: {
+          bg: 'var(--sl-bg)',
+          bg2: 'var(--sl-bg2)',
+          line: 'var(--sl-line)',
+          line2: 'var(--sl-line2)',
+          ink: 'var(--sl-ink)',
+          ink2: 'var(--sl-ink2)',
+          ink3: 'var(--sl-ink3)',
+          brand: 'var(--sl-brand)',
+          'brand-dark': 'var(--sl-brand-dark)',
+          'brand-soft': 'var(--sl-brand-soft)',
+          'brand-text': 'var(--sl-brand-text)',
+          'warn-soft': 'var(--sl-warn-soft)',
+          'warn-text': 'var(--sl-warn-text)',
         },
         gray: {
           50: '#F9FAFB',

@@ -2,23 +2,16 @@ import Link from 'next/link'
 
 export default function Footer() {
   return (
-    <footer className="mt-16 border-t border-schoollove-border bg-schoollove-surface">
-      <div className="mx-auto max-w-5xl px-5 py-8">
-        <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <div className="text-sm text-schoollove-text">
-            <span className="font-bold text-schoollove-text">스쿨러브아이</span>
-            <span className="mx-2">·</span>
-            <span>기억 속 친구의 인스타그램주소로 다시 연결돼요</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-schoollove-secondary">
-            <Link href="/contact" className="inline-flex min-h-11 items-center">문의 및 삭제 요청</Link>
-            <span>·</span>
-            <Link href="/terms" className="inline-flex min-h-11 items-center">이용약관</Link>
-            <span>·</span>
-            <Link href="/privacy" className="inline-flex min-h-11 items-center">개인정보처리방침</Link>
-            <span>·</span>
-            <Link href="/advertising-policy" className="inline-flex min-h-11 items-center">프로모션 정책</Link>
-          </div>
+    <footer className="mt-12 border-t border-sl-line bg-white">
+      <div className="mx-auto max-w-content px-4 py-6">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12.5px] font-semibold text-sl-ink2">
+          <Link href="/privacy" className="inline-flex min-h-11 items-center">개인정보처리방침</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/terms" className="inline-flex min-h-11 items-center">이용약관</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/contact" className="inline-flex min-h-11 items-center">문의 및 삭제 요청</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/advertising-policy" className="inline-flex min-h-11 items-center">프로모션 정책</Link>
         </div>
         <div className="mt-4 text-center text-xs text-schoollove-text">© 2026 스쿨러브아이. All rights reserved.</div>
       </div>

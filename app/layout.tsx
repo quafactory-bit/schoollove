@@ -5,7 +5,6 @@ import './scenes.css'
 import './fantasy.css'
 import { Providers } from './providers'
 import { ConnectionNotificationProvider } from '@/components/ConnectionNotificationProvider'
-import DesktopNav from '@/components/DesktopNav'
 import Footer from '@/components/Footer'
 import TabBar from '@/components/TabBar'
 import PrivacySafeAnalytics from '@/components/PrivacySafeAnalytics'
@@ -52,7 +51,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <Providers>
           <ConnectionNotificationProvider>
-            <DesktopNav />
             <div className="pb-16">
               {children}
               <Footer />

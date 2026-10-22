@@ -9,9 +9,9 @@ const badge = readFileSync(join(ROOT, 'components', 'ConnectionNotificationBadge
 const desktopNav = readFileSync(join(ROOT, 'components', 'DesktopNav.tsx'), 'utf8')
 
 describe('connection notification navigation integration', () => {
-  it('mounts the shared provider, desktop navigation, and mobile navigation from RootLayout', () => {
+  it('mounts the shared provider and the single v2 tab bar from RootLayout (DesktopNav retired in v2-03)', () => {
     expect(layout).toContain('<ConnectionNotificationProvider>')
-    expect(layout).toContain('<DesktopNav />')
+    expect(layout).not.toContain('<DesktopNav />')
     expect(layout).toContain('<TabBar />')
   })
 

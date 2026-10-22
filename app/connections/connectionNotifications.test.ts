@@ -34,7 +34,8 @@ describe('connection notifications product contract', () => {
   it('renders the connection nav badge only for a non-zero unread count', () => {
     expect(badge).toContain('if (!unreadCount) return null')
     expect(badge).toContain("unreadCount > 9 ? '9+' : String(unreadCount)")
-    expect(tabBar).toContain("label: '내 연결'")
+    expect(tabBar).toContain("label: '알림'")
+    expect(tabBar).toContain('dot && unreadCount ?')
     expect(desktopNav).toContain('내 연결')
   })
 

@@ -86,10 +86,21 @@ describe('public social typography and text color system', () => {
   })
 
   it('uses the approved text color tokens without changing non-text accent tokens', () => {
-    for (const color of ['#000000', '#4b5563', '#c62828']) {
+    // v2-03: 텍스트·선·보조 배경은 schoollove-v3 목업 토큰으로 재매핑, 게임용 accent는 그대로 둔다.
+    for (const color of ['#0a0a0a', '#6b7280', '#9ca3af', '#c62828']) {
       expect(GLOBALS).toContain(color)
     }
-    for (const color of ['#e8e8e8', '#f7f7f7', '#32e6b7', '#b7f84a', '#4f7cff', '#ff9f43']) {
+    expect(GLOBALS).toContain('--color-schoollove-text: var(--sl-ink)')
+    for (const color of ['#0f7b5f', '#0b5f49', '#e6f4ef', '#0b6a51', '#f2f3f5', '#e5e7eb', '#d1d5db', '#fff7e6', '#8a5a00']) {
+      expect(GLOBALS).toContain(color)
+    }
+    for (const color of ['#32e6b7', '#b7f84a', '#4f7cff', '#ff9f43']) {
+      expect(GLOBALS).toContain(color)
+    }
+  })
+
+  it('keeps the legacy v1 accent token values available for rollback', () => {
+    for (const color of ['#32e6b7', '#b7f84a', '#4f7cff', '#ff9f43', '#fff4e6']) {
       expect(GLOBALS).toContain(color)
     }
   })
@@ -123,7 +134,7 @@ describe('public social typography and text color system', () => {
     expect(GLOBALS).toContain('body input:not(:disabled)::placeholder')
     expect(GLOBALS).toContain('body textarea:not(:disabled)::placeholder')
     expect(GLOBALS).toContain('color: var(--schoollove-text-secondary) !important')
-    expect(GLOBALS).toContain('--schoollove-text-secondary: #475569')
+    expect(GLOBALS).toContain('--schoollove-text-secondary: var(--sl-ink2)')
     expect(GLOBALS).toContain('opacity: 1 !important')
   })
 
