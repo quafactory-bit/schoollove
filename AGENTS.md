@@ -1,5 +1,7 @@
 # SchoolLoveI 작업 규칙
 
+> SNS 로고 통일 결정(2026-09-15): 앞으로 Instagram·Threads 카드와 홍보물의 로고는 홈페이지 `components/game/GameHeader.tsx`의 분홍 하트 + 영문 `SchoolLove` 조합으로 통일한다. `app/game.css`의 하트 색상·기울기·로고 비율을 기준으로 하며, 임의의 ‘스’ 심볼이나 한글 워드마크로 대체하지 않는다. 로고만 수정하라는 요청에서는 기존 본문·레이아웃·일러스트를 보존한다. 상세 기준은 `docs/decisions/2026-09-15-sns-logo-unification.md`를 따른다.
+
 > PHASE 10AA 현재 결정: 학교 이력의 authority는 계속 학교 1곳+졸업연도 1개이며, 학년별 반은 owner-private 자식 `profile_school_class_histories`로 저장한다. 초등학교는 1~6학년, 중·고등학교는 1~3학년만 허용하고 대학·전문대학은 이 단계에서 학년/반을 받지 않는다. 학교 유형은 DB의 `public.schools` 값으로만 판단한다. 새 owner-safe RPC가 parent membership을 legacy `class_number=NULL`로 만들고 child 전체를 한 transaction으로 저장한다. 기존 `class_number`는 유지하되 grade authority가 없으므로 backfill하지 않는다. 사람 검색은 여전히 학교+졸업연도+정확한 이름이며 학년/반 matching은 별도 승인 전까지 금지한다. Preview migration 적용·beta 초대/member·people search·Production 변경은 이 단계의 범위가 아니다.
 
 > PHASE 10X 현재 결정: controlled-beta snapshot이 표현할 수 있는 feature contract는 정확히 두 개다. 기존 `ACCOUNT_PRIVATE_BETA`는 `account_registration`+`private_profile`, 새 `PEOPLE_DISCOVERY_BETA`는 `people_search`+`connection_request`이며 순서와 무관한 정확한 2개 집합만 허용한다. 두 계약 모두 단일 학교·최대 20명·정확히 14일·관리자 승인·초대 1회/7일·필수 중단 조건을 유지하고, immutable snapshot과 8개 program flag 전체가 일치해야 시작·재활성화할 수 있다. messaging·Instagram은 제외하며 `people_search` 중단은 connection expansion에도 우선한다. 10X는 계약 추가만 수행하며 Preview migration 적용, beta draft/program/invite/member 생성, feature 활성화와 Production 변경은 별도 승인 전까지 금지한다.
@@ -47,6 +49,20 @@
 - 수락된 연결의 500자 텍스트 대화만 허용하고 URL·이메일·전화번호·외부 ID, 첨부와 실시간 socket은 금지한다.
 - Instagram은 연결 상대별 별도 승인 후에만 공개하며 취소·연결 해제·차단 시 즉시 비공개로 전환한다. Today Instagram 광고·결제는 PHASE 10D로 분리한다.
 
+## A1. v2 덜어내기 계약 (2026-10-22, 최우선)
+
+기준 문서: `sns-ops/workorders/2026-10-22-v2-master.md`. 모든 v2 작업은 `v2-simplified` 브랜치에서 한다.
+
+- 남기는 것 4개: Google 로그인+19세 / 학교·졸업연도 등록 / 같은 학교 회원끼리 보는 기수 명단("출석부") / 인스타 주소는 상호 수락 시 공개.
+- 빼는 것: XP·레벨·순위·공성전·안부 메시지·환영 안내·복구 이메일 단계·명단 표시 선택 화면·어드민의 광고주/결제/프로모션 메뉴.
+- 추가하는 것: 로그인 전 학교 페이지의 졸업연도별 등록 수 / 가입 직후 "홈 화면에 추가" 안내 / 명단 위 "새로 들어온 동문" 띠 / 푸시 2종 + 이메일.
+- 되돌리기 보장 — 금지 3가지: ① 테이블·컬럼 DROP 또는 RENAME ② 사용자 데이터(profiles·memberships·connections·초기 등록 27건 포함) 삭제·수정 ③ 기존 migration 파일 수정. 마이그레이션은 추가만(새 파일, 새 함수, 새 컬럼 nullable). 빼는 기능은 화면·라우트에서만 내리고 코드 파일은 삭제하지 않는다(`v1/` 접두 폴더로 옮기는 것은 허용).
+- 신규 테이블 0 원칙: v2의 명단·요청·수락 상태는 기존 테이블·컬럼(명단 표시 플래그, connections)에 쓴다. v1 코드로 되돌려도 v2 가입자가 보여야 한다.
+- production 파일명 덮어쓰기 금지: 승인 전에는 이미지·폰트 등 정적 자산을 같은 이름으로 덮어쓰지 않고 `-v2` 접미사로 추가한다.
+- 테스트 정리 원칙(L절 보완): 화면에서 내린 기능(XP·레벨·순위·안부·환영 안내)의 테스트는 "약화"가 아니라 그 기능과 함께 `v1/`로 이동한다. 남는 기능의 테스트는 지우거나 약화하지 않는다.
+
+이 절은 B·C·G·E절보다 우선한다. B·C·G·E절은 v1 보류 상태이며 v2 작업에 적용하지 않는다. v1으로 되돌릴 때 이 절을 내리고 B·C·G·E절을 복원한다.
+
 ## A. 제품 최상위 원칙
 
 - PHASE 10A 동안 SchoolLoveI는 안전한 학교 기본 정보 검색과 개인정보 전환 안내를 제공한다.
@@ -57,14 +73,14 @@
 - 레벨 숫자보다 사용자가 성장했다고 느끼는 경험을 우선한다.
 - `/school/{slug}/{year}/{class}` 계층은 호환성을 위해 유지하되 Year/Class 개인 명단은 공개하지 않는다.
 
-## B. Home 계약
+## [v1 보류 — A1 참조] B. Home 계약
 
 - Home은 검색창 중심 랜딩 페이지가 아니다.
 - Home은 공개 계정 launch state에 맞는 안전 안내를 표시하고, `open`에서만 성인 비공개 계정 시작 CTA를 제공한다.
 - Home을 과거의 단순 학교 검색 화면으로 되돌리지 않는다.
 - Home 활동에서 개인 nickname이나 Instagram을 직접 노출하지 않는다.
 
-## C. Register Flow 계약
+## [v1 보류 — A1 참조] C. Register Flow 계약
 
 - legacy 공개 Register Flow와 `POST /api/profiles`는 영구 종료한다. 새 공개 계정은 별도 open 승인 뒤 `/login`→`/onboarding`→`/account`만 사용한다.
 - 기존 등록 모듈과 성공 상태는 공개 UI에서 호출하지 않는다.
@@ -81,7 +97,7 @@
 - 학교 기본 페이지는 개인 데이터가 없을 때만 index를 유지한다.
 - search/submit/invite/Year/Class/Profile 성격의 경로는 noindex/nofollow/noarchive를 유지한다.
 
-## E. FROZEN 문서
+## [v1 보류 — A1 참조] E. FROZEN 문서
 
 - `docs/design-package-v1.0`은 FROZEN 제품 기준이다.
 - FROZEN은 영원히 수정 불가능하다는 뜻이 아니라, 사용자 승인과 Decision 기록 없이 변경할 수 없다는 뜻이다.
@@ -100,7 +116,7 @@
 - 보류된 것은 Completion의 세부 집계 구현과 State D freshness 조건이다.
 - 보류된 세부 계산식을 임의로 추정하거나 구현하지 않는다.
 
-## G. XP와 Level 계약
+## [v1 보류 — A1 참조] G. XP와 Level 계약
 
 - 현재 P1에서 사용하는 잠정 XP 입력은 visible profile count다.
 - 현재 구현에서는 공개 프로필 수를 cumulative XP 의미로 사용한다.
@@ -133,7 +149,7 @@
 
 - 모든 작업 시작 시 `git status --short --branch`를 확인한다.
 - 사용자가 만든 기존 변경을 되돌리거나 덮어쓰지 않는다.
-- 현재 미커밋 Phase 9 변경을 하나의 작업 범위로 보존한다.
+- 현재 미커밋 Phase 9 변경을 하나의 작업 범위로 보존한다. (2026-10-22: 해당 변경은 `pwa-wip-2026-10-06` 브랜치로 보존됨)
 - 허가 없이 commit, push, merge, reset, clean, restore, checkout, switch, stash를 실행하지 않는다.
 - 자동 포맷이나 개행 변환으로 무관한 파일을 변경하지 않는다.
 - LF/CRLF 일괄 변환을 피한다.
@@ -226,6 +242,8 @@ Phase 9는 production에 배포되어 UI 검증까지 완료됐지만, 실제 pr
 - 원격 DB mutation
 - 관리자 계정 또는 비밀정보 변경
 
+v2 작업 중 `v2-simplified` 브랜치 안의 commit은 마스터 지시서로 사전 승인됨. 그 외는 그대로.
+
 ## P. 최종 보고 형식
 
 모든 작업의 최종 보고에는 다음을 구분해서 적는다.
@@ -238,3 +256,7 @@ Phase 9는 production에 배포되어 UI 검증까지 완료됐지만, 실제 pr
 - 원격 변경 여부
 - 남은 위험 요소
 - 사용자 승인이 필요한 다음 단계
+
+## Q. SNS 운영
+
+- Threads·Instagram(@schoollove_kr) 홍보 작업은 `sns-ops/AGENTS.md`의 규칙과 주간 루틴을 따른다. 게시·예약·답글·DM 등 외부에 보이는 행동은 사용자 승인 후에만 한다.
