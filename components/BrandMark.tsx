@@ -1,5 +1,5 @@
-// v2: 초록 둥근 사각형 안 흰 체크(목업 v3 0번). 텍스트는 10번 이름 결정 전까지 "스쿨러브아이".
-export const BRAND_NAME = '스쿨러브아이'
+// v2: 초록 둥근 사각형 안 흰 체크(목업 v3 0번). 서비스 이름은 v2-10(2026-10-23 운영자 확정)으로 "출석부".
+export const BRAND_NAME = '출석부'
 
 export function BrandIcon({ size = 26 }: { size?: number }) {
   return (

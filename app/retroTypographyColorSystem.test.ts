@@ -124,7 +124,7 @@ describe('public social typography and text color system', () => {
   })
 
   it('keeps the shared footer copyright and policy links on the general black text token', () => {
-    expect(FOOTER).toContain('© 2026 스쿨러브아이. All rights reserved.')
+    expect(FOOTER).toContain('© 2026 출석부. All rights reserved.')
     expect(FOOTER).toContain('mt-4 text-center text-xs text-schoollove-text')
     expect(FOOTER).not.toMatch(/text-neutral-(400|500)/)
   })

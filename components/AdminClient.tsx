@@ -73,7 +73,7 @@ export default function AdminClient({ stats, profiles, reports }: { stats: Stats
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <div className="bg-white border-b px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
-        <h1 className="font-bold text-lg text-gray-900">스쿨러브아이 관리자</h1>
+        <h1 className="font-bold text-lg text-gray-900">출석부 관리자</h1>
         <div className="flex gap-2 ml-4">
           {(['dashboard', 'profiles', 'reports'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}

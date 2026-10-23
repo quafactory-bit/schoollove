@@ -26,8 +26,8 @@ export class ResendRecoveryOtpDeliveryTransport implements RecoveryOtpDeliveryTr
       body: JSON.stringify({
         from: this.input.from,
         to: [message.canonicalEmail],
-        subject: 'SchoolLove 복구 이메일 인증번호',
-        text: `SchoolLove 복구 확인을 위한 인증번호는 ${message.otp} 입니다. 인증번호는 10분 이내에 사용하고 다른 사람과 공유하지 마세요.`,
+        subject: '출석부 복구 이메일 인증번호',
+        text: `출석부 복구 확인을 위한 인증번호는 ${message.otp} 입니다. 인증번호는 10분 이내에 사용하고 다른 사람과 공유하지 마세요.`,
       }),
       redirect: 'error',
       cache: 'no-store',

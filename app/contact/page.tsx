@@ -3,14 +3,14 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "문의 및 제휴",
-  description: "스쿨러브아이 문의 및 제휴 안내",
+  description: "출석부 문의 및 제휴 안내",
 };
 
 export default function ContactPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
       <h1 className="text-2xl font-bold text-black mb-2">문의 및 제휴</h1>
-      <p className="text-gray-500 mb-10">스쿨러브아이에 대한 문의사항이나 제휴 제안을 보내주세요.</p>
+      <p className="text-gray-500 mb-10">출석부에 대한 문의사항이나 제휴 제안을 보내주세요.</p>
       <div className="space-y-6">
         <div className="bg-gray-50 rounded-xl p-6">
           <h2 className="font-semibold text-black mb-1">이메일 문의</h2>

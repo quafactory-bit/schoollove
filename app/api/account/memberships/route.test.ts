@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), rpc: vi.fn(), from: vi.fn(), writeAccess: vi.fn() }))
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), rpc: vi.fn(), from: vi.fn(), writeAccess: vi.fn(), after: vi.fn() }))
 vi.mock('@/lib/user-auth', () => ({ getAuthenticatedRequestContext: mocks.auth }))
 vi.mock('@/lib/onboarding', () => ({ syncOnboardingProgressSafely: vi.fn() }))
+vi.mock('@/lib/push/send', () => ({ notifyNewRosterMember: vi.fn() }))
+vi.mock('next/server', async (original) => ({ ...(await original<typeof import('next/server')>()), after: mocks.after }))
 vi.mock('@/lib/publicAccountLaunch', () => ({
   hasAccountOnboardingWriteAccess: mocks.writeAccess,
   getSafeMembershipError: () => null,
@@ -73,5 +75,7 @@ describe('v2-02 memberships API — 재학 중 졸업연도 거부', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('add_own_school_membership_with_roster', expect.objectContaining({
       requested_school_id: schoolId, requested_graduation_year: 2025,
     }))
+    // v2-09a: 명단 표시를 켠 등록은 응답 뒤(after) 새 동문 알림을 예약한다.
+    expect(mocks.after).toHaveBeenCalledTimes(1)
   })
 })

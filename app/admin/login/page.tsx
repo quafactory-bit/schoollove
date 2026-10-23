@@ -42,7 +42,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-black">관리자 로그인</h1>
-          <p className="mt-2 text-sm text-gray-600">스쿨러브아이</p>
+          <p className="mt-2 text-sm text-gray-600">출석부</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

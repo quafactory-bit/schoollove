@@ -13,7 +13,7 @@ const HOME_TITLE = '그때 그 친구, 지금 뭐 하는지 궁금하지 않아�
 const HOME_DESCRIPTION = '학교와 졸업연도로 같은 기수 출석부를 보고, 서로 수락하면 인스타그램 주소를 교환해요.'
 
 export const metadata: Metadata = {
-  title: { absolute: `스쿨러브아이 - ${HOME_TITLE}` },
+  title: { absolute: `출석부 - ${HOME_TITLE}` },
   description: HOME_DESCRIPTION,
   openGraph: { title: HOME_TITLE, description: HOME_DESCRIPTION },
   alternates: { canonical: '/' },

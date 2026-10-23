@@ -15,6 +15,7 @@ import SchoolSelection from '@/components/account/SchoolSelection'
 import { clearSchoolIntent } from '@/lib/policy/schoolJourney'
 import BrandMark from '@/components/BrandMark'
 import RosterView, { type RosterSchool } from '@/components/roster/RosterView'
+import PushNotificationSettings from '@/components/pwa/PushNotificationSettings'
 import CollectionNotice from '@/components/privacy/CollectionNotice'
 import { clearFirstTouch, readFirstTouch } from '@/lib/signupAttribution'
 
@@ -88,7 +89,7 @@ export default function AccountClient({rosters=[],myName=null,state,launch,contr
       
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">내 계정</h1>
       <p className="mt-2 text-sm text-gray-600">Google 계정으로 로그인됨</p>
-      {launch.registrationEnabled && !launch.emergencyStopped ? <p className="mt-3 text-sm leading-6 text-gray-600">스쿨러브아이는 현재 운영 중입니다. 친구가 나를 찾을 수 있도록 전체 이름과 학교를 등록하세요. 학교 명단 표시는 등록 전에 해제할 수 있고, 인스타그램주소는 내가 허용한 연결 상대에게만 보여요.</p> : null}
+      {launch.registrationEnabled && !launch.emergencyStopped ? <p className="mt-3 text-sm leading-6 text-gray-600">출석부는 현재 운영 중입니다. 친구가 나를 찾을 수 있도록 전체 이름과 학교를 등록하세요. 학교 명단 표시는 등록 전에 해제할 수 있고, 인스타그램주소는 내가 허용한 연결 상대에게만 보여요.</p> : null}
       {!onboardingComplete && <p className="mt-1 text-xs text-gray-500">로그인 세션은 서버에서 검증하며 만료 시 다시 로그인해야 할 수 있습니다.</p>}
     </div><button type="button" disabled={busy} onClick={async()=>{clearSchoolIntent();await fetch('/api/auth/logout',{method:'POST'}).catch(()=>undefined);router.push('/login');router.refresh()}}
       className="schoollove-focus min-h-11 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700">로그아웃</button></div>
@@ -161,6 +162,7 @@ export default function AccountClient({rosters=[],myName=null,state,launch,contr
     <section className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-5"><h2 className="text-lg font-bold text-red-950">계정 탈퇴 요청</h2><p className="mt-2 text-sm leading-6 text-red-900">요청 즉시 추가 개인 정보 변경을 차단합니다. 운영 확인 후 공개 계정 데이터를 먼저 삭제하고 Auth identity 실제 삭제를 요청하는 2단계 절차를 사용합니다. Auth 삭제가 실패하면 계정은 차단된 재시도 대기 상태로 남으며 완료로 표시하지 않습니다.</p><p className="mt-2 text-xs text-red-800">처리 상태나 오류 접수는 <Link href="/contact" className="underline">운영자 문의</Link>로 알려 주세요. 완료된 비식별 처리 기록은 재시도·장애 확인 목적의 제한 기간 후 정리됩니다.</p><button type="button" disabled={busy||deletionBlocked} onClick={async()=>{if(window.confirm('탈퇴 요청 후에는 정보 변경이 차단됩니다. 계속할까요?'))await submit('/api/account/deletion-request',{confirm:true},'POST','탈퇴 요청을 접수했습니다.')}} className="schoollove-dark-action schoollove-focus mt-4 min-h-12 rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{state.deletionStatus==='pending'?'탈퇴 요청 접수됨':state.deletionStatus==='public_data_deleted'?'개인 데이터 삭제 완료 · Auth 삭제 대기':state.deletionStatus==='failed_safe'?'Auth 삭제 재시도 대기':state.deletionStatus==='auth_deletion_pending'?'Auth 삭제 처리 중':state.deletionStatus==='done'?'탈퇴 처리 완료':'계정 탈퇴 요청'}</button></section>
 
     </details>
+    {onboardingComplete ? <PushNotificationSettings /> : null}
     <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600" aria-label="계정 도움말"><Link href="/onboarding/installed?again=1" className="underline">홈 화면에 추가</Link><Link href="/privacy" className="underline">개인정보처리방침</Link><Link href="/terms" className="underline">이용약관</Link><Link href="/contact" className="underline">운영자 문의</Link></nav>
     {status?<p role={isError?'alert':'status'} aria-live="polite" className={`schoollove-dark-action sticky bottom-24 z-30 mt-5 rounded-xl px-4 py-3 text-sm text-white shadow-lg ${isError?'bg-red-800':'bg-gray-950'}`}>{status}</p>:null}
   </details>

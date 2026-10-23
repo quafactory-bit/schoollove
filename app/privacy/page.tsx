@@ -4,7 +4,7 @@ import { PRIVACY_NOTICE_REVISION } from '@/lib/privacyNotice'
 
 export const metadata: Metadata = {
   title: '개인정보처리방침',
-  description: '스쿨러브아이 개인정보 안전 전환과 처리 원칙을 안내합니다.',
+  description: '출석부 개인정보 안전 전환과 처리 원칙을 안내합니다.',
 }
 
 const CONTACT = 'schoollove.contact@gmail.com'
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-bold text-gray-950">1. 현재 개인정보 안전 전환 상태</h2>
           <p className="mt-2">
-            스쿨러브아이는 인터넷에 공개되는 개인 명단과 공개 사람 검색을 제공하지 않습니다.
+            출석부는 인터넷에 공개되는 개인 명단과 공개 사람 검색을 제공하지 않습니다.
             공개 화면에서는 학교명·지역·학교 유형 등 학교 기본 정보만 제공합니다.
             안부 도착·재알림·수락 알림은 본인 계정 안에서만 제공하며 외부 이메일·푸시로 발송하지 않습니다.
             성인 비공개 계정은 launch 상태가 별도로 승인된 때에만 시작할 수 있고, 본인 소유 정보만 처리합니다.
@@ -55,11 +55,12 @@ export default function PrivacyPage() {
           <h3 className="mt-6 mb-3 font-bold text-gray-950">선택 정보</h3>
           <CollectionNotice optional />
           <p className="mt-3">선택 정보를 입력하지 않아도 기본 계정을 이용할 수 있습니다. 각 선택 항목은 내 계정에서 삭제할 수 있으며, 삭제 요청을 위한 새로운 개인정보 제공을 일률적으로 요구하지 않습니다.</p>
+          <p className="mt-3">알림을 직접 켜면 푸시 알림 구독 정보인 브라우저 푸시 주소와 암호화 키, 브라우저 정보를 처리합니다. 내 학교·졸업연도에 새 동문이 등록됐을 때와 인스타 요청이 오거나 내 요청이 수락됐을 때만 알림을 보내며, 알림 해지 또는 회원 탈퇴 시 즉시 삭제합니다. 알림에는 이름·인스타그램주소·반·연락처·계정 식별정보를 넣지 않습니다. 밤 11시부터 아침 7시(한국 시간)까지는 보내지 않습니다.</p>
         </section>
 
         <section id="authentication" className="scroll-mt-8">
           <h2 className="text-lg font-bold text-gray-950">로그인·복구 과정의 정보 처리</h2>
-          <p className="mt-2">Google 로그인에서는 Google 계정 식별값과 인증 결과를 검증하고, 계정 식별값을 해시 기반 식별자로 바꿔 계정 연결에 사용합니다. Google 프로필의 이름·사진을 SchoolLove 프로필로 자동 등록하지 않으며 Google 이메일을 로그인 식별자로 사용하지 않습니다. Google 인증은 이용자의 요청에 따른 계정 인증·서비스 제공을 위해 처리합니다.</p>
+          <p className="mt-2">Google 로그인에서는 Google 계정 식별값과 인증 결과를 검증하고, 계정 식별값을 해시 기반 식별자로 바꿔 계정 연결에 사용합니다. Google 프로필의 이름·사진을 출석부 프로필로 자동 등록하지 않으며 Google 이메일을 로그인 식별자로 사용하지 않습니다. Google 인증은 이용자의 요청에 따른 계정 인증·서비스 제공을 위해 처리합니다.</p>
           <p className="mt-2">복구 이메일은 소유권 확인과 중복 계정 보호를 위해 별도로 입력받습니다. 이메일 암호문과 중복 확인용 해시, 인증 결과·시각을 처리합니다. 복구 이메일 암호문은 계정 이용 중 보관하고 탈퇴의 개인 데이터 삭제 단계에서 제거합니다. 인증번호는 발급 후 10분 동안만 유효하며, 사용 완료·취소·만료 처리된 인증의 인증번호 검증값과 수신 주소 암호문은 제거합니다. 인증 유효기간은 외부 발송 사업자의 이메일·로그 보유기간과 다릅니다.</p>
           <p className="mt-2">일반적인 자발적 탈퇴는 인증 계정의 실제 삭제를 확인한 뒤, 중복 확인용 해시·로그인 식별 기록·완료된 삭제 작업을 정리합니다. 기존 인증의 재사용을 막기 위해 완료 후 15분간 제한적으로 유지하고 5분 주기 작업으로 제거합니다. 인증번호의 비밀정보는 사용·취소 시 제거하며, 미사용 정보는 만료 후 5분 주기로 정리합니다. 발송 제한용 해시는 발송 예약 시각부터 24시간 보관한 뒤 같은 주기로 삭제합니다. 삭제 실패나 안전 신고·이용 제한의 별도 처리가 필요한 경우 일반 완료 기록과 구분해 제한된 운영 권한으로 처리합니다.</p>
           <p className="mt-2 font-semibold">Google 인증이나 필요한 복구 이메일 확인을 진행하지 않으면 개인 계정을 사용할 수 없습니다. 공개 학교 기본 정보는 로그인하지 않고 조회할 수 있습니다.</p>
@@ -100,10 +101,18 @@ export default function PrivacyPage() {
             <div className="rounded-xl border border-gray-200 p-4">
               <dt className="font-bold text-gray-950">Upstash, Inc. · 요청 제한</dt>
               <dd className="mt-2">연락처: <a className="underline" href="mailto:support@upstash.com">support@upstash.com</a></dd>
-              <dd>항목·목적: IP 주소 또는 IP·계정 식별정보의 해시와 요청 카운터를 이용한 부정 이용 방지</dd>
+              <dd>항목·목적: IP 주소 또는 IP·계정 식별정보의 해시와 요청 카운터를 이용한 부정 이용 방지, 계정 식별정보의 해시를 이용한 알림 빈도 제한(새 동문 알림 하루 3건·1시간 묶음)</dd>
               <dd>시기·방법: 요청 제한을 적용하는 기능의 요청 시 서버에서 암호화 통신으로 전송</dd>
               <dd>국가: 운영 데이터베이스에서 확인된 저장 지역은 일본 도쿄(AWS ap-northeast-1)입니다. 추가 읽기 복제 지역의 유무는 확인 중입니다.</dd>
               <dd>보유기간: 요청 카운터는 만료시간에 따라 제거합니다. 무료 티어를 사용하며, 별도 로그·백업 보유기간은 확인 중입니다.</dd>
+            </div>
+            <div className="rounded-xl border border-gray-200 p-4">
+              <dt className="font-bold text-gray-950">Google LLC · Apple Inc. · Mozilla · 웹 푸시 알림 전달</dt>
+              <dd className="mt-2">항목·목적: 푸시 구독 식별자, 암호화된 알림 내용 — 알림을 직접 켠 이용자의 기기에 새 동문·인스타 요청·수락 알림 전달</dd>
+              <dd>시기·방법: 알림 발송 시 서버에서 이용자 브라우저가 지정한 푸시 서비스로 암호화 통신 전송(Chrome·Android는 Google, Safari·iPhone은 Apple, Firefox는 Mozilla)</dd>
+              <dd>국가: 각 사업자의 푸시 서비스 운영 국가(주로 미국)</dd>
+              <dd>보유기간: 각 사업자의 푸시 서비스 정책에 따르며, 이용자가 알림을 끄거나 탈퇴하면 서비스는 해당 구독으로 더 이상 발송하지 않습니다.</dd>
+              <dd>거부 방법: 알림을 켜지 않거나 내 계정 설정에서 끄면 이전되지 않으며, 서비스 이용에는 영향이 없습니다.</dd>
             </div>
             <div className="rounded-xl border border-gray-200 p-4">
               <dt className="font-bold text-gray-950">Plus Five Five, Inc. (Resend) · 복구 인증 이메일 발송</dt>
