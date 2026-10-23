@@ -14,7 +14,6 @@ import type { BetaOnboardingState } from '@/lib/betaOnboarding'
 import SchoolSelection from '@/components/account/SchoolSelection'
 import { clearSchoolIntent } from '@/lib/policy/schoolJourney'
 import BrandMark from '@/components/BrandMark'
-import AccountWelcomeGuide from '@/components/account/AccountWelcomeGuide'
 import CollectionNotice from '@/components/privacy/CollectionNotice'
 import { clearFirstTouch, readFirstTouch } from '@/lib/signupAttribution'
 
@@ -80,7 +79,6 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
 
   return <main className="sl-account mx-auto max-w-content bg-white px-4 pb-8">
     <div className="flex h-12 items-center"><BrandMark /></div>
-    <div className="mb-3 flex justify-end"><AccountWelcomeGuide autoShow={launch.registrationEnabled && !launch.emergencyStopped && !deletionBlocked && !onboardingComplete} adultReady={state.adultEligible} consentsReady={state.consentsComplete} profileReady={Boolean(state.profile)} schoolCount={state.memberships.length} peopleSearchEnabled={peopleSearchBetaAccess && !launch.emergencyStopped && !deletionBlocked} accountAvailable={privateProfileWritable && schoolMembershipWritable}/></div>
     <div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0 flex-1">
       {!onboardingComplete && <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>}
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">내 계정</h1>

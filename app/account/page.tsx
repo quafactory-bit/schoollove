@@ -38,5 +38,8 @@ export default async function AccountPage() {
   } catch {
     return <main className="mx-auto max-w-2xl px-5 py-16"><h1 className="text-2xl font-bold text-gray-950">내 계정 상태를 불러오지 못했습니다</h1><p className="mt-3 text-sm leading-6 text-gray-600">잠시 후 새로고침하거나 운영자 문의를 이용해 주세요. 안전을 위해 상태를 확인할 때까지 저장 기능을 제공하지 않습니다.</p></main>
   }
+  // v2-05: 공개 계정이 열려 있고 가입이 끝나지 않았으면 가입 한 화면으로 보낸다(탈퇴 진행 중이면 계정 화면 유지).
+  const signupIncomplete = !state.adultEligible || !state.consentsComplete || !state.profile || state.memberships.length === 0
+  if (launch.state === 'open' && !state.deletionStatus && signupIncomplete) redirect('/onboarding')
   return <AccountClient key={auth.user.id} selectionOwner={auth.user.id} state={state} launch={launch} controlledBetaAccess={controlledBetaAccess} peopleSearchBetaAccess={peopleSearchBetaAccess} instagramBetaAccess={instagramBetaAccess} betaOnboardingState={betaOnboardingState} currentYear={getKstCalendarDate().year} />
 }
