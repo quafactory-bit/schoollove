@@ -35,7 +35,7 @@ describe('push notification consent UI', () => {
     expect(account).toContain('<PushNotificationSettings />')
     expect(settings).toContain('role="switch"')
     expect(settings).toContain("status === 'enabled' ? '끄기' : '켜기'")
-    expect(settings).toContain('인스타 주소·연락처는 넣지 않아요')
+    expect(settings).toContain('알림에는 이름·인스타 주소·연락처를 넣지 않아요')
     expect(admin).toContain('내 기기로 테스트 알림 보내기')
     expect(admin).toContain("fetch('/api/admin/push/test'")
   })

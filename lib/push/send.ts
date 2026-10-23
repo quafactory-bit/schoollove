@@ -94,12 +94,6 @@ async function rosterMembers(schoolId: string, graduationYear?: number): Promise
     .map((row: { owner_user_id: string; graduation_year: number }) => ({ owner_user_id: row.owner_user_id, graduation_year: row.graduation_year }))
 }
 
-async function displayName(userId: string): Promise<string | null> {
-  const { data } = await getSupabaseAdmin().from('private_profiles').select('display_name').eq('owner_user_id', userId).eq('status', 'active').maybeSingle()
-  const name = (data as { display_name?: unknown } | null)?.display_name
-  return typeof name === 'string' && name.trim() ? name.trim() : null
-}
-
 export async function notifyNewRosterMember(input: { actorUserId: string; schoolId: string; graduationYear: number }, now = new Date()): Promise<PushDeliverySummary> {
   const summary = emptySummary()
   try {
@@ -107,14 +101,14 @@ export async function notifyNewRosterMember(input: { actorUserId: string; school
     const redis = getRedis()
     if (!config || !redis || isQuietHourKst(now)) return summary
     const members = await rosterMembers(input.schoolId, input.graduationYear)
-    // 보낸 사람이 명단 표시를 켠 경우에만 부른다. 같은 학교·연도 명단 회원은 출석부에서 이 이름을 볼 수 있다.
+    // 보낸 사람이 명단 표시를 켠 경우에만 알린다(출석부에 실제로 보이는 등록만).
     if (!members.some(row => row.owner_user_id === input.actorUserId)) return summary
     const recipients = [...new Set(members.map(row => row.owner_user_id))].filter(userId => userId !== input.actorUserId)
     if (!recipients.length) return summary
     const { data: school } = await getSupabaseAdmin().from('schools').select('school_name').eq('id', input.schoolId).maybeSingle()
     const schoolName = (school as { school_name?: string } | null)?.school_name
     if (!schoolName) return summary
-    const payload = buildNewMemberPayload({ schoolName, graduationYear: input.graduationYear, memberName: await displayName(input.actorUserId), total: new Set(members.map(row => row.owner_user_id)).size })
+    const payload = buildNewMemberPayload({ schoolName, graduationYear: input.graduationYear, total: new Set(members.map(row => row.owner_user_id)).size })
 
     const allowed: string[] = []
     for (const userId of recipients) {
@@ -135,22 +129,9 @@ export async function notifyNewRosterMember(input: { actorUserId: string; school
 
 type RequestRow = { sender_user_id: string; receiver_user_id: string; target_school_membership_id: string | null }
 
-async function requestContext(requestId: string): Promise<{ row: RequestRow; namesVisible: boolean } | null> {
-  const admin = getSupabaseAdmin()
-  const { data } = await admin.from('connection_requests').select('sender_user_id,receiver_user_id,target_school_membership_id').eq('id', requestId).maybeSingle()
-  const row = data as RequestRow | null
-  if (!row) return null
-  let namesVisible = false
-  if (row.target_school_membership_id) {
-    const { data: target } = await admin.from('profile_school_memberships').select('school_id').eq('id', row.target_school_membership_id).maybeSingle()
-    const schoolId = (target as { school_id?: string } | null)?.school_id
-    if (schoolId) {
-      const owners = new Set((await rosterMembers(schoolId)).map(member => member.owner_user_id))
-      // 두 사람 모두 그 학교 출석부에 보일 때만 서로의 이름을 알림에 넣는다(출석부에서 이미 보이는 이름).
-      namesVisible = owners.has(row.sender_user_id) && owners.has(row.receiver_user_id)
-    }
-  }
-  return { row, namesVisible }
+async function requestRow(requestId: string): Promise<RequestRow | null> {
+  const { data } = await getSupabaseAdmin().from('connection_requests').select('sender_user_id,receiver_user_id,target_school_membership_id').eq('id', requestId).maybeSingle()
+  return data as RequestRow | null
 }
 
 export async function notifyConnectionRequest(requestId: string, now = new Date()): Promise<PushDeliverySummary> {
@@ -158,10 +139,9 @@ export async function notifyConnectionRequest(requestId: string, now = new Date(
   try {
     const config = getVapidConfig()
     if (!config || isQuietHourKst(now)) return summary
-    const context = await requestContext(requestId)
-    if (!context) return summary
-    const name = context.namesVisible ? await displayName(context.row.sender_user_id) : null
-    await sendToUsers([context.row.receiver_user_id], buildRequestPayload(name), config, summary)
+    const row = await requestRow(requestId)
+    if (!row) return summary
+    await sendToUsers([row.receiver_user_id], buildRequestPayload(), config, summary)
   } catch {
     // Push is best-effort and never affects the request result.
   }
@@ -173,10 +153,9 @@ export async function notifyRequestAccepted(requestId: string, now = new Date())
   try {
     const config = getVapidConfig()
     if (!config || isQuietHourKst(now)) return summary
-    const context = await requestContext(requestId)
-    if (!context) return summary
-    const name = context.namesVisible ? await displayName(context.row.receiver_user_id) : null
-    await sendToUsers([context.row.sender_user_id], buildAcceptedPayload(name), config, summary)
+    const row = await requestRow(requestId)
+    if (!row) return summary
+    await sendToUsers([row.sender_user_id], buildAcceptedPayload(), config, summary)
   } catch {
     // Push is best-effort and never affects the accept result.
   }

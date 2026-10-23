@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 
 // v2-09a: 푸시 알림은 2종(새 동문 / 인스타 요청·수락)만 보낸다. 마케팅·공지·요약 없음.
-// 이름은 받는 사람이 출석부에서 볼 수 있는 사람의 이름만 넣고, 아니면 이름 없이 보낸다.
-// 인스타 주소·연락처·계정 식별자는 알림에 넣지 않는다.
+// 운영자 결정(2026-10-23): 잠금화면에 보이므로 이름을 넣지 않는다(phase2 방침 유지).
+// 인스타 주소·연락처·계정 식별자도 넣지 않는다.
 export type PushKind = 'new_member' | 'request' | 'accepted'
 
 export type PushPayload = {
@@ -22,32 +22,30 @@ export function shortSchoolName(schoolName: string): string {
     .replace(/초등학교$/, '초')
 }
 
-export function buildNewMemberPayload(input: { schoolName: string; graduationYear: number; memberName: string | null; total: number }): PushPayload {
+export function buildNewMemberPayload(input: { schoolName: string; graduationYear: number; total: number }): PushPayload {
   const school = shortSchoolName(input.schoolName)
   const total = Math.max(1, Math.trunc(input.total))
   return {
     title: `${school} ${input.graduationYear}년에 새 동문이 들어왔어요`,
-    body: input.memberName
-      ? `${input.memberName}님이 출석부에 등록했어요. 이제 ${total}명이에요.`
-      : `새 동문 1명이 출석부에 등록했어요. 이제 ${total}명이에요.`,
+    body: `출석부에 새 이름이 올라왔어요. 이제 ${total}명이에요.`,
     url: '/account',
     tag: 'schoollove-new-member',
   }
 }
 
-export function buildRequestPayload(senderName: string | null): PushPayload {
+export function buildRequestPayload(): PushPayload {
   return {
-    title: senderName ? `${senderName}님이 인스타 주소를 요청했어요` : '인스타 주소 요청이 왔어요',
-    body: '수락하면 연결돼요. 무시해도 상대는 몰라요.',
+    title: '같은 학교 동문이 인스타 주소를 요청했어요',
+    body: '수락하면 연결돼요.',
     url: '/notifications',
     tag: 'schoollove-request',
   }
 }
 
-export function buildAcceptedPayload(accepterName: string | null): PushPayload {
+export function buildAcceptedPayload(): PushPayload {
   return {
-    title: accepterName ? `${accepterName}님이 수락했어요` : '보낸 요청이 수락됐어요',
-    body: '이제 연결됐어요. 상대가 허용한 인스타 주소는 알림 탭에서 볼 수 있어요.',
+    title: '요청이 수락됐어요',
+    body: '상대가 허용한 인스타 주소는 알림 탭에서.',
     url: '/notifications',
     tag: 'schoollove-accepted',
   }

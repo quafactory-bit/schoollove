@@ -4,29 +4,26 @@ import {
   newMemberBundleKey, newMemberDailyKey, shortSchoolName,
 } from './contracts'
 
-describe('v2-09a push copy', () => {
-  it('new member: school short name, year, visible name and total', () => {
+describe('v2-09a push copy (운영자 결정 10/23: 이름 없음)', () => {
+  it('new member: school short name, year and total only', () => {
     expect(shortSchoolName('서초고등학교')).toBe('서초고')
-    expect(buildNewMemberPayload({ schoolName: '서초고등학교', graduationYear: 2005, memberName: '최유진', total: 5 })).toEqual({
+    expect(buildNewMemberPayload({ schoolName: '서초고등학교', graduationYear: 2005, total: 5 })).toEqual({
       title: '서초고 2005년에 새 동문이 들어왔어요',
-      body: '최유진님이 출석부에 등록했어요. 이제 5명이에요.',
+      body: '출석부에 새 이름이 올라왔어요. 이제 5명이에요.',
       url: '/account',
       tag: 'schoollove-new-member',
     })
   })
 
-  it('omits the name when the recipient cannot see it', () => {
-    expect(buildNewMemberPayload({ schoolName: '대치중학교', graduationYear: 2001, memberName: null, total: 2 }).body).toBe('새 동문 1명이 출석부에 등록했어요. 이제 2명이에요.')
-    expect(buildRequestPayload(null).title).toBe('인스타 주소 요청이 왔어요')
-    expect(buildAcceptedPayload(null).title).toBe('보낸 요청이 수락됐어요')
+  it('request and accepted: fixed copy to the notifications tab', () => {
+    expect(buildRequestPayload()).toEqual({ title: '같은 학교 동문이 인스타 주소를 요청했어요', body: '수락하면 연결돼요.', url: '/notifications', tag: 'schoollove-request' })
+    expect(buildAcceptedPayload()).toEqual({ title: '요청이 수락됐어요', body: '상대가 허용한 인스타 주소는 알림 탭에서.', url: '/notifications', tag: 'schoollove-accepted' })
   })
 
-  it('request and accepted go to the notifications tab and never carry contacts', () => {
-    const request = buildRequestPayload('김민수')
-    const accepted = buildAcceptedPayload('김민수')
-    expect(request).toMatchObject({ title: '김민수님이 인스타 주소를 요청했어요', url: '/notifications' })
-    expect(accepted).toMatchObject({ title: '김민수님이 수락했어요', url: '/notifications' })
-    for (const payload of [request, accepted]) expect(JSON.stringify(payload)).not.toMatch(/@|instagram\.com|http/)
+  it('never carries names, contacts or links outside the app', () => {
+    for (const payload of [buildNewMemberPayload({ schoolName: '서초고등학교', graduationYear: 2005, total: 2 }), buildRequestPayload(), buildAcceptedPayload()]) {
+      expect(JSON.stringify(payload)).not.toMatch(/님이|@|instagram\.com|http/)
+    }
   })
 })
 

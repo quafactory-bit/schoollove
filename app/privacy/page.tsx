@@ -55,7 +55,7 @@ export default function PrivacyPage() {
           <h3 className="mt-6 mb-3 font-bold text-gray-950">선택 정보</h3>
           <CollectionNotice optional />
           <p className="mt-3">선택 정보를 입력하지 않아도 기본 계정을 이용할 수 있습니다. 각 선택 항목은 내 계정에서 삭제할 수 있으며, 삭제 요청을 위한 새로운 개인정보 제공을 일률적으로 요구하지 않습니다.</p>
-          <p className="mt-3">알림을 직접 켜면 푸시 알림 구독 정보인 브라우저 푸시 주소와 암호화 키, 브라우저 정보를 처리합니다. 내 학교·졸업연도에 새 동문이 등록됐을 때와 인스타 요청이 오거나 내 요청이 수락됐을 때만 알림을 보내며, 알림 해지 또는 회원 탈퇴 시 즉시 삭제합니다. 알림에는 받는 분이 학교 출석부에서 이미 볼 수 있는 이름만 넣고, 인스타그램주소·연락처·계정 식별정보는 넣지 않습니다. 밤 11시부터 아침 7시(한국 시간)까지는 보내지 않습니다.</p>
+          <p className="mt-3">알림을 직접 켜면 푸시 알림 구독 정보인 브라우저 푸시 주소와 암호화 키, 브라우저 정보를 처리합니다. 내 학교·졸업연도에 새 동문이 등록됐을 때와 인스타 요청이 오거나 내 요청이 수락됐을 때만 알림을 보내며, 알림 해지 또는 회원 탈퇴 시 즉시 삭제합니다. 알림에는 이름·인스타그램주소·반·연락처·계정 식별정보를 넣지 않습니다. 밤 11시부터 아침 7시(한국 시간)까지는 보내지 않습니다.</p>
         </section>
 
         <section id="authentication" className="scroll-mt-8">
@@ -105,6 +105,14 @@ export default function PrivacyPage() {
               <dd>시기·방법: 요청 제한을 적용하는 기능의 요청 시 서버에서 암호화 통신으로 전송</dd>
               <dd>국가: 운영 데이터베이스에서 확인된 저장 지역은 일본 도쿄(AWS ap-northeast-1)입니다. 추가 읽기 복제 지역의 유무는 확인 중입니다.</dd>
               <dd>보유기간: 요청 카운터는 만료시간에 따라 제거합니다. 무료 티어를 사용하며, 별도 로그·백업 보유기간은 확인 중입니다.</dd>
+            </div>
+            <div className="rounded-xl border border-gray-200 p-4">
+              <dt className="font-bold text-gray-950">Google LLC · Apple Inc. · Mozilla · 웹 푸시 알림 전달</dt>
+              <dd className="mt-2">항목·목적: 푸시 구독 식별자, 암호화된 알림 내용 — 알림을 직접 켠 이용자의 기기에 새 동문·인스타 요청·수락 알림 전달</dd>
+              <dd>시기·방법: 알림 발송 시 서버에서 이용자 브라우저가 지정한 푸시 서비스로 암호화 통신 전송(Chrome·Android는 Google, Safari·iPhone은 Apple, Firefox는 Mozilla)</dd>
+              <dd>국가: 각 사업자의 푸시 서비스 운영 국가(주로 미국)</dd>
+              <dd>보유기간: 각 사업자의 푸시 서비스 정책에 따르며, 이용자가 알림을 끄거나 탈퇴하면 서비스는 해당 구독으로 더 이상 발송하지 않습니다.</dd>
+              <dd>거부 방법: 알림을 켜지 않거나 내 계정 설정에서 끄면 이전되지 않으며, 서비스 이용에는 영향이 없습니다.</dd>
             </div>
             <div className="rounded-xl border border-gray-200 p-4">
               <dt className="font-bold text-gray-950">Plus Five Five, Inc. (Resend) · 복구 인증 이메일 발송</dt>

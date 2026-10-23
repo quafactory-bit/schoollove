@@ -57,7 +57,7 @@ export default function PushNotificationSettings() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 id="push-settings-title" className="text-lg font-bold text-gray-950">알림</h2>
-          <p className="mt-2 text-sm leading-6 text-gray-600">내 학교·졸업연도에 새 동문이 들어오거나 인스타 요청이 오면 알려드려요. 이름은 출석부에서 볼 수 있는 사람만 넣고, 인스타 주소·연락처는 넣지 않아요. 밤 11시~아침 7시에는 보내지 않아요.</p>
+          <p className="mt-2 text-sm leading-6 text-gray-600">내 학교·졸업연도에 새 동문이 들어오거나 인스타 요청이 오면 알려드려요. 알림에는 이름·인스타 주소·연락처를 넣지 않아요. 밤 11시~아침 7시에는 보내지 않아요.</p>
           <p className="mt-1 text-xs leading-5 text-gray-500">{statusCopy[status]}</p>
         </div>
         <button

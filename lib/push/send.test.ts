@@ -60,11 +60,11 @@ beforeEach(() => {
 })
 
 describe('v2-09a new member push', () => {
-  it('notifies same school·year roster members with the new name and total, not the actor or hidden members', async () => {
+  it('notifies same school·year roster members with the total (no name), not the actor or hidden members', async () => {
     member('m1', 'actor', 2005); member('m2', 'friend', 2005); member('m3', 'hidden', 2005, false); member('m4', 'other-year', 2006)
     const summary = await notifyNewRosterMember({ actorUserId: 'actor', schoolId: SCHOOL, graduationYear: 2005 }, daytime)
     expect(summary.delivered).toBe(1)
-    expect(state.sent).toEqual([{ endpoint: 'https://push.example/friend', payload: expect.objectContaining({ title: '서초고 2005년에 새 동문이 들어왔어요', body: '이름actor님이 출석부에 등록했어요. 이제 2명이에요.', url: '/account' }) }])
+    expect(state.sent).toEqual([{ endpoint: 'https://push.example/friend', payload: expect.objectContaining({ title: '서초고 2005년에 새 동문이 들어왔어요', body: '출석부에 새 이름이 올라왔어요. 이제 2명이에요.', url: '/account' }) }])
   })
 
   it('sends nothing when the actor is not on the roster, at night, or without VAPID keys', async () => {
@@ -97,15 +97,16 @@ describe('v2-09a request / accepted push', () => {
     state.tables.connection_requests.push({ id: 'r1', sender_user_id: 'sender', receiver_user_id: 'receiver', target_school_membership_id: 'mr' })
   })
 
-  it('request → receiver with sender name when both are on that school roster', async () => {
+  it('request → receiver, fixed copy without names', async () => {
     await notifyConnectionRequest('r1', daytime)
-    expect(state.sent).toEqual([{ endpoint: 'https://push.example/receiver', payload: expect.objectContaining({ title: '이름sender님이 인스타 주소를 요청했어요', url: '/notifications' }) }])
+    expect(state.sent).toEqual([{ endpoint: 'https://push.example/receiver', payload: expect.objectContaining({ title: '같은 학교 동문이 인스타 주소를 요청했어요', url: '/notifications' }) }])
+    expect(JSON.stringify(state.sent)).not.toContain('이름')
   })
 
-  it('accepted → sender; no name if the other side is not visible on the roster', async () => {
-    state.tables.school_roster_consents = state.tables.school_roster_consents.filter(row => row.membership_id !== 'mr')
+  it('accepted → sender, fixed copy without names', async () => {
     await notifyRequestAccepted('r1', daytime)
-    expect(state.sent).toEqual([{ endpoint: 'https://push.example/sender', payload: expect.objectContaining({ title: '보낸 요청이 수락됐어요' }) }])
+    expect(state.sent).toEqual([{ endpoint: 'https://push.example/sender', payload: expect.objectContaining({ title: '요청이 수락됐어요' }) }])
+    expect(JSON.stringify(state.sent)).not.toContain('이름')
   })
 
   it('no request push during quiet hours', async () => {
