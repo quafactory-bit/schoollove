@@ -13,7 +13,7 @@ import { getDashboardStats, getRecentRequests } from '@/lib/api/admin';
 import { PushTestButton } from './_components/push-test-button';
 
 export const metadata = {
-  title: 'Admin - SchoolLovei',
+  title: 'Admin - 출석부',
   robots: { index: false, follow: false },
 };
 

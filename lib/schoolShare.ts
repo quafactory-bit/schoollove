@@ -1,5 +1,5 @@
 export type SchoolSharePayload = {
-  title: '스쿨러브아이'
+  title: '출석부'
   text: string
   url: string
 }
@@ -43,8 +43,8 @@ export function buildSchoolSharePayload({
     if (resolved.origin !== base.origin || resolved.pathname !== href || resolved.search || resolved.hash) return null
 
     return {
-      title: '스쿨러브아이',
-      text: `스쿨러브아이에서 ${schoolName} 학교 정보를 확인해 보세요.`,
+      title: '출석부',
+      text: `출석부에서 ${schoolName} 학교 정보를 확인해 보세요.`,
       url: resolved.href,
     }
   } catch {
@@ -70,7 +70,7 @@ export async function executeShareButton(
     if (typeof props.schoolName !== 'string') return 'unavailable'
     payload = buildSchoolSharePayload({ schoolName: props.schoolName, href: props.url, origin: dependencies.origin })
   } else {
-    payload = { title: '스쿨러브아이', text: props.text, url: props.url }
+    payload = { title: '출석부', text: props.text, url: props.url }
   }
 
   if (!payload) return 'unavailable'

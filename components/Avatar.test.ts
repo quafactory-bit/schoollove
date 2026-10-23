@@ -22,10 +22,10 @@ describe('v2-03 Avatar', () => {
 
 describe('v2-03 BrandMark', () => {
   const source = readFileSync(join(__dirname, 'BrandMark.tsx'), 'utf8')
-  it('is a green rounded square with a white check and keeps the current name', () => {
+  it('is a green rounded square with a white check and uses the v2-10 name', () => {
     expect(source).toContain('bg-sl-brand')
     expect(source).toContain('stroke="#ffffff"')
-    expect(source).toContain("BRAND_NAME = '스쿨러브아이'")
+    expect(source).toContain("BRAND_NAME = '출석부'")
     expect(source).not.toMatch(/heart|Heart|pink/)
   })
 })

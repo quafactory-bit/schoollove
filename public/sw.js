@@ -47,7 +47,7 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('push', (event) => {
   let payload = {
-    title: '스쿨러브아이',
+    title: '출석부',
     body: '새 소식이 도착했어요.',
     url: '/account',
     tag: 'schoollove-v2',

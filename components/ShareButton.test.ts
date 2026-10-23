@@ -26,8 +26,8 @@ describe('ShareButton mode selection', () => {
     )).resolves.toBe('shared')
 
     expect(share).toHaveBeenCalledWith({
-      title: '스쿨러브아이',
-      text: '스쿨러브아이에서 테스트고등학교 학교 정보를 확인해 보세요.',
+      title: '출석부',
+      text: '출석부에서 테스트고등학교 학교 정보를 확인해 보세요.',
       url: 'https://preview.schoollove.kr/school/test-school',
     })
   })

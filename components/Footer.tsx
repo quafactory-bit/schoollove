@@ -11,7 +11,7 @@ export default function Footer() {
           <span aria-hidden="true">·</span>
           <Link href="/contact" className="inline-flex min-h-11 items-center">문의 및 삭제 요청</Link>
         </div>
-        <div className="mt-4 text-center text-xs text-schoollove-text">© 2026 스쿨러브아이. All rights reserved.</div>
+        <div className="mt-4 text-center text-xs text-schoollove-text">© 2026 출석부. All rights reserved.</div>
       </div>
     </footer>
   )

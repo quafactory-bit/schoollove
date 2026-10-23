@@ -165,6 +165,6 @@ export async function notifyRequestAccepted(requestId: string, now = new Date())
 export async function sendAdminTestPush(subscription: WebPushSubscription): Promise<void> {
   const config = getVapidConfig()
   if (!config) throw new Error('PUSH_NOT_CONFIGURED')
-  const payload: PushPayload = { title: '스쿨러브아이', body: '테스트 알림이 정상적으로 도착했어요.', url: '/admin', tag: 'schoollove-admin-test' }
+  const payload: PushPayload = { title: '출석부', body: '테스트 알림이 정상적으로 도착했어요.', url: '/admin', tag: 'schoollove-admin-test' }
   await webpush.sendNotification(subscription, JSON.stringify(payload), { TTL: 5 * 60, urgency: 'normal', vapidDetails: config })
 }

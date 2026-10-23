@@ -89,7 +89,7 @@ export default function AccountClient({rosters=[],myName=null,state,launch,contr
       
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">내 계정</h1>
       <p className="mt-2 text-sm text-gray-600">Google 계정으로 로그인됨</p>
-      {launch.registrationEnabled && !launch.emergencyStopped ? <p className="mt-3 text-sm leading-6 text-gray-600">스쿨러브아이는 현재 운영 중입니다. 친구가 나를 찾을 수 있도록 전체 이름과 학교를 등록하세요. 학교 명단 표시는 등록 전에 해제할 수 있고, 인스타그램주소는 내가 허용한 연결 상대에게만 보여요.</p> : null}
+      {launch.registrationEnabled && !launch.emergencyStopped ? <p className="mt-3 text-sm leading-6 text-gray-600">출석부는 현재 운영 중입니다. 친구가 나를 찾을 수 있도록 전체 이름과 학교를 등록하세요. 학교 명단 표시는 등록 전에 해제할 수 있고, 인스타그램주소는 내가 허용한 연결 상대에게만 보여요.</p> : null}
       {!onboardingComplete && <p className="mt-1 text-xs text-gray-500">로그인 세션은 서버에서 검증하며 만료 시 다시 로그인해야 할 수 있습니다.</p>}
     </div><button type="button" disabled={busy} onClick={async()=>{clearSchoolIntent();await fetch('/api/auth/logout',{method:'POST'}).catch(()=>undefined);router.push('/login');router.refresh()}}
       className="schoollove-focus min-h-11 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700">로그아웃</button></div>
