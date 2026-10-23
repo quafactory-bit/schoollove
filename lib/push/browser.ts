@@ -75,12 +75,24 @@ export async function ensureBrowserPushSubscription(): Promise<{
   if (permission !== 'granted') return { status: 'denied' }
 
   const registration = await navigator.serviceWorker.ready
-  const existing = await registration.pushManager.getSubscription()
+  const serverKey = urlBase64ToUint8Array(publicVapidKey)
+  let existing = await registration.pushManager.getSubscription()
+  // VAPID 키를 바꾸면 예전 키로 만든 구독은 푸시 서버가 거절한다(403). 키가 다르면 버리고 새로 만든다.
+  if (existing && !sameKey(existing.options.applicationServerKey, serverKey)) {
+    await existing.unsubscribe().catch(() => false)
+    existing = null
+  }
   const subscription = existing ?? await registration.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
+    applicationServerKey: serverKey,
   })
   return { status: 'enabled', subscription, created: existing === null }
+}
+
+function sameKey(current: ArrayBuffer | null | undefined, expected: Uint8Array): boolean {
+  if (!current) return true // 키를 알 수 없는 브라우저는 기존 구독을 그대로 쓴다.
+  const bytes = new Uint8Array(current)
+  return bytes.length === expected.length && bytes.every((value, index) => value === expected[index])
 }
 
 async function postSubscription(path: string, subscription: PushSubscription): Promise<void> {

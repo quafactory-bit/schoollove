@@ -39,4 +39,9 @@ describe('push notification consent UI', () => {
     expect(admin).toContain('내 기기로 테스트 알림 보내기')
     expect(admin).toContain("fetch('/api/admin/push/test'")
   })
+
+  it('VAPID 키가 바뀌면 예전 키로 만든 구독을 버리고 새로 만든다', () => {
+    expect(browser).toContain('existing.options.applicationServerKey')
+    expect(browser).toContain('await existing.unsubscribe()')
+  })
 })
