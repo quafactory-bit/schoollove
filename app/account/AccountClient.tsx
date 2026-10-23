@@ -14,16 +14,17 @@ import type { BetaOnboardingState } from '@/lib/betaOnboarding'
 import SchoolSelection from '@/components/account/SchoolSelection'
 import { clearSchoolIntent } from '@/lib/policy/schoolJourney'
 import BrandMark from '@/components/BrandMark'
+import RosterView, { type RosterSchool } from '@/components/roster/RosterView'
 import CollectionNotice from '@/components/privacy/CollectionNotice'
 import { clearFirstTouch, readFirstTouch } from '@/lib/signupAttribution'
 
-type Props={state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;peopleSearchBetaAccess?:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number;selectionOwner?:string}
+type Props={rosters?:RosterSchool[];myName?:string|null;state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;peopleSearchBetaAccess?:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number;selectionOwner?:string}
 
 async function readResult(response:Response):Promise<{error?:string;attribution_recorded?:boolean}>{
   try{return await response.json() as {error?:string;attribution_recorded?:boolean}}catch{return {}}
 }
 
-export default function AccountClient({state,launch,controlledBetaAccess,peopleSearchBetaAccess=false,instagramBetaAccess,betaOnboardingState,currentYear,selectionOwner}:Props){
+export default function AccountClient({rosters=[],myName=null,state,launch,controlledBetaAccess,peopleSearchBetaAccess=false,instagramBetaAccess,betaOnboardingState,currentYear,selectionOwner}:Props){
   const router=useRouter()
   const [status,setStatus]=useState('')
   const [isError,setIsError]=useState(false)
@@ -77,10 +78,14 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     setSchoolId(school.id);setSelectedSchoolType(school.school_type);setGradeClassValues({});setSchoolQuery(`${school.school_name} · ${school.school_type} · ${school.sido} ${school.sigungu}`);setActiveSchool(-1)
   }
 
+  const rosterFirst=onboardingComplete&&rosters.length>0
   return <main className="sl-account mx-auto max-w-content bg-white px-4 pb-8">
-    <div className="flex h-12 items-center"><BrandMark /></div>
+    {rosterFirst ? <RosterView schools={rosters} myName={myName} /> : <div className="flex h-12 items-center"><BrandMark /></div>}
+    {/* v2-06: 출석부가 있으면 기존 계정 관리는 아래 "설정"으로 접는다(기능은 그대로). */}
+    <details id="account-settings" open={!rosterFirst} className={rosterFirst ? 'mt-6 border-t border-sl-line pt-4' : ''}>
+    {rosterFirst ? <summary className="schoollove-focus min-h-12 cursor-pointer rounded-xl bg-sl-bg2 px-4 py-3 text-[15px] font-extrabold text-sl-ink">설정 · 학교 추가·프로필·로그아웃·탈퇴</summary> : null}
     <div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0 flex-1">
-      {!onboardingComplete && <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>}
+      
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950">내 계정</h1>
       <p className="mt-2 text-sm text-gray-600">Google 계정으로 로그인됨</p>
       {launch.registrationEnabled && !launch.emergencyStopped ? <p className="mt-3 text-sm leading-6 text-gray-600">스쿨러브아이는 현재 운영 중입니다. 친구가 나를 찾을 수 있도록 전체 이름과 학교를 등록하세요. 학교 명단 표시는 등록 전에 해제할 수 있고, 인스타그램주소는 내가 허용한 연결 상대에게만 보여요.</p> : null}
@@ -95,7 +100,7 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
       {onboardingComplete?<div className="mt-3 rounded-xl bg-emerald-50 px-4 py-3"><p className="font-semibold text-emerald-900">계정 준비 완료</p><p className="mt-1 text-xs leading-5 text-emerald-800">성인 확인, 필수 동의, 프로필과 학교 이력을 모두 저장했습니다. 같은 학교 명단과 정확한 사람 찾기를 바로 이용할 수 있습니다.</p></div>:null}
     </section></details>
       {!onboardingComplete && <MySchoolsPanel memberships={state.memberships} classHistoryWritable={classHistoryWritable} peopleSearchEnabled={peopleSearchBetaAccess && !launch.emergencyStopped && !deletionBlocked}/>}
-    {!onboardingComplete && <p className="mt-5 text-sm font-semibold text-[var(--schoollove-game-accent)]">{!state.adultEligible?'다음 단계 · 성인 확인':!state.consentsComplete?'다음 단계 · 필수 동의':!state.profile?'다음 단계 · 내 프로필':'다음 단계 · 내가 다닌 학교 등록'}</p>}
+    {!onboardingComplete && <p className="mt-5 text-sm font-semibold text-sl-brand-text">{!state.adultEligible?'다음 단계 · 성인 확인':!state.consentsComplete?'다음 단계 · 필수 동의':!state.profile?'다음 단계 · 내 프로필':'다음 단계 · 내가 다닌 학교 등록'}</p>}
     <SchoolSelection owner={selectionOwner} registeredSlugs={state.memberships.flatMap(m => m.school?.slug ? [m.school.slug] : [])} writable={schoolMembershipWritable && Boolean(state.profile) && state.memberships.length < membershipLimit} hasInput={Boolean(schoolQuery || schoolId || graduationYear || Object.values(gradeClassValues).some(Boolean))} onSelect={school => {setSchoolId(school.id);setSelectedSchoolType(school.school_type);setSchoolQuery(`${school.school_name} · ${SCHOOL_TYPE_LABELS[school.school_type]} · ${school.sido} ${school.sigungu}`)}} />
     {!accountWritable&&!classHistoryWritable&&!deletionBlocked ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900" role="status">현재 계정 정보를 저장하거나 변경할 수 없습니다. 저장된 본인 정보 조회와 삭제·탈퇴 요청은 계속할 수 있습니다.</p>:null}
     {deletionBlocked ? <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900" role="status">{state.deletionStatus==='pending'?'탈퇴 요청이 접수되어 추가 정보 변경을 차단했습니다.':state.deletionStatus==='done'?'탈퇴 처리가 완료되었습니다.':'개인 데이터 삭제 또는 Auth identity 삭제를 진행 중이며 개인 기능 접근을 차단했습니다.'}</p>:null}
@@ -158,5 +163,6 @@ export default function AccountClient({state,launch,controlledBetaAccess,peopleS
     </details>
     <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600" aria-label="계정 도움말"><Link href="/privacy" className="underline">개인정보처리방침</Link><Link href="/terms" className="underline">이용약관</Link><Link href="/contact" className="underline">운영자 문의</Link></nav>
     {status?<p role={isError?'alert':'status'} aria-live="polite" className={`schoollove-dark-action sticky bottom-24 z-30 mt-5 rounded-xl px-4 py-3 text-sm text-white shadow-lg ${isError?'bg-red-800':'bg-gray-950'}`}>{status}</p>:null}
+  </details>
   </main>
 }

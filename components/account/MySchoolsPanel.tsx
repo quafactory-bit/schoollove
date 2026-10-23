@@ -31,7 +31,7 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
 
   return (
     <section className="sl-my-schools mt-5" aria-labelledby="my-schools-heading">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sl-brand-text">MY SCHOOLS</p>
       <h2 id="my-schools-heading" className="mt-2 text-xl font-bold text-schoollove-text">내 학교</h2>
       <details className="sl-school-privacy"><summary className="schoollove-focus min-h-11 cursor-pointer py-3 text-sm">내 학교 정보의 공개 범위</summary><p className="mt-2 text-sm leading-6 text-schoollove-secondary">
         명단 표시를 켠 학교에서는 입력한 전체 이름·졸업연도·학년별 반이 같은 학교의 명단 참여자에게 표시됩니다. 공개 인터넷과 검색엔진에는 표시되지 않으며 내 계정에서 언제든 숨길 수 있습니다.

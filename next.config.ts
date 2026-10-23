@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
       { source: '/invite', destination: '/', permanent: false },
       { source: '/submit', destination: '/', permanent: false },
       { source: '/feedback', destination: '/contact', permanent: false },
+      // v2-06: 정확한 이름 검색은 출석부 이름 필터로, 연결 화면은 알림 탭으로 합쳤다.
+      { source: '/people/search', destination: '/account', permanent: false },
+      { source: '/connections', destination: '/notifications', permanent: false },
     ]
   },
   async headers() {
