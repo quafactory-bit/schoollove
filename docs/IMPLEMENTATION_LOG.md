@@ -80,7 +80,7 @@
 - Local actual-React responsive matrix and 17 mocked interaction regressions
   passed. Full Vitest1697 PASS/4 existing SKIP; typecheck PASS; lint0 errors/84
   existing warnings. No migration or persisted environment changes.
-- See `../GAME_VISUAL_EXPERIENCE_V1.md` for evidence, art limitations and release
+- See `v1/GAME_VISUAL_EXPERIENCE_V1.md` for evidence, art limitations and release
   boundary. Preview release is approved after verification. Production still
   requires the user's later visual approval; no Production rollout is claimed.
 
@@ -94,7 +94,7 @@
 - Actual React + isolated Chromium/network mocks cover search, selection,
   explicit save and share preview. No real OAuth/signup/search-for-people/referral
   issuance or A/B/C mutation. Local snapshots are separate from live evidence.
-- See `../SCHOOL_GROWTH_UX_COMPLETION.md` for exact validation and release state;
+- See `v1/SCHOOL_GROWTH_UX_COMPLETION.md` for exact validation and release state;
   do not interpret local rendering alone as authenticated Production verification.
 
 ## 2026-09-09 Owner live growth coherence (local verified / remote pending)
@@ -2382,7 +2382,7 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Final targeted35 and full1704 tests passed (4 existing skipped), typecheck/build passed, lint0 errors/84 existing warnings. Actual React responsive61, mocked functional17, long-name/multiple-card/image-failure checks and motion keyboard/offscreen/reduced-motion passed. Document-hidden is synthetic; physical mobile devices and physical200% browser zoom remain NOT_TESTED.
 - Same mobile lab fresh-cache LCP median: Before2640ms; first WebP candidate2676ms (failed); final AVIF1668ms (2.5s budget passed). Warm medians460/504/628ms respectively: final warm regression remains explicit. CLS0.00808317 fresh,0 warm. All runs/traces/screenshots retained; no claim about the historical3.98s cause or field CWV.
 - Original schoolWebPs, all API/lib/DB/migration/XP/referral/auth rules, packages/lockfiles/env/protection and A/B/C/relationships remain untouched. No explicit live user-data write, real provider login, school save, person search, referral issue or external sharing.
-- `docs/GAME_VISUAL_POLISH_V1_RESULT.md` and ignored evidence index contain the current record. Feature Draft review is authorized; Ready/canonical merge is withheld for missing fifth form, warm regression and remaining verification gates. Production is not approved or changed.
+- `docs/v1/GAME_VISUAL_POLISH_V1_RESULT.md` and ignored evidence index contain the current record. Feature Draft review is authorized; Ready/canonical merge is withheld for missing fifth form, warm regression and remaining verification gates. Production is not approved or changed.
 
 ## 2026-09-10 — Game visual polish Finish V1 (LOCAL_VERIFIED / PARTIAL)
 
@@ -2391,7 +2391,7 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - One fixed-protocol current Before/After batch: fresh median1612→1468ms, warm576→552ms. Warm AVIF304 revalidation179–190ms became zero-transfer cached200/0ms load, but residual layout/render work persists. Historical PR112 warm460ms remains better: WARM_CACHE_REVIEW_REQUIRED. Individual CLS increases remain recorded, all≤0.1. All historical/raw runs retained.
 - Targeted41, full1705PASS/4existingSKIP, typecheck, lint0errors/84existingwarnings and67-page production build passed. Actual React responsive61, synthetic functional17, final image-failure/long-name/two-card checks and motion checks passed. Initial image-failure harness incorrectly aborted Vite JS imports and was corrected without weakening image assertions; failures retained. Encoder EPERM resolved through formal same-command permission, not another encoder. Physical devices/real background tab remain untested.
 - GitHub existing connector PR-write restoration unconfirmed; metadata lists are empty and browser settings requires login. No PR retry/alternate credential route. User separately authorized one official final-feature review link, with no URL/cookie persistence or project-wide protection changes. Final push/deployment/live status belongs to the ignored final report; this source record does not claim it prematurely.
-- See `docs/GAME_VISUAL_POLISH_FINISH_V1_RESULT.md` and `.local/game-visual-polish/finish`. Ready/canonical merge remains withheld, Production untouched.
+- See `docs/v1/GAME_VISUAL_POLISH_FINISH_V1_RESULT.md` and `.local/game-visual-polish/finish`. Ready/canonical merge remains withheld, Production untouched.
 
 ## 2026-09-10 — Independent final-stage campus layer after c538e02 (LOCAL_VERIFIED)
 
@@ -2399,7 +2399,7 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Equal500px stationary/grayscale-effects-off comparison and white/pastel/navy scene composites inspected. Browser SVG rasterization has real alpha, transparent opening/corners and95.81874% fully transparent pixels. Final Hub/owner360/390/412/768/1280/1440 show no overflow or gate/duo overlap. One shared animated wrapper preserves pause/resume/reduced/offscreen without new observers. SSR IDs are unique across multiple instances.
 - Targeted45 and full1710PASS/4existingSKIP, typecheck, lint0errors/84existingwarnings,67-page production build passed. Existing responsive61 and synthetic functional17 passed. Actual compiled Home/level10Hub SSR+hydration+motion passed with0 page errors using fixed local transport. Vite capture's initial reload race was corrected with network-idle synchronization, not a runtime workaround.
 - No LCP remeasurement/iterative optimization. Historical c538e02 warm552ms remains+92ms against original460ms and awaits user acceptance. Identical immutable Home AVIF preserved. New inline SVG4489B/gzip1579B; compiled Home decoded JS657595→662757B (+5162), rounded First Load JS180→182kB. Cost disclosed as design/performance review, not no-regression PASS.
-- Runtime scope: SchoolWorld, new SVG component and six scoped CSS lines. No DB/API/lib/auth/XP/referral/env/protection/package or real-user change. Same-branch commit/push authorized; PR-write restoration and browser network restoration remain separate unconfirmed blockers. No PR retry/new review link/Ready/Preview merge/Production action. See `docs/GAME_VISUAL_REMAINING_GATES_RESULT.md` and ignored `.local/game-visual-polish/remaining` evidence/manifest.
+- Runtime scope: SchoolWorld, new SVG component and six scoped CSS lines. No DB/API/lib/auth/XP/referral/env/protection/package or real-user change. Same-branch commit/push authorized; PR-write restoration and browser network restoration remain separate unconfirmed blockers. No PR retry/new review link/Ready/Preview merge/Production action. See `docs/v1/GAME_VISUAL_REMAINING_GATES_RESULT.md` and ignored `.local/game-visual-polish/remaining` evidence/manifest.
 
 ## 2026-09-10 — Accepted V1, normal GitHub web Draft and caption spacing
 
@@ -2507,3 +2507,34 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Operator replaced manual testing with synthetic Admin/session E2E, kept protection exceptions closed, and approved independent Preview-only search blocking. New migration101616 isolates only optional statistics errors; owner save/milestone remain successful. No identity retry map. Added actual AFTER-trigger failure/owner failure/idempotency DB checks and API success-on-statistics-failure test.
 - Preview-only robots deny-all/no-sitemap and global noindex/nofollow/noarchive header added; production/local SEO and PWA headers preserved. Target35/typecheck/full1767 (same4skip)/68route Preview build/local fresh+upgrade DB/lint checks PASS.
 - Preview migration101616 applied and verified. Existing two accounts/profiles and signup total0 preserved. Admin-create/generated-link/verifyOTP session probe PASS despite disabled email provider; settings unchanged, no mail, synthetic account deleted. Automatic E2E/deployment/readiness results follow in docs/verification/2026-10-14-signup-attribution-automation.md. Production application and merge remain unapproved.
+
+- Final Preview commit84ca454 (tree equals feature6fac59f) deployed as dpl_AG6vgCMonTX1pRRAY2BsvCh8kS1C READY. Cherry-picked follow-up commits; no merge. Local and live fixed Preview noindex headers/robots deny-all verified, production/local behavior tests preserved. Server stopped.
+- Vercel automation-bypass creation returned API403 permission denial. No installed/cached CLI fallback; no bypass created, public exception or global SSO change. The requested full automatic browser E2E is BLOCKED, not relabeled as PASS. Admin/session-only probe PASS; final SQL confirms existing Auth2/profiles2/memberships2, synthetic users0, signup0/test buckets0. Prepared operator-requested post-approval daily comparison against durable first-profile milestones; no Production job or schedule executed. Production/main/PR131 merge untouched. See automation verification report.
+
+
+## 2026-10-14 — Manual Preview test checklist and weekly SQL
+
+- Operator canceled automatic E2E/daily reconciliation and retained protection. Added one read-only weekly-check.sql: prior complete KST week, durable first-profile milestones, attribution bucket rows, SUM(count) and difference. No scheduler created.
+- Supabase project metadata proves separate Preview/Production DB hosts and regions. Production read-only checks show no signup_attribution table or any of the three attribution migration versions. Preview Auth domain-only query returned NULL for both accounts, with KST creation dates 2026-08-29 and 2026-08-30; existing accounts preserved.
+- Reserved manual test UTM source=test with isolated codes; SELECT baseline0. Supplied narrowly scoped aggregate cleanup SQL without executing it; test account cleanup uses its own withdrawal flow. Deleting its aggregate can cause an expected weekly difference because durable milestones remain.
+- Weekly query executed on Preview: 2026-10-05 to 2026-10-11, new profiles0 / buckets0 / signup sum0 / difference0. Diff whitespace checks PASS. No runtime changes, so full application tests/build not repeated. Protected Google broker paths still prevent claiming manual signup readiness. No protection exception, remote mutation, deployment, Git publication, merge or Production apply.
+
+
+## 2026-10-14 — Approved signup attribution Production release
+
+- Operator explicitly approved PR131 merge, the three Production migrations and deployment after blocked manual Preview signup. Added decision, Production test SQL with reserved source=test codes and rollback-to-existing-deployment instructions. Preserved no-protection-exception/no-automation constraints.
+- Applied exact081007/090650/101616 and version ledger in one guarded transaction to Production ucnybhzpbatzcipwqtox. Verified final six columns, NULL-equal daily unique key, code/count checks, RLS/no client access/service writes. Original owner function and existing accounts are preserved; post-deployment checkpoint follows.
+- Target35 and TypeScript rerun PASS; unchanged runtime's full1767/68route/fresh+upgrade DB checks remain valid. Original dirty SNS/PWA checkout, packages, environment and protection settings remain untouched. Actual Production signup is operator-owned and not yet run.
+
+
+- Production completion: PR131 squash merge cc63d02, Vercel dpl_FigncnSANVwLdBtpLZ5hmhXLbkny READY and custom aliases verified. Chrome Home200/codes-only first touch/policy/Google button, production robots allow+sitemap/no global noindex, anonymous profile401 and OIDC discovery200 PASS; page errors0. Direct operator signup was subsequently canceled; first real-signup week reconciliation remains pending; remote Analytics payload0 observed, not claimed verified. New-deployment error/fatal log groups0 over a short15minute query window. Reserved test sum0. No automated signup/DELETE/protection/environment/scheduler change. Final evidence is in the local Production report and merged PR description; no second main commit/PR created.
+
+
+## 2026-10-15 — Signup attribution verification policy and approved cleanup
+
+- Operator chose to skip manual signup/new Google accounts and use weekly-check.sql after the first real-signup week. This documentation-only follow-up publishes Production verification evidence and that revised policy; no application, migration, DB or SQL change.
+- Operator approved immediate temporary-share revocation and cleanup after token/history scanning. preview.schoollove.kr shareable links0 and protection overrides0 after revoke; fixed Preview deployment unchanged, unauthenticated homepage302/vercel.com. Preview accounts2 remain protected and untouched.
+- Confirmed weekly-check.sql is already in main (blob faeda242dbbd5bfb0cbca8d1bcd1d7a185448e3f). Preserve repository scripts and shared management helper; cleanup applies only to the three signup worktrees and this task's ignored local material. Audit and cleanup results follow in PR description.
+
+
+- 2026-10-15 cleanup audit: scanned3,165 local text files including this task's logs/temporary material and2,831 reachable Git text blobs. No real credential/session-token patterns found in task logs/temp or history. Named-token matches were reviewed synthetic/local placeholder fixtures in existing tests only. Matched values were not retained in the audit report. Scope excludes local .env values, dependency/build caches, binaries and unavailable/deleted files. Existing repository test fixtures are preserved.

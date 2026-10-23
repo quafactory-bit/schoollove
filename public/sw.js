@@ -44,3 +44,5 @@ self.addEventListener('fetch', (event) => {
     }
   })())
 })
+
+// v2-08: 푸시 수신 핸들러 자리. 실제 구독과 push/notificationclick 처리는 09번에서 추가한다.

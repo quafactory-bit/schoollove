@@ -40,10 +40,10 @@ describe('owner/public projection rendering',()=>{
     expect(ownerHtml).toContain('공개 화면에는 XP 변화를 모아서 반영합니다.')
   })
   it('never exports owner live level via share text and discards stale account requests',()=>{
-    const share=readFileSync('components/growth/GrowthShareButton.tsx','utf8')
+    const share=readFileSync('components/v1/growth/GrowthShareButton.tsx','utf8')
     expect(share).not.toContain('level')
     expect(share).not.toContain('Lv.')
-    const feedback=readFileSync('components/growth/OwnerGrowthFeedback.tsx','utf8')
+    const feedback=readFileSync('components/v1/growth/OwnerGrowthFeedback.tsx','utf8')
     expect(feedback).toContain('data.growth.schoolId !== schoolId')
     expect(feedback).toContain('!controller.signal.aborted')
     expect(feedback).toContain("cache: 'no-store'")

@@ -7,8 +7,7 @@ import SearchBar from './SearchBar'
 import { schoolTypeLabel } from '@/lib/utils'
 import { recallSchoolQuery } from '@/lib/policy/schoolJourney'
 import { School, ArrowUpRight } from 'lucide-react'
-import GameHeader from '@/components/game/GameHeader'
-import SceneImage from '@/components/game/SceneImage'
+import PageNav from '@/components/PageNav'
 import {
   AUTOCOMPLETE_MIN_QUERY_LENGTH,
   normalizeAutocompleteQuery,
@@ -62,9 +61,9 @@ export default function SchoolSearchResults() {
   }, [runSearch])
 
   return (
-    <main className="growth-journey sl-game sl-search-page mx-auto max-w-4xl px-5 pb-8">
-      <GameHeader />
-      <h1 className="mb-5 mt-3 text-3xl font-bold">우리 학교 찾기</h1>
+    <main className="sl-search-page mx-auto max-w-content bg-white px-4 pb-8">
+      <PageNav title="학교 찾기" back={false} />
+      <h2 className="mb-4 mt-2 text-[28px] font-black tracking-[-0.6px] text-sl-ink">우리 학교 찾기</h2>
       <SearchBar variant="search" className="sl-search-form" initialQuery={query} onFullSearch={runSearch} />
       <p className="mt-3 rounded-lg bg-white px-4 py-3 text-xs leading-5 text-gray-500">
         학교 이름과 지역 등 공개 학교 정보를 찾아요. 가입 후 학교를 등록하고 명단 표시를 켜면 정확한 사람 찾기를 바로 이용할 수 있어요.
@@ -72,7 +71,6 @@ export default function SchoolSearchResults() {
 
       {status === 'idle' && (
         <div className="mt-16 text-center">
-          <SceneImage scene="search" className="sl-scene--empty" sizes="(max-width: 767px) 100vw, 1100px" />
           <p className="text-sm text-gray-500">학교 이름을 검색해보세요.</p>
           <p className="mt-1 text-xs text-gray-400">
             다른 탭에서 왔거나 임시 검색어가 사라졌다면 이곳에 다시 입력해 주세요.

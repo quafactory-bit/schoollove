@@ -1,6 +1,5 @@
 'use client'
 
-import SceneImage from '@/components/game/SceneImage'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { ArrowLeft, ArrowRight, Check, CircleHelp, Heart, UsersRound, X } from 'lucide-react'
 
@@ -88,7 +87,7 @@ export default function AccountWelcomeGuide({ autoShow, adultReady, consentsRead
     <button ref={trigger} type="button" onClick={showGuide} aria-haspopup="dialog" className="schoollove-focus inline-flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700">
       <CircleHelp className="h-4 w-4" aria-hidden="true" />이용 안내
     </button>
-    <dialog ref={dialog} aria-labelledby={titleId} onKeyDown={keepFocusInside} onCancel={event => { event.preventDefault(); setOpen(false) }} className="sl-game sl-welcome-dialog m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-3xl border-0 bg-white p-0 text-gray-950 shadow-2xl backdrop:bg-slate-950/50 backdrop:backdrop-blur-sm">
+    <dialog ref={dialog} aria-labelledby={titleId} onKeyDown={keepFocusInside} onCancel={event => { event.preventDefault(); setOpen(false) }} className="sl-welcome-dialog m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-3xl border-0 bg-white p-0 text-gray-950 shadow-2xl backdrop:bg-slate-950/50 backdrop:backdrop-blur-sm">
       <div className="flex max-h-[90dvh] flex-col">
         <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-3">
           <p className="flex items-center gap-2 text-sm font-bold"><Heart className="h-4 w-4 text-pink-500" fill="currentColor" aria-hidden="true" />SchoolLove <span className="font-normal text-gray-500">이용 안내</span></p>
@@ -103,13 +102,12 @@ export default function AccountWelcomeGuide({ autoShow, adultReady, consentsRead
             <h2 ref={heading} id={titleId} tabIndex={-1} className="mt-2 text-2xl font-bold leading-snug tracking-tight outline-none">{['스쿨러브아이에 오신 것을 환영해요', '가입은 이렇게 진행해요', '내 학교를 등록하고 레벨을 올려요', '연결된 친구의 인스타그램주소 확인하기'][step]}</h2>
             {step === 0 ? <>
               <div className="sl-welcome-intro mt-5 rounded-2xl p-6">
-                <SceneImage scene="hero" className="sl-scene--welcome" sizes="400px" />
                 <p className="mt-4 text-lg font-bold text-indigo-950">내 학교를 기록하는 일에서<br />다시 시작해요.</p>
                 <p className="mt-3 text-sm leading-6 text-slate-600">기억 속 친구를 찾고, 서로 허용한 인스타그램주소를 확인해요. 학교 레벨을 올리는 재미도 즐겨보세요.</p>
               </div>
               <p className="mt-4 text-sm leading-6 text-gray-600">안내는 언제든 닫아도 괜찮아요. 내 계정의 ‘이용 안내’에서 다시 볼 수 있어요.</p>
             </> : null}
-            {step === 1 ? <><SceneImage scene="signup" className="sl-scene--guide" sizes="500px" />
+            {step === 1 ? <>
               <p className="mt-3 text-sm leading-6 text-gray-600">현재 내 기록을 기준으로 <strong className="text-indigo-700">{completed}/5단계</strong>를 완료했어요. 아직 남은 항목은 내 계정에서 이어서 진행해 주세요.</p>
               <ol className="mt-4 space-y-2">{checks.map((item, index) => <li key={item.label} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-3 text-sm">
                 <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${item.ready ? 'bg-indigo-600 text-white' : 'border border-gray-300 bg-white text-gray-600'}`} aria-hidden="true">{item.ready ? <Check className="h-4 w-4" /> : index + 1}</span>
@@ -117,11 +115,11 @@ export default function AccountWelcomeGuide({ autoShow, adultReady, consentsRead
               </li>)}</ol>
               {!accountAvailable ? <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-900">현재 계정 정보 저장이 제한되어 있어요. 내 계정의 이용 상태 안내를 확인해 주세요.</p> : null}
             </> : null}
-            {step === 2 ? <><SceneImage scene="badge" className="sl-scene--guide" sizes="500px" />
+            {step === 2 ? <>
               <div className="mt-4 rounded-2xl bg-indigo-50 p-4"><p className="text-sm font-semibold text-indigo-700">내 학교 등록 상태</p><p className="mt-2 text-xl font-bold text-indigo-950">{schoolCount > 0 ? `${schoolCount}곳의 학교를 기록했어요` : '아직 등록한 학교가 없어요'}</p><p className="mt-2 text-sm leading-6 text-slate-600">{schoolCount > 0 ? '내 계정의 학교 카드에서 학교 정보와 졸업연도, 저장한 학년·반을 확인해요.' : '가입 단계를 따라 내가 다닌 학교를 등록하면 내 학교 카드가 생겨요.'}</p></div>
               <dl className="mt-5 space-y-4 text-sm leading-6"><div><dt className="font-bold">학교 레벨과 진행률</dt><dd className="mt-1 text-gray-600">학교 카드에서 현재 레벨과 다음 레벨까지의 진행률을 확인해요. 공개 학교 화면은 집계 시점에 따라 내 계정과 다르게 보일 수 있어요.</dd></div><div><dt className="font-bold">같은 학교 명단</dt><dd className="mt-1 text-gray-600">학교 등록 화면에서 명단 표시를 유지하면 전체 이름·졸업연도·저장한 반을 같은 학교 명단 참여자끼리 확인할 수 있어요. 체크를 풀거나 나중에 숨길 수도 있어요.</dd></div></dl>
             </> : null}
-            {step === 3 ? <><SceneImage scene="connections" className="sl-scene--guide" sizes="500px" />
+            {step === 3 ? <>
               <div className="mt-4 flex items-start gap-3 rounded-2xl bg-indigo-50 p-4"><UsersRound className="mt-1 h-6 w-6 shrink-0 text-indigo-600" aria-hidden="true" /><div><p className="font-bold text-indigo-950">한 사람씩, 서로 수락한 연결</p><p className="mt-2 text-sm leading-6 text-slate-600">안부를 수락하면 내 연결에 표시돼요. 상대가 공개한 인스타그램주소는 연결 상세에서 확인해요. 여러 명과 연결되면 각각의 카드가 표시돼요.</p></div></div>
               <ul className="mt-5 space-y-3 text-sm leading-6 text-gray-600"><li>• 받은 안부, 보낸 안부와 새 소식도 내 연결에서 확인해요.</li><li>• 상대 카드를 누르면 그 사람과의 연결 상세로 이동해요.</li><li>• 인스타그램주소는 상대가 공개를 허용해야 보여요.</li></ul>
               <p className="mt-4 rounded-xl border border-gray-200 p-3 text-sm leading-6 text-gray-600">{peopleSearchEnabled ? '현재 이 계정은 사람 찾기를 이용할 수 있어요. 상대의 수락이 있어야 연결돼요.' : '학교 등록과 명단 표시를 완료하면 별도 참여 신청이나 승인 없이 사람 찾기를 이용할 수 있어요.'}</p>

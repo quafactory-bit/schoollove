@@ -39,7 +39,7 @@
   three-step growth explanation, shared visual hierarchy, My Schools first and
   explicit share preview/preparation/copy. Decision and journey addendum record
   the source-only scope. Existing SQL, rewards, aggregation and permissions stay
-  unchanged. Detailed evidence: `../../SCHOOL_GROWTH_UX_COMPLETION.md`.
+  unchanged. Detailed evidence: `../v1/SCHOOL_GROWTH_UX_COMPLETION.md`.
 
 ## 2026-09-07
 

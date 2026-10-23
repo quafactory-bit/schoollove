@@ -34,19 +34,17 @@ describe('MySchoolsPanel privacy-safe share action', () => {
   it('유효한 내 학교 card에 공개 학교 보기와 공유 action을 함께 연결한다', () => {
     expect(buildMySchoolCards([membership()])[0].href).toBe('/school/test-school')
     expect(SOURCE).toContain('<Link href={school.href}')
-    expect(SOURCE).toContain('<OwnerGrowthFeedback schoolId={memberships[index].school_id}')
-    const owner = readFileSync(join(__dirname, '../growth/OwnerGrowthFeedback.tsx'), 'utf8')
-    expect(owner).toContain('<GrowthShareButton')
-    expect(owner).toContain('schoolName={data.growth.schoolName}')
-    expect(owner).toContain('slug={data.growth.slug}')
-    expect(SOURCE).toContain('학교 명단과 레벨 보기')
-    expect(SOURCE).not.toContain('<ShareButton') // one share flow, not duplicate controls
+    // v2-07: 레벨 카드 대신 공개 학교 링크 공유 하나만 둔다(공유 흐름 1개, 중복 컨트롤 없음).
+    expect(SOURCE).toContain('<ShareButton schoolName={school.schoolName} url={school.href}')
+    expect(SOURCE.match(/<ShareButton/g)).toHaveLength(1)
+    expect(SOURCE).not.toMatch(/OwnerGrowthFeedback|GrowthShareButton|레벨/)
+    expect(SOURCE).toContain('학교 페이지 보기')
   })
 
   it('zero state는 학교 등록 안내만 제공하고 share 조건 밖에 머문다', () => {
     expect(buildMySchoolCards([])).toEqual([])
     expect(SOURCE).toContain('if (memberships.length === 0)')
-    expect(SOURCE.indexOf('if (memberships.length === 0)')).toBeLessThan(SOURCE.indexOf('<OwnerGrowthFeedback'))
+    expect(SOURCE.indexOf('if (memberships.length === 0)')).toBeLessThan(SOURCE.indexOf('<ShareButton'))
   })
 
   it('null school relation에는 share href를 만들지 않는다', () => {

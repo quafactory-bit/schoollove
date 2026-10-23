@@ -136,6 +136,37 @@ describe('searchSchools — PHASE 10A 학교 전용 검색', () => {
     expect(from).not.toHaveBeenCalled()
   })
 
+  it('with_activity RPC가 error를 반환해도 search_schools_v2로 다시 불러 결과를 반환한다', async () => {
+    const rows = [
+      { id: 's1', school_name: '대치고등학교', school_type: 'high', sido: '서울', sigungu: '강남구', slug: 'daechi-high', address: '', school_code: '', created_at: '' },
+    ]
+    const { supabase, rpc } = createMockSupabase({ data: rows, error: null })
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'structure of query does not match' } })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { searchSchools } = await import('./search')
+
+    const result = await searchSchools('대치')
+
+    expect(rpc).toHaveBeenNthCalledWith(1, 'search_schools_with_activity', { q: '대치', lim: 20 })
+    expect(rpc).toHaveBeenNthCalledWith(2, 'search_schools_v2', { q: '대치', lim: 20 })
+    expect(result[0]).toMatchObject({ id: 's1', profile_count: 0 })
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(String(warn.mock.calls[0])).not.toContain('대치')
+    warn.mockRestore()
+  })
+
+  it('with_activity와 search_schools_v2가 모두 실패할 때만 SCHOOL_SEARCH_UNAVAILABLE', async () => {
+    const { supabase, rpc } = createMockSupabase({ data: null, error: { message: 'db error' } })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.doMock('@/lib/supabase', () => ({ supabase }))
+    const { searchSchools } = await import('./search')
+
+    await expect(searchSchools('대치')).rejects.toThrow('SCHOOL_SEARCH_UNAVAILABLE')
+    expect(rpc).toHaveBeenCalledTimes(2)
+    warn.mockRestore()
+  })
+
   it('2글자 미만 검색어는 여전히 빈 배열을 반환한다', async () => {
     const { supabase, rpc } = createMockSupabase({ data: [], error: null })
     vi.doMock('@/lib/supabase', () => ({ supabase }))

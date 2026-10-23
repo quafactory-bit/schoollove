@@ -23,13 +23,18 @@ describe('public School Hub and private same-school roster boundary', () => {
   })
 
   it('owner membership과 reciprocal roster RPC로 CTA와 명단을 개인화한다', () => {
-    expect(SOURCE).toContain('<SchoolJoinButton slug={school.slug}')
-    expect(SOURCE).toContain('href="/account#my-schools-heading"')
+    expect(SOURCE).toContain('<SchoolActionButton mode={mode} slug={school.slug}')
+    expect(SOURCE).toContain("const mode: SchoolActionMode = isMember ? 'roster' : signedIn ? 'register' : 'start'")
     expect(SOURCE).toContain(".eq('owner_user_id', auth.user.id)")
-    expect(SOURCE).toContain('내 학교로 등록하고 키우기')
     expect(SOURCE).not.toContain('getAccountState')
     expect(SOURCE).toContain("rosterStatus: 'ok' | 'unavailable' | 'signed_out'")
     expect(SOURCE).toContain('같은 학교에 등록하고 명단 표시를 켠 만 19세 이상 회원에게만 보입니다')
-    expect(SOURCE).toContain('별도 참여 신청이나 운영자 승인 없이 정확한 사람 찾기')
+    expect(SOURCE).toContain('이름·졸업연도는 같은 학교 회원에게만 보여요. 인스타 주소는 서로 수락할 때만. 만 19세 이상.')
+  })
+
+  it('v2-04: 졸업연도별 등록 수는 숫자만 쓰고 레벨·XP·게임 화면을 렌더하지 않는다', () => {
+    expect(SOURCE).toContain('getSchoolYearCounts(school.id)')
+    expect(SOURCE).toContain('<HowItWorksStrip />')
+    expect(SOURCE).not.toMatch(/GrowthMeter|getSchoolGrowth|SchoolWorld|GameHeader|GrowthHowItWorks|TodayInstagramCard|getPublicPromotion|XP/)
   })
 })

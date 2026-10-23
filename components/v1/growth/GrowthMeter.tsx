@@ -1,5 +1,5 @@
 import type { SchoolGrowth } from '@/lib/schoolGrowthGame'
-import { getSchoolWorldStage } from '@/components/game/SchoolWorld'
+import { getSchoolWorldStage } from '@/components/v1/game/SchoolWorld'
 
 export default function GrowthMeter({ growth, projection = 'public' }: { growth: Pick<SchoolGrowth, 'schoolName' | 'level' | 'progress'>; projection?: 'public' | 'owner' }) {
   return <div className="sl-growth-meter mt-5">

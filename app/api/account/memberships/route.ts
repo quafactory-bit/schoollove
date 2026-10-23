@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { isFutureGraduationYear } from '@/lib/policy/operations'
+import { isGraduationYearAllowed } from '@/lib/policy/adultEligibility'
+import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
 import { getSafeMembershipError, hasAccountOnboardingWriteAccess } from '@/lib/publicAccountLaunch'
 import { GROWTH_VISIT_COOKIE, GROWTH_TOKEN_PATTERN } from '@/lib/growthReferral'
@@ -22,7 +24,8 @@ const MembershipSchema = z.object({
     context.addIssue({ code: z.ZodIssueCode.custom, message: 'duplicate grade' })
   }
 })
-const DeleteSchema = z.object({ membership_id: z.string().uuid() })
+const CURRENT_STUDENT_SCHOOL_ERROR = '재학 중인 학교는 등록할 수 없어요.'
+const DeleteSchema =z.object({ membership_id: z.string().uuid() })
 const VisibilitySchema = z.object({
   membership_id: z.string().uuid(),
   visible: z.boolean(),
@@ -39,6 +42,11 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: '학교 이력 입력값을 확인해 주세요.' }, { status: 400 })
 
   if (isFutureGraduationYear(parsed.data.graduation_year)) return NextResponse.json({ error: '미래 졸업연도는 저장할 수 없습니다.' }, { status: 400 })
+  // v2-02: 학교 유형은 DB public.schools 값으로만 판단하고, 재학 중인 졸업연도는 저장 전에 거부한다.
+  const { data: school } = await auth.client.from('schools').select('school_type').eq('id', parsed.data.school_id).maybeSingle()
+  const schoolType = (school as { school_type?: SchoolType } | null)?.school_type
+  if (!schoolType || !(schoolType in SCHOOL_TYPE_LABELS)) return NextResponse.json({ error: '학교 이력 입력값을 확인해 주세요.' }, { status: 400 })
+  if (!isGraduationYearAllowed(schoolType, parsed.data.graduation_year)) return NextResponse.json({ error: CURRENT_STUDENT_SCHOOL_ERROR }, { status: 400 })
   const writeAllowed = await hasAccountOnboardingWriteAccess(
     auth.client,auth.user.id,'school_membership','school_membership',
   )

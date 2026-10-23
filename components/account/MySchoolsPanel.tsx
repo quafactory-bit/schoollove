@@ -3,7 +3,7 @@ import type { SchoolMembership } from '@/lib/account'
 import { buildMySchoolCards } from '@/lib/accountFirstValue'
 import { formatGradeClassHistory, gradeNumbersForSchoolType } from '@/lib/accountGradeClass'
 import ClassHistoryEditor from './ClassHistoryEditor'
-import OwnerGrowthFeedback from '@/components/growth/OwnerGrowthFeedback'
+import ShareButton from '@/components/ShareButton'
 
 type Props = {
   memberships: SchoolMembership[]
@@ -31,7 +31,7 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
 
   return (
     <section className="sl-my-schools mt-5" aria-labelledby="my-schools-heading">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--schoollove-game-accent)]">MY SCHOOL, NEXT LEVEL</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sl-brand-text">MY SCHOOLS</p>
       <h2 id="my-schools-heading" className="mt-2 text-xl font-bold text-schoollove-text">내 학교</h2>
       <details className="sl-school-privacy"><summary className="schoollove-focus min-h-11 cursor-pointer py-3 text-sm">내 학교 정보의 공개 범위</summary><p className="mt-2 text-sm leading-6 text-schoollove-secondary">
         명단 표시를 켠 학교에서는 입력한 전체 이름·졸업연도·학년별 반이 같은 학교의 명단 참여자에게 표시됩니다. 공개 인터넷과 검색엔진에는 표시되지 않으며 내 계정에서 언제든 숨길 수 있습니다.
@@ -49,7 +49,6 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
                 {school.schoolType}{school.region ? ` · ${school.region}` : ''}
               </p>
             ) : null}
-            <OwnerGrowthFeedback schoolId={memberships[index].school_id} />
             <p className="mt-5 text-sm font-medium text-schoollove-text">
               {school.graduationYear}년 졸업
             </p>
@@ -65,8 +64,10 @@ export default function MySchoolsPanel({ memberships, classHistoryWritable = fal
             {peopleSearchEnabled && hasSavedK12Class(memberships[index]) && <Link href="/people/search" className="schoollove-focus mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">저장한 반에서 사람 찾기</Link>}
             {school.href ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link href={school.href} className="schoollove-focus inline-flex min-h-11 items-center text-sm font-semibold text-schoollove-text underline">
-                학교 명단과 레벨 보기
+                학교 페이지 보기
               </Link>
+              {/* v2-07: v1 성장 카드 안에 있던 공유를 PHASE 10T 공개 학교 링크 공유로 대신한다. */}
+              <ShareButton schoolName={school.schoolName} url={school.href} label="학교 공유하기" className="schoollove-focus btn-pill btn-pill-muted" />
             </div> : null}
           </li>
         ))}

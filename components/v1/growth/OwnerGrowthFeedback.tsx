@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import type { OwnerGrowthResponse } from '@/lib/ownerSchoolGrowth'
 import GrowthMeter from './GrowthMeter'
 import GrowthShareButton from './GrowthShareButton'
-import SchoolWorld from '@/components/game/SchoolWorld'
+import SchoolWorld from '@/components/v1/game/SchoolWorld'
 
 export default function OwnerGrowthFeedback({ schoolId }: { schoolId: string }) {
   const [data, setData] = useState<OwnerGrowthResponse | null>(null)

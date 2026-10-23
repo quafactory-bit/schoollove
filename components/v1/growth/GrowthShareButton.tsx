@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import { buildGrowthShareUrl } from '@/lib/growthReferral'
-import SceneImage from '@/components/game/SceneImage'
+import SceneImage from '@/components/v1/game/SceneImage'
 
 export default function GrowthShareButton({ schoolId, schoolName, slug }: { schoolId: string; schoolName: string; slug: string }) {
   const dialog = useRef<HTMLDialogElement>(null)

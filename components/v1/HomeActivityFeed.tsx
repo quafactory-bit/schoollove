@@ -1,4 +1,4 @@
-import HomeActivityItem from '@/components/HomeActivityItem'
+import HomeActivityItem from '@/components/v1/HomeActivityItem'
 import type { HomeActivityItem as HomeActivityItemType } from '@/types/homeFeed'
 
 interface Props {

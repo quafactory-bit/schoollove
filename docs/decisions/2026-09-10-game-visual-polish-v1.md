@@ -32,7 +32,7 @@ Continuation outcome: the fixed cute duo and two new campus forms passed alpha
 QA. BRIGHT_MEMORY arch attempts did not; only four forms are available. Keep the
 feature PR Draft and canonical PR112 unchanged. The AVIF Home candidate is a
 presentation-only local asset with typed WebP fallback, not a CDN configuration
-change. Full results and remaining gates: `docs/GAME_VISUAL_POLISH_V1_RESULT.md`.
+change. Full results and remaining gates: `docs/v1/GAME_VISUAL_POLISH_V1_RESULT.md`.
 
 ## Finish V1 continuation from307ba36
 

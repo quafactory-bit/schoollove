@@ -33,9 +33,9 @@ describe('SearchBar — 전체 검색은 sessionStorage로만 검색어를 전�
 })
 
 describe('SearchBar — 레트로 컬러 시스템 검색 UI 계약', () => {
-  it('입력 focus는 Electric Blue 토큰을 쓰고 원색 blue 유틸리티를 쓰지 않는다', () => {
-    expect(source).toContain('focus:border-schoollove-electric-blue')
-    expect(source).toContain('focus:ring-schoollove-electric-blue/15')
+  it('입력 focus는 v2 브랜드 초록 토큰을 쓰고 원색 blue 유틸리티를 쓰지 않는다', () => {
+    expect(source).toContain('focus:border-sl-brand')
+    expect(source).toContain('focus:ring-sl-brand/15')
     expect(source).not.toMatch(/focus:border-blue|focus:ring-blue|text-blue|bg-blue/)
   })
 
