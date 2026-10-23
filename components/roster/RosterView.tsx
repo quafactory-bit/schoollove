@@ -6,6 +6,7 @@ import { Bell, Settings, Share } from 'lucide-react'
 import Avatar from '@/components/Avatar'
 import BrandMark from '@/components/BrandMark'
 import NewMembersStrip from '@/components/NewMembersStrip'
+import PushOptInCard from '@/components/pwa/PushOptInCard'
 import RosterRowButton from '@/components/roster/RosterRowButton'
 import { useConnectionNotificationUnreadCount } from '@/components/ConnectionNotificationProvider'
 import { formatGradeClassHistory } from '@/lib/accountGradeClass'
@@ -125,6 +126,7 @@ export default function RosterView({ schools, myName }: { schools: RosterSchool[
       </label> : <p className="mt-1 text-[13px] font-semibold text-sl-ink3">{school.schoolName}</p>}
       <h1 id="roster-title" className="mt-1 text-[28px] font-black leading-[1.15] tracking-[-0.6px] text-sl-ink">{year}년 졸업 · <span className="text-sl-brand">{tabs[0].count}명</span></h1>
 
+      <PushOptInCard />
       {unread ? <Link href="/notifications" className="schoollove-focus mt-3 flex items-center gap-2 rounded-[14px] bg-sl-ink px-3.5 py-3 text-[13.5px] font-bold text-white"><Bell className="h-4 w-4" aria-hidden="true" />새 알림 {unread > 9 ? '9+' : unread}개 — 알림에서 확인하고 수락하기 ›</Link> : null}
 
       {!school.rosterVisible ? <div className="mt-4 rounded-2xl bg-sl-bg2 px-4 py-4">

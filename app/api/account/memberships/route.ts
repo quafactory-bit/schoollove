@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
 import { isFutureGraduationYear } from '@/lib/policy/operations'
 import { isGraduationYearAllowed } from '@/lib/policy/adultEligibility'
 import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
+import { notifyNewRosterMember } from '@/lib/push/send'
 import { syncOnboardingProgressSafely } from '@/lib/onboarding'
 import { getSafeMembershipError, hasAccountOnboardingWriteAccess } from '@/lib/publicAccountLaunch'
 import { GROWTH_VISIT_COOKIE, GROWTH_TOKEN_PATTERN } from '@/lib/growthReferral'
@@ -80,6 +81,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '학교 이력을 저장할 수 없습니다.' }, { status: 500 })
   }
   await syncOnboardingProgressSafely(auth.client,auth.user.id,'direct')
+  // v2-09a: 명단 표시를 켠 새 등록만 같은 학교·연도 출석부 회원에게 알린다(응답 뒤, 실패해도 등록 결과 불변).
+  if (parsed.data.show_in_school_roster) {
+    const actorUserId = auth.user.id
+    after(async () => { await notifyNewRosterMember({ actorUserId, schoolId: parsed.data.school_id, graduationYear: parsed.data.graduation_year }) })
+  }
   return NextResponse.json({ membership: data }, { status: 201 })
 }
 
