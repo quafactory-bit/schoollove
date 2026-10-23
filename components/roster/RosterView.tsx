@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { Bell, Settings, Share } from 'lucide-react'
 import Avatar from '@/components/Avatar'
@@ -39,7 +38,6 @@ function writeJson(key: string, value: unknown) {
 // v2-06: 로그인 후 첫 화면인 "내 출석부"(목업 4번). 기존 명단 RPC 결과만 보여 주고,
 // 인스타 요청은 기존 정확 검색 → 연결 요청 API를 메시지 없이(고정 문구) 그대로 부른다.
 export default function RosterView({ schools, myName }: { schools: RosterSchool[]; myName: string | null }) {
-  const router = useRouter()
   const unread = useConnectionNotificationUnreadCount()
   const [index, setIndex] = useState(0)
   const school = schools[Math.min(index, schools.length - 1)]
@@ -86,7 +84,8 @@ export default function RosterView({ schools, myName }: { schools: RosterSchool[
     if (!visible && !window.confirm('출석부에서 나를 숨길까요? 숨기면 나도 같은 학교 출석부를 볼 수 없어요.')) return
     const response = await fetch('/api/account/memberships', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ membership_id: school.membershipId, visible }) }).catch(() => null)
     if (!response?.ok) { setToast('설정을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.'); return }
-    router.refresh()
+    // Preview 실사용 확인(10/23): router.refresh()만으로는 출석부가 바로 바뀌지 않아 새로 불러온다.
+    window.location.reload()
   }
 
   async function request(entry: RosterEntry) {
