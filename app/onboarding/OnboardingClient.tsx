@@ -89,7 +89,8 @@ export default function OnboardingClient() {
       if (step.key === 'profile' && body?.attribution_recorded === true) clearFirstTouch()
     }
     clearSchoolIntent()
-    window.location.replace('/account')
+    // v2-08: 가입 직후 한 번 "홈 화면에 추가" 안내를 거쳐 출석부로 간다.
+    window.location.replace('/onboarding/installed')
   }
 
   const paused = state?.stage === 'access_paused'

@@ -7,7 +7,7 @@ import Footer from '@/components/Footer'
 import TabBar from '@/components/TabBar'
 import PrivacySafeAnalytics from '@/components/PrivacySafeAnalytics'
 import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister'
-import InstallPrompt from '@/components/pwa/InstallPrompt'
+import Script from 'next/script'
 
 export const viewport: Viewport = {
   themeColor: '#FFFFFF',
@@ -37,15 +37,18 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/apple-touch-icon.png',
+    icon: '/icons/icon-v2-192.png',
+    apple: '/icons/apple-touch-icon-v2.png',
   },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <head />
+      <head>
+        {/* v2-08: 설치 시트 이벤트를 일찍 잡아 두고(브라우저 자체 설치 띠는 막음), 가입 직후 설치 안내 화면에서만 쓴다. */}
+        <Script id="sl-install-capture" strategy="beforeInteractive">{`window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__slInstallPrompt=e;});`}</Script>
+      </head>
       <body className="antialiased">
         <Providers>
           <ConnectionNotificationProvider>
@@ -57,7 +60,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </ConnectionNotificationProvider>
         </Providers>
         <ServiceWorkerRegister />
-        <InstallPrompt />
         <PrivacySafeAnalytics />
       </body>
     </html>
