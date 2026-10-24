@@ -10,7 +10,6 @@ const HOME = readFileSync(join(ROOT, 'app', 'page.tsx'), 'utf-8')
 const NOT_FOUND = readFileSync(join(ROOT, 'app', 'not-found.tsx'), 'utf-8')
 const SUBMIT = readFileSync(join(ROOT, 'app', 'submit', 'page.tsx'), 'utf-8')
 const FOOTER = readFileSync(join(ROOT, 'components', 'Footer.tsx'), 'utf-8')
-const SCHOOL_WARMTH = readFileSync(join(ROOT, 'components', 'SchoolWarmth.tsx'), 'utf-8')
 const PROFILE_CARD = readFileSync(join(ROOT, 'components', 'ProfileCard.tsx'), 'utf-8')
 const ADMIN_PAGES = [
   readFileSync(join(ROOT, 'app', 'admin', 'page.tsx'), 'utf-8'),
@@ -86,10 +85,21 @@ describe('public social typography and text color system', () => {
   })
 
   it('uses the approved text color tokens without changing non-text accent tokens', () => {
-    for (const color of ['#000000', '#4b5563', '#c62828']) {
+    // v2-03: 텍스트·선·보조 배경은 schoollove-v3 목업 토큰으로 재매핑, 게임용 accent는 그대로 둔다.
+    for (const color of ['#0a0a0a', '#6b7280', '#9ca3af', '#c62828']) {
       expect(GLOBALS).toContain(color)
     }
-    for (const color of ['#e8e8e8', '#f7f7f7', '#32e6b7', '#b7f84a', '#4f7cff', '#ff9f43']) {
+    expect(GLOBALS).toContain('--color-schoollove-text: var(--sl-ink)')
+    for (const color of ['#0f7b5f', '#0b5f49', '#e6f4ef', '#0b6a51', '#f2f3f5', '#e5e7eb', '#d1d5db', '#fff7e6', '#8a5a00']) {
+      expect(GLOBALS).toContain(color)
+    }
+    for (const color of ['#32e6b7', '#b7f84a', '#4f7cff', '#ff9f43']) {
+      expect(GLOBALS).toContain(color)
+    }
+  })
+
+  it('keeps the legacy v1 accent token values available for rollback', () => {
+    for (const color of ['#32e6b7', '#b7f84a', '#4f7cff', '#ff9f43', '#fff4e6']) {
       expect(GLOBALS).toContain(color)
     }
   })
@@ -114,7 +124,7 @@ describe('public social typography and text color system', () => {
   })
 
   it('keeps the shared footer copyright and policy links on the general black text token', () => {
-    expect(FOOTER).toContain('© 2026 스쿨러브아이. All rights reserved.')
+    expect(FOOTER).toContain('© 2026 출석부. All rights reserved.')
     expect(FOOTER).toContain('mt-4 text-center text-xs text-schoollove-text')
     expect(FOOTER).not.toMatch(/text-neutral-(400|500)/)
   })
@@ -123,13 +133,12 @@ describe('public social typography and text color system', () => {
     expect(GLOBALS).toContain('body input:not(:disabled)::placeholder')
     expect(GLOBALS).toContain('body textarea:not(:disabled)::placeholder')
     expect(GLOBALS).toContain('color: var(--schoollove-text-secondary) !important')
-    expect(GLOBALS).toContain('--schoollove-text-secondary: #475569')
+    expect(GLOBALS).toContain('--schoollove-text-secondary: var(--sl-ink2)')
     expect(GLOBALS).toContain('opacity: 1 !important')
   })
 
-  it('keeps school trace suggestions and profile avatar initials black', () => {
-    expect(SCHOOL_WARMTH).toContain('text-sm text-schoollove-text bg-gray-50')
-    expect(SCHOOL_WARMTH).not.toContain('text-sm text-gray-700 bg-gray-50')
+  // v2-07: SchoolWarmth 검사는 컴포넌트와 함께 components/v1/SchoolWarmth.test.ts로 이동했다.
+  it('keeps profile avatar initials black', () => {
     expect(PROFILE_CARD).toContain('justify-center text-schoollove-text font-bold text-sm')
     expect(PROFILE_CARD).not.toContain('justify-center text-gray-700 font-bold text-sm')
   })

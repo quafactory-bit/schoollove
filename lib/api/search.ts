@@ -24,10 +24,14 @@ async function fetchSchoolsBySearchRpc(
 ): Promise<Array<Omit<SchoolSearchResult, 'profile_count'>>> {
   if (query.trim().length < 2) return []
 
-  const { data, error } = await supabase.rpc(recordActivity ? 'search_schools_with_activity' : 'search_schools_v2', {
-    q: query.trim(),
-    lim: limit,
-  })
+  const args = { q: query.trim(), lim: limit }
+  let { data, error } = await supabase.rpc(recordActivity ? 'search_schools_with_activity' : 'search_schools_v2', args)
+
+  // v2-01: 통계 래퍼가 실패해도 검색 자체는 살린다. 검색어는 로그에 남기지 않는다.
+  if (error && recordActivity) {
+    console.warn('search_schools_with_activity failed; falling back to search_schools_v2')
+    ;({ data, error } = await supabase.rpc('search_schools_v2', args))
+  }
 
   if (error) throw new Error('SCHOOL_SEARCH_UNAVAILABLE')
   if (!data) return []

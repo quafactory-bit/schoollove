@@ -1,3 +1,5 @@
+import { SCHOOL_TYPE_LABELS, type SchoolType } from '@/types/school'
+
 const KST_TIME_ZONE = 'Asia/Seoul'
 
 type CalendarDate = { year: number; month: number; day: number }
@@ -52,4 +54,31 @@ export function calculateAgeInKst(dateOfBirth: string, now = new Date()): number
 export function isAdultEligibleInKst(dateOfBirth: string, now = new Date()): boolean {
   const age = calculateAgeInKst(dateOfBirth, now)
   return age !== null && age >= 19
+}
+
+// v2-02: 졸업연도로 재학 중인 학교 등록을 구조적으로 막는다(KST 올해 기준).
+// 고 ≤ Y−1, 중 ≤ Y−4, 초 ≤ Y−7, 대학·전문대학 ≤ Y. 하한은 1950.
+export const MIN_GRADUATION_YEAR = 1950
+
+const GRADUATION_YEAR_OFFSET: Record<SchoolType, number> = {
+  high: 1,
+  middle: 4,
+  elementary: 7,
+  university: 0,
+  college: 0,
+}
+
+export function graduationYearRange(schoolType: SchoolType, now = new Date()): { min: number; max: number } {
+  return { min: MIN_GRADUATION_YEAR, max: getKstCalendarDate(now).year - GRADUATION_YEAR_OFFSET[schoolType] }
+}
+
+export function isGraduationYearAllowed(schoolType: SchoolType, year: number, now = new Date()): boolean {
+  const { min, max } = graduationYearRange(schoolType, now)
+  return Number.isInteger(year) && year >= min && year <= max
+}
+
+export function graduationYearRangeNotice(schoolType: SchoolType, now = new Date()): string {
+  const label = SCHOOL_TYPE_LABELS[schoolType]
+  const particle = label.endsWith('학') ? '은' : '는'
+  return `${label}${particle} ${graduationYearRange(schoolType, now).max}년 이하 졸업연도만 고를 수 있어요. 재학 중인 학교는 등록할 수 없어요.`
 }

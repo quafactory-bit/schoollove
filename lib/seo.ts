@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import type { School } from '@/types/school'
 import { PRIVATE_ROUTE_ROBOTS } from '@/lib/policy/privacySafety'
 
-const SITE_NAME = '스쿨러브아이'
+const SITE_NAME = '출석부'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.schoollove.kr'
-const DESC = '학교 기본 정보를 안전하게 검색하고 확인할 수 있는 스쿨러브아이입니다.'
+const DESC = '학교 기본 정보를 안전하게 검색하고 확인할 수 있는 출석부입니다.'
 
 export function getBaseMetadata(): Metadata {
   return {

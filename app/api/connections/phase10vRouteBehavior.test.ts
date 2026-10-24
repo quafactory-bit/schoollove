@@ -12,8 +12,12 @@ const mocks = vi.hoisted(() => ({
   setInstagramPermission: vi.fn(),
   cancelRequest: vi.fn(),
   record: vi.fn(),
+  notify: vi.fn(),
+  after: vi.fn(),
 }))
 
+vi.mock('@/lib/push/send', () => ({ notifyConnectionRequest: mocks.notify, notifyRequestAccepted: mocks.notify }))
+vi.mock('next/server', async (original) => ({ ...(await original<typeof import('next/server')>()), after: mocks.after }))
 vi.mock('@/lib/api/connectionRoute', () => ({
   requireConnectionContext: mocks.context,
   requireConnectionActionContext: mocks.actionContext,

@@ -7,7 +7,8 @@ export default defineConfig({
   // automatic React runtime compiled by Vite instead.
   oxc: { jsx: { runtime: 'automatic' } },
   test: {
-    exclude: [...configDefaults.exclude, 'e2e/**'],
+    // v2: 화면에서 내린 v1 기능의 테스트는 기능과 함께 v1/로 옮기고 실행에서 제외한다.
+    exclude: [...configDefaults.exclude, 'e2e/**', '**/v1/**'],
   },
   resolve: {
     alias: {

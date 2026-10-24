@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { RequestActionSchema } from '@/lib/policy/connectionSafety'
 import { requireConnectionActionContext, requireConnectionContext, readJson } from '@/lib/api/connectionRoute'
 import { cancelConnectionRequest, respondConnectionRequest } from '@/lib/connections'
+import { notifyRequestAccepted } from '@/lib/push/send'
 
 const IdSchema = z.string().uuid()
 
@@ -24,6 +25,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     userId: context.auth.user.id, requestId: id.data, action: body.data.action, reasonCode: body.data.reason_code,
   })
   if (!result?.handled) return NextResponse.json({ error: '이미 처리됐거나 처리할 수 없는 안부입니다.' }, { status: 409 })
+  // v2-09a: 수락이면 요청한 사람에게 알림(응답 뒤, 실패해도 수락 결과 불변).
+  if (body.data.action === 'accept') { const requestId = id.data; after(async () => { await notifyRequestAccepted(requestId) }) }
   return NextResponse.json({ state: result.state, connectionId: result.connectionId })
 }
 

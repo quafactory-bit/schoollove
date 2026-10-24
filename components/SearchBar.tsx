@@ -190,12 +190,12 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
             autoComplete="off"
             className={
               variant === 'home'
-                ? 'min-h-12 w-full rounded-xl border border-schoollove-border bg-white py-3 pl-10 pr-4 text-base outline-none transition focus:border-schoollove-electric-blue focus:ring-2 focus:ring-schoollove-electric-blue/15'
-                : 'w-full rounded-xl border border-schoollove-border bg-white py-3.5 pl-11 pr-4 text-sm focus:border-schoollove-electric-blue focus:outline-none focus:ring-2 focus:ring-schoollove-electric-blue/15'
+                ? 'min-h-[52px] w-full rounded-xl border border-transparent bg-sl-bg2 py-3 pl-10 pr-4 text-base font-semibold outline-none transition focus:border-sl-brand focus:ring-2 focus:ring-sl-brand/15'
+                : 'min-h-[52px] w-full rounded-xl border border-transparent bg-sl-bg2 py-3.5 pl-11 pr-4 text-base font-semibold focus:border-sl-brand focus:outline-none focus:ring-2 focus:ring-sl-brand/15'
             }
           />
         </div>
-        <button type="submit" className="schoollove-dark-action schoollove-focus mt-3 flex min-h-12 w-full items-center justify-center rounded-xl bg-[var(--schoollove-game-accent)] px-4 font-semibold text-white">{variant === 'home' ? '내 학교 찾기' : '학교 검색'}</button>
+        <button type="submit" className="schoollove-dark-action schoollove-focus btn-primary mt-3 w-full">{variant === 'home' ? '내 학교 찾기' : '학교 검색'}</button>
         {notice && <p role="status" className="mt-2 text-sm text-schoollove-secondary">{notice}</p>}
       </form>
 

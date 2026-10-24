@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { ConnectionRequestSchema } from '@/lib/policy/connectionSafety'
 import { requireConnectionContext, readJson } from '@/lib/api/connectionRoute'
 import { createConnectionRequest, getConnectionRequests } from '@/lib/connections'
 import { recordLimitedLaunchEvent } from '@/lib/onboarding'
+import { notifyConnectionRequest } from '@/lib/push/send'
 
 export async function GET(request: NextRequest) {
   const context = await requireConnectionContext(request, 'response', [])
@@ -26,5 +27,8 @@ export async function POST(request: NextRequest) {
   })
   if (!result) return NextResponse.json({ error: '안부를 보낼 수 없습니다.' }, { status: 503 })
   if (result.created) await recordLimitedLaunchEvent('connection_request_created')
+  // v2-09a: 받는 사람에게 요청 알림(응답 뒤, 실패해도 요청 결과 불변).
+  const createdRequestId = result.created ? result.requestId : null
+  if (typeof createdRequestId === 'string') after(async () => { await notifyConnectionRequest(createdRequestId) })
   return NextResponse.json({ created: result.created, requestId: result.requestId, state: result.state }, { status: result.created ? 201 : 409 })
 }

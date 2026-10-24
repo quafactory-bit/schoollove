@@ -16,7 +16,8 @@ describe('connection notifications product contract', () => {
     expect(client).toContain("request_reminded: '받은 안부가 다시 알려졌어요.'")
     expect(client).toContain("request_accepted: '안부가 수락되어 연결됐어요.'")
     expect(client).toContain("return type === 'request_accepted' ? 'connected' : 'received'")
-    const notificationSection = client.slice(client.indexOf('const notificationCopy'), client.indexOf('<section id="received"'))
+    // v2-06: 알림 탭에서 '서로 수락한 친구' 섹션이 받은 요청보다 앞으로 왔다. 알림 영역은 그 섹션 전까지다.
+    const notificationSection = client.slice(client.indexOf('const notificationCopy'), client.indexOf('<section id="connected"'))
     expect(notificationSection).not.toMatch(/senderName|displayName|schoolName|graduation|instagram|message/i)
   })
 
@@ -34,7 +35,8 @@ describe('connection notifications product contract', () => {
   it('renders the connection nav badge only for a non-zero unread count', () => {
     expect(badge).toContain('if (!unreadCount) return null')
     expect(badge).toContain("unreadCount > 9 ? '9+' : String(unreadCount)")
-    expect(tabBar).toContain("label: '내 연결'")
+    expect(tabBar).toContain("label: '알림'")
+    expect(tabBar).toContain('dot && unreadCount ?')
     expect(desktopNav).toContain('내 연결')
   })
 

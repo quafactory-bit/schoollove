@@ -5,9 +5,9 @@ import { join } from 'node:path'
 const SOURCE = readFileSync(join(__dirname, 'page.tsx'), 'utf8')
 
 describe('Class route emergency privacy boundary', () => {
-  it('개인 행·Instagram·반 인원을 조회하거나 렌더하지 않는다', () => {
+  it('개인 행·Instagram·반 인원을 조회하거나 렌더하지 않고 연도 페이지로 보낸다 (v2-04)', () => {
     expect(SOURCE).not.toMatch(/getProfilesByClass|getClassProfileCount|ProfileCard|instagram|nickname|formatNumber/)
-    expect(SOURCE).toContain('<PrivacyTransitionNotice')
+    expect(SOURCE).toContain('redirect(`/school/${encodeURIComponent(slug)}/${encodeURIComponent(year)}`)')
   })
 
   it('noindex/nofollow/noarchive 공통 정책을 사용한다', () => {

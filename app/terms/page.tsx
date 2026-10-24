@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: '이용약관',
-  description: '스쿨러브아이 개인정보 안전 전환 기간의 이용 원칙을 안내합니다.',
+  description: '출석부 개인정보 안전 전환 기간의 이용 원칙을 안내합니다.',
 }
 
 const CONTACT = 'schoollove.contact@gmail.com'

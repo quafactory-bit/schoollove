@@ -7,13 +7,14 @@ import {
 } from '@/lib/schoolShare'
 
 type ShareButtonProps = ShareButtonContent & {
-  label?: string
+  label?: React.ReactNode
+  ariaLabel?: string
   className?: string
 }
 
 // Web Share API 지원 기기는 네이티브 공유 시트, 아니면 링크 복사로 폴백
 export default function ShareButton(props: ShareButtonProps) {
-  const { label = '공유하기', className } = props
+  const { label = '공유하기', ariaLabel, className } = props
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function ShareButton(props: ShareButtonProps) {
   }
 
   return (
-    <button type="button" onClick={handleShare} className={className}>
+    <button type="button" onClick={handleShare} aria-label={ariaLabel} className={className}>
       {copied ? '링크 복사됨' : label}
       <span className="sr-only" aria-live="polite">{copied ? '링크 복사됨' : ''}</span>
     </button>

@@ -1,38 +1,24 @@
 import type { MetadataRoute } from 'next'
 
+// v2-08: 홈 화면 아이콘(초록 + 흰 체크, 새 이름 파일). 이름·짧은 이름은 10번 이름 결정 때 바꾼다.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: '스쿨러브아이 - 학교 인스타 동창 찾기',
-    short_name: '스쿨러브아이',
-    description: '학교·졸업연도·반별로 동창 인스타를 찾아보세요',
-    start_url: '/?source=pwa',
+    name: '출석부',
+    short_name: '출석부',
+    description: '학교와 졸업연도로 같은 기수 출석부를 보고, 서로 수락하면 인스타그램 주소를 교환해요.',
+    start_url: '/account',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#FFFFFF',
-    theme_color: '#FFFFFF',
+    background_color: '#ffffff',
+    theme_color: '#0f7b5f',
     lang: 'ko',
     categories: ['social'],
     icons: [
-      {
-        src: '/icons/icon-192.png',
-        sizes: '192x192',
-        type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: '/icons/icon-512.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: '/icons/icon-maskable-512.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'maskable',
-      },
+      { src: '/icons/icon-v2-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-v2-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-v2-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }
 }

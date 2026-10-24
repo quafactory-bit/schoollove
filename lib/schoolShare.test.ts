@@ -14,8 +14,8 @@ describe('privacy-safe school share payload', () => {
 
   it('현재 origin과 승인된 학교 path로만 절대 URL을 만든다', () => {
     expect(buildSchoolSharePayload({ schoolName: '테스트고등학교', href: '/school/test-school', origin })).toEqual({
-      title: '스쿨러브아이',
-      text: '스쿨러브아이에서 테스트고등학교 학교 정보를 확인해 보세요.',
+      title: '출석부',
+      text: '출석부에서 테스트고등학교 학교 정보를 확인해 보세요.',
       url: 'https://preview.schoollove.kr/school/test-school',
     })
   })
@@ -72,7 +72,7 @@ describe('privacy-safe school share payload', () => {
     const payload = buildSchoolSharePayload({ schoolName: '테스트고등학교', href: '/school/test-school', origin })!
     const writeClipboard = vi.fn(async () => undefined)
     await expect(executeSchoolShare(payload, { writeClipboard })).resolves.toBe('copied')
-    expect(writeClipboard).toHaveBeenCalledWith('스쿨러브아이에서 테스트고등학교 학교 정보를 확인해 보세요.\nhttps://preview.schoollove.kr/school/test-school')
+    expect(writeClipboard).toHaveBeenCalledWith('출석부에서 테스트고등학교 학교 정보를 확인해 보세요.\nhttps://preview.schoollove.kr/school/test-school')
   })
 
   it('native share의 실제 실패는 safe clipboard fallback으로 전환한다', async () => {

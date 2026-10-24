@@ -80,7 +80,7 @@
 - Local actual-React responsive matrix and 17 mocked interaction regressions
   passed. Full Vitest1697 PASS/4 existing SKIP; typecheck PASS; lint0 errors/84
   existing warnings. No migration or persisted environment changes.
-- See `../GAME_VISUAL_EXPERIENCE_V1.md` for evidence, art limitations and release
+- See `v1/GAME_VISUAL_EXPERIENCE_V1.md` for evidence, art limitations and release
   boundary. Preview release is approved after verification. Production still
   requires the user's later visual approval; no Production rollout is claimed.
 
@@ -94,7 +94,7 @@
 - Actual React + isolated Chromium/network mocks cover search, selection,
   explicit save and share preview. No real OAuth/signup/search-for-people/referral
   issuance or A/B/C mutation. Local snapshots are separate from live evidence.
-- See `../SCHOOL_GROWTH_UX_COMPLETION.md` for exact validation and release state;
+- See `v1/SCHOOL_GROWTH_UX_COMPLETION.md` for exact validation and release state;
   do not interpret local rendering alone as authenticated Production verification.
 
 ## 2026-09-09 Owner live growth coherence (local verified / remote pending)
@@ -2382,7 +2382,7 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Final targeted35 and full1704 tests passed (4 existing skipped), typecheck/build passed, lint0 errors/84 existing warnings. Actual React responsive61, mocked functional17, long-name/multiple-card/image-failure checks and motion keyboard/offscreen/reduced-motion passed. Document-hidden is synthetic; physical mobile devices and physical200% browser zoom remain NOT_TESTED.
 - Same mobile lab fresh-cache LCP median: Before2640ms; first WebP candidate2676ms (failed); final AVIF1668ms (2.5s budget passed). Warm medians460/504/628ms respectively: final warm regression remains explicit. CLS0.00808317 fresh,0 warm. All runs/traces/screenshots retained; no claim about the historical3.98s cause or field CWV.
 - Original schoolWebPs, all API/lib/DB/migration/XP/referral/auth rules, packages/lockfiles/env/protection and A/B/C/relationships remain untouched. No explicit live user-data write, real provider login, school save, person search, referral issue or external sharing.
-- `docs/GAME_VISUAL_POLISH_V1_RESULT.md` and ignored evidence index contain the current record. Feature Draft review is authorized; Ready/canonical merge is withheld for missing fifth form, warm regression and remaining verification gates. Production is not approved or changed.
+- `docs/v1/GAME_VISUAL_POLISH_V1_RESULT.md` and ignored evidence index contain the current record. Feature Draft review is authorized; Ready/canonical merge is withheld for missing fifth form, warm regression and remaining verification gates. Production is not approved or changed.
 
 ## 2026-09-10 — Game visual polish Finish V1 (LOCAL_VERIFIED / PARTIAL)
 
@@ -2391,7 +2391,7 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - One fixed-protocol current Before/After batch: fresh median1612→1468ms, warm576→552ms. Warm AVIF304 revalidation179–190ms became zero-transfer cached200/0ms load, but residual layout/render work persists. Historical PR112 warm460ms remains better: WARM_CACHE_REVIEW_REQUIRED. Individual CLS increases remain recorded, all≤0.1. All historical/raw runs retained.
 - Targeted41, full1705PASS/4existingSKIP, typecheck, lint0errors/84existingwarnings and67-page production build passed. Actual React responsive61, synthetic functional17, final image-failure/long-name/two-card checks and motion checks passed. Initial image-failure harness incorrectly aborted Vite JS imports and was corrected without weakening image assertions; failures retained. Encoder EPERM resolved through formal same-command permission, not another encoder. Physical devices/real background tab remain untested.
 - GitHub existing connector PR-write restoration unconfirmed; metadata lists are empty and browser settings requires login. No PR retry/alternate credential route. User separately authorized one official final-feature review link, with no URL/cookie persistence or project-wide protection changes. Final push/deployment/live status belongs to the ignored final report; this source record does not claim it prematurely.
-- See `docs/GAME_VISUAL_POLISH_FINISH_V1_RESULT.md` and `.local/game-visual-polish/finish`. Ready/canonical merge remains withheld, Production untouched.
+- See `docs/v1/GAME_VISUAL_POLISH_FINISH_V1_RESULT.md` and `.local/game-visual-polish/finish`. Ready/canonical merge remains withheld, Production untouched.
 
 ## 2026-09-10 — Independent final-stage campus layer after c538e02 (LOCAL_VERIFIED)
 
@@ -2399,7 +2399,7 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 - Equal500px stationary/grayscale-effects-off comparison and white/pastel/navy scene composites inspected. Browser SVG rasterization has real alpha, transparent opening/corners and95.81874% fully transparent pixels. Final Hub/owner360/390/412/768/1280/1440 show no overflow or gate/duo overlap. One shared animated wrapper preserves pause/resume/reduced/offscreen without new observers. SSR IDs are unique across multiple instances.
 - Targeted45 and full1710PASS/4existingSKIP, typecheck, lint0errors/84existingwarnings,67-page production build passed. Existing responsive61 and synthetic functional17 passed. Actual compiled Home/level10Hub SSR+hydration+motion passed with0 page errors using fixed local transport. Vite capture's initial reload race was corrected with network-idle synchronization, not a runtime workaround.
 - No LCP remeasurement/iterative optimization. Historical c538e02 warm552ms remains+92ms against original460ms and awaits user acceptance. Identical immutable Home AVIF preserved. New inline SVG4489B/gzip1579B; compiled Home decoded JS657595→662757B (+5162), rounded First Load JS180→182kB. Cost disclosed as design/performance review, not no-regression PASS.
-- Runtime scope: SchoolWorld, new SVG component and six scoped CSS lines. No DB/API/lib/auth/XP/referral/env/protection/package or real-user change. Same-branch commit/push authorized; PR-write restoration and browser network restoration remain separate unconfirmed blockers. No PR retry/new review link/Ready/Preview merge/Production action. See `docs/GAME_VISUAL_REMAINING_GATES_RESULT.md` and ignored `.local/game-visual-polish/remaining` evidence/manifest.
+- Runtime scope: SchoolWorld, new SVG component and six scoped CSS lines. No DB/API/lib/auth/XP/referral/env/protection/package or real-user change. Same-branch commit/push authorized; PR-write restoration and browser network restoration remain separate unconfirmed blockers. No PR retry/new review link/Ready/Preview merge/Production action. See `docs/v1/GAME_VISUAL_REMAINING_GATES_RESULT.md` and ignored `.local/game-visual-polish/remaining` evidence/manifest.
 
 ## 2026-09-10 — Accepted V1, normal GitHub web Draft and caption spacing
 

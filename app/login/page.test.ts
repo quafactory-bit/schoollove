@@ -26,6 +26,9 @@ describe('/login', () => {
 
   it('만 19세 이상과 self-attestation 한계를 고지한다', () => {
     expect(source).toContain('만 19세 이상')
-    expect(source).toContain('신분증 기반 본인확인이 아닙니다')
+    // v2-05: 자기진술 한계 고지는 생년월일을 실제로 받는 가입 한 화면으로 옮겼다.
+    const signup = readFileSync(join(process.cwd(), 'app/onboarding/OnboardingClient.tsx'), 'utf8')
+    expect(signup).toContain('신분증 기반 본인확인이 아닙니다')
+    expect(source).toContain('href="/privacy#authentication"')
   })
 })
