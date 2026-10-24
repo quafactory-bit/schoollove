@@ -12,6 +12,9 @@ describe('PHASE 10A public notices', () => {
     expect(privacy).toContain('인터넷에 공개되는 개인 명단과 공개 사람 검색을 제공하지 않습니다')
     expect(privacy).toContain('별도 초대·참여 신청·운영자 승인 없이 사람 찾기를 이용할 수 있습니다')
     expect(privacy).toContain('검색 결과 수·상대 계정 ID는 반환하지 않습니다')
+    // 선택 푸시 알림(v2-09)과 어긋나는 옛 문장이 돌아오지 않게 한다.
+    expect(privacy).toContain('본인이 직접 켠 경우에만 브라우저 푸시로도 보냅니다')
+    expect(privacy).not.toContain('외부 이메일·푸시로 발송하지 않습니다')
     expect(privacy).toContain('성인 비공개 계정은 launch 상태가 별도로 승인된 때에만 시작')
     expect(terms).toContain('인터넷에 공개되는 개인 명단과 공개 이름 검색은 제공하지 않습니다')
     expect(terms).toContain('공개 계정 launch가 승인된 경우')
