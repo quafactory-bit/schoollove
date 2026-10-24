@@ -1,6 +1,6 @@
 /** Public explanatory copy only. This revision does not re-label historical consent records. */
-// 운영자 결정(2026-10-23): 시행일은 운영 배포일. v2(출석부·웹 푸시) 운영 배포 2026-10-24.
-export const PRIVACY_NOTICE_REVISION = '2026-10-24'
+// 운영자 결정(2026-10-23): 시행일은 운영 배포일. v2(출석부·웹 푸시) 운영 배포 2026-10-25.
+export const PRIVACY_NOTICE_REVISION = '2026-10-25'
 
 export const PRIVATE_PROFILE_COLLECTION = [
   {
