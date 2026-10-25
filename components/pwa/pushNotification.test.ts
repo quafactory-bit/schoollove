@@ -44,4 +44,10 @@ describe('push notification consent UI', () => {
     expect(browser).toContain('existing.options.applicationServerKey')
     expect(browser).toContain('await existing.unsubscribe()')
   })
+
+  it('관리자 테스트는 만료된 구독(404/410)이면 새로 구독해 한 번만 다시 보낸다', () => {
+    expect(admin).toContain('body.expired')
+    expect(admin).toContain('await result.subscription.unsubscribe()')
+    expect(read('app/api/admin/push/test/route.ts')).toContain('expired: status === 404 || status === 410')
+  })
 })
