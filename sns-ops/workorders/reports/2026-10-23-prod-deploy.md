@@ -57,4 +57,7 @@ SNS 일지용 한 줄: 이름을 "출석부"로 바꾼 새 버전을 밤에 조�
 - Production 환경변수 확인(이름만): `UPSTASH_REDIS_REST_URL`·`UPSTASH_REDIS_REST_TOKEN` **이미 있음**(Production+Preview) → 새 동문 알림의 1시간 묶음·하루 3건 상한이 동작한다.
 - `VAPID_SUBJECT`=`mailto:schoollove.contact@gmail.com`(Config, Production)은 에이전트가 추가. 키 한 쌍(`NEXT_PUBLIC_VAPID_PUBLIC_KEY` Config, `VAPID_PRIVATE_KEY` Secret)은 **운영자가 새로 만들어 직접 입력**(Preview와 다른 쌍). 키 값은 채팅·파일·커밋에 없음.
 - Production 재배포: `main` `d768ff3` 그대로, 빌드 캐시 없이 → `HQrNGSCFwMt4a7zGbcZUxoiDJyFG` Ready.
-- 남은 확인: 운영 관리자 홈 "웹 푸시" → `내 기기로 테스트 알림 보내기`(운영자 기기), 이후 실제 새 동문·요청·수락 알림.
+- **운영 테스트 알림 도착 확인**(2026-10-25, 운영자 Windows Chrome, www.schoollove.kr): "출석부 / 테스트 알림이 정상적으로 도착했어요."
+  - 첫 시도는 `브라우저 설정에서 알림 권한을 허용해 주세요`(권한 차단 상태), 허용 뒤엔 `푸시 서버 응답 410: 만료된 구독`(권한을 바꿀 때 폐기된 구독이 브라우저에 남음) → 사이트 데이터 삭제 후 성공.
+  - 재발 방지 `f05d4c4`(로컬, 미배포): 관리자 테스트가 404/410이면 새로 구독해 한 번만 재시도.
+- 남은 확인: 실제 새 동문·요청·수락 알림(실제 회원 2명 필요).
