@@ -25,12 +25,22 @@ export function PushTestButton() {
         setError(true)
         return
       }
-      const response = await fetch('/api/admin/push/test', {
+      const post = (subscription: PushSubscription) => fetch('/api/admin/push/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(serializePushSubscription(result.subscription)),
+        body: JSON.stringify(serializePushSubscription(subscription)),
       })
-      const body = await response.json().catch(() => ({})) as { error?: string }
+      let response = await post(result.subscription)
+      let body = await response.json().catch(() => ({})) as { error?: string; expired?: boolean }
+      // 알림 권한을 껐다 켜면 브라우저에 남은 구독이 푸시 서버에서 만료(410)될 수 있다. 새로 구독해 한 번만 다시 보낸다.
+      if (!response.ok && body.expired) {
+        await result.subscription.unsubscribe().catch(() => false)
+        const renewed = await ensureBrowserPushSubscription()
+        if (renewed.subscription) {
+          response = await post(renewed.subscription)
+          body = await response.json().catch(() => ({})) as { error?: string; expired?: boolean }
+        }
+      }
       if (!response.ok) throw new Error(body.error ?? '테스트 알림을 보낼 수 없습니다.')
       setMessage('이 기기로 테스트 알림을 보냈습니다.')
     } catch (cause) {
