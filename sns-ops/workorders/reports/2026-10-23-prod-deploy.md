@@ -52,3 +52,9 @@
 - 이 보고서와 DB 적용 기록은 `v2-simplified`·`preview`에만 커밋(문서만으로 운영 재배포를 만들지 않으려고 main에는 다음 코드 배포 때 함께 들어간다).
 
 SNS 일지용 한 줄: 이름을 "출석부"로 바꾼 새 버전을 밤에 조용히 운영에 올림(DB 손질 4개 먼저, 코드는 그다음, 공지 없음) | 되돌릴 길은 1분짜리 버튼 하나로 미리 확인해 둠 | 폰 알림은 운영 키를 아직 안 넣어서 꺼 둔 상태, 켜는 건 다음 차례
+
+## 운영 푸시 켜기 (2026-10-25, 운영자 승인)
+- Production 환경변수 확인(이름만): `UPSTASH_REDIS_REST_URL`·`UPSTASH_REDIS_REST_TOKEN` **이미 있음**(Production+Preview) → 새 동문 알림의 1시간 묶음·하루 3건 상한이 동작한다.
+- `VAPID_SUBJECT`=`mailto:schoollove.contact@gmail.com`(Config, Production)은 에이전트가 추가. 키 한 쌍(`NEXT_PUBLIC_VAPID_PUBLIC_KEY` Config, `VAPID_PRIVATE_KEY` Secret)은 **운영자가 새로 만들어 직접 입력**(Preview와 다른 쌍). 키 값은 채팅·파일·커밋에 없음.
+- Production 재배포: `main` `d768ff3` 그대로, 빌드 캐시 없이 → `HQrNGSCFwMt4a7zGbcZUxoiDJyFG` Ready.
+- 남은 확인: 운영 관리자 홈 "웹 푸시" → `내 기기로 테스트 알림 보내기`(운영자 기기), 이후 실제 새 동문·요청·수락 알림.
