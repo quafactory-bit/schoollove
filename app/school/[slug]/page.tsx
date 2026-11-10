@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ...getSchoolPageMetadata(school),
     title: `${school.school_name} · 졸업연도별 출석부`,
     description,
-    openGraph: { title: `${school.school_name} · 졸업연도별 출석부`, description },
+    openGraph: { title: `${school.school_name} · 졸업연도별 출석부`, description, siteName: '출석부', locale: 'ko_KR', type: 'website' },
     twitter: { card: 'summary_large_image', title: `${school.school_name} · 졸업연도별 출석부`, description },
     robots: getPublicRouteRobots('school'),
   }
