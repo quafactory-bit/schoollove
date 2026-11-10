@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ChevronRight, Share } from 'lucide-react'
 import { getSchoolBySlug } from '@/lib/api/schools'
-import { getSchoolPageMetadata } from '@/lib/seo'
+import { buildSchoolPath, getSchoolPageMetadata } from '@/lib/seo'
 import { getPublicRouteRobots } from '@/lib/policy/privacySafety'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { getAuthenticatedServerContext } from '@/lib/user-auth'
@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ...getSchoolPageMetadata(school),
     title: `${school.school_name} · 졸업연도별 출석부`,
     description,
-    openGraph: { title: `${school.school_name} · 졸업연도별 출석부`, description, siteName: '출석부', locale: 'ko_KR', type: 'website' },
+    openGraph: { title: `${school.school_name} · 졸업연도별 출석부`, description, url: buildSchoolPath(school.slug), siteName: '출석부', locale: 'ko_KR', type: 'website' },
     twitter: { card: 'summary_large_image', title: `${school.school_name} · 졸업연도별 출석부`, description },
     robots: getPublicRouteRobots('school'),
   }
