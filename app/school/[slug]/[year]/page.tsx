@@ -6,6 +6,8 @@ import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { getAuthenticatedServerContext } from '@/lib/user-auth'
 import { getPublicAccountLaunchState } from '@/lib/publicAccountLaunch'
 import { getSchoolYearCounts, parseGraduationYearParam } from '@/lib/schoolYearCounts'
+import { buildYearPath } from '@/lib/seo'
+import { shortSchoolName } from '@/lib/push/contracts'
 import PageNav from '@/components/PageNav'
 import SchoolActionButton, { type SchoolActionMode } from '@/components/SchoolActionButton'
 
@@ -15,9 +17,21 @@ interface PageProps {
   params: Promise<{ slug: string; year: string }>
 }
 
-export const metadata: Metadata = {
-  title: '졸업연도 출석부',
-  robots: getPublicRouteRobots('year'),
+// 링크 미리보기: og:title에 공개 등록 수만 넣는다(이름 없음). og:url은 canonical과 같은 값.
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug, year: yearParam } = await params
+  const school = await getSchoolBySlug(slug)
+  const year = parseGraduationYearParam(yearParam)
+  if (!school || year === null) return { title: '졸업연도 출석부', robots: getPublicRouteRobots('year') }
+  const counts = await getSchoolYearCounts(school.id)
+  const count = counts.years.find((row) => row.graduationYear === year)?.count ?? 0
+  const url = buildYearPath(school.slug, year)
+  return {
+    title: '졸업연도 출석부',
+    alternates: { canonical: url },
+    openGraph: { title: `${shortSchoolName(school.school_name)} ${year}년 졸업 출석부 · ${count}명`, url, siteName: '출석부', locale: 'ko_KR', type: 'website' },
+    robots: getPublicRouteRobots('year'),
+  }
 }
 
 // v2-04: 로그아웃 상태의 연도 페이지는 등록 수와 이름 없는 흐린 자리만 보여 준다. 로그인 후 명단은 06번.
