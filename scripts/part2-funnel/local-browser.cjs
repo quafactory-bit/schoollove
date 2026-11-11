@@ -1,7 +1,8 @@
 // Offline integration fixture: real Next routes + local SQL functions, mocked
 // Supabase HTTP envelope and rate provider. Never Google/Auth or a remote DB.
 const { chromium }=require('@playwright/test')
-const {execFileSync,spawn}=require('node:child_process')
+const {execFileSync,execFile,spawn}=require('node:child_process')
+const execFileAsync=require('node:util').promisify(execFile)
 const {createServer}=require('node:http')
 const {createHmac,randomBytes}=require('node:crypto')
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict')
@@ -12,6 +13,7 @@ const school='00000000-0000-4000-8000-000000000011'
 const image='public.ecr.aws/supabase/postgres:17.11.0.002'
 const command=(args)=>execFileSync('docker',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:30000,windowsHide:true})
 const sql=(query)=>command(['exec',name,'psql','-h','/tmp','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-qAt','-c',query]).trim()
+const sqlAsync=async query=>(await execFileAsync('docker',['exec',name,'psql','-h','/tmp','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-qAt','-c',query],{encoding:'utf8',timeout:30000,windowsHide:true})).stdout.trim()
 const quote=v=>v===null||v===undefined?'NULL':"'"+String(v).replaceAll("'","''")+"'"
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms))
 let server,next,browser,container=false
@@ -41,8 +43,8 @@ async function run(){
      return respond(Array.isArray(data[0])?data.map(()=>({result:[79,80]})):{result:[79,80]})
     }
     const input=raw?JSON.parse(raw):{}
-    if(fn==='part2_record_funnel_event')return respond(sql('SET ROLE service_role; SELECT public.part2_record_funnel_event('+[input.requested_event,input.requested_source,input.requested_browser,input.requested_school_id].map(quote).join(',')+');')==='t')
-    if(fn==='part2_get_funnel_snapshot')return respond(JSON.parse(sql('SET ROLE service_role; SELECT public.part2_get_funnel_snapshot();')))
+    if(fn==='part2_record_funnel_event')return respond((await sqlAsync('SET ROLE service_role; SELECT public.part2_record_funnel_event('+[input.requested_event,input.requested_source,input.requested_browser,input.requested_school_id].map(quote).join(',')+');'))==='t')
+    if(fn==='part2_get_funnel_snapshot')return respond(JSON.parse(await sqlAsync('SET ROLE service_role; SELECT public.part2_get_funnel_snapshot();')))
     if(fn==='get_public_account_launch_state')return respond([{state:'open',registration_enabled:true,private_profile_enabled:true,school_membership_enabled:true,emergency_stopped:false}])
     if(fn==='record_public_account_activity')return respond(true)
     if(fn==='search_schools_v2'||fn==='search_schools_with_activity')return respond(schools)
@@ -83,7 +85,12 @@ async function run(){
   const localCookie=expiry+'.'+createHmac('sha256',localEnvironment.ADMIN_PASSWORD).update(expiry).digest('hex')
   await context.addCookies([{name:'sl_admin_session',value:localCookie,url:origin,httpOnly:true,sameSite:'Lax'}])
   const first=await context.request.get(origin+'/api/admin/funnel?download=1');assert.equal(first.status(),200)
-  const firstReport=await first.json();assert.ok(firstReport.windows[0].stages.every(s=>s.count===null));assert.ok(first.headers()['content-disposition'].includes('funnel_feedback_report.json'))
+  const firstReport=await first.json();assert.equal(firstReport.windows[0].stages.find(s=>s.event==='home_viewed').count,1);assert.ok(firstReport.windows[0].bySource.every(s=>s.stages.every(c=>c.count===null)));assert.ok(first.headers()['content-disposition'].includes('funnel_feedback_report.json'))
+  await page.goto(origin+'/admin/operations',{waitUntil:'networkidle'})
+  const firstPanel=page.getByRole('heading',{name:'방문에서 출석까지'}).locator('..')
+  await firstPanel.getByRole('cell',{name:'1',exact:true}).first().waitFor()
+  await firstPanel.getByRole('cell',{name:'0',exact:true}).first().waitFor()
+  fs.mkdirSync(folder,{recursive:true});await firstPanel.screenshot({path:path.join(folder,'p0-1b-admin-375.png')})
   sql('UPDATE public.part2_daily_funnel SET event_count=20;')
   await page.goto(origin+'/admin/operations',{waitUntil:'networkidle'})
   const heading=page.getByRole('heading',{name:'방문에서 출석까지'})

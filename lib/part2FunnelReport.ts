@@ -13,7 +13,7 @@ export function buildFunnelFeedback(rows:FunnelRow[],now=new Date()) {
   const end=kstDate(now)
   const selected=rows.filter(r=>r.metric_date>=dayOffset(end,-13)&&r.metric_date<=end)
   const seven=selected.filter(r=>r.metric_date>=dayOffset(end,-6))
-  // No raw daily/cross-tab rows leave the server. Suppress an entire event if a
+  // Raw daily/cross-tab rows never leave the server. Dimension cells are masked if a
   // positive underlying source/browser/school bucket is small. Also suppress
   // 14-day values when subtraction from 7 days could reveal a small older cell.
   const hidden=(event:FunnelEvent,days:7|14)=>{
@@ -29,7 +29,8 @@ export function buildFunnelFeedback(rows:FunnelRow[],now=new Date()) {
       const n=total(subset.filter(r=>r.event_key===event))
       return hidden(event,days)||n<10?{count:null,state:'masked'}:{count:n,state:'visible'}
     }
-    const stages=FUNNEL_EVENTS.map(event=>({event,label:FUNNEL_LABELS[event],...cell(event)}))
+    // Operator-approved exception: site-wide totals show exact values, including zero.
+    const stages=FUNNEL_EVENTS.map(event=>({event,label:FUNNEL_LABELS[event],...(FUTURE_FUNNEL_EVENTS.includes(event)?{count:null,state:'not_instrumented' as const}:{count:total(period.filter(r=>r.event_key===event)),state:'visible' as const})}))
     const bySource=FUNNEL_SOURCES.map(source=>({source,stages:FUNNEL_EVENTS.map(event=>({event,...cell(event,period.filter(r=>r.source_channel===source))}))}))
     const byBrowser=FUNNEL_BROWSERS.map(browser=>({browser,stages:FUNNEL_EVENTS.map(event=>({event,...cell(event,period.filter(r=>r.browser_context===browser))}))}))
     const schools=new Map<string,{name:string;slug:string;selections:number;signups:number}>()
