@@ -1,3 +1,4 @@
+import { SchoolFunnelView } from '@/components/FunnelTracker'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getSchoolBySlug } from '@/lib/api/schools'
@@ -56,6 +57,7 @@ export default async function YearPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto w-full max-w-content bg-white pb-6">
+      <SchoolFunnelView schoolId={school.id} />
       <PageNav title="출석부" />
       <div className="px-4 pt-2">
         <p className="mb-1.5 text-[13px] font-semibold text-sl-ink3">{school.school_name} · {SCHOOL_TYPE_LABELS[school.school_type]}</p>

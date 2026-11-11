@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { sendFunnelEvent } from '@/lib/part2FunnelClient'
 import { searchSchools, type SchoolSearchResult } from '@/lib/api/search'
 import SearchBar from './SearchBar'
 import { schoolTypeLabel } from '@/lib/utils'
@@ -114,6 +115,7 @@ export default function SchoolSearchResults() {
               <Link
                 key={school.id}
                 href={`/school/${school.slug}`}
+                onClick={() => sendFunnelEvent('school_result_selected', school.id)}
                 className="schoollove-focus sl-search-result"
               >
                 <div className="flex min-w-0 items-center gap-3">

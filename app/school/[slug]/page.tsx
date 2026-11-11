@@ -1,3 +1,4 @@
+import { SchoolFunnelView } from '@/components/FunnelTracker'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -66,6 +67,7 @@ export default async function SchoolPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto w-full max-w-content bg-white pb-6">
+      <SchoolFunnelView schoolId={school.id} />
       <PageNav
         title="학교"
         right={<ShareButton schoolName={school.school_name} url={schoolHref} ariaLabel="학교 공유하기" label={<Share className="h-[22px] w-[22px]" aria-hidden="true" />} className="schoollove-focus inline-flex h-10 w-10 items-center justify-center rounded-full text-sl-ink" />}

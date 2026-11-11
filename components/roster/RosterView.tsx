@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { sendFunnelEvent } from '@/lib/part2FunnelClient'
 import { useEffect, useMemo, useState } from 'react'
 import { Bell, Settings, Share } from 'lucide-react'
 import Avatar from '@/components/Avatar'
@@ -76,6 +77,7 @@ export default function RosterView({ schools, myName }: { schools: RosterSchool[
 
   async function copyInvite() {
     if (!school.slug) return
+    sendFunnelEvent('cohort_link_share_clicked', school.schoolId)
     const link = inviteLink(window.location.origin, school.slug, year)
     try { await navigator.clipboard.writeText(link); setToast('링크를 복사했어요. 친구에게 보내 보세요.') }
     catch { setToast(link) }
