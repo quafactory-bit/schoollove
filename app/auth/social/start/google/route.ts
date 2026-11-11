@@ -1,3 +1,4 @@
+import { scheduleServerFunnel } from '@/lib/part2FunnelServer'
 import { NextResponse } from 'next/server'
 import { darkOidcRouteNotFound } from '@/lib/auth/social-broker/http'
 import { loadUserLoginBrokerConfig } from '@/lib/auth/social-broker/preview-config'
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
     const destination = new URL('/auth/v1/authorize', config.supabaseAuthority)
     destination.searchParams.set('provider', 'custom:schoollove-google')
     destination.searchParams.set('redirect_to', config.completionRoute)
+    scheduleServerFunnel(request, 'google_login_started')
     return NextResponse.redirect(destination, 302)
   } catch { return darkOidcRouteNotFound() }
 }

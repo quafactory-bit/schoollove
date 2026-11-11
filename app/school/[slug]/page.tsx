@@ -1,9 +1,10 @@
+import { SchoolFunnelView } from '@/components/FunnelTracker'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ChevronRight, Share } from 'lucide-react'
 import { getSchoolBySlug } from '@/lib/api/schools'
-import { getSchoolPageMetadata } from '@/lib/seo'
+import { buildSchoolPath, getSchoolPageMetadata } from '@/lib/seo'
 import { getPublicRouteRobots } from '@/lib/policy/privacySafety'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import { getAuthenticatedServerContext } from '@/lib/user-auth'
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ...getSchoolPageMetadata(school),
     title: `${school.school_name} · 졸업연도별 출석부`,
     description,
-    openGraph: { title: `${school.school_name} · 졸업연도별 출석부`, description },
+    openGraph: { title: `${school.school_name} · 졸업연도별 출석부`, description, url: buildSchoolPath(school.slug), siteName: '출석부', locale: 'ko_KR', type: 'website' },
     twitter: { card: 'summary_large_image', title: `${school.school_name} · 졸업연도별 출석부`, description },
     robots: getPublicRouteRobots('school'),
   }
@@ -66,6 +67,7 @@ export default async function SchoolPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto w-full max-w-content bg-white pb-6">
+      <SchoolFunnelView schoolId={school.id} />
       <PageNav
         title="학교"
         right={<ShareButton schoolName={school.school_name} url={schoolHref} ariaLabel="학교 공유하기" label={<Share className="h-[22px] w-[22px]" aria-hidden="true" />} className="schoollove-focus inline-flex h-10 w-10 items-center justify-center rounded-full text-sl-ink" />}

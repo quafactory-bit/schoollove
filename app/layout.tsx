@@ -6,6 +6,7 @@ import { ConnectionNotificationProvider } from '@/components/ConnectionNotificat
 import Footer from '@/components/Footer'
 import TabBar from '@/components/TabBar'
 import PrivacySafeAnalytics from '@/components/PrivacySafeAnalytics'
+import FunnelTracker from '@/components/FunnelTracker'
 import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister'
 import Script from 'next/script'
 
@@ -21,7 +22,10 @@ export const metadata: Metadata = {
     default: '출석부 - 기억 속 친구의 인스타그램주소 찾기',
     template: '%s | 출석부',
   },
-  description: '학교와 이름으로 친구를 찾고, 연결 후 상대가 허용한 인스타그램주소를 확인하세요.',
+  description: '학교와 졸업연도로 같은 기수 출석부를 보고, 서로 수락하면 인스타그램 주소를 교환해요.',
+  // 링크 미리보기: 기본 이미지는 app/opengraph-image.tsx(파일 규칙)로 붙는다.
+  openGraph: { siteName: '출석부', locale: 'ko_KR', type: 'website' },
+  twitter: { card: 'summary_large_image' },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -60,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </ConnectionNotificationProvider>
         </Providers>
         <ServiceWorkerRegister />
+        <FunnelTracker />
         <PrivacySafeAnalytics />
       </body>
     </html>

@@ -15,7 +15,7 @@ const HOME_DESCRIPTION = '학교와 졸업연도로 같은 기수 출석부를 �
 export const metadata: Metadata = {
   title: { absolute: `출석부 - ${HOME_TITLE}` },
   description: HOME_DESCRIPTION,
-  openGraph: { title: HOME_TITLE, description: HOME_DESCRIPTION },
+  openGraph: { title: HOME_TITLE, description: HOME_DESCRIPTION, url: '/', siteName: '출석부', locale: 'ko_KR', type: 'website' },
   alternates: { canonical: '/' },
 }
 

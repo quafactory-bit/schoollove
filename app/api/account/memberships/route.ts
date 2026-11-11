@@ -1,3 +1,4 @@
+import { funnelRequestContext } from '@/lib/part2FunnelServer'
 import { after, NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedRequestContext } from '@/lib/user-auth'
@@ -69,12 +70,22 @@ export async function POST(request: NextRequest) {
     // Optional attribution failure never blocks the existing membership workflow.
     try { await auth.client.rpc('bind_school_growth_visit', { requested_proof: growthProof }) } catch { /* optional */ }
   }
-  const { data, error } = await auth.client.rpc('add_own_school_membership_with_roster', {
+  const membershipArguments = {
     requested_school_id: parsed.data.school_id,
     requested_graduation_year: parsed.data.graduation_year,
     requested_grade_classes: parsed.data.grade_classes,
     requested_roster_consent: parsed.data.show_in_school_roster,
+  }
+  const funnel = funnelRequestContext(request)
+  let result = await auth.client.rpc('part2_add_own_school_membership', {
+    ...membershipArguments, requested_source: funnel.source, requested_browser: funnel.browser,
   })
+  // A not-yet-applied optional measurement wrapper must not close signup.
+  // Never retry a timeout or a real owner error: a save may already have happened.
+  if (result.error?.code === 'PGRST202' || result.error?.code === '42883') {
+    result = await auth.client.rpc('add_own_school_membership_with_roster', membershipArguments)
+  }
+  const { data, error } = result
   if (error) {
     const safeMessage=getSafeMembershipError(error)
     if(safeMessage)return NextResponse.json({error:safeMessage},{status:409})
