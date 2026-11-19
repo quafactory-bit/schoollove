@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Bell, ShieldCheck, Share, UserPlus } from 'lucide-react'
 import { BrandIcon } from '@/components/BrandMark'
+import { safeMatchMedia } from '@/lib/clientRecovery'
 import { INSTALL_SCREEN_SHOWN_KEY, detectInstallPlatform, shouldShowInstallScreen, type InstallPlatform } from '@/lib/policy/installGuide'
 
 type DeferredPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
@@ -22,7 +23,7 @@ export default function InstallScreen({ again = false }: { again?: boolean }) {
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as StandaloneNavigator).standalone === true
+    const standalone = safeMatchMedia('(display-mode: standalone)') || (navigator as StandaloneNavigator).standalone === true
     const detected = detectInstallPlatform({ userAgent: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints, standalone })
     let shown = false
     try {
