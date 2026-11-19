@@ -5,16 +5,53 @@ import { supabase } from '@/lib/supabase'
 // so a missing migration or DB error never breaks the public pages.
 
 const maskedSchema = z.array(z.object({ masked_name: z.string().min(1).max(3) }).strict()).max(6)
+const STATUS_TAG_VALUES = ['직장인', '자영업', '프리랜서', '육아 중', '공부 중', '쉬는 중', '이직 준비', '해외 거주'] as const
+const maskedV2Schema = z.array(z.object({
+  masked_name: z.string().min(1).max(3),
+  tags: z.array(z.enum(STATUS_TAG_VALUES)).max(3),
+  note: z.string().min(1).max(30).nullable(),
+}).strict()).max(6)
 
-/** Masked names for a logged-out year page. Masking happens in the database, never here. */
-export async function getYearMaskedPreview(schoolId: string, year: number): Promise<string[]> {
+export type MaskedPreviewEntry = { masked_name: string; tags: string[]; note: string | null }
+
+/**
+ * Masked names (+ 근황 태그·한마디 only where the owner turned on "학교 페이지에 보이기") for a logged-out
+ * year page. Masking happens in the database. Falls back to the P1 name-only function before P3 is applied.
+ */
+export async function getYearMaskedPreview(schoolId: string, year: number): Promise<MaskedPreviewEntry[]> {
   try {
+    const v2 = await supabase.rpc('part2_year_masked_preview_v2', { p_school_id: schoolId, p_year: year })
+    if (!v2.error) {
+      const parsed = maskedV2Schema.safeParse(v2.data)
+      return parsed.success ? parsed.data : []
+    }
     const { data, error } = await supabase.rpc('part2_year_masked_preview', { p_school_id: schoolId, p_year: year })
     if (error) return []
     const parsed = maskedSchema.safeParse(data)
-    return parsed.success ? parsed.data.map((row) => row.masked_name) : []
+    return parsed.success ? parsed.data.map((row) => ({ masked_name: row.masked_name, tags: [], note: null })) : []
   } catch {
     return []
+  }
+}
+
+const summonsSchema = z.array(z.object({
+  school_name: z.string().min(1).max(100),
+  school_slug: z.string().min(1).max(200),
+  graduation_year: z.number().int().min(1950).max(2100),
+  target_name: z.string().min(2).max(10),
+}).strict()).max(1)
+export type PublicSummons = z.infer<typeof summonsSchema>[number]
+
+/** Public summons card: school, year, target name only. Hidden/expired/unknown → null. */
+export async function getPublicSummons(code: string): Promise<PublicSummons | null> {
+  if (!/^[a-f0-9]{12}$/.test(code)) return null
+  try {
+    const { data, error } = await supabase.rpc('part2_get_public_summons', { p_code: code })
+    if (error) return null
+    const parsed = summonsSchema.safeParse(data)
+    return parsed.success && parsed.data.length === 1 ? parsed.data[0] : null
+  } catch {
+    return null
   }
 }
 
