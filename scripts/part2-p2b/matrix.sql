@@ -190,6 +190,11 @@ BEGIN
   THEN RAISE EXCEPTION 'P2B_MATRIX_FAIL withdrawal prepare'; END IF;
   PERFORM p2b_test.flow('wd6');
   PERFORM p2b_test.expect(p2b_test.decide('wd6',6),'IDENTITY_DECISION_IN_PROGRESS','login during withdrawal is fail-closed');
+  IF to_regprocedure('private.purge_expired_login_attempt(uuid)') IS NULL THEN
+    -- Pre-0915 baseline (Preview project): no retention purge function exists there.
+    RAISE NOTICE 'P2B_WITHDRAWAL_PURGE_SKIPPED_PRE_0915_BASELINE';
+    RETURN;
+  END IF;
   -- Emulate the Auth admin delete + retention purge (same statements as run_privacy_retention_cleanup).
   DELETE FROM auth.identities WHERE user_id=a.auth_user_id; DELETE FROM auth.users WHERE id=a.auth_user_id;
   UPDATE private.oauth_login_attempts SET created_at=created_at-interval '1 hour',expires_at=expires_at-interval '1 hour' WHERE account_id=a.id;
@@ -204,7 +209,9 @@ BEGIN
   PERFORM p2b_test.flow('wd6-new');
   PERFORM p2b_test.expect(p2b_test.decide('wd6-new',6),'ACCOUNT_DECIDED_RECOVERY_DEFERRED','fresh sign-up after deletion');
 END $$;
-SELECT 'P2B_WITHDRAWAL_RECOVERY_LESS_OK prepare=true login_fail_closed=true cascade=true resignup=true' AS status;
+SELECT CASE WHEN to_regprocedure('private.purge_expired_login_attempt(uuid)') IS NULL
+  THEN 'P2B_WITHDRAWAL_RECOVERY_LESS_OK prepare=true login_fail_closed=true purge=not_in_pre_0915_baseline'
+  ELSE 'P2B_WITHDRAWAL_RECOVERY_LESS_OK prepare=true login_fail_closed=true cascade=true resignup=true' END AS status;
 
 -- 8. Constraints E1/E2.
 DO $$ BEGIN

@@ -1,5 +1,8 @@
 # Disposable local PostgreSQL check for Part 2 P2b (recovery-optional Google account).
 # Uses an already available image, loopback-only port, no remote credentials.
+# -Baseline repo (default): every auth migration in the repo.
+# -Baseline preview: the Preview project's shape, which never received 20260915211712.
+param([ValidateSet('repo','preview')][string]$Baseline='repo')
 # PS 5.1 turns psql NOTICE lines on stderr into errors under 'Stop'; every native call checks $LASTEXITCODE instead.
 $ErrorActionPreference='Continue'
 $containerName='schoollove-p2b-'+[guid]::NewGuid().ToString('N').Substring(0,10)
@@ -53,8 +56,8 @@ CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE SET sear
   Invoke-SqlFile (Resolve-Path 'scripts/phase10l/seed-production-shape.sql').Path
   # Auth/recovery schema is last touched by 20260915211712; later files are pg_cron schedules or
   # unrelated public features (verified by grep), so the chain stops there. The cron-only file is skipped.
-  $all | Where-Object { $_.Name -ge '20260802120000' -and $_.Name -lt '20260916' -and $_.Name -ne '20260915211726_privacy_retention_schedule.sql' } | ForEach-Object { Invoke-SqlFile $_.FullName }
-  Write-Output 'P2B_BASELINE_ALL_MIGRATIONS_APPLIED'
+  $all | Where-Object { $_.Name -ge '20260802120000' -and $_.Name -lt '20260916' -and $_.Name -ne '20260915211726_privacy_retention_schedule.sql' -and -not ($Baseline -eq 'preview' -and $_.Name -eq '20260915211712_privacy_retention_cleanup.sql') } | ForEach-Object { Invoke-SqlFile $_.FullName }
+  Write-Output "P2B_BASELINE_APPLIED baseline=$Baseline"
   Invoke-SqlFile (Resolve-Path 'scripts/part2-p2b/fixture.sql').Path
 
   $before = Scalar "SELECT md5(string_agg(pg_get_functiondef(p.oid),'|' ORDER BY p.oid::regprocedure::text)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','private') AND (p.proname LIKE '%social%' OR p.proname LIKE '%recovery%' OR p.proname LIKE '%broker%' OR p.proname LIKE '%upstream%' OR p.proname LIKE '%downstream%' OR p.proname LIKE '%deletion%')"

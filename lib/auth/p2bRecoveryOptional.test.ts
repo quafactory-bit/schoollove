@@ -89,7 +89,8 @@ describe('P2b recovery-optional Google sign-up — broker wiring', () => {
       expect(sql).toContain(`GRANT EXECUTE ON FUNCTION public.${fn} TO service_role;`)
     }
     expect(sql).toContain('ADD CONSTRAINT private_accounts_active_principal_recovery_atomic')
-    expect(sql).toContain('DROP CONSTRAINT recovery_delivery_reserved_requires_owner')
+    expect(sql).toContain('DROP CONSTRAINT IF EXISTS recovery_delivery_reserved_requires_owner')
+    expect(sql).toContain('ALTER COLUMN login_attempt_id DROP NOT NULL')
     expect(sql.match(/DROP CONSTRAINT/g)).toHaveLength(2)
   })
 })

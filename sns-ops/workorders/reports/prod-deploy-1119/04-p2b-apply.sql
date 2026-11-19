@@ -1,4 +1,4 @@
--- Part 2 P2b apply (preview, then production). migration sha256 fa8a74aff5d265589924d395944df46b20b62939ef11d2ad2e34fa9c6bcc4f18
+-- Part 2 P2b apply (preview, then production). migration sha256 6c5dcbd3c224b418f09b8c0dbf872b291f2e98b689113a559a3bf25a71899f9a
 -- Guarded single transaction: aborts unless P3 is recorded and P2b is not.
 BEGIN;
 DO $guard$ BEGIN
@@ -17,7 +17,7 @@ END $guard$;
 SET LOCAL lock_timeout='5s';
 
 DO $p2b_preflight$
-DECLARE e1_count integer; e2_count integer;
+DECLARE e1_count integer; e2_count integer; attempt_nullable boolean;
 BEGIN
   IF to_regclass('private.private_accounts') IS NULL
     OR to_regclass('private.social_identity_registry') IS NULL
@@ -52,10 +52,17 @@ BEGIN
       AND pg_get_constraintdef(c.oid) LIKE '%status <> ''active''::text%'
       AND pg_get_constraintdef(c.oid) LIKE '%recovery_email_verified_at IS NOT NULL%'
       AND pg_get_constraintdef(c.oid) LIKE '%activated_at IS NOT NULL%';
+  -- E2 has two known baselines: before 20260915211712 (login_attempt_id NOT NULL,
+  -- no owner CHECK; e.g. the Preview project) and after it (nullable + the named
+  -- owner CHECK). Exactly one of them must hold; anything else aborts.
   SELECT count(*) INTO e2_count FROM pg_constraint c
     WHERE c.conrelid='private.recovery_delivery_attempts'::regclass AND c.contype='c'
       AND c.conname='recovery_delivery_reserved_requires_owner';
-  IF e1_count<>1 OR e2_count<>1 THEN RAISE EXCEPTION 'P2B_CONSTRAINT_BASELINE_AMBIGUOUS %/%',e1_count,e2_count; END IF;
+  SELECT is_nullable='YES' INTO attempt_nullable FROM information_schema.columns
+    WHERE table_schema='private' AND table_name='recovery_delivery_attempts' AND column_name='login_attempt_id';
+  IF e1_count<>1 OR attempt_nullable IS NULL
+    OR NOT ((e2_count=1 AND attempt_nullable) OR (e2_count=0 AND NOT attempt_nullable))
+  THEN RAISE EXCEPTION 'P2B_CONSTRAINT_BASELINE_AMBIGUOUS %/%/%',e1_count,e2_count,attempt_nullable; END IF;
 END $p2b_preflight$;
 
 -- E1 (approved exception): an active account still needs its Auth principal and
@@ -89,7 +96,10 @@ ALTER TABLE private.private_accounts ADD CONSTRAINT private_accounts_active_prin
 -- either the sign-up login attempt (legacy) or an active account (/account).
 ALTER TABLE private.recovery_delivery_attempts
   ADD COLUMN account_id uuid NULL REFERENCES private.private_accounts(id) ON DELETE CASCADE;
-ALTER TABLE private.recovery_delivery_attempts DROP CONSTRAINT recovery_delivery_reserved_requires_owner;
+ALTER TABLE private.recovery_delivery_attempts DROP CONSTRAINT IF EXISTS recovery_delivery_reserved_requires_owner;
+-- Pre-0915 baseline only: the sign-up owner column becomes optional; the CHECK
+-- below still requires exactly one owner for every reserved row. No-op after 0915.
+ALTER TABLE private.recovery_delivery_attempts ALTER COLUMN login_attempt_id DROP NOT NULL;
 ALTER TABLE private.recovery_delivery_attempts ADD CONSTRAINT recovery_delivery_reserved_requires_single_owner
   CHECK(state<>'reserved' OR (verification_id IS NOT NULL AND num_nonnulls(login_attempt_id,account_id)=1));
 ALTER TABLE private.recovery_delivery_attempts ADD CONSTRAINT recovery_delivery_account_or_attempt
@@ -556,7 +566,8 @@ COMMIT;
 SELECT
   EXISTS(SELECT 1 FROM pg_constraint WHERE conname='private_accounts_active_principal_recovery_atomic') AS e1_ok,
   EXISTS(SELECT 1 FROM pg_constraint WHERE conname='recovery_delivery_reserved_requires_single_owner')
-    AND NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='recovery_delivery_reserved_requires_owner') AS e2_ok,
+    AND NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='recovery_delivery_reserved_requires_owner')
+    AND EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='private' AND table_name='recovery_delivery_attempts' AND column_name='login_attempt_id' AND is_nullable='YES') AS e2_ok,
   (SELECT bool_and(has_function_privilege('service_role',f,'EXECUTE') AND NOT has_function_privilege('anon',f,'EXECUTE') AND NOT has_function_privilege('authenticated',f,'EXECUTE'))
      FROM unnest(ARRAY[
        'public.record_verified_google_identity_recovery_optional(uuid,uuid,text,text,bytea,integer)',

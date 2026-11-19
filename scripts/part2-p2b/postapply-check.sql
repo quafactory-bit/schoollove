@@ -2,7 +2,8 @@
 SELECT
   EXISTS(SELECT 1 FROM pg_constraint WHERE conname='private_accounts_active_principal_recovery_atomic') AS e1_ok,
   EXISTS(SELECT 1 FROM pg_constraint WHERE conname='recovery_delivery_reserved_requires_single_owner')
-    AND NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='recovery_delivery_reserved_requires_owner') AS e2_ok,
+    AND NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='recovery_delivery_reserved_requires_owner')
+    AND EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='private' AND table_name='recovery_delivery_attempts' AND column_name='login_attempt_id' AND is_nullable='YES') AS e2_ok,
   (SELECT bool_and(has_function_privilege('service_role',f,'EXECUTE') AND NOT has_function_privilege('anon',f,'EXECUTE') AND NOT has_function_privilege('authenticated',f,'EXECUTE'))
      FROM unnest(ARRAY[
        'public.record_verified_google_identity_recovery_optional(uuid,uuid,text,text,bytea,integer)',
