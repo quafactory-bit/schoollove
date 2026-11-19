@@ -9,6 +9,7 @@ import BrandMark from '@/components/BrandMark'
 import NewMembersStrip from '@/components/NewMembersStrip'
 import PushOptInCard from '@/components/pwa/PushOptInCard'
 import RosterRowButton from '@/components/roster/RosterRowButton'
+import MemberTools from '@/components/part2/MemberTools'
 import { useConnectionNotificationUnreadCount } from '@/components/ConnectionNotificationProvider'
 import { formatGradeClassHistory } from '@/lib/accountGradeClass'
 import {
@@ -170,6 +171,7 @@ export default function RosterView({ schools, myName }: { schools: RosterSchool[
           {fresh.length > 0 ? <button type="button" onClick={() => void copyInvite()} className="btn-secondary schoollove-focus mt-4 w-full text-[15px]">친구 부르기 — {year}년 링크 복사</button> : null}
           <p className="mt-1.5 text-center text-xs text-sl-ink3"><Link href={`/school/${encodeURIComponent(school.slug)}/${year}`} className="underline">/school/{school.slug}/{year}</Link></p>
         </> : null}
+        <MemberTools key={`${school.schoolId}-${year}`} schoolId={school.schoolId} schoolName={school.schoolName} year={year} />
         <p className="mt-3 text-center text-[12.5px] leading-[1.55] text-sl-ink3">인스타 요청은 한 사람에게 한 번이에요. 상대가 수락하면 연결되고, 상대가 허용한 인스타 주소를 알림 탭에서 볼 수 있어요.</p>
       </>}
 

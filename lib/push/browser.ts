@@ -1,3 +1,4 @@
+import { isPushSupportedSafely } from '@/lib/browserSafety'
 import { safeMatchMedia } from '@/lib/clientRecovery'
 
 export type BrowserPushStatus =
@@ -24,7 +25,7 @@ function isIosDevice(): boolean {
 }
 
 function isPushSupported(): boolean {
-  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+  return isPushSupportedSafely()
 }
 
 function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
