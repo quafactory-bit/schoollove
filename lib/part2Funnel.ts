@@ -9,6 +9,7 @@ export type FunnelEvent = (typeof FUNNEL_EVENTS)[number]
 export const CLIENT_FUNNEL_EVENTS = [
   'landing_view','home_viewed','home_search_submitted','school_search_submitted',
   'school_result_selected','school_detail_viewed','cohort_link_share_clicked',
+  'chalkboard_initials_started',
 ] as const
 export const FUNNEL_SOURCES = ['direct','instagram','threads','share','other'] as const
 export type FunnelSource = (typeof FUNNEL_SOURCES)[number]
@@ -16,7 +17,7 @@ export const FUNNEL_BROWSERS = ['external','instagram','threads','facebook','unk
 export type FunnelBrowser = (typeof FUNNEL_BROWSERS)[number]
 export const FUNNEL_COOKIE = 'sl_p2_context'
 export const FUNNEL_TTL_SECONDS = 30 * 60
-export const FUTURE_FUNNEL_EVENTS: readonly FunnelEvent[] = ['chalkboard_initials_started','summons_share_clicked']
+export const FUTURE_FUNNEL_EVENTS: readonly FunnelEvent[] = ['summons_share_clicked']
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 export const FUNNEL_LABELS: Record<FunnelEvent,string> = {
   landing_view:'유입',home_viewed:'홈 보기',home_search_submitted:'홈에서 검색',

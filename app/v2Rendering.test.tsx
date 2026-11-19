@@ -1,12 +1,13 @@
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-const mocks = vi.hoisted(() => ({ launch: vi.fn(), auth: vi.fn(), school: vi.fn(), counts: vi.fn(), roster: vi.fn(), redirect: vi.fn(), notFound: vi.fn() }))
+const mocks = vi.hoisted(() => ({ launch: vi.fn(), auth: vi.fn(), school: vi.fn(), counts: vi.fn(), roster: vi.fn(), redirect: vi.fn(), notFound: vi.fn(), masked: vi.fn(), home: vi.fn() }))
 vi.mock('@/lib/publicAccountLaunch', () => ({ getPublicAccountLaunchState: mocks.launch, recordPublicAccountActivity: vi.fn() }))
 vi.mock('@/lib/user-auth', () => ({ getAuthenticatedServerContext: mocks.auth }))
 vi.mock('@/lib/api/schools', () => ({ getSchoolBySlug: mocks.school }))
 vi.mock('@/lib/supabase', () => ({ supabase: { rpc: vi.fn() } }))
 vi.mock('@/lib/schoolRoster', () => ({ getSchoolRoster: mocks.roster }))
+vi.mock('@/lib/part2Public', () => ({ getYearMaskedPreview: mocks.masked, getHomeAttendance: mocks.home }))
 vi.mock('@/lib/schoolYearCounts', async () => ({ ...(await vi.importActual<object>('@/lib/schoolYearCounts')), getSchoolYearCounts: mocks.counts }))
 vi.mock('@/components/SearchBar', () => ({ default: () => <input aria-label="학교 이름 찾기" /> }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), back: vi.fn() }), redirect: mocks.redirect, notFound: mocks.notFound }))
@@ -29,6 +30,8 @@ beforeEach(() => {
   mocks.school.mockResolvedValue(fixture)
   mocks.counts.mockResolvedValue({ status: 'ok', total: 7, years: [{ graduationYear: 2012, count: 1 }, { graduationYear: 2009, count: 2 }, { graduationYear: 2005, count: 4 }] })
   mocks.roster.mockResolvedValue({ status: 'ok', entries: [] })
+  mocks.masked.mockResolvedValue(['김O수', '이O', '박O진'])
+  mocks.home.mockResolvedValue({ visible: false })
   mocks.redirect.mockImplementation((href: string) => { throw new Error(`REDIRECT:${href}`) })
   mocks.notFound.mockImplementation(() => { throw new Error('NOT_FOUND') })
 })
@@ -42,6 +45,20 @@ describe('v2 logged-out home', () => {
     expect(html).toContain('인스타')
     expect(html).toContain('href="/privacy"')
     expect(html).not.toMatch(/총 학교 순위|XP|Lv\.|레벨/)
+  })
+  it('Part 2 P1: hides the LIVE ticker and TOP 5 entirely when the DB says not visible', async () => {
+    const html = renderToStaticMarkup(await Home())
+    expect(html).not.toContain('LIVE')
+    expect(html).not.toContain('TOP')
+    expect(html).not.toContain('학교 찾기 화면으로 가기')
+  })
+  it('Part 2 P1: shows the LIVE ticker and TOP 5 with school, year and counts only', async () => {
+    mocks.home.mockResolvedValue({ visible: true, recent_total: 6, ticker: [{ school_name: '서초고등학교', slug: 'fixture-high', graduation_year: 2005, count: 1 }], top: [{ school_name: '서초고등학교', slug: 'fixture-high', count: 7 }] })
+    const html = renderToStaticMarkup(await Home())
+    expect(html).toContain('최근 7일 출석 6명')
+    expect(html).toContain('서초고 2005년 졸업 <b class="text-[#fbbf24]">1명</b> 출석')
+    expect(html).toContain('출석부가 많이 열린 학교 TOP 1')
+    expect(html).not.toMatch(/XP|Lv\.|레벨|점/)
   })
   it('sends a signed-in visitor to /account', async () => {
     signedIn(false)
@@ -58,19 +75,23 @@ describe('v2 school page — per-year counts', () => {
     const html = renderToStaticMarkup(await hub())
     expect(html).toContain('서울</span> 서초구 · 고등학교')
     expect(html).toContain('서초고등학교')
-    expect(html).toContain('7명</b>이 등록했어요.')
+    expect(html).toContain('7명</b>이 출석했어요.')
     expect(html).toContain('href="/school/fixture-high/2005"')
-    expect(html.indexOf('2012년 졸업')).toBeLessThan(html.indexOf('2005년 졸업'))
-    expect(html).toContain('그 외 연도')
+    // Part 2 P1: 졸업연도 칩이 먼저, 최신 연도부터.
+    expect(html).toContain('내 졸업연도 고르기')
+    expect(html.indexOf('2012년 <b')).toBeLessThan(html.indexOf('2005년 <b'))
+    expect(html.indexOf('내 졸업연도 고르기')).toBeLessThan(html.indexOf('Google로 시작하고 출석부 보기'))
+    expect(html).toContain('다른 졸업연도')
     expect(html).toContain('Google로 시작하고 출석부 보기')
     expect(html).toContain('인스타 주소는 서로 수락할 때만. 만 19세 이상.')
     expect(html).not.toMatch(/XP|Lv\.|레벨|학교 키우는 세 걸음/)
   })
-  it('shows the honest empty state when nobody registered', async () => {
+  it('Part 2 P1: shows year selection first instead of the empty-state sentence when nobody registered', async () => {
     mocks.counts.mockResolvedValue({ status: 'ok', total: 0, years: [] })
     const html = renderToStaticMarkup(await hub())
-    expect(html).toContain('아직 등록한 사람이 없어요. 첫 번째가 되어 주세요.')
-    expect(html).toContain('아직 없음')
+    expect(html).not.toContain('아직 등록한 사람이 없어요')
+    expect(html).toContain('졸업연도를 고르면 우리 학년 칠판이 열려요')
+    expect(html).toContain('졸업연도 선택')
   })
   it('switches the CTA for signed-in non-members and members without leaking owner data', async () => {
     signedIn(false)
@@ -90,11 +111,29 @@ describe('v2 school page — per-year counts', () => {
 })
 
 describe('v2 year page — logged out', () => {
-  it('shows count and nameless placeholders only', async () => {
+  it('Part 2 P1: shows the count and only DB-masked names (no full names, no Instagram)', async () => {
     const html = renderToStaticMarkup(await year('2005'))
     expect(html).toContain('2005년 졸업 · <span class="text-sl-brand">4명</span>')
-    expect((html.match(/>\?</g) || []).length).toBe(4)
+    expect(mocks.masked).toHaveBeenCalledWith(fixture.id, 2005)
+    expect(html).toContain('>김O수<')
+    expect(html).toContain('>이O<')
+    expect(html).toContain('외 1명')
+    expect(html).not.toMatch(/instagram|인스타그램주소|@/i)
+    expect(html).not.toContain('칠판에 적기')
     expect(html).toContain('Google로 시작하고 출석부 보기')
+  })
+  it('Part 2 P1: shows the logged-out chalkboard for a year with 0 people and never asks for masked names', async () => {
+    const html = renderToStaticMarkup(await year('1999'))
+    expect(mocks.masked).not.toHaveBeenCalled()
+    expect(html).toContain('우리 학년 1대 반장(첫 출석자) 자리가 비어 있어요!')
+    expect(html).toContain('찾는 친구 초성(예: 김ㅇ수)과 한마디를 칠판에 먼저 적어두세요.')
+    expect(html).toContain('칠판에 적기')
+  })
+  it('Part 2 P1: does not request masked names for signed-in visitors', async () => {
+    signedIn(false)
+    const html = renderToStaticMarkup(await year('2005'))
+    expect(mocks.masked).not.toHaveBeenCalled()
+    expect(html).not.toContain('칠판에 적기')
   })
   it('rejects malformed years', async () => {
     await expect(year('20x5')).rejects.toThrow('NOT_FOUND')

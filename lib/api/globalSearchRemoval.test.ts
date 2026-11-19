@@ -58,7 +58,7 @@ describe('app/search/page.tsx — 쿼리를 다시 렌더하지 않는 정적 �
   })
 
   it('SchoolSearchResults(학교 검색 결과 화면)를 렌더한다(학교 검색 기능 유지, PHASE 7B COMPLETION PATCH)', () => {
-    expect(source).toMatch(/<SchoolSearchResults \/>/)
+    expect(source).toMatch(/<SchoolSearchResults popular=\{popular\} \/>/)
   })
 
   it('SchoolSearchResults는 실제로 SearchBar(school 검색 자동완성)를 렌더한다', () => {
