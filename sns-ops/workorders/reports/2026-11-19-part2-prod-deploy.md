@@ -3,7 +3,7 @@
 ## 현재 상태
 - **PRODUCTION_DEPLOYED.** main `7fe9d7f`(v2-simplified no-ff 병합, 최종 tree = v2-simplified) → Vercel Production **success**.
 - 운영 DB `schoollovei`(`ucnybhzpbatzcipwqtox`)에 migration 2개 적용(배포 전): `prod-deploy-1119/` 사전 조회·적용 SQL·결과.
-- apex 308은 Vercel 로그인 후 진행(아래 "남은 일").
+- apex `schoollove.kr` → `www.schoollove.kr` **308 영구 리디렉션 적용**(Vercel → Settings → Domains, 운영자 로그인 후). 대상·다른 도메인·DNS는 변경 없음("DNS Change Recommended" 안내는 범위 밖이라 그대로).
 
 ## 포함된 것
 - 크롤러 Application error 수정(서비스워커 등록 보호) + 오류 복구 화면(11/17 핫픽스)
@@ -21,6 +21,7 @@
 | 검색 "진명여자고" | 결과 1건, **출석부 열림 · 기수 보기 →** 배지 |
 | 홈 `?ref=threads` | 상단 신뢰 배지 1개, 페이지 오류 0 |
 | 홈 LIVE·TOP 5 | **숨김(정상)**: 운영 최근 7일 출석 0건 < 기준 5건 |
+| apex 308 | `/`·`/?ref=threads`·`/?ref=ig&utm_source=threads&utm_campaign=a%20b`·`/school/…/2018?ref=ig` 모두 **308 → www 같은 경로·쿼리 그대로**. `http://schoollove.kr/?ref=threads` → 308 https → 308 www → 200 |
 | 인기 학교 칩 | 운영 집계가 오늘 시작이라 3회 이상 학교가 생길 때까지 숨김 |
 
 - 확인 중 운영에서 학교 검색 1회·화면 방문 몇 회를 했다(집계·검색 통계에 소량 반영됨).
@@ -31,7 +32,6 @@
 3. DB: 추가 전용(표 1·함수 7)이라 이전 앱도 그대로 동작한다. 지울 필요 없음.
 
 ## 남은 일
-- apex `schoollove.kr` → `www` 308(쿼리 유지 확인) — Vercel 로그인 필요.
 - 2차: P2 복구 이메일 생략·One Tap, P3 새 표·화면 → Preview 실가입 검증 후 운영.
 - Search Console: 사이트맵 재제출, URL 검사로 오류 화면 해소 확인.
 
