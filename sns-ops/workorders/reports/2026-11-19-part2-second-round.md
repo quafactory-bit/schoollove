@@ -1,8 +1,19 @@
 # Part 2 2차 — P3 구현·Preview 적용, P2 설계 범위 (2026-11-19)
 
 ## 현재 상태
-- **P3: PREVIEW_APPLIED.** 코드 `730a50a`(v2-simplified), preview `2fd4579` 배포 success, Preview DB에 `20261119120000_part2_p3_status_tags_and_summons.sql` 적용. **운영 미적용** — 운영자의 Preview 실사용 확인 후 같은 파일(`prod-deploy-1119/03-p3-apply.sql`)로 운영 적용 + main 배포.
-- **P2(복구 이메일 생략·One Tap): 구현 보류, 설계 필요.** 아래 "P2 범위".
+- **P3: PRODUCTION_APPLIED (2026-11-19).** 코드 `730a50a`, preview `2fd4579` → 운영자 Preview 확인("확인했어, 운영 반영") → 운영 DB 적용 → main `16b70cc` 배포 success. 아래 "운영 반영".
+- **P2(복구 이메일 생략·One Tap): 별도 세션에서 설계 진행.** 아래 "P2 범위".
+
+## 운영 반영 (2026-11-19)
+| 단계 | 결과 |
+|---|---|
+| 사전 점검(읽기 전용, schoollovei) | P3 표 2개 없음, P3 원장 0, P1 원장 1, 접근 함수 2개·`private_profiles` 있음 |
+| 적용 | SQL 편집기 내용 = `prod-deploy-1119/03-p3-apply.sql` (18,648자, sha256 `2365679d410f8486…`) 확인 후 실행. 가드 통과 |
+| 적용 후 | 원장 1, RLS 강제 true, 클라이언트 표 권한 false. 함수 권한 Preview와 동일: 공개 `AUS` 2개, 로그인 `-US` 7개, 서버 전용 `--S` 4개(+name_allowed) |
+| main | `16b70cc` (v2-simplified no-ff 병합), Vercel success |
+| 운영 화면 | `/`·`/search`·`/privacy`·진명여고 2018 연도 페이지 200, Application error 0. 연도 페이지 가린 이름 3개(v2 함수). `/summons/000000000000` 404 + noindex. 방침에 개정일 2026-11-19·근황·지명 소환장 문단 |
+| 크롤러 점검 | googlebot·locked·noSwLoaded·noApi·staleChunk × 5개 경로 모두 appError false (staleChunk의 404 콘솔 기록은 시나리오가 일부러 만든 것) |
+- 실행 안 함: 운영에서 로그인한 근황 저장·소환장 생성(실제 사용자 데이터가 생기므로 운영자 몫).
 
 ## P3 내용
 | 기능 | 동작 | 개인정보·안전 |
