@@ -1,11 +1,12 @@
 import 'server-only'
-import type { DarkBrokerPersistence, DurableContinuationCreate, DurableContinuationResult } from './dark-orchestrator'
+import { VERIFIED_IDENTITY_OUTCOMES, type DarkBrokerPersistence, type DurableContinuationCreate, type DurableContinuationResult, type VerifiedIdentityOutcome } from './dark-orchestrator'
 import type { ClaimByState } from './callback-correlation'
 import type { TrustedAuthorizationTransactionIssuanceContext } from './transaction-bound-code-issuance'
 import type { SocialProvider } from './types'
 import type { PreparedAttemptRecoveryChallenge } from '../social-account/recovery-preparation'
 import type { RecoveryDeliveryDatabase } from '../social-account/recovery-delivery'
 import type { SocialAccountDecision } from './decision'
+import type { AccountRecoveryDatabase } from '../social-account/account-recovery'
 
 /** Minimal server-side RPC port. It deliberately has no table access. */
 export type PreviewRpcClient = Readonly<{
@@ -82,8 +83,11 @@ export function createPreviewBrokerPersistence(client: PreviewRpcClient): DarkBr
       return result === 'EXPIRED' ? 'EXPIRED' : result === 'REPLAY_REJECTED' ? 'REPLAY_REJECTED' : 'REJECTED'
     },
     async recordVerifiedIdentity(input) {
-      const result = await rpc(client, 'record_verified_social_identity_from_upstream_leg', { target_attempt_id: input.attemptId, target_leg_id: input.legId, requested_provider: input.provider, requested_broker_subject: input.brokerSubject, requested_subject_digest: bytea(input.subjectDigest), requested_subject_key_version: input.subjectKeyVersion })
-      return ['EXISTING_PRIMARY', 'RECOVERY_REQUIRED', 'PROVISIONAL_RESUME_READY', 'BOUND_PROVISIONAL_REAUTH_READY', 'IDENTITY_DECISION_IN_PROGRESS', 'IDENTITY_REJECTED'].includes(result as string) ? result as 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'BOUND_PROVISIONAL_REAUTH_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED' : 'IDENTITY_REJECTED'
+      // P2b: Google decides without a recovery step; the DB function delegates every
+      // case it does not own (legacy recovery, collisions) to the legacy wrapper.
+      const name = input.provider === 'google' ? 'record_verified_google_identity_recovery_optional' : 'record_verified_social_identity_from_upstream_leg'
+      const result = await rpc(client, name, { target_attempt_id: input.attemptId, target_leg_id: input.legId, requested_provider: input.provider, requested_broker_subject: input.brokerSubject, requested_subject_digest: bytea(input.subjectDigest), requested_subject_key_version: input.subjectKeyVersion })
+      return (VERIFIED_IDENTITY_OUTCOMES as readonly string[]).includes(result as string) ? result as VerifiedIdentityOutcome : 'IDENTITY_REJECTED'
     },
     async resolveIssuanceContext(attemptId): Promise<TrustedAuthorizationTransactionIssuanceContext | null> {
       const row = first(await rpc(client, 'get_transaction_bound_broker_code_issuance_context', { target_attempt_id: attemptId }))
@@ -159,13 +163,48 @@ export async function consumePreviewRecoveryDecision(client: PreviewRpcClient, i
 }
 
 export async function bindPreviewAuthPrincipal(client: PreviewRpcClient, input: Readonly<{ attemptId: string; authUserId: string }>): Promise<'AUTH_PRINCIPAL_BOUND' | 'AUTH_PRINCIPAL_ALREADY_BOUND'> {
-  const result = await rpc(client, 'bind_social_auth_principal_from_attempt', { target_attempt_id: input.attemptId, target_auth_user_id: input.authUserId })
+  // P2b: same checks as the legacy binder; recovery custody is all-or-nothing.
+  const result = await rpc(client, 'bind_social_auth_principal_from_attempt_recovery_optional', { target_attempt_id: input.attemptId, target_auth_user_id: input.authUserId })
   if (result !== 'AUTH_PRINCIPAL_BOUND' && result !== 'AUTH_PRINCIPAL_ALREADY_BOUND') throw new Error('SOCIAL_PRINCIPAL_BINDING_REJECTED')
   return result
 }
 
 export async function activatePreviewSocialAccountFromAttempt(client: PreviewRpcClient, attemptId: string): Promise<'SOCIAL_ACCOUNT_ACTIVATED' | 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' | 'SOCIAL_ACCOUNT_LAUNCH_CLOSED' | 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED'> {
-  const result = await rpc(client, 'activate_social_account_from_attempt', { target_attempt_id: attemptId })
+  // P2b: same exact-open launch gate as the legacy activator; recovery custody is all-or-nothing.
+  const result = await rpc(client, 'activate_social_account_from_attempt_recovery_optional', { target_attempt_id: attemptId })
   if (!['SOCIAL_ACCOUNT_ACTIVATED', 'SOCIAL_ACCOUNT_ALREADY_ACTIVE', 'SOCIAL_ACCOUNT_LAUNCH_CLOSED', 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED'].includes(result as string)) throw new Error('SOCIAL_ACCOUNT_ACTIVATION_REJECTED')
   return result as 'SOCIAL_ACCOUNT_ACTIVATED' | 'SOCIAL_ACCOUNT_ALREADY_ACTIVE' | 'SOCIAL_ACCOUNT_LAUNCH_CLOSED' | 'SOCIAL_ACCOUNT_ACTIVATION_REJECTED'
+}
+
+/** P2b /account later recovery registration: service RPCs only, crypto envelopes and IDs only. */
+export function createAccountRecoveryDatabase(client: PreviewRpcClient): AccountRecoveryDatabase {
+  return Object.freeze({
+    async reserve(input: Parameters<AccountRecoveryDatabase['reserve']>[0]) {
+      const row = first(await rpc(client, 'create_and_reserve_account_recovery_delivery', {
+        target_auth_user_id: input.authUserId,
+        target_account_id: input.accountId,
+        requested_verification_id: input.verificationId,
+        requested_hmac: bytea(input.hmac),
+        requested_hmac_key_version: input.hmacKeyVersion,
+        requested_ciphertext: bytea(input.ciphertext),
+        requested_nonce: bytea(input.nonce),
+        requested_encryption_key_version: input.encryptionKeyVersion,
+        requested_otp_mac: bytea(input.otpMac),
+        requested_otp_key_version: input.otpKeyVersion,
+      }))
+      const outcome = text(row?.outcome)
+      if (!outcome) throw new Error('ACCOUNT_RECOVERY_PERSISTENCE_REJECTED')
+      return Object.freeze({ outcome, verificationId: text(row?.verification_id), deliveryId: text(row?.delivery_id) })
+    },
+    async markSent(deliveryId: string) {
+      if (await rpc(client, 'mark_login_attempt_recovery_delivery_sent', { target_delivery_id: deliveryId }) !== 'RECOVERY_DELIVERY_SENT') throw new Error('ACCOUNT_RECOVERY_PERSISTENCE_REJECTED')
+    },
+    async fail(deliveryId: string) {
+      if (await rpc(client, 'fail_login_attempt_recovery_delivery', { target_delivery_id: deliveryId }) !== 'RECOVERY_DELIVERY_FAILED') throw new Error('ACCOUNT_RECOVERY_PERSISTENCE_REJECTED')
+    },
+    async consume(input: Parameters<AccountRecoveryDatabase['consume']>[0]) {
+      const result = await rpc(client, 'consume_account_recovery_verification', { target_auth_user_id: input.authUserId, target_verification_id: input.verificationId, submitted_otp_mac: bytea(input.otpMac) })
+      return typeof result === 'string' ? result : 'ACCOUNT_RECOVERY_REJECTED'
+    },
+  })
 }
