@@ -67,8 +67,11 @@ export default async function YearPage({ params }: PageProps) {
         <h1 className="text-[28px] font-black leading-[1.15] tracking-[-0.6px] text-sl-ink">{year}년 졸업 · {count > 0 ? <span className="text-sl-brand">{count}명</span> : '아직 없음'}</h1>
         <p className="mt-2 text-[15px] leading-[1.45] text-sl-ink2">{count > 0 ? '같은 학교 회원이 되면 전체 이름을 확인할 수 있어요.' : '이 기수의 1대 반장(첫 출석자)을 기다리고 있어요.'}</p>
         {masked.length > 0 ? <ul className="mt-4 flex flex-wrap gap-2" aria-label="가린 이름 미리보기">
-          {masked.map((name, index) => (
-            <li key={`${name}-${index}`} className="inline-flex h-11 items-center rounded-full border border-[#16a34a]/40 bg-[#fcfaf5] px-4 text-[16px] font-extrabold tracking-[1px] text-[#14532d]">{name}</li>
+          {masked.map((entry, index) => (
+            <li key={`${entry.masked_name}-${index}`} className="inline-flex min-h-11 items-center rounded-full border border-[#16a34a]/40 bg-[#fcfaf5] px-4 py-1.5 text-[16px] font-extrabold text-[#14532d]">
+              <span className="tracking-[1px]">{entry.masked_name}</span>
+              {entry.tags.length || entry.note ? <span className="ml-1.5 text-[13px] font-semibold text-sl-ink2">({[entry.tags.join(' · '), entry.note ? `'${entry.note}'` : ''].filter(Boolean).join(' · ')})</span> : null}
+            </li>
           ))}
           {count > masked.length ? <li className="inline-flex h-11 items-center px-1 text-[14px] font-bold text-sl-ink3">외 {count - masked.length}명</li> : null}
         </ul> : null}

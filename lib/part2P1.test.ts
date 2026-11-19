@@ -43,14 +43,23 @@ describe('Part 2 P1 chalkboard input', () => {
 
 describe('Part 2 P1 public readers fail closed', () => {
   beforeEach(() => rpc.mockReset())
-  it('returns only short masked strings and drops anything that looks like a full row', async () => {
-    rpc.mockResolvedValueOnce({ data: [{ masked_name: '김O수' }, { masked_name: '이O' }], error: null })
-    expect(await getYearMaskedPreview('id', 2005)).toEqual(['김O수', '이O'])
-    rpc.mockResolvedValueOnce({ data: [{ masked_name: '김민수바보' }], error: null })
+  it('P1 fallback: returns only short masked strings when v2 is not applied yet, and drops full rows', async () => {
+    const missing = { data: null, error: { code: 'PGRST202' } }
+    rpc.mockResolvedValueOnce(missing).mockResolvedValueOnce({ data: [{ masked_name: '김O수' }, { masked_name: '이O' }], error: null })
+    expect(await getYearMaskedPreview('id', 2005)).toEqual([{ masked_name: '김O수', tags: [], note: null }, { masked_name: '이O', tags: [], note: null }])
+    rpc.mockResolvedValueOnce(missing).mockResolvedValueOnce({ data: [{ masked_name: '김민수바보' }], error: null })
     expect(await getYearMaskedPreview('id', 2005)).toEqual([])
-    rpc.mockResolvedValueOnce({ data: [{ masked_name: '김O수', display_name: '김민수' }], error: null })
+    rpc.mockResolvedValueOnce(missing).mockResolvedValueOnce({ data: [{ masked_name: '김O수', display_name: '김민수' }], error: null })
     expect(await getYearMaskedPreview('id', 2005)).toEqual([])
-    rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST202' } })
+    rpc.mockResolvedValueOnce(missing).mockResolvedValueOnce({ data: null, error: { code: 'PGRST202' } })
+    expect(await getYearMaskedPreview('id', 2005)).toEqual([])
+  })
+  it('P3 v2: tags/note from the DB only in the allowed shape; anything else is dropped', async () => {
+    rpc.mockResolvedValueOnce({ data: [{ masked_name: '김O수', tags: ['직장인'], note: '반가워!' }], error: null })
+    expect(await getYearMaskedPreview('id', 2005)).toEqual([{ masked_name: '김O수', tags: ['직장인'], note: '반가워!' }])
+    rpc.mockResolvedValueOnce({ data: [{ masked_name: '김O수', tags: ['학생'], note: null }], error: null })
+    expect(await getYearMaskedPreview('id', 2005)).toEqual([])
+    rpc.mockResolvedValueOnce({ data: [{ masked_name: '김O수', tags: [], note: null, instagram: 'x' }], error: null })
     expect(await getYearMaskedPreview('id', 2005)).toEqual([])
   })
   it('hides the home section on errors, malformed data or extra fields', async () => {

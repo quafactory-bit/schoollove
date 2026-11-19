@@ -22,3 +22,8 @@
 6. P4: Vercel에서 apex→www 영구 리디렉션 여부, 배포 후 Search Console 사이트맵 재제출.
 
 `content/approved-claims.md` 반영과 SNS 홍보는 "Part 2 끝났어" 이후(아직 아님).
+
+## 2026-11-19 1차 운영 배포
+- 운영 DB migration 2개 적용, main `7fe9d7f` Production 배포, apex 308(쿼리 유지) 적용. 상세: `2026-11-19-part2-prod-deploy.md`.
+- 크롤러 Application error 원인(서비스워커 등록) 수정·운영 확인: `2026-11-19-crawler-application-error.md`.
+- 남은 2차: P2 복구 이메일 생략·One Tap(인앱 실패 시 기존 Google 버튼·외부 브라우저 안내로 폴백), P3 근황 태그·소환장 표·화면.

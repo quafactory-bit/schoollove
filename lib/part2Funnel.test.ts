@@ -20,10 +20,11 @@ describe('Part2 minimal referral/browser classification',()=>{
 })
 describe('Part2 admin disclosure and report semantics',()=>{
   it('uses KST date boundaries',()=>expect(kstDate(new Date('2026-11-10T15:01:00Z'))).toBe('2026-11-11'))
-  it('shows site-wide zero while keeping future features unmeasured',()=>{
+  it('shows site-wide zero for every stage once all stages are measured (Part 2 P3 summons share)',()=>{
     const w=buildFunnelFeedback([],now).windows[0]
     expect(w.stages.find(s=>s.event==='signup_completed')).toMatchObject({count:0,state:'visible'})
-    expect(w.stages.find(s=>s.event==='summons_share_clicked')).toMatchObject({count:null,state:'not_instrumented'})
+    expect(w.stages.find(s=>s.event==='summons_share_clicked')).toMatchObject({count:0,state:'visible'})
+    expect(w.stages.some(s=>s.state==='not_instrumented')).toBe(false)
   })
   it('shows the approved site-wide total while keeping source/browser cells masked',()=>{
     const w=buildFunnelFeedback([row('google_login_started',11),row('google_login_started',8,{source_channel:'instagram'})],now).windows[0]
