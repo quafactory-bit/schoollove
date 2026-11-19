@@ -58,7 +58,12 @@ CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE SET sear
   Invoke-SqlFile (Resolve-Path 'scripts/part2-p2b/fixture.sql').Path
 
   $before = Scalar "SELECT md5(string_agg(pg_get_functiondef(p.oid),'|' ORDER BY p.oid::regprocedure::text)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','private') AND (p.proname LIKE '%social%' OR p.proname LIKE '%recovery%' OR p.proname LIKE '%broker%' OR p.proname LIKE '%upstream%' OR p.proname LIKE '%downstream%' OR p.proname LIKE '%deletion%')"
+  $pre = (Get-Content -LiteralPath 'scripts/part2-p2b/preapply-check.sql' -Raw -Encoding UTF8 | docker exec -i $containerName psql -U postgres -d $db -tA -F ',' -q) -join ''
+  if($pre -notmatch '^1,1,0,'){throw "Pre-apply check failed: $pre"}
   Invoke-SqlFile (Resolve-Path $targetMigration).Path
+  $post = (Get-Content -LiteralPath 'scripts/part2-p2b/postapply-check.sql' -Raw -Encoding UTF8 | docker exec -i $containerName psql -U postgres -d $db -tA -F ',' -q) -join ''
+  if($post -notmatch '^t,t,t,'){throw "Post-apply check failed: $post"}
+  Write-Output "P2B_PRE_POST_APPLY_CHECKS_OK pre=$pre post=$post"
   $after = Scalar "SELECT md5(string_agg(pg_get_functiondef(p.oid),'|' ORDER BY p.oid::regprocedure::text)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','private') AND (p.proname LIKE '%social%' OR p.proname LIKE '%recovery%' OR p.proname LIKE '%broker%' OR p.proname LIKE '%upstream%' OR p.proname LIKE '%downstream%' OR p.proname LIKE '%deletion%') AND p.proname NOT LIKE '%recovery_optional%' AND p.proname NOT LIKE '%account_recovery%' AND p.proname NOT LIKE 'p2b_%'"
   if($before -ne $after){throw 'An existing auth function body changed.'}
   Write-Output 'P2B_EXISTING_FUNCTIONS_UNCHANGED'

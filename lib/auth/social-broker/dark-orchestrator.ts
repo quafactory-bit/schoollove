@@ -12,6 +12,21 @@ import { extractGoogleCallbackDiagnostic, extractSocialBrokerErrorCode, type Ext
 import { writeGoogleCallbackDiagnostic } from './google-callback-diagnostics'
 import type { SocialProvider } from './types'
 
+/**
+ * Identity-decision outcomes. ACCOUNT_DECIDED_RECOVERY_DEFERRED (Part 2 P2b) is a
+ * new Google account decided without a recovery email; it finalizes exactly like
+ * PROVISIONAL_RESUME_READY. RECOVERY_REQUIRED remains for the legacy path.
+ */
+export const VERIFIED_IDENTITY_OUTCOMES = Object.freeze([
+  'EXISTING_PRIMARY', 'RECOVERY_REQUIRED', 'ACCOUNT_DECIDED_RECOVERY_DEFERRED', 'PROVISIONAL_RESUME_READY',
+  'BOUND_PROVISIONAL_REAUTH_READY', 'IDENTITY_DECISION_IN_PROGRESS', 'IDENTITY_REJECTED',
+] as const)
+export type VerifiedIdentityOutcome = typeof VERIFIED_IDENTITY_OUTCOMES[number]
+/** Outcomes whose attempt is ready for transaction-bound broker-code issuance. */
+export const READY_FOR_CODE_OUTCOMES: ReadonlySet<VerifiedIdentityOutcome> = new Set([
+  'EXISTING_PRIMARY', 'ACCOUNT_DECIDED_RECOVERY_DEFERRED', 'PROVISIONAL_RESUME_READY', 'BOUND_PROVISIONAL_REAUTH_READY',
+])
+
 /** Deliberately narrow service-RPC port; implementations must not use direct private-table SQL. */
 export type DarkBrokerPersistence = Readonly<{
   createAttempt(input: Readonly<{ safeAttemptId: string; provider: SocialProvider; expiresAt: number }>): Promise<string>
@@ -25,7 +40,7 @@ export type DarkBrokerPersistence = Readonly<{
     reason: 'provider_failure' | 'identity_failure' | 'expired'
     diagnostic?: Readonly<{ reason: GoogleCallbackDiagnosticReason; upstreamStatus?: number }>
   }>): Promise<'REJECTED' | 'EXPIRED' | 'REPLAY_REJECTED'>
-  recordVerifiedIdentity(input: Readonly<{ attemptId: string; legId: string; provider: SocialProvider; brokerSubject: string; subjectDigest: Uint8Array; subjectKeyVersion: number }>): Promise<'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'BOUND_PROVISIONAL_REAUTH_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'>
+  recordVerifiedIdentity(input: Readonly<{ attemptId: string; legId: string; provider: SocialProvider; brokerSubject: string; subjectDigest: Uint8Array; subjectKeyVersion: number }>): Promise<VerifiedIdentityOutcome>
   resolveIssuanceContext(attemptId: string): Promise<TrustedAuthorizationTransactionIssuanceContext | null>
   issueTransactionBoundCode(input: ReturnType<typeof prepareTransactionBoundBrokerCode>['database']): Promise<'AUTHORIZATION_CODE_CREATED' | 'AUTHORIZATION_CODE_REJECTED'>
 }>
@@ -61,7 +76,7 @@ export type DurableContinuationCreate = Readonly<{
   continuation: Readonly<{ ciphertext: Uint8Array; iv: Uint8Array; keyVersion: number }>
 }>
 export type TrustedCallbackResult = Readonly<{
-  outcome: 'EXISTING_PRIMARY' | 'RECOVERY_REQUIRED' | 'PROVISIONAL_RESUME_READY' | 'BOUND_PROVISIONAL_REAUTH_READY' | 'IDENTITY_DECISION_IN_PROGRESS' | 'IDENTITY_REJECTED'
+  outcome: VerifiedIdentityOutcome
   trustedAttemptId: string
   authenticationTime: number
   brokerSubject: string

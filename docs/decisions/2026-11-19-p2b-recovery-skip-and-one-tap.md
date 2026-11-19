@@ -1,6 +1,6 @@
 # P2b — 복구 이메일 "나중에 등록"과 Google One Tap (결정 초안)
 
-상태: **초안 — 운영자 승인 대기.** 승인 전에는 구현·migration 작성·push·원격 적용을 하지 않는다.
+상태: **승인됨(2026-11-19, 운영자 "응응 승인할게" — 9절 권장안 전부).** 구현은 `p2-P2b:` 커밋. push·Preview/운영 DB 적용·배포·Google 콘솔·환경변수는 계속 건별 승인.
 근거: `AGENTS.md` A1(복구 이메일 단계는 기본 흐름에서만 제외)·A2 안전 조건 "복구 이메일"·D절, 지시서 `2026-11-11-part2-for-gpt.md` 4절 P2·6절 C, `reports/2026-11-19-part2-second-round.md` "P2 범위".
 선행 결정: `2026-08-10-social-account-recovery-data-boundary.md`, `2026-08-19-first-social-login-recovery-finalization.md`, `2026-08-22-social-account-activation-bound-reauth.md`, `2026-08-24-google-only-auth-policy.md`.
 
@@ -68,7 +68,7 @@ active·복구 없음 ─(이메일 입력)▶ 인증 대기(purpose='change', 1
 | # | 대상 | 지금 | 바꾸는 내용 | 왜 피할 수 없나 |
 |---|---|---|---|---|
 | E1 | `private.private_accounts`의 이름 없는 CHECK(`status<>'active' OR (복구 열 6개 NOT NULL …)`) | 활성 계정은 복구 이메일 필수 | 같은 이름으로 DROP 후 새 CHECK 추가: 활성이면 `auth_user_id`·`activated_at` 필수 + 복구 열은 **"전부 있거나 전부 없거나"** | 표 제약은 어떤 함수도 우회 못 함. 이게 남아 있으면 복구 없는 계정은 영원히 활성화 불가 |
-| E2 | `private.recovery_delivery_attempts.login_attempt_id NOT NULL` | 발송 기록은 로그인 시도에만 붙음 | NOT NULL 해제 + nullable `account_id` 열 추가 + CHECK "둘 중 정확히 하나" | `/account`의 나중 등록에는 로그인 시도가 없음. 발송 횟수 제한(같은 이메일·같은 계정)을 이 원장에 그대로 걸기 위해 |
+| E2 | `private.recovery_delivery_attempts`의 CHECK `recovery_delivery_reserved_requires_owner` (예약 중이면 `login_attempt_id` 필수) | 발송 기록은 로그인 시도에만 붙음 | 그 CHECK를 DROP 후 `recovery_delivery_reserved_requires_single_owner`(예약 중이면 로그인 시도·계정 중 **정확히 하나**)로 다시 추가 + nullable `account_id` 열 추가 | `/account`의 나중 등록에는 로그인 시도가 없음. 발송 횟수 제한(같은 이메일·같은 계정)을 이 원장에 그대로 걸기 위해. **구현 중 확인:** `login_attempt_id`의 NOT NULL은 `20260915211712`에서 이미 풀려 있었고, 실제로 막는 것은 이 이름 있는 CHECK였다. 승인 범위(발송 원장의 소유자 조건 완화) 안의 같은 변경이다 |
 
 - E1은 migration 안에서 **정의문으로 정확히 1개를 찾을 때만** 지우고, 0개·2개 이상이면 전체 rollback한다(이름을 추측하지 않음).
 - E2 대안: 새 표 `private.account_recovery_deliveries`를 만든다. "신규 테이블 0" 원칙에 걸리고 발송 한도 계산이 두 표로 갈라져서 **E2(열 완화)를 권장**한다.
