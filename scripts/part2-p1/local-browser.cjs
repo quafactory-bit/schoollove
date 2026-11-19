@@ -65,6 +65,12 @@ async function run() {
     assert.equal(await page.getByText('학교 찾기 화면으로 가기').count(), 0)
     await shot('p1-home-375.png')
 
+    // P2: Threads visitor sees the trust badge once, at the top.
+    assert.equal(await page.getByText('무광고 · 1인 개인사업자').count(), 1)
+    const badgeY = await page.getByText('무광고 · 1인 개인사업자').boundingBox()
+    const titleY = await page.locator('#home-title').boundingBox()
+    assert.ok(badgeY.y < titleY.y, 'trust badge above the title for social visits')
+
     await page.goto(origin + '/search'); await page.waitForLoadState('networkidle')
     assert.ok(await page.getByText('지금 동창들이 많이 찾는 학교').isVisible())
     await shot('p1-search-idle-375.png')

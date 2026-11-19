@@ -13,6 +13,8 @@ import { clearFirstTouch, readFirstTouch } from '@/lib/signupAttribution'
 import { SCHOOL_TYPE_LABELS } from '@/types/school'
 import PageNav from '@/components/PageNav'
 import CollectionNotice from '@/components/privacy/CollectionNotice'
+import TrustBadge, { TopTrustBadge } from '@/components/part2/TrustBadge'
+import { readChalkboardDraft, type ChalkboardDraft } from '@/lib/part2Chalkboard'
 
 // v2-05: 가입 한 화면(목업 2번). Google 로그인 뒤 이름·생년월일·학교·졸업연도·체크 3개를 한 번에 받고
 // 기존 API를 아직 끝나지 않은 단계만 순서대로 부른다. 중간에 실패하면 앞 단계 결과는 남고 다시 누르면 이어서 저장한다.
@@ -35,6 +37,9 @@ export default function OnboardingClient() {
   const [checks, setChecks] = useState<SignupChecks>({ adult: false, roster: false, terms: false })
   const [errors, setErrors] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  // Part 2 P2: 로그인 전 칠판(이 브라우저 localStorage)을 이어받는다. 서버로 보내지 않는다.
+  const [chalkboard, setChalkboard] = useState<ChalkboardDraft | null>(null)
+  const [pendingYear, setPendingYear] = useState<number | null>(null)
   const schools = useSchoolAutocomplete(school ? '' : schoolQuery)
 
   const load = useCallback(async () => {
@@ -49,14 +54,19 @@ export default function OnboardingClient() {
   useEffect(() => { void load() }, [load])
 
   // 로그인 전 학교 페이지에서 고른 학교(기존 학교 intent)를 이어받는다.
+  // Part 2 P2: 학교 intent가 없으면(다른 탭·바깥 브라우저로 넘어온 경우) 칠판에 적은 학교·졸업연도를 쓴다.
   useEffect(() => {
+    const draft = readChalkboardDraft()
+    setChalkboard(draft)
     const intent = readSchoolIntent()
-    if (!intent) return
+    const slug = intent?.slug ?? draft?.slug
+    if (!slug) return
+    if (draft && draft.slug === slug) setPendingYear(draft.year)
     const controller = new AbortController()
-    fetch(`/api/schools/selection?slug=${encodeURIComponent(intent.slug)}`, { signal: controller.signal, cache: 'no-store' })
+    fetch(`/api/schools/selection?slug=${encodeURIComponent(slug)}`, { signal: controller.signal, cache: 'no-store' })
       .then(async response => {
         const data = await response.json().catch(() => ({})) as { school?: SchoolAutocompleteResult }
-        if (response.ok && data.school?.slug === intent.slug) choose(data.school)
+        if (response.ok && data.school?.slug === slug) choose(data.school)
       }).catch(() => { /* 직접 검색하면 된다 */ })
     return () => controller.abort()
   }, [])
@@ -66,6 +76,13 @@ export default function OnboardingClient() {
   }
 
   const yearOptions = school ? (({ min, max }) => Array.from({ length: max - min + 1 }, (_, index) => max - index))(graduationYearRange(school.school_type)) : []
+  // 칠판의 졸업연도는 이 학교에서 고를 수 있는 연도일 때만 한 번 채운다.
+  useEffect(() => {
+    if (pendingYear === null || !school) return
+    const { min, max } = graduationYearRange(school.school_type)
+    if (pendingYear >= min && pendingYear <= max) setGraduationYear(String(pendingYear))
+    setPendingYear(null)
+  }, [pendingYear, school])
   const gradeNumbers = gradeNumbersForSchoolType(school?.school_type ?? null)
   const progress = state ?? { adultReady: false, consentsReady: false, profileReady: false, schoolReady: false }
   const form = { displayName, birthDate, schoolId: school?.id ?? '', schoolType: school?.school_type ?? null, graduationYear, checks }
@@ -100,6 +117,8 @@ export default function OnboardingClient() {
       <div className="mb-3 mt-1 flex gap-1.5" aria-hidden="true"><i className="h-1 flex-1 rounded bg-sl-brand" /><i className="h-1 flex-1 rounded bg-sl-brand" /><i className="h-1 flex-1 rounded bg-sl-line" /></div>
       <h1 className="text-[28px] font-black leading-[1.15] tracking-[-0.6px] text-sl-ink">내 학교를<br />등록해요</h1>
       <p className="mt-2 text-[15px] leading-[1.45] text-sl-ink2">등록하면 같은 학교 출석부가 바로 보여요.</p>
+      <TopTrustBadge />
+      {chalkboard && school?.slug === chalkboard.slug ? <p role="status" className="mt-3 rounded-xl bg-[#14532d] px-3.5 py-2.5 text-[13px] leading-[1.55] text-[#fcfaf5]">로그인 전에 칠판에 적은 <b>{chalkboard.initials}</b>{chalkboard.note ? <> · ‘{chalkboard.note}’</> : null}을 이어서 기억해 둘게요. 이 휴대폰에만 저장돼 있어요.</p> : null}
 
       {loadError ? <div role="alert" className="mt-5 rounded-[14px] bg-sl-bg2 px-4 py-3 text-sm text-sl-ink2">시작 상태를 불러오지 못했어요. <button type="button" onClick={() => void load()} className="schoollove-focus font-bold underline">다시 시도</button></div> : null}
       {!state && !loadError ? <p role="status" className="mt-5 text-sm text-sl-ink2">불러오는 중…</p> : null}
@@ -162,6 +181,7 @@ export default function OnboardingClient() {
         {errors.length ? <ul role="alert" className="mt-3 space-y-1 rounded-xl bg-sl-warn-soft px-3 py-2.5 text-[13px] font-semibold text-sl-warn-text">{errors.map(error => <li key={error}>{error}</li>)}</ul> : null}
         <button disabled={busy} className="btn-primary schoollove-focus mt-3.5 w-full">{busy ? '등록하는 중…' : '등록하고 출석부 보기'}</button>
       </form> : null}
+      <TrustBadge className="mt-5" />
     </div>
   </main>
 }
