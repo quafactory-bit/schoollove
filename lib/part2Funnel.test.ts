@@ -23,7 +23,7 @@ describe('Part2 admin disclosure and report semantics',()=>{
   it('shows site-wide zero while keeping future features unmeasured',()=>{
     const w=buildFunnelFeedback([],now).windows[0]
     expect(w.stages.find(s=>s.event==='signup_completed')).toMatchObject({count:0,state:'visible'})
-    expect(w.stages.find(s=>s.event==='chalkboard_initials_started')).toMatchObject({count:null,state:'not_instrumented'})
+    expect(w.stages.find(s=>s.event==='summons_share_clicked')).toMatchObject({count:null,state:'not_instrumented'})
   })
   it('shows the approved site-wide total while keeping source/browser cells masked',()=>{
     const w=buildFunnelFeedback([row('google_login_started',11),row('google_login_started',8,{source_channel:'instagram'})],now).windows[0]

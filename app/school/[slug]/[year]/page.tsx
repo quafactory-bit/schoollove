@@ -11,6 +11,8 @@ import { buildYearPath } from '@/lib/seo'
 import { shortSchoolName } from '@/lib/push/contracts'
 import PageNav from '@/components/PageNav'
 import SchoolActionButton, { type SchoolActionMode } from '@/components/SchoolActionButton'
+import Chalkboard from '@/components/part2/Chalkboard'
+import { getYearMaskedPreview } from '@/lib/part2Public'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,8 +37,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-// v2-04: 로그아웃 상태의 연도 페이지는 등록 수와 이름 없는 흐린 자리만 보여 준다. 로그인 후 명단은 06번.
-const PLACEHOLDER_LIMIT = 6
+// Part 2 P1: 로그아웃 상태에서 0명이면 칠판 선입력, 1명 이상이면 DB에서 가린 이름(김O수)만 보여 준다.
 
 export default async function YearPage({ params }: PageProps) {
   const { slug, year: yearParam } = await params
@@ -54,6 +55,8 @@ export default async function YearPage({ params }: PageProps) {
       mode = data?.length ? 'roster' : 'register'
     }
   } catch { /* Public counts stay available without a session. */ }
+  const masked = count > 0 && mode === 'start' ? await getYearMaskedPreview(school.id, year) : []
+  const canStart = launch.state === 'open'
 
   return (
     <main className="mx-auto w-full max-w-content bg-white pb-6">
@@ -62,16 +65,18 @@ export default async function YearPage({ params }: PageProps) {
       <div className="px-4 pt-2">
         <p className="mb-1.5 text-[13px] font-semibold text-sl-ink3">{school.school_name} · {SCHOOL_TYPE_LABELS[school.school_type]}</p>
         <h1 className="text-[28px] font-black leading-[1.15] tracking-[-0.6px] text-sl-ink">{year}년 졸업 · {count > 0 ? <span className="text-sl-brand">{count}명</span> : '아직 없음'}</h1>
-        <p className="mt-2 text-[15px] leading-[1.45] text-sl-ink2">{count > 0 ? '같은 학교 회원이 되면 이름을 확인할 수 있어요.' : '이 기수의 첫 번째 동문이 되어 주세요.'}</p>
-        {count > 0 ? <ul className="mt-4 flex flex-wrap gap-3" aria-label="이름은 회원에게만 보여요">
-          {Array.from({ length: Math.min(count, PLACEHOLDER_LIMIT) }, (_, index) => (
-            <li key={index} aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-sl-bg2 text-lg font-black text-sl-ink3 blur-[0.5px]">?</li>
+        <p className="mt-2 text-[15px] leading-[1.45] text-sl-ink2">{count > 0 ? '같은 학교 회원이 되면 전체 이름을 확인할 수 있어요.' : '이 기수의 1대 반장(첫 출석자)을 기다리고 있어요.'}</p>
+        {masked.length > 0 ? <ul className="mt-4 flex flex-wrap gap-2" aria-label="가린 이름 미리보기">
+          {masked.map((name, index) => (
+            <li key={`${name}-${index}`} className="inline-flex h-11 items-center rounded-full border border-[#16a34a]/40 bg-[#fcfaf5] px-4 text-[16px] font-extrabold tracking-[1px] text-[#14532d]">{name}</li>
           ))}
+          {count > masked.length ? <li className="inline-flex h-11 items-center px-1 text-[14px] font-bold text-sl-ink3">외 {count - masked.length}명</li> : null}
         </ul> : null}
+        {count === 0 && mode === 'start' ? <Chalkboard slug={school.slug} year={year} canStart={canStart} /> : null}
         {mode === 'start' && launch.state !== 'open'
           ? <p role="status" className="mt-3.5 rounded-[14px] bg-sl-bg2 px-4 py-3 text-sm text-sl-ink2">신규 계정 시작은 현재 준비 중입니다.</p>
           : <SchoolActionButton mode={mode} slug={school.slug} />}
-        <p className="mt-3 text-center text-[12.5px] font-medium leading-[1.55] text-sl-ink3">이름·졸업연도는 같은 학교 회원에게만 보여요. 인스타 주소는 서로 수락할 때만. 만 19세 이상.</p>
+        <p className="mt-3 text-center text-[12.5px] font-medium leading-[1.55] text-sl-ink3">로그인 전에는 가린 이름(김O수)만 보여요. 전체 이름은 같은 학교 회원에게만, 인스타 주소는 서로 수락할 때만. 만 19세 이상.</p>
       </div>
     </main>
   )
