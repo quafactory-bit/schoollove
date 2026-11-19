@@ -1,3 +1,6 @@
+import { isPushSupportedSafely } from '@/lib/browserSafety'
+import { safeMatchMedia } from '@/lib/clientRecovery'
+
 export type BrowserPushStatus =
   | 'enabled'
   | 'disabled'
@@ -11,7 +14,7 @@ type NavigatorWithStandalone = Navigator & { standalone?: boolean }
 const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? ''
 
 function isStandalone(): boolean {
-  return window.matchMedia('(display-mode: standalone)').matches
+  return safeMatchMedia('(display-mode: standalone)')
     || (navigator as NavigatorWithStandalone).standalone === true
 }
 
@@ -22,7 +25,7 @@ function isIosDevice(): boolean {
 }
 
 function isPushSupported(): boolean {
-  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+  return isPushSupportedSafely()
 }
 
 function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {

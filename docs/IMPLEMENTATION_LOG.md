@@ -2538,3 +2538,20 @@ Cloudflare Turnstile. 새 npm dependency 없이 공식 `<script>`(client 위젯)
 
 
 - 2026-10-15 cleanup audit: scanned3,165 local text files including this task's logs/temporary material and2,831 reachable Git text blobs. No real credential/session-token patterns found in task logs/temp or history. Named-token matches were reviewed synthetic/local placeholder fixtures in existing tests only. Matched values were not retained in the audit report. Scope excludes local .env values, dependency/build caches, binaries and unavailable/deleted files. Existing repository test fixtures are preserved.
+
+
+## 2026-11-11 — Part 2 P0-1 local daily funnel
+
+- Operator approved one additive anonymous daily aggregate and low-signup schools grouped as fewer than ten after the schema proposal. Implemented allowed channel/browser/event codes, optional client/server instrumentation, admin-only 7/14-day masked report and JSON download. No personal input/identity keys, raw UA/query/URL or individual event rows enter the new aggregate.
+- New migration 20261111021213 adds one six-column table and three functions, preserving existing functions/migrations/data. First-school counting reuses the existing owner milestone under the original advisory lock order; optional statistics errors do not roll back membership. Missing-wrapper fallback is restricted to absent-function errors; ambiguous save errors are never retried.
+- Targeted 81/typecheck/full 1,875 tests (existing four skips)/build PASS. Changed-runtime ESLint PASS. Disposable offline PostgreSQL checks cover permissions, NULL-equal atomic increments, failure isolation, recreation, concurrent/mixed-version lock ordering and unchanged owner definition. Real Next UI/API/new SQL/admin JSON flow and 375px visual check PASS with local HTTP/auth/rate fixtures; these are not real Supabase/Google/mobile-app signup verification.
+- Status LOCAL_VERIFIED only. Preview accumulation and P0-2 physical Android/iPhone reproduction remain pending. No push, remote migration/write, protection/config/deployment/main/Production mutation or SNS action. Existing dirty .gitignore and untracked material preserved. Evidence: sns-ops/workorders/reports/2026-11-11-part2-P0-1.md; ignored screenshot under artifacts/mockups/2026-11-part2/.
+
+
+## 2026-11-11 — Part 2 P0-1b approved totals and Preview preparation
+
+- Operator approved exact administrator-only site-wide totals including zero, with school/source/browser suppression unchanged. Updated report builder, console explanation, tests and local browser fixture; future events and retrieval failures remain distinct. Recorded the explicit exception in AGENTS A2.
+- Operator separately approved v2-simplified push, exact Preview-only migration and no-ff integration into preview; main/Production and P0-2 are excluded. Initial Production CLI link caused an immediate stop; after renewed approval the local link/cache was retargeted to Preview. Restored only the paused Preview project as a prerequisite. Completion evidence follows in the P0-1 report.
+
+- P0-1b release: 8ff16c9 pushed to v2-simplified; no-ff19c6917 pushed to preview, identical tree. Exact20261111021213 DDL+ledger applied atomically to explicit Preview ref only, with owner-function guards. Six columns/RLS/client grants/service-role atomic NULL bucket increment and rollback cleanup verified; original owner functions and two Auth accounts preserved. Preview dpl_FrJYz9janb3ny9pripwvsqeuijbw READY with fixed alias; authenticated Home200/noindex and12 bundles using only Preview DB verified.
+- Actual anonymous Chrome/IAB flow stops at Vercel protection; real event accumulation and authenticated admin UI remain unverified (SQL aggregate0). Fetch tool's automatic temporary share1 revoked immediately; share/override counts0 and anonymous302 rechecked. No protection exception/Production/config/env mutation. Full1,876+4existing skips/typecheck/build/local375px exact0/1 and masked dimensions PASS. P0-2 waits for operator physical-device reproduction. Follow-up changes are documentation and reusable Preview-check script only.

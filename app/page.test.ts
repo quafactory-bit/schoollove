@@ -11,7 +11,7 @@ describe('PHASE 10A safe home', () => {
 
   it('초등·중등을 포함한 사람 등록 경쟁을 만들지 않고 제한된 명단 범위를 설명한다', () => {
     expect(SOURCE).not.toMatch(/현재 학교 순위|다음 성장 단계|내 이름 남기기|친구 등록|LEVEL UP/)
-    expect(SOURCE).toContain('학교 명단은 같은 학교에 등록하고 명단 표시를 켠 성인 회원끼리만 확인해요.')
+    expect(SOURCE).toContain('전체 이름은 같은 학교에 등록하고 명단 표시를 켠 성인 회원끼리만 확인해요. 로그인 전에는 가린 이름(김O수)만 보여요.')
     expect(SOURCE).toContain('인스타그램 주소는 서로 수락할 때만 보여요. 만 19세 이상.')
   })
 
@@ -24,7 +24,9 @@ describe('PHASE 10A safe home', () => {
   })
 
   it('학교 검색과 삭제·비공개 문의 경로를 유지한다', () => {
-    expect(SOURCE).toContain('href="/search"')
+    // Part 2 P1: 검색창 아래 중복 링크는 지우고, 검색창 제출이 /search로 이어진다.
+    expect(SOURCE).not.toContain('학교 찾기 화면으로 가기')
+    expect(readFileSync(join(__dirname, '../components/SearchBar.tsx'), 'utf8')).toContain('/search')
     expect(readFileSync(join(__dirname, '../components/SearchBar.tsx'), 'utf8')).toContain("'내 학교 찾기'")
     expect(readFileSync(join(__dirname, '../components/SchoolSearchResults.tsx'), 'utf8')).toContain('<SearchBar')
     expect(readFileSync(join(__dirname, '../components/SearchBar.tsx'), 'utf8')).toContain('type="submit"')

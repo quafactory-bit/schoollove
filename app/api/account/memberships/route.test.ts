@@ -72,10 +72,24 @@ describe('v2-02 memberships API — 재학 중 졸업연도 거부', () => {
   it('허용 범위의 마지막 연도는 저장한다', async () => {
     const response = await call(2025)
     expect(response.status).toBe(201)
-    expect(mocks.rpc).toHaveBeenCalledWith('add_own_school_membership_with_roster', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('part2_add_own_school_membership', expect.objectContaining({
       requested_school_id: schoolId, requested_graduation_year: 2025,
     }))
     // v2-09a: 명단 표시를 켠 등록은 응답 뒤(after) 새 동문 알림을 예약한다.
     expect(mocks.after).toHaveBeenCalledTimes(1)
   })
+  it('falls back only when the optional new wrapper is missing', async () => {
+    mocks.rpc.mockImplementation(async (name: string) => name === 'has_current_adult_access'
+      ? {data:true,error:null} : name === 'part2_add_own_school_membership'
+        ? {data:null,error:{code:'PGRST202'}} : {data:{id:'membership'},error:null})
+    expect((await call(2025)).status).toBe(201)
+    expect(mocks.rpc.mock.calls.map(c=>c[0])).toEqual(['has_current_adult_access','part2_add_own_school_membership','add_own_school_membership_with_roster'])
+  })
+  it('never retries ambiguous failures which might have saved a membership', async () => {
+    mocks.rpc.mockImplementation(async (name: string) => name === 'has_current_adult_access'
+      ? {data:true,error:null} : {data:null,error:{code:'57014'}})
+    expect((await call(2025)).status).toBe(500)
+    expect(mocks.rpc.mock.calls.some(c=>c[0]==='add_own_school_membership_with_roster')).toBe(false)
+  })
+
 })

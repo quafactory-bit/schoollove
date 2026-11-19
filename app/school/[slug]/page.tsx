@@ -1,7 +1,8 @@
+import { SchoolFunnelView } from '@/components/FunnelTracker'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { ChevronRight, Share } from 'lucide-react'
+import { Share } from 'lucide-react'
+import YearChips from '@/components/part2/YearChips'
 import { getSchoolBySlug } from '@/lib/api/schools'
 import { buildSchoolPath, getSchoolPageMetadata } from '@/lib/seo'
 import { getPublicRouteRobots } from '@/lib/policy/privacySafety'
@@ -66,6 +67,7 @@ export default async function SchoolPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto w-full max-w-content bg-white pb-6">
+      <SchoolFunnelView schoolId={school.id} />
       <PageNav
         title="학교"
         right={<ShareButton schoolName={school.school_name} url={schoolHref} ariaLabel="학교 공유하기" label={<Share className="h-[22px] w-[22px]" aria-hidden="true" />} className="schoollove-focus inline-flex h-10 w-10 items-center justify-center rounded-full text-sl-ink" />}
@@ -75,28 +77,12 @@ export default async function SchoolPage({ params }: PageProps) {
         <h1 className="break-keep text-[28px] font-black leading-[1.15] tracking-[-0.6px] text-sl-ink">{school.school_name}</h1>
         <p className="mt-2 text-[15px] leading-[1.45] text-sl-ink2">
           {counts.total > 0
-            ? <><b className="font-extrabold text-sl-ink">{counts.total}명</b>이 등록했어요. 졸업연도를 고르면 같은 기수 출석부가 보여요.</>
-            : '아직 등록한 사람이 없어요. 첫 번째가 되어 주세요.'}
+            ? <><b className="font-extrabold text-sl-ink">{counts.total}명</b>이 출석했어요. 졸업연도를 고르면 같은 기수 출석부가 보여요.</>
+            : '졸업연도를 고르면 우리 학년 출석부가 열려요.'}
         </p>
+        <YearChips slug={school.slug} years={counts.years} currentYear={new Date().getFullYear()} />
+        {counts.status === 'unavailable' ? <p role="status" className="mt-2 text-sm font-semibold text-sl-ink3">등록 수를 잠시 불러오지 못했어요.</p> : null}
         <HowItWorksStrip />
-
-        <ul className="mt-3.5" aria-label="졸업연도별 등록 수">
-          {counts.years.map((row) => (
-            <li key={row.graduationYear} className="border-b border-sl-line first:border-t">
-              <Link href={`${schoolHref}/${row.graduationYear}`} className="schoollove-focus flex h-[58px] items-center justify-between text-[17px] font-bold text-sl-ink">
-                <span>{row.graduationYear}년 졸업</span>
-                <span className="flex items-center">
-                  <b className="text-[22px] font-black text-sl-brand">{row.count}<small className="ml-0.5 text-[13px] font-bold text-sl-ink2">명</small></b>
-                  <ChevronRight aria-hidden="true" className="ml-2 h-4 w-4 text-sl-ink3" />
-                </span>
-              </Link>
-            </li>
-          ))}
-          <li className="flex h-[58px] items-center justify-between border-b border-sl-line text-[17px] font-bold text-sl-ink first:border-t">
-            <span>{counts.years.length > 0 ? '그 외 연도' : '졸업연도별 등록'}</span>
-            <span className="text-sm font-semibold text-sl-ink3">{counts.status === 'unavailable' ? '잠시 불러오지 못했어요' : '아직 없음'}</span>
-          </li>
-        </ul>
 
         {mode === 'start' && launch.state !== 'open'
           ? <p role="status" className="mt-3.5 rounded-[14px] bg-sl-bg2 px-4 py-3 text-sm text-sl-ink2">신규 계정 시작은 현재 준비 중입니다.</p>

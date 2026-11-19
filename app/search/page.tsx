@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import SchoolSearchResults from '@/components/SchoolSearchResults'
 import { getPublicRouteRobots } from '@/lib/policy/privacySafety'
+import { getPopularSchools } from '@/lib/part2PublicServer'
 
 export const dynamic='force-dynamic'
 
@@ -11,9 +12,10 @@ export const metadata: Metadata = {
 }
 
 export default async function SearchPage() {
+  const popular = await getPopularSchools()
   return (
     <div className="sl-search-shell min-h-screen">
-      <SchoolSearchResults />
+      <SchoolSearchResults popular={popular} />
     </div>
   )
 }

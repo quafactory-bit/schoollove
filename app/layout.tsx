@@ -6,6 +6,7 @@ import { ConnectionNotificationProvider } from '@/components/ConnectionNotificat
 import Footer from '@/components/Footer'
 import TabBar from '@/components/TabBar'
 import PrivacySafeAnalytics from '@/components/PrivacySafeAnalytics'
+import FunnelTracker from '@/components/FunnelTracker'
 import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister'
 import Script from 'next/script'
 
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </ConnectionNotificationProvider>
         </Providers>
         <ServiceWorkerRegister />
+        <FunnelTracker />
         <PrivacySafeAnalytics />
       </body>
     </html>

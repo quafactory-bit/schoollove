@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { sendFunnelEvent } from '@/lib/part2FunnelClient'
 import { searchSchools, type SchoolSearchResult } from '@/lib/api/search'
+import { getSchoolRosterFlags } from '@/lib/part2Public'
+import type { PopularSchool } from '@/lib/part2PublicServer'
 import SearchBar from './SearchBar'
 import { schoolTypeLabel } from '@/lib/utils'
 import { recallSchoolQuery } from '@/lib/policy/schoolJourney'
@@ -15,10 +18,11 @@ import {
 
 type Status = 'idle' | 'loading' | 'ok' | 'error'
 
-export default function SchoolSearchResults() {
+export default function SchoolSearchResults({ popular = [] }: { popular?: PopularSchool[] }) {
   const [status, setStatus] = useState<Status>('idle')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SchoolSearchResult[]>([])
+  const [rosterFlags, setRosterFlags] = useState<Record<string, boolean>>({})
 
   // "가장 마지막으로 시작된 실행"만 결과를 반영한다. 개발 모드 React Strict Mode가
   // 마운트 useEffect를 두 번 실행해도 앞선 응답이 최신 검색 결과를 덮어쓰지 않는다.
@@ -45,7 +49,12 @@ export default function SchoolSearchResults() {
       (schools) => {
         if (executionRef.current !== executionId) return
         setResults(schools)
+        setRosterFlags({})
         setStatus('ok')
+        // Badges are optional: unknown schools simply show no badge.
+        void getSchoolRosterFlags(schools.map((school) => school.id)).then((flags) => {
+          if (executionRef.current === executionId) setRosterFlags(flags)
+        })
       },
       () => {
         if (executionRef.current !== executionId) return
@@ -70,11 +79,21 @@ export default function SchoolSearchResults() {
       </p>
 
       {status === 'idle' && (
-        <div className="mt-16 text-center">
+        <div className="mt-8">
+          {popular.length > 0 ? <section aria-labelledby="popular-schools" className="mb-8">
+            <h2 id="popular-schools" className="text-[15px] font-extrabold text-sl-ink">지금 동창들이 많이 찾는 학교</h2>
+            <ul className="mt-2.5 flex flex-wrap gap-2">
+              {popular.map((school) => <li key={school.slug}>
+                <Link href={`/school/${school.slug}`} className="schoollove-focus inline-flex h-10 items-center rounded-full border border-sl-line bg-[#fcfaf5] px-3.5 text-[14px] font-bold text-[#14532d]">{school.school_name}</Link>
+              </li>)}
+            </ul>
+          </section> : null}
+          <div className="text-center">
           <p className="text-sm text-gray-500">학교 이름을 검색해보세요.</p>
           <p className="mt-1 text-xs text-gray-400">
             다른 탭에서 왔거나 임시 검색어가 사라졌다면 이곳에 다시 입력해 주세요.
           </p>
+          </div>
         </div>
       )}
 
@@ -114,6 +133,7 @@ export default function SchoolSearchResults() {
               <Link
                 key={school.id}
                 href={`/school/${school.slug}`}
+                onClick={() => sendFunnelEvent('school_result_selected', school.id)}
                 className="schoollove-focus sl-search-result"
               >
                 <div className="flex min-w-0 items-center gap-3">
@@ -125,7 +145,11 @@ export default function SchoolSearchResults() {
                     </div>
                   </div>
                 </div>
-                <span className="sl-result-arrow"><span className="sr-only">학교 보기</span><ArrowUpRight size={18} aria-hidden="true" /></span>
+                {rosterFlags[school.id] === true
+                  ? <span className="ml-auto shrink-0 rounded-full bg-[#f0fdf4] px-2.5 py-1 text-[12px] font-extrabold text-[#16a34a]">출석부 열림 · 기수 보기 →</span>
+                  : rosterFlags[school.id] === false
+                    ? <span className="ml-auto shrink-0 rounded-full bg-[#fffbeb] px-2.5 py-1 text-[12px] font-extrabold text-[#d97706]">1대 반장 모집 중</span>
+                    : <span className="sl-result-arrow"><span className="sr-only">학교 보기</span><ArrowUpRight size={18} aria-hidden="true" /></span>}
               </Link>
             ))}
           </div>

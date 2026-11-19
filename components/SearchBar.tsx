@@ -7,6 +7,7 @@
 // 위임한다 — 이 컴포넌트는 그 결과를 렌더링/이벤트에 연결하는 역할만 한다.
 
 import { useEffect, useId, useRef, useState } from 'react'
+import { sendFunnelEvent } from '@/lib/part2FunnelClient'
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { rememberSchoolQuery } from '@/lib/policy/schoolJourney'
@@ -74,6 +75,10 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
     if (submitted.current) return
     submitted.current = true
     setOpen(false)
+    sendFunnelEvent('school_search_submitted')
+    if (variant === 'home') sendFunnelEvent('home_search_submitted')
+    const selected = results.find(school => school.slug === slug)
+    if (selected) sendFunnelEvent('school_result_selected', selected.id)
     router.push(buildSchoolHubHref(slug))
   }
 
@@ -85,6 +90,8 @@ export default function SearchBar({ variant, initialQuery = '', className, onFul
     // 검색어는 URL이 아니라 sessionStorage로만 전달한다(PHASE 7B COMPLETION PATCH) — 브라우저
     // 히스토리·서버 로그에 남지 않는다. 프라이빗 모드 등에서 sessionStorage 접근이 막혀도
     // 검색 자체(라우팅/콜백 호출)는 계속 진행되어야 하므로 실패를 조용히 무시한다.
+    sendFunnelEvent('school_search_submitted')
+    if (variant === 'home') sendFunnelEvent('home_search_submitted')
     rememberSchoolQuery(normalized)
     if (onFullSearch) {
       onFullSearch(normalized)
