@@ -74,13 +74,27 @@ export async function getPopularSchools(limit = 8): Promise<School[]> {
 }
 
 // ─── 전체 학교 slug 목록 (sitemap용) ──────────────────────────────
-export async function getAllSchoolSlugs(): Promise<string[]> {
-  const { data, error } = await supabaseServer
-    .from('schools')
-    .select('slug')
+// Part 2 P4: PostgREST returns at most 1,000 rows per request, so read every page.
+// Before this fix the production sitemap listed only 1,000 of ~10,000 schools.
+export const SCHOOL_SLUG_PAGE_SIZE = 1000
+const SCHOOL_SLUG_MAX_PAGES = 49 // one sitemap file holds at most 50,000 URLs
 
-  if (error) return []
-  return (data || []).map((s: { slug: string }) => s.slug)
+export async function getAllSchoolSlugs(): Promise<string[]> {
+  const slugs: string[] = []
+  for (let page = 0; page < SCHOOL_SLUG_MAX_PAGES; page += 1) {
+    const from = page * SCHOOL_SLUG_PAGE_SIZE
+    const { data, error } = await supabaseServer
+      .from('schools')
+      .select('slug')
+      .order('slug', { ascending: true })
+      .range(from, from + SCHOOL_SLUG_PAGE_SIZE - 1)
+
+    if (error) return []
+    const rows = (data || []) as Array<{ slug: string }>
+    slugs.push(...rows.map((s) => s.slug))
+    if (rows.length < SCHOOL_SLUG_PAGE_SIZE) break
+  }
+  return slugs
 }
 
 // ─── 학교 ID로 단건 조회 ──────────────────────────────────────────
