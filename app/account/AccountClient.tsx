@@ -17,6 +17,7 @@ import BrandMark from '@/components/BrandMark'
 import RosterView, { type RosterSchool } from '@/components/roster/RosterView'
 import PushNotificationSettings from '@/components/pwa/PushNotificationSettings'
 import CollectionNotice from '@/components/privacy/CollectionNotice'
+import RecoveryEmailCard from '@/components/account/RecoveryEmailCard'
 import { clearFirstTouch, readFirstTouch } from '@/lib/signupAttribution'
 
 type Props={rosters?:RosterSchool[];myName?:string|null;state:AccountState;launch:PublicAccountLaunch;controlledBetaAccess:boolean;peopleSearchBetaAccess?:boolean;instagramBetaAccess:boolean;betaOnboardingState:BetaOnboardingState;currentYear:number;selectionOwner?:string}
@@ -158,6 +159,8 @@ export default function AccountClient({rosters=[],myName=null,state,launch,contr
         <button disabled={busy||!schoolMembershipWritable||!state.profile||state.memberships.length>=membershipLimit||!schoolId} className="schoollove-focus min-h-12 rounded-xl border border-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 disabled:opacity-40">학교 이력 추가</button>
       </form>
     </section>
+
+    {!deletionBlocked ? <RecoveryEmailCard /> : null}
 
     <section className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-5"><h2 className="text-lg font-bold text-red-950">계정 탈퇴 요청</h2><p className="mt-2 text-sm leading-6 text-red-900">요청 즉시 추가 개인 정보 변경을 차단합니다. 운영 확인 후 공개 계정 데이터를 먼저 삭제하고 Auth identity 실제 삭제를 요청하는 2단계 절차를 사용합니다. Auth 삭제가 실패하면 계정은 차단된 재시도 대기 상태로 남으며 완료로 표시하지 않습니다.</p><p className="mt-2 text-xs text-red-800">처리 상태나 오류 접수는 <Link href="/contact" className="underline">운영자 문의</Link>로 알려 주세요. 완료된 비식별 처리 기록은 재시도·장애 확인 목적의 제한 기간 후 정리됩니다.</p><button type="button" disabled={busy||deletionBlocked} onClick={async()=>{if(window.confirm('탈퇴 요청 후에는 정보 변경이 차단됩니다. 계속할까요?'))await submit('/api/account/deletion-request',{confirm:true},'POST','탈퇴 요청을 접수했습니다.')}} className="schoollove-dark-action schoollove-focus mt-4 min-h-12 rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{state.deletionStatus==='pending'?'탈퇴 요청 접수됨':state.deletionStatus==='public_data_deleted'?'개인 데이터 삭제 완료 · Auth 삭제 대기':state.deletionStatus==='failed_safe'?'Auth 삭제 재시도 대기':state.deletionStatus==='auth_deletion_pending'?'Auth 삭제 처리 중':state.deletionStatus==='done'?'탈퇴 처리 완료':'계정 탈퇴 요청'}</button></section>
 
