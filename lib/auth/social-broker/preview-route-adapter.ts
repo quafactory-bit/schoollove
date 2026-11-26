@@ -1,12 +1,14 @@
 import 'server-only'
 import { openBrowserContinuity, sealBrowserContinuity, socialContinuityCookie, type BrowserSessionKey } from './browser-continuity-session'
-import { DarkBrokerOrchestrator, type DurableProviderVerifier } from './dark-orchestrator'
+import { DarkBrokerOrchestrator, READY_FOR_CODE_OUTCOMES, type DurableProviderVerifier } from './dark-orchestrator'
 import { DarkOidcHttpIssuer } from './http'
 import { buildProviderAuthorizationRequest } from './provider-authorization-request'
 import type { SocialProvider } from './types'
 import { recoveryContinuityCookie, sealRecoveryContinuity } from './recovery-continuity-session'
+import { GOOGLE_LOGIN_HINT_COOKIE, openLoginHint } from './one-tap-hint'
 
 const clearCookie = Object.freeze({ ...socialContinuityCookie.options, maxAge: 0 })
+const readRequestCookie = (request: Request, name: string) => request.headers.get('cookie')?.split(';').map(part => part.trim()).find(part => part.startsWith(`${name}=`))?.slice(name.length + 1)
 const rejected = () => new Response(null, { status: 400, headers: { 'cache-control': 'no-store' } })
 const cookie = (name: string, value: string, options: Readonly<{ httpOnly: boolean; secure: boolean; sameSite: 'lax'; path: string; maxAge: number }>) => {
   const lifetime = `Max-Age=${options.maxAge}`
@@ -34,12 +36,14 @@ export function createPreviewRouteAdapter(runtime: PreviewRouteRuntime) {
         const begun = await runtime.orchestrator.begin(new URL(request.url))
         const continued = await runtime.orchestrator.continueFromHandle({ brokerHandle: begun.brokerHandle, browserBindingSecret: begun.browserBindingSecret })
         if (continued.provider !== begun.provider) return rejected()
-        const upstream = buildProviderAuthorizationRequest({ provider: continued.provider, clientId: runtime.orchestrator.input.upstream[continued.provider].clientId, redirectUri: runtime.orchestrator.input.upstream[continued.provider].redirectUri, state: continued.authorization.rawState, nonce: continued.authorization.rawNonce, pkceChallenge: continued.authorization.pkceChallenge })
-        return new Response(null, { status: 302, headers: {
-          location: upstream.toString(),
-          'cache-control': 'no-store',
-          'set-cookie': cookie(socialContinuityCookie.name, sealBrowserContinuity({ provider: begun.provider, brokerHandle: begun.brokerHandle, browserBindingSecret: begun.browserBindingSecret, issuedAt: runtime.now(), expiresAt: runtime.now() + 600 }, runtime.browserSessionKey), socialContinuityCookie.options),
-        } })
+        // P2b One Tap: a sealed, short-lived account hint (never an authentication result).
+        const hintCookie = readRequestCookie(request, GOOGLE_LOGIN_HINT_COOKIE.name)
+        const loginHint = continued.provider === 'google' ? openLoginHint(hintCookie, runtime.browserSessionKey, runtime.now()) : null
+        const upstream = buildProviderAuthorizationRequest({ provider: continued.provider, clientId: runtime.orchestrator.input.upstream[continued.provider].clientId, redirectUri: runtime.orchestrator.input.upstream[continued.provider].redirectUri, state: continued.authorization.rawState, nonce: continued.authorization.rawNonce, pkceChallenge: continued.authorization.pkceChallenge, loginHint })
+        const response = new Response(null, { status: 302, headers: { location: upstream.toString(), 'cache-control': 'no-store' } })
+        response.headers.append('set-cookie', cookie(socialContinuityCookie.name, sealBrowserContinuity({ provider: begun.provider, brokerHandle: begun.brokerHandle, browserBindingSecret: begun.browserBindingSecret, issuedAt: runtime.now(), expiresAt: runtime.now() + 600 }, runtime.browserSessionKey), socialContinuityCookie.options))
+        if (hintCookie !== undefined) response.headers.append('set-cookie', cookie(GOOGLE_LOGIN_HINT_COOKIE.name, '', { ...GOOGLE_LOGIN_HINT_COOKIE.options, maxAge: 0 }))
+        return response
       } catch { return rejected() }
     },
     async callback(provider: SocialProvider, request: Request): Promise<Response> {
@@ -63,7 +67,7 @@ export function createPreviewRouteAdapter(runtime: PreviewRouteRuntime) {
           }, runtime.browserSessionKey), recoveryContinuityCookie.options))
           return response
         }
-        if (trusted.outcome !== 'EXISTING_PRIMARY' && trusted.outcome !== 'PROVISIONAL_RESUME_READY' && trusted.outcome !== 'BOUND_PROVISIONAL_REAUTH_READY') throw new Error('DARK_CALLBACK_REJECTED')
+        if (!READY_FOR_CODE_OUTCOMES.has(trusted.outcome)) throw new Error('DARK_CALLBACK_REJECTED')
         const finalized = await runtime.orchestrator.finalizeReadyAttempt({ trustedAttemptId: trusted.trustedAttemptId, authenticationTime: trusted.authenticationTime })
         if (finalized.redirectUri !== runtime.downstreamCallback) throw new Error('DARK_FINALIZATION_REJECTED')
         const destination = new URL(runtime.downstreamCallback)

@@ -1,5 +1,6 @@
 import 'server-only'
 import type { SocialProvider } from './types'
+import { isGoogleLoginHint } from './one-tap-hint'
 import { GOOGLE_OIDC_METADATA, KAKAO_OIDC_METADATA, NAVER_OAUTH_METADATA } from './upstream-adapters'
 
 export type ProviderAuthorizationInput = Readonly<{
@@ -9,6 +10,8 @@ export type ProviderAuthorizationInput = Readonly<{
   state: string
   nonce: string | null
   pkceChallenge: string | null
+  /** P2b One Tap: verified numeric Google `sub`, used only as an account hint. */
+  loginHint?: string | null
 }>
 
 function rejected(): never { throw new Error('UPSTREAM_AUTHORIZATION_REQUEST_REJECTED') }
@@ -30,7 +33,14 @@ export function buildProviderAuthorizationRequest(input: ProviderAuthorizationIn
   if (input.provider === 'naver') return urlWith(url, parameters)
   const nonce = opaque(input.nonce); const challenge = opaque(input.pkceChallenge)
   parameters.set('scope', input.provider === 'google' ? 'openid profile' : 'openid')
-  if (input.provider === 'google') parameters.set('prompt', 'select_account')
+  if (input.provider === 'google') {
+    // One Tap already chose the account: hint it instead of forcing the chooser.
+    // Google still authenticates; state, nonce and PKCE below are unchanged.
+    if (input.loginHint != null) {
+      if (!isGoogleLoginHint(input.loginHint)) rejected()
+      parameters.set('login_hint', input.loginHint)
+    } else parameters.set('prompt', 'select_account')
+  } else if (input.loginHint != null) rejected()
   parameters.set('nonce', nonce); parameters.set('code_challenge', challenge); parameters.set('code_challenge_method', 'S256')
   return urlWith(url, parameters)
 }
