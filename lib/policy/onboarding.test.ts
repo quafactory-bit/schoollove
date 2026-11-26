@@ -48,6 +48,15 @@ describe('v2-05 single-screen signup', () => {
     expect(steps[3].payload).toEqual({ school_id: form.schoolId, graduation_year: 2008, grade_classes: [{ grade_number: 3, class_number: 2 }], show_in_school_roster: true })
   })
 
+  it('sends the optional Instagram ID with the profile only when entered (leading @ removed)', () => {
+    const withHandle = buildSignupSteps({ ...form, instagramHandle: ' @minsu.kim ' }, fresh, [], null)
+    expect(withHandle[2].payload).toEqual({ display_name: '김민수', sl_first_touch: null, instagram_handle: 'minsu.kim' })
+    expect(buildSignupSteps({ ...form, instagramHandle: '   ' }, fresh, [], null)[2].payload).not.toHaveProperty('instagram_handle')
+    expect(signupFormErrors({ ...form, instagramHandle: '@minsu.kim' }, fresh, now)).toEqual([])
+    expect(signupFormErrors({ ...form, instagramHandle: '민수 kim' }, fresh, now)).toEqual(['인스타 아이디는 영문·숫자·마침표·밑줄 30자 이내로 적어 주세요. 비워 둬도 돼요.'])
+    expect(signupFormErrors({ ...form, instagramHandle: '민수 kim' }, { ...fresh, profileReady: true }, now)).toEqual([])
+  })
+
   it('skips steps already completed so a failed submit can be retried', () => {
     const steps = buildSignupSteps(form, { adultReady: true, consentsReady: true, profileReady: false, schoolReady: false }, [], null)
     expect(steps.map(step => step.key)).toEqual(['profile', 'membership'])

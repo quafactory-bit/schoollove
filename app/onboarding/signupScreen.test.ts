@@ -23,6 +23,13 @@ describe('v2-05 single-screen signup contract', () => {
     expect(client).toContain('graduationYearRangeNotice(school.school_type)')
   })
 
+  it('asks for an optional Instagram ID that is only shown when the user shares it', () => {
+    expect(client).toContain('인스타 아이디 <span')
+    expect(client).toContain('(선택)')
+    expect(client).toContain('서로 수락한 친구에게 내가 ‘공개’를 누를 때만 보여요.')
+    expect(client).toContain('<CollectionNotice optional />')
+  })
+
   it('keeps the date-of-birth adult check (not stored) and never auto-fills the Google name', () => {
     expect(client).toContain('type="date"')
     expect(client).toContain('저장하지 않아요')

@@ -13,9 +13,15 @@ export type SignupForm = {
   schoolType: SchoolType | null
   graduationYear: string
   checks: SignupChecks
+  /** 선택. 비워 두면 보내지 않는다. 앞의 @는 떼고 보낸다. 서로 수락한 상대에게 본인이 공개를 눌러야 보인다. */
+  instagramHandle?: string
 }
 export type SignupProgress = { adultReady: boolean; consentsReady: boolean; profileReady: boolean; schoolReady: boolean }
 export type SignupStep = { key: 'eligibility' | 'consents' | 'profile' | 'membership'; endpoint: string; payload: Record<string, unknown> }
+
+export function normalizeSignupInstagram(value: string | undefined): string {
+  return (value ?? '').normalize('NFKC').trim().replace(/^@+/, '')
+}
 
 export function signupFormErrors(form: SignupForm, progress: SignupProgress, now = new Date()): string[] {
   const errors: string[] = []
@@ -24,6 +30,8 @@ export function signupFormErrors(form: SignupForm, progress: SignupProgress, now
   if (!progress.adultReady && !/^\d{4}-\d{2}-\d{2}$/.test(form.birthDate)) errors.push('생년월일을 입력해 주세요.')
   if (!form.schoolId || !form.schoolType) errors.push('검색 결과에서 학교를 선택해 주세요.')
   else if (!isGraduationYearAllowed(form.schoolType, Number(form.graduationYear), now)) errors.push('졸업연도를 선택해 주세요. 재학 중인 학교는 등록할 수 없어요.')
+  const instagram = normalizeSignupInstagram(form.instagramHandle)
+  if (!progress.profileReady && instagram && !/^[A-Za-z0-9._]{1,30}$/.test(instagram)) errors.push('인스타 아이디는 영문·숫자·마침표·밑줄 30자 이내로 적어 주세요. 비워 둬도 돼요.')
   if (!form.checks.adult || !form.checks.roster || !form.checks.terms) errors.push('체크 3개를 모두 확인해 주세요.')
   return errors
 }
@@ -42,6 +50,7 @@ export function buildSignupSteps(
   } })
   if (!progress.profileReady) steps.push({ key: 'profile', endpoint: '/api/account/profile', payload: {
     display_name: form.displayName.normalize('NFKC').trim(), sl_first_touch: firstTouch,
+    ...(normalizeSignupInstagram(form.instagramHandle) ? { instagram_handle: normalizeSignupInstagram(form.instagramHandle) } : {}),
   } })
   if (!progress.schoolReady) steps.push({ key: 'membership', endpoint: '/api/account/memberships', payload: {
     school_id: form.schoolId, graduation_year: Number(form.graduationYear), grade_classes: gradeClasses, show_in_school_roster: true,

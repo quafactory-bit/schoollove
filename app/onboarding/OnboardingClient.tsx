@@ -29,6 +29,7 @@ export default function OnboardingClient() {
   const [state, setState] = useState<OnboardingState | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [displayName, setDisplayName] = useState('')
+  const [instagramHandle, setInstagramHandle] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [schoolQuery, setSchoolQuery] = useState('')
   const [school, setSchool] = useState<SchoolAutocompleteResult | null>(null)
@@ -85,7 +86,7 @@ export default function OnboardingClient() {
   }, [pendingYear, school])
   const gradeNumbers = gradeNumbersForSchoolType(school?.school_type ?? null)
   const progress = state ?? { adultReady: false, consentsReady: false, profileReady: false, schoolReady: false }
-  const form = { displayName, birthDate, schoolId: school?.id ?? '', schoolType: school?.school_type ?? null, graduationYear, checks }
+  const form = { displayName, birthDate, schoolId: school?.id ?? '', schoolType: school?.school_type ?? null, graduationYear, checks, instagramHandle }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -128,6 +129,16 @@ export default function OnboardingClient() {
         {!state.profileReady ? <label className="mt-3.5 block">
           <span className="mb-1.5 block text-[13px] font-extrabold text-sl-ink2">출석부에 보일 이름</span>
           <input value={displayName} onChange={event => setDisplayName(event.target.value)} maxLength={50} autoComplete="name" placeholder="실명을 적으면 친구가 알아보기 쉬워요" className="schoollove-focus min-h-[52px] w-full rounded-xl bg-sl-bg2 px-3.5 text-[17px] font-extrabold text-sl-ink" />
+        </label> : null}
+
+        {/* 인스타 아이디(선택): 가입 때 받아 두면 서로 수락한 뒤 바로 공개할 수 있다. 저장만 하고 아무에게도 자동 공개하지 않는다. */}
+        {!state.profileReady ? <label className="mt-3.5 block">
+          <span className="mb-1.5 block text-[13px] font-extrabold text-sl-ink2">인스타 아이디 <span className="font-semibold text-sl-ink3">(선택)</span></span>
+          <span className="flex min-h-[52px] w-full items-center rounded-xl bg-sl-bg2 px-3.5">
+            <span aria-hidden="true" className="mr-1 text-[17px] font-extrabold text-sl-ink3">@</span>
+            <input value={instagramHandle} onChange={event => setInstagramHandle(event.target.value.replace(/^@+/, ''))} maxLength={31} autoComplete="off" autoCapitalize="none" spellCheck={false} inputMode="email" placeholder="instagram_id" className="schoollove-focus min-h-[52px] w-full bg-transparent text-[17px] font-extrabold text-sl-ink outline-none" />
+          </span>
+          <span className="mt-1 block text-xs leading-5 text-sl-ink3">서로 수락한 친구에게 내가 ‘공개’를 누를 때만 보여요. 비워 두고 나중에 설정에서 넣어도 돼요.</span>
         </label> : null}
 
         <div className="relative mt-3.5">
@@ -177,6 +188,7 @@ export default function OnboardingClient() {
           </label>)}
         </div>
         <details className="mt-2 text-xs text-sl-ink3"><summary className="schoollove-focus min-h-9 cursor-pointer py-1.5 font-semibold">필수 개인정보 수집·이용 안내 보기</summary><div className="pb-2"><CollectionNotice /></div></details>
+        {!state.profileReady ? <details className="text-xs text-sl-ink3"><summary className="schoollove-focus min-h-9 cursor-pointer py-1.5 font-semibold">선택 정보(인스타 아이디) 수집·이용 안내 보기</summary><div className="pb-2"><CollectionNotice optional /></div></details> : null}
 
         {errors.length ? <ul role="alert" className="mt-3 space-y-1 rounded-xl bg-sl-warn-soft px-3 py-2.5 text-[13px] font-semibold text-sl-warn-text">{errors.map(error => <li key={error}>{error}</li>)}</ul> : null}
         <button disabled={busy} className="btn-primary schoollove-focus mt-3.5 w-full">{busy ? '등록하는 중…' : '등록하고 출석부 보기'}</button>
